@@ -12,3 +12,5 @@
 .idea/
 composer.lock
 package-lock.json
+/error/*.log
+
