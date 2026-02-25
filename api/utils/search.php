@@ -35,47 +35,48 @@ $results = [
 try {
     // 1. Search Events
     if ($type === 'all' || $type === 'events') {
-        $sql = "SELECT id, event_name as title, event_type as subtitle, event_type as category, price, state, status, event_date, event_time, image_path, priority 
-                FROM events 
-                WHERE deleted_at IS NULL AND (event_name LIKE ? OR description LIKE ? OR state LIKE ? OR event_type LIKE ?)";
+        $sql = "SELECT e.id, e.event_name as title, e.event_type as subtitle, e.event_type as category, e.price, e.state, e.status, e.event_date, e.event_time, e.image_path, e.priority 
+                FROM events e
+                LEFT JOIN clients c ON e.client_id = c.id
+                WHERE e.deleted_at IS NULL AND (e.event_name LIKE ? OR e.description LIKE ? OR e.state LIKE ? OR e.event_type LIKE ? OR c.business_name LIKE ? OR e.price LIKE ? OR e.event_date LIKE ?)";
 
-        $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm];
+        $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm];
 
         // Add filters
         if ($category) {
-            $sql .= " AND event_type = ?";
+            $sql .= " AND e.event_type = ?";
             $params[] = $category;
         }
         if ($priority) {
-            $sql .= " AND priority = ?";
+            $sql .= " AND e.priority = ?";
             $params[] = $priority;
         }
         if ($status) {
-            $sql .= " AND status = ?";
+            $sql .= " AND e.status = ?";
             $params[] = $status;
         }
         if ($dateFrom) {
-            $sql .= " AND event_date >= ?";
+            $sql .= " AND e.event_date >= ?";
             $params[] = $dateFrom;
         }
         if ($dateTo) {
-            $sql .= " AND event_date <= ?";
+            $sql .= " AND e.event_date <= ?";
             $params[] = $dateTo;
         }
 
         if ($userRole === 'client') {
             // Resolve real client_id from auth_id
-            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE auth_id = ?");
+            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
             $c_stmt->execute([$userId]);
             $realClientId = $c_stmt->fetchColumn();
 
-            $sql .= " AND client_id = ?";
+            $sql .= " AND e.client_id = ?";
             $params[] = $realClientId;
         } elseif ($userRole !== 'admin') {
-            $sql .= " AND status = 'published'";
+            $sql .= " AND e.status = 'published'";
         }
 
-        $sql .= " ORDER BY event_date DESC LIMIT 20";
+        $sql .= " ORDER BY e.event_date DESC LIMIT 20";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $results['events'] = $stmt->fetchAll();
@@ -84,37 +85,38 @@ try {
     // 2. Search Tickets (Admins and Clients only)
     if (($userRole === 'admin' || $userRole === 'client') && ($type === 'all' || $type === 'tickets')) {
         // FIXED: Added proper JOIN to auth_accounts for email field
-        $sql = "SELECT t.id, t.ticket_code as title, e.event_name as subtitle, u.display_name as extra, 
-                       a.email as user_email, t.purchase_date, t.quantity
+        $sql = "SELECT t.id, t.barcode as title, e.event_name as subtitle, u.name as extra, 
+                       a.email as user_email, p.paid_at as purchase_date, 1 as quantity
                 FROM tickets t
-                INNER JOIN events e ON t.event_id = e.id
-                LEFT JOIN users u ON t.user_id = u.auth_id
-                LEFT JOIN auth_accounts a ON t.user_id = a.id
-                WHERE (t.ticket_code LIKE ? OR u.display_name LIKE ? OR a.email LIKE ? OR e.event_name LIKE ?)";
+                INNER JOIN payments p ON t.payment_id = p.id
+                INNER JOIN events e ON p.event_id = e.id
+                LEFT JOIN users u ON p.user_id = u.user_auth_id
+                LEFT JOIN auth_accounts a ON p.user_id = a.id
+                WHERE (t.barcode LIKE ? OR u.name LIKE ? OR a.email LIKE ? OR e.event_name LIKE ?)";
 
         $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm];
 
         if ($userRole === 'client') {
             // Resolve real client_id from auth_id
-            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE auth_id = ?");
+            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
             $c_stmt->execute([$userId]);
             $realClientId = $c_stmt->fetchColumn();
 
-            $sql .= " AND t.client_id = ?";
+            $sql .= " AND e.client_id = ?";
             $params[] = $realClientId;
         }
 
         // Add date filter for tickets
         if ($dateFrom) {
-            $sql .= " AND t.purchase_date >= ?";
+            $sql .= " AND p.paid_at >= ?";
             $params[] = $dateFrom;
         }
         if ($dateTo) {
-            $sql .= " AND t.purchase_date <= ?";
+            $sql .= " AND p.paid_at <= ?";
             $params[] = $dateTo;
         }
 
-        $sql .= " ORDER BY t.purchase_date DESC LIMIT 20";
+        $sql .= " ORDER BY p.paid_at DESC LIMIT 20";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $results['tickets'] = $stmt->fetchAll();
@@ -124,24 +126,25 @@ try {
     if (($userRole === 'admin' || $userRole === 'client') && ($type === 'all' || $type === 'users')) {
         if ($userRole === 'admin') {
             // FIXED: Properly join users and auth_accounts
-            $sql = "SELECT a.id, a.email as title, a.role as subtitle, u.display_name, u.profile_pic, a.created_at 
+            $sql = "SELECT a.id, a.email as title, a.role as subtitle, u.name as display_name, u.profile_pic, a.created_at 
                     FROM auth_accounts a
-                    LEFT JOIN users u ON a.id = u.auth_id
-                    WHERE a.email LIKE ? OR u.display_name LIKE ? 
+                    LEFT JOIN users u ON a.id = u.user_auth_id
+                    WHERE a.email LIKE ? OR u.name LIKE ? 
                     LIMIT 20";
             $params = [$searchTerm, $searchTerm];
         } else {
             // Client: search users who bought tickets for their events
-            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE auth_id = ?");
+            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
             $c_stmt->execute([$userId]);
             $realClientId = $c_stmt->fetchColumn();
 
-            $sql = "SELECT DISTINCT u.auth_id as id, u.display_name as title, a.email as subtitle, u.profile_pic
+            $sql = "SELECT DISTINCT u.user_auth_id as id, u.name as title, a.email as subtitle, u.profile_pic
                     FROM users u
-                    INNER JOIN tickets t ON u.auth_id = t.user_id
-                    INNER JOIN events e ON t.event_id = e.id
-                    INNER JOIN auth_accounts a ON u.auth_id = a.id
-                    WHERE e.client_id = ? AND (u.display_name LIKE ? OR a.email LIKE ?)
+                    INNER JOIN payments p ON u.user_auth_id = p.user_id
+                    INNER JOIN tickets t ON p.id = t.payment_id
+                    INNER JOIN events e ON p.event_id = e.id
+                    INNER JOIN auth_accounts a ON u.user_auth_id = a.id
+                    WHERE e.client_id = ? AND (u.name LIKE ? OR a.email LIKE ?)
                     LIMIT 20";
             $params = [$realClientId, $searchTerm, $searchTerm];
         }
@@ -153,37 +156,56 @@ try {
 
     // 4. Search Media (NEW - Admins and Clients only)
     if (($userRole === 'admin' || $userRole === 'client') && ($type === 'all' || $type === 'media')) {
-        $sql = "SELECT m.id, m.file_name as title, m.file_type as subtitle, m.file_path, m.file_size, 
-                       m.uploaded_at
-                FROM media m
-                WHERE (m.file_name LIKE ? OR m.file_type LIKE ?)";
+        // Search both files and folders
+        // Search files
+        $sqlFiles = "
+            SELECT m.id, m.file_name as title, m.file_type as subtitle, m.file_path as extra, m.file_size, m.uploaded_at, 'file' as item_type
+            FROM media m
+            WHERE m.is_deleted = 0 AND (m.file_name LIKE ? OR m.file_type LIKE ?)
+            " . ($userRole === 'client' ? " AND m.client_id = ?" : "") . "
+            ORDER BY m.uploaded_at DESC LIMIT 30
+        ";
 
-        $params = [$searchTerm, $searchTerm];
-
+        $paramsFiles = ["%$query%", "%$query%"];
         if ($userRole === 'client') {
             // Resolve real client_id from auth_id
-            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE auth_id = ?");
+            $c_stmt = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
             $c_stmt->execute([$userId]);
             $realClientId = $c_stmt->fetchColumn();
-
-            $sql .= " AND m.client_id = ?";
-            $params[] = $realClientId;
+            $paramsFiles[] = $realClientId;
         }
 
-        // Add date filter for media
-        if ($dateFrom) {
-            $sql .= " AND m.uploaded_at >= ?";
-            $params[] = $dateFrom;
-        }
-        if ($dateTo) {
-            $sql .= " AND m.uploaded_at <= ?";
-            $params[] = $dateTo;
+        $stmtFiles = $pdo->prepare($sqlFiles);
+        $stmtFiles->execute($paramsFiles);
+        $mediaFiles = $stmtFiles->fetchAll();
+
+        // Search folders
+        $sqlFolders = "
+            SELECT f.id, f.name as title, 'folder' as subtitle, '' as extra, 0 as file_size, f.created_at as uploaded_at, 'folder' as item_type
+            FROM media_folders f
+            WHERE f.is_deleted = 0 AND f.name LIKE ?
+            " . ($userRole === 'client' ? " AND f.client_id = ?" : "") . "
+            ORDER BY f.created_at DESC LIMIT 30
+        ";
+
+        $paramsFolders = ["%$query%"];
+        if ($userRole === 'client') {
+            $paramsFolders[] = $realClientId ?? null;
         }
 
-        $sql .= " ORDER BY m.uploaded_at DESC LIMIT 20";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $results['media'] = $stmt->fetchAll();
+        $stmtFolders = $pdo->prepare($sqlFolders);
+        $stmtFolders->execute($paramsFolders);
+        $mediaFolders = $stmtFolders->fetchAll();
+
+        $results['media'] = array_merge($mediaFolders, $mediaFiles);
+
+        // Sort combined results by uploaded_at descending manually
+        usort($results['media'], function ($a, $b) {
+            return strtotime($b['uploaded_at']) - strtotime($a['uploaded_at']);
+        });
+
+        // Take top 30
+        $results['media'] = array_slice($results['media'], 0, 30);
     }
 
     echo json_encode([

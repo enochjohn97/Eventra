@@ -16,6 +16,9 @@
     <link rel="stylesheet" href="../../public/css/media-enhancement.css">
     <script src="../../public/js/storage.js"></script>
     <script src="../../public/js/auth-guard.js"></script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
 </head>
 <body>
     <!-- Sidebar -->
@@ -87,19 +90,21 @@
                 <h1 style="font-size: 1.5rem; font-weight: 800;">Media</h1>
             </div>
 
-            <!-- Media Stats -->
             <div class="summary-grid">
-                <div class="summary-card"><div class="summary-label">Media Uploaded</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Media Deleted</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Shared Files</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Total Downloads</div><div class="summary-value">0</div></div>
+                <div class="summary-card"><div class="summary-label">Folder Created</div><div class="summary-value" id="foldersCreatedCount">0</div></div>
+                <div class="summary-card"><div class="summary-label">Folder Deleted</div><div class="summary-value" id="mediaDeletedCount">0</div></div>
+                <div class="summary-card"><div class="summary-label">Restored Folder</div><div class="summary-value" id="restoredFilesCount">0</div></div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0 1rem;">
-                <h3 style="font-size: 1.1rem;">All Media</h3>
-                <div style="display: flex; gap: 10px;">
+                <h3 style="font-size: 1.1rem;" id="mediaViewTitle">All Media</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btnBackToRoot" onclick="goBackToRoot()" class="btn" style="display: none; background: white; border: 1px solid var(--client-border); font-size: 0.8rem;">← Back</button>
+                    <select id="mediaStatusFilter" onchange="switchMediaView(this.value)" style="padding: 0.5rem; border: 1px solid var(--client-border); border-radius: 6px; font-size: 0.8rem; outline: none;">
+                        <option value="active">Active</option>
+                        <option value="trash">Trash</option>
+                    </select>
                     <button id="btnNewFolder" onclick="createNewFolder()" class="btn" style="background: white; border: 1px solid var(--client-border); font-size: 0.8rem;">+ New Folder</button>
-                    <button id="btnUploadFile" onclick="uploadFile()" class="btn btn-primary" style="font-size: 0.8rem; background: var(--card-blue);">+ Upload File</button>
                 </div>
             </div>
 
@@ -107,6 +112,41 @@
                 <!-- Media files and folders will be populated dynamically -->
             </div>
         </main>
+    </div>
+
+    <!-- Folder Contents Modal -->
+    <div class="modal-backdrop" id="folderContentsModal">
+        <div class="modal-content" style="max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; padding: 0;">
+            <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--client-border);">
+                <div>
+                    <h2 id="modalFolderName" style="font-size: 1.25rem; margin: 0;">Folder Name</h2>
+                    <p id="modalFileCount" style="font-size: 0.75rem; color: var(--client-text-muted); margin: 0;">0 files</p>
+                </div>
+                <button class="modal-close" onclick="closeFolderContentsModal()" style="font-size: 1.5rem;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0; overflow-y: auto; flex: 1;">
+                <table class="folder-items-table" style="width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; background: #f9fafb; z-index: 10;">
+                        <tr>
+                            <th onclick="sortFolderFiles('name')" style="padding: 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 700; cursor: pointer;">Name <span id="sortIcon-name"></span></th>
+                            <th onclick="sortFolderFiles('type')" style="padding: 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 700; cursor: pointer;">Type <span id="sortIcon-type"></span></th>
+                            <th onclick="sortFolderFiles('date')" style="padding: 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 700; cursor: pointer;">Date <span id="sortIcon-date"></span></th>
+                            <th style="padding: 1rem; text-align: right; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 700;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="folderItemsTableBody">
+                        <!-- Items will be populated here -->
+                    </tbody>
+                </table>
+                <div id="modalEmptyState" style="display: none; text-align: center; padding: 4rem; color: var(--client-text-muted);">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">📁</div>
+                    <p>This folder is empty.</p>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--client-border); display: flex; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeFolderContentsModal()">Close</button>
+            </div>
+        </div>
     </div>
 
     <!-- Export Modal -->

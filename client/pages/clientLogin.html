@@ -15,6 +15,9 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
 </head>
 
 <body>
@@ -31,12 +34,12 @@
                     </p>
                 </header>
 
-                <form id="loginForm" class="login-form">
+                <form id="loginForm" class="login-form" autocomplete="off">
                     <!-- Email Field -->
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <div class="input-wrapper">
-                            <input type="email" id="email" name="email" class="form-input" placeholder="m@example.com" autocomplete="email" required>
+                            <input type="email" id="email" name="email" class="form-input" placeholder="m@example.com" autocomplete="off" required>
                             <span class="input-icon">✉️</span>
                         </div>
                         <div id="emailError" class="error-message"></div>
@@ -46,7 +49,7 @@
                     <div class="form-group">
                         <label for="password" class="form-label">Password</label>
                         <div class="input-wrapper">
-                            <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" autocomplete="current-password" required>
+                            <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" autocomplete="new-password" required>
                             <span id="togglePassword" class="toggle-password">👁️</span>
                         </div>
                         <div id="passwordError" class="error-message"></div>

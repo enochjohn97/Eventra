@@ -5,18 +5,12 @@
  */
 header('Content-Type: application/json');
 require_once '../../config/database.php';
+require_once '../../includes/middleware/auth.php';
 
 // Check authentication
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Unauthorized'
-    ]);
-    exit;
-}
+$user_id = checkAuth();
 
 $data = json_decode(file_get_contents("php://input"), true);
-$user_id = $_SESSION['user_id'];
 
 // Support marking single or multiple notifications
 $notification_ids = [];
@@ -79,4 +73,3 @@ try {
         'message' => 'Failed to mark notifications as read'
     ]);
 }
-?>

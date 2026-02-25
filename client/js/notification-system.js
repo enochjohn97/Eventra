@@ -63,7 +63,18 @@ class NotificationManager {
                     
                     // Logic: Show toast if it's a new ID OR if it's a very recent login notification (within 30 seconds)
                     // and we haven't shown it yet this session.
-                    const isVeryRecent = (new Date() - new Date(latestNotif.created_at)) < 30000;
+                    const validTimestamp = latestNotif.created_at.replace(' ', 'T');
+                    const notifDate = new Date(validTimestamp).getTime();
+                    const now = new Date().getTime();
+                    let diffMs = now - notifDate;
+                    
+                    if (Math.floor(diffMs / 1000) < -60) {
+                        const offsetDate = new Date(validTimestamp + 'Z').getTime();
+                        diffMs = now - offsetDate;
+                    }
+                    if (diffMs < 0) diffMs = 0;
+                    
+                    const isVeryRecent = diffMs < 30000;
                     const isLoginType = latestNotif.type === 'login';
                     
                     if ((latestId > this.lastNotificationId && this.lastNotificationId !== 0) || 
@@ -325,15 +336,36 @@ function getNotificationIcon(type) {
         'admin_event_scheduled_reminder': '⏰',
         'ticket_purchased': '🎫',
         'user_registered': '👤',
+        'media_uploaded': '📤',
+        'media_deleted': '🗑️',
+        'media_restored': '♻️',
+        'folder_created': '📁',
         'default': '🔔'
     };
     return icons[type] || icons.default;
 }
 
 function formatNotificationTime(timestamp) {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
+    if (!timestamp) return 'recently';
+    const validTimestamp = timestamp.replace(' ', 'T');
+    
+    // Convert SQL date (assuming UTC or Local) to milliseconds
+    const date = new Date(validTimestamp).getTime();
+    const now = new Date().getTime();
+    
+    // Calculate seconds diff, allowing a small 60s buffer for minor server-client timezone skews natively
+    let diffMs = now - date;
+    let seconds = Math.floor(diffMs / 1000);
+    
+    // If the date is wildly in the future (due to a heavy timezone offset without 'Z'), we adjust it
+    if (seconds < -60) {
+        // Fallback: Date seems to be in the future, let's treat the parsed date as local inherently
+        const offsetDate = new Date(validTimestamp + 'Z').getTime();
+        diffMs = now - offsetDate;
+    }
+    
+    if (diffMs < 0) diffMs = 0; // Final safety floor
+
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -343,7 +375,7 @@ function formatNotificationTime(timestamp) {
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
     
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // Add CSS animations
@@ -378,7 +410,8 @@ window.notificationManager = new NotificationManager();
 
 // Auto-start polling when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    const user = storage.get('user');
+    // Check using unified helper so it works for user, client, AND admin
+    const user = storage.getUser();
     if (user) {
         window.notificationManager.startPolling();
     }

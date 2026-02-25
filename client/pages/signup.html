@@ -13,6 +13,9 @@
     
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
 </head>
 <body>
     <div class="login-container">
@@ -28,7 +31,7 @@
                     </p>
                 </header>
 
-                <form id="signupForm" class="login-form">
+                <form id="signupForm" class="login-form" autocomplete="off">
                     <!-- Full Name Field -->
                     <div class="form-group">
                         <label for="fullName" class="form-label">Full Name</label>
@@ -38,7 +41,7 @@
                                    name="fullname"
                                    class="form-input" 
                                    placeholder="John Doe" 
-                                   autocomplete="name"
+                                   autocomplete="off"
                                    required>
                             <span class="input-icon">👤</span>
                         </div>
@@ -54,7 +57,7 @@
                                    name="email"
                                    class="form-input" 
                                    placeholder="m@example.com" 
-                                   autocomplete="email"
+                                   autocomplete="off"
                                    required>
                             <span class="input-icon">✉️</span>
                         </div>
