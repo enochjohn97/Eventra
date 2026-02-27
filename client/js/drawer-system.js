@@ -309,8 +309,12 @@ async function loadProfile() {
 }
 
 function editProfile() {
-    // TODO: Implement profile edit modal
-    alert('Profile edit functionality coming soon!');
+    closeAllDrawers();
+    if (typeof showProfileEditModal === 'function') {
+        showProfileEditModal();
+    } else {
+        alert('Profile edit functionality could not be loaded.');
+    }
 }
 
 // Make functions globally available

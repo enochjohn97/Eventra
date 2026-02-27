@@ -7,7 +7,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     initLogout();
     // initNotifications(); // Handled by drawer-system.js
-    initSearch();
     initProfileClick();
     loadGlobalProfile();
 });
@@ -149,54 +148,6 @@ function initLogout() {
     });
 }
 
-
-function initSearch() {
-    const searchInput = document.querySelector('.header-search input');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', debounce(handleSearch, 300));
-    }
-}
-
-async function handleSearch(e) {
-    const query = e.target.value.trim();
-    if (query.length < 2) return;
-
-    // Implement search based on current page
-    const currentPage = window.location.pathname;
-    
-    if (currentPage.includes('events.html')) {
-        await searchEvents(query);
-    } else if (currentPage.includes('tickets.html')) {
-        await searchTickets(query);
-    } else if (currentPage.includes('users.html')) {
-        await searchUsers(query);
-    }
-}
-
-async function searchEvents(query) {
-    try {
-        const response = await apiFetch(`../../api/events/search-events.php?query=${encodeURIComponent(query)}`);
-        const result = await response.json();
-
-        if (result.success) {
-            // Update events display
-            console.log('Search results:', result.events);
-            // TODO: Update UI with search results
-        }
-    } catch (error) {
-        console.error('Search error:', error);
-    }
-}
-
-async function searchTickets(query) {
-    // TODO: Implement ticket search
-    console.log('Searching tickets:', query);
-}
-
-async function searchUsers(query) {
-    // TODO: Implement user search
-    console.log('Searching users:', query);
-}
 
 function initProfileClick() {
     // Make user avatar clickable to open profile modal
