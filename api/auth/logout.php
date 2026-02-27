@@ -22,8 +22,17 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 try {
-    $user_id = $_SESSION['user_id'] ?? null;
-    $role = $_SESSION['role'] ?? 'user';
+    $role = $_SESSION['user_role'] ?? 'user';
+
+    // Resolve user_id based on role
+    $user_id = null;
+    if ($role === 'admin') {
+        $user_id = $_SESSION['admin_id'] ?? null;
+    } elseif ($role === 'client') {
+        $user_id = $_SESSION['client_id'] ?? null;
+    } else {
+        $user_id = $_SESSION['user_id'] ?? null;
+    }
     $auth_token = $_SESSION['auth_token'] ?? null;
 
     $table = 'users';

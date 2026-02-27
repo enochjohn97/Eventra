@@ -21,8 +21,17 @@ function checkAuth($requiredRole = null)
     $_SESSION['last_activity'] = time();
 
     $token = $_SESSION['auth_token'] ?? null;
-    $user_id = $_SESSION['user_id'] ?? null;
-    $sessionRole = $_SESSION['role'] ?? null;
+    $sessionRole = $_SESSION['user_role'] ?? null;
+
+    // Resolve user_id based on role
+    $user_id = null;
+    if ($sessionRole === 'admin') {
+        $user_id = $_SESSION['admin_id'] ?? null;
+    } elseif ($sessionRole === 'client') {
+        $user_id = $_SESSION['client_id'] ?? null;
+    } else {
+        $user_id = $_SESSION['user_id'] ?? null;
+    }
 
     if (!$token || !$user_id || !$sessionRole) {
         http_response_code(401);

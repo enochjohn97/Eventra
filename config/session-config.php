@@ -12,7 +12,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
 ini_set('session.use_cookies', '1');
 ini_set('session.use_only_cookies', '1');
 ini_set('session.cookie_httponly', '1');
-ini_set('session.cookie_samesite', 'Strict'); // Changed from Lax to Strict for better CSRF protection
+ini_set('session.cookie_samesite', 'Lax'); // Changed from Strict to Lax for better CSRF protection and redirect compatibility
+
 ini_set('session.cookie_lifetime', '7200'); // 2 hours
 ini_set('session.gc_maxlifetime', '7200'); // 2 hours
 
@@ -93,7 +94,8 @@ session_set_cookie_params([
     'domain' => $cookieParams['domain'],
     'secure' => $cookieParams['secure'],
     'httponly' => true,
-    'samesite' => 'Strict'
+    'samesite' => 'Lax'
+
 ]);
 
 session_start();

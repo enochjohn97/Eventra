@@ -7,77 +7,46 @@ header('Content-Type: application/json');
 require_once '../../config/database.php';
 
 try {
-    $query = $_GET['query'] ?? '';
-    $state = $_GET['state'] ?? '';
-    $category = $_GET['category'] ?? '';
-    $date_from = $_GET['date_from'] ?? '';
-    $date_to = $_GET['date_to'] ?? '';
-    $priority = $_GET['priority'] ?? '';
-    $limit = $_GET['limit'] ?? 20;
+    $q = $_GET['q'] ?? '';
+    $limit = (int) ($_GET['limit'] ?? 50);
 
     // Build search query
     $where_clauses = ["e.status = 'published'", "e.deleted_at IS NULL"];
     $params = [];
 
-    error_log("[Search Debug] Query: $query | Limit: $limit");
-
-    // Search by event name or description
-    if (!empty($query)) {
-        $where_clauses[] = "(e.event_name LIKE ? OR e.description LIKE ?)";
-        $search_term = "%$query%";
-        $params[] = $search_term;
-        $params[] = $search_term;
-    }
-
-    // Filter by state
-    if (!empty($state)) {
-        $where_clauses[] = "e.state = ?";
-        $params[] = $state;
-    }
-
-    // Filter by category/event_type
-    if (!empty($category)) {
-        $where_clauses[] = "e.event_type = ?";
-        $params[] = $category;
-    }
-
-    // Filter by date range
-    if (!empty($date_from)) {
-        $where_clauses[] = "e.event_date >= ?";
-        $params[] = $date_from;
-    }
-    if (!empty($date_to)) {
-        $where_clauses[] = "e.event_date <= ?";
-        $params[] = $date_to;
-    }
-
-    // Filter by priority
-    if (!empty($priority)) {
-        $where_clauses[] = "e.priority = ?";
-        $params[] = $priority;
+    // Unified Search logic
+    if (!empty($q)) {
+        $where_clauses[] = "(
+            e.event_name LIKE ? 
+            OR c.business_name LIKE ? 
+            OR e.state LIKE ? 
+            OR e.location LIKE ? 
+            OR e.category LIKE ? 
+            OR DATE_FORMAT(e.event_date, '%Y-%m-%d') LIKE ?
+        )";
+        $search_term = "%$q%";
+        // Bind for each field in the OR clause
+        $params[] = $search_term; // event_name
+        $params[] = $search_term; // business_name (organizer)
+        $params[] = $search_term; // state
+        $params[] = $search_term; // location
+        $params[] = $search_term; // category
+        $params[] = $search_term; // event_date
     }
 
     $where_sql = implode(' AND ', $where_clauses);
-    error_log("[Search Debug] SQL Where: $where_sql");
 
-    // Execute search
+    // Execute search (Default to upcoming date order as requested)
     $sql = "
-        SELECT e.*, u.name as client_name, u.profile_pic as client_profile_pic
+        SELECT e.*, c.business_name as organizer_name, c.profile_pic as client_profile_pic
         FROM events e
-        LEFT JOIN clients u ON e.client_id = u.id
+        LEFT JOIN clients c ON e.client_id = c.id
         WHERE $where_sql
-        ORDER BY 
-            CASE e.priority
-                WHEN 'featured' THEN 1
-                WHEN 'hot' THEN 2
-                WHEN 'trending' THEN 3
-                ELSE 4
-            END,
-            e.event_date ASC
+        ORDER BY e.event_date ASC
         LIMIT ?
     ";
 
-    $params[] = (int) $limit;
+    $params[] = $limit;
 
     $stmt = $pdo->prepare($sql);
 
@@ -92,11 +61,12 @@ try {
     echo json_encode([
         'success' => true,
         'events' => $events,
-        'count' => count($events)
+        'count' => count($events),
+        'q' => $q
     ]);
 
 } catch (Throwable $e) {
-    error_log("[Search Global Error] " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Internal server error: ' . $e->getMessage()]);
 }
+

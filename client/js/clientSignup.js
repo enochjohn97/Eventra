@@ -172,19 +172,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (typeof google === 'undefined') {
-                Swal.fire('Blocked', 'Google script not loaded. Check ad-blockers.', 'warning');
-                return;
-            }
-
-            google.accounts.id.initialize({
-                client_id: configData.client_id,
-                callback: handleGoogleResponse,
-            });
-            google.accounts.id.prompt();
-
+            let attempts = 0;
+            const attemptGoogleInit = () => {
+                if (typeof google !== 'undefined') {
+                    try {
+                        google.accounts.id.initialize({
+                            client_id: configData.client_id,
+                            callback: handleGoogleResponse,
+                        });
+                        google.accounts.id.prompt();
+                    } catch (error) {
+                        console.error('Google Sign-up error:', error);
+                        Swal.fire('Error', 'Failed to initialize Google Sign-up.', 'error');
+                    }
+                } else if (attempts < 20) {
+                    attempts++;
+                    setTimeout(attemptGoogleInit, 100);
+                } else {
+                    Swal.fire('Blocked', 'Google script not loaded. Check ad-blockers.', 'warning');
+                }
+            };
+            attemptGoogleInit();
         } catch (error) {
-            console.error('Google Sign-up error:', error);
+            console.error('Google Sign-up config error:', error);
             Swal.fire('Error', 'Failed to initialize Google Sign-up.', 'error');
         }
     }

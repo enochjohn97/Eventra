@@ -12,7 +12,13 @@ if (!isset($data['email']) || !isset($data['password'])) {
 
 $email = $data['email'];
 $password = $data['password'];
-$intent = $data['intent'] ?? 'client'; // Default to client if not specified
+
+// Support for dedicated login endpoint overrides
+if (isset($auth_intent)) {
+    $intent = $auth_intent;
+} else {
+    $intent = $data['intent'] ?? 'client';
+}
 $remember_me = isset($data['remember_me']) && $data['remember_me'] === true;
 
 if (!in_array($intent, ['admin', 'client', 'user'])) {
@@ -105,8 +111,16 @@ try {
             $_SESSION = [];
         }
 
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['role'] = $userRole;
+        // Strict Role-Specific Session Keys
+        if ($userRole === 'admin') {
+            $_SESSION['admin_id'] = $user['id'];
+        } elseif ($userRole === 'client') {
+            $_SESSION['client_id'] = $user['id'];
+        } else {
+            $_SESSION['user_id'] = $user['id'];
+        }
+
+        $_SESSION['user_role'] = $userRole;
         $_SESSION['auth_token'] = $token;
 
         // Log success
@@ -123,12 +137,18 @@ try {
             }
         }
 
-        $redirect = ($userRole === 'admin') ? 'admin/pages/adminDashboard.html' :
-            (($userRole === 'client') ? 'client/pages/clientDashboard.html' : 'public/pages/index.html');
+        // Role-Based Redirects
+        $redirect = 'index.html'; // Default for users
+        if ($userRole === 'admin') {
+            $redirect = 'admin/pages/adminDashboard.html';
+        } elseif ($userRole === 'client') {
+            $redirect = 'client/pages/clientDashboard.html';
+        }
 
         echo json_encode([
             'success' => true,
             'message' => 'Login successful',
+            'role' => $userRole,
             'redirect' => $redirect,
             'user' => [
                 'id' => $user['id'],

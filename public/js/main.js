@@ -12,6 +12,9 @@ let allEvents = [];  // Store all events for filtering
 
 // Load events from API
 async function loadEvents() {
+  const globalSearch = document.getElementById('globalSearch');
+  if (globalSearch && globalSearch.value.trim() !== '') return; // Don't refresh data while search is active
+
   try {
     const response = await apiFetch('../../api/events/get-events.php');
     const result = await response.json();
@@ -125,7 +128,6 @@ function initMobileMenu() {
   }
 }
 
-// User icon and profile logic
 function initUserIcon() {
   const userIcon = document.querySelector('.user-icon');
   const userProfileBtn = document.getElementById('userProfileBtn');
@@ -142,22 +144,38 @@ function initUserIcon() {
   const defaultUserIcon = document.getElementById('defaultUserIcon');
   const userProfileImg = document.getElementById('userProfileImg');
   const userOnlineStatus = document.querySelector('.user-online-status');
-
-  if (isAuthenticated()) {
+  
+  // Handlers declared once for potential cleanup or multiple init calls
+  const setupUI = () => {
     const keys = typeof getRoleKeys === 'function' ? getRoleKeys() : { user: 'user' };
     const user = storage.get(keys.user) || storage.get('user');
-    if (user) {
+
+    if (isAuthenticated() && user && typeof user === 'object') {
       // Show profile image, hide default SVG
       if (userProfileImg) {
-          userProfileImg.src = user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=FF5A5F&color=fff&size=128`;
+          userProfileImg.src = user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=FF5A5F&color=fff&size=128`;
           userProfileImg.title = `Logged in as ${user.name}`;
           userProfileImg.style.display = 'block';
       }
       if (defaultUserIcon) defaultUserIcon.style.display = 'none';
-      
-      // Show active status
       if (userOnlineStatus) userOnlineStatus.style.display = 'block';
+    } else {
+      // Revert to guest UI if not authenticated or user data missing
+      if (userProfileImg) userProfileImg.style.display = 'none';
+      if (defaultUserIcon) defaultUserIcon.style.display = 'block';
+      if (userOnlineStatus) userOnlineStatus.style.display = 'none';
     }
+  };
+
+  // Initial UI setup based on localStorage
+  setupUI();
+
+  // Listen for session sync resulting in state change (e.g. stale session cleared)
+  window.addEventListener('sessionSyncComplete', () => {
+    setupUI();
+  }, { once: true }); // We only need the initial sync for the first load logic
+
+  if (isAuthenticated()) {
     
     // Toggle dropdown
     if (userProfileBtn) {
@@ -219,9 +237,17 @@ function initUserIcon() {
         e.preventDefault();
         profileDropdown.classList.remove('show');
         
-        // Populate modal with user data
+        const keys = typeof getRoleKeys === 'function' ? getRoleKeys() : { user: 'user' };
         const user = storage.get(keys.user) || storage.get('user');
-        document.getElementById('modalProfilePic').src = user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=FF5A5F&color=fff&size=128`;
+        if (!user) {
+          showNotification('User profile not found. Please log in again.', 'info');
+          if (loginModal) {
+              loginModal.style.display = 'flex';
+              setTimeout(() => loginModal.classList.add('show'), 10);
+          }
+          return;
+        }
+        document.getElementById('modalProfilePic').src = user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=FF5A5F&color=fff&size=128`;
         document.getElementById('profileName').value = user.name || '';
         document.getElementById('profileEmail').value = user.email || '';
         document.getElementById('profilePhone').value = user.phone || '';
@@ -234,7 +260,9 @@ function initUserIcon() {
     }
 
     if (closeProfileModal) {
-      closeProfileModal.addEventListener('click', () => {
+      closeProfileModal.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         profileSideModal.classList.remove('open');
       });
     }
@@ -255,7 +283,14 @@ function initUserIcon() {
             storage.set(keys.user, result.user);
             showNotification('Profile updated successfully!', 'success');
             profileSideModal.classList.remove('open');
-            initUserIcon(); // Refresh icons
+            
+            // Instantly update UI without reload
+            const userProfileImg = document.getElementById('userProfileImg');
+            const modalProfilePic = document.getElementById('modalProfilePic');
+            if (userProfileImg) userProfileImg.src = result.user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}&background=FF5A5F&color=fff&size=128`;
+            if (modalProfilePic) modalProfilePic.src = result.user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}&background=FF5A5F&color=fff&size=128`;
+            
+            initUserIcon(); // Refresh icons and labels
           } else {
             showNotification(result.message || 'Error updating profile', 'error');
           }
@@ -309,34 +344,46 @@ async function initGoogleAuth() {
     if (isAuthenticated()) return;
 
     try {
-        const response = await apiFetch('../../api/config/get-google-config.php');
+        const basePath = getBasePath();
+        const response = await apiFetch(basePath + 'api/config/get-google-config.php');
         const data = await response.json();
+
 
         if (data.success && data.client_id) {
             // Check if google is defined
-            if (typeof google !== 'undefined') {
-                google.accounts.id.initialize({
-                    client_id: data.client_id,
-                    callback: handleGoogleCredentialResponse,
-                    auto_select: false,
-                    cancel_on_tap_outside: true,
-                });
+            let attempts = 0;
+            const checkGoogle = setInterval(() => {
+                if (typeof google !== 'undefined') {
+                    clearInterval(checkGoogle);
+                    try {
+                        google.accounts.id.initialize({
+                            client_id: data.client_id,
+                            callback: handleGoogleCredentialResponse,
+                            auto_select: false,
+                            cancel_on_tap_outside: true,
+                        });
 
-                const container = document.getElementById('googleSignInContainer');
-                if (container) {
-                    google.accounts.id.renderButton(container, {
-                        type: 'standard',
-                        theme: 'outline',
-                        size: 'large',
-                        text: 'signin_with',
-                        shape: 'rectangular',
-                        logo_alignment: 'left',
-                        width: '320'
-                    });
+                        const container = document.getElementById('googleSignInContainer');
+                        if (container) {
+                            google.accounts.id.renderButton(container, {
+                                type: 'standard',
+                                theme: 'outline',
+                                size: 'large',
+                                text: 'signin_with',
+                                shape: 'rectangular',
+                                logo_alignment: 'left',
+                                width: '320'
+                            });
+                        }
+                    } catch(e) { console.error('Error rendering Google button:', e); }
+                } else {
+                    attempts++;
+                    if (attempts > 50) {
+                        clearInterval(checkGoogle);
+                        console.error('Google GSI script not loaded');
+                    }
                 }
-            } else {
-                console.error('Google GSI script not loaded');
-            }
+            }, 100);
         } else {
             console.error('Failed to load Google config:', data.message);
         }
@@ -347,11 +394,22 @@ async function initGoogleAuth() {
 
 async function handleGoogleCredentialResponse(response) {
     try {
-        // Show loading state
+        console.log('Google callback received, showing toast...');
+        showNotification('Getting Google information...', 'info');
+        
+        // Show loading state in the container
         const container = document.getElementById('googleSignInContainer');
-        if (container) container.innerHTML = '<div class="spinner"></div> Signing in...';
+        if (container) {
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; color: #fff; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px;">
+                    <div class="spinner" style="width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                    <span>Signing in...</span>
+                </div>
+            `;
+        }
 
-        const res = await apiFetch('../../api/auth/google-handler.php', {
+        const basePath = getBasePath();
+        const res = await apiFetch(basePath + 'api/auth/google-handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -359,6 +417,7 @@ async function handleGoogleCredentialResponse(response) {
                 intent: 'user'
             })
         });
+
 
         const result = await res.json();
 
@@ -370,14 +429,17 @@ async function handleGoogleCredentialResponse(response) {
             showNotification('Google Sign-in successful!', 'success');
             
             setTimeout(() => {
-                const redirectUrl = sessionStorage.getItem('redirect_after_login');
+                const redirectUrl = result.redirect || sessionStorage.getItem('redirect_after_login');
                 if (redirectUrl) {
                     sessionStorage.removeItem('redirect_after_login');
-                    window.location.href = redirectUrl;
+                    // Ensure redirectUrl is correctly handled if it's relative
+                    const finalTarget = redirectUrl.includes('://') ? redirectUrl : getBasePath() + redirectUrl.replace(/^\//, '');
+                    window.location.href = finalTarget;
                 } else {
                     location.reload(); // Refresh to update UI
                 }
             }, 1000);
+
         } else {
             showNotification(result.message || 'Login failed', 'error');
             // Reset button
@@ -390,92 +452,172 @@ async function handleGoogleCredentialResponse(response) {
     }
 }
 
-// Search functionality
-function initSearch() {
-  const searchButton = document.querySelector('.search-button');
-  const searchInput = document.querySelector('.search-input');
 
-  if (searchButton && searchInput) {
-    searchButton.addEventListener('click', handleSearch);
-    searchInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        handleSearch();
-      }
+// Debounce helper
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Search functionality
+function initEnhancedSearch() {
+  const globalSearch = document.getElementById('globalSearch');
+  const searchButton = document.querySelector('.search-button-modern');
+  const loader = document.getElementById('searchLoader');
+
+  if (searchButton) {
+    searchButton.addEventListener('click', () => performServerSearch(globalSearch?.value || ''));
+  }
+
+  const debouncedSearch = debounce((val) => performServerSearch(val), 400);
+
+  if (globalSearch) {
+    globalSearch.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (loader) loader.style.display = 'block';
+      debouncedSearch(val);
     });
   }
 }
 
-function handleSearch() {
-  const searchInput = document.querySelector('.search-input');
-  const query = searchInput.value.trim().toLowerCase();
-  
-  const allCards = document.querySelectorAll('.event-card');
-  
-  allCards.forEach(card => {
-    const title = card.querySelector('.event-title').textContent.toLowerCase();
-    const location = card.querySelector('.event-location').textContent.toLowerCase();
-    const isFavorite = card.querySelector('.favorite-icon').classList.contains('active');
-    
-    const matchesQuery = query === '' || title.includes(query) || location.includes(query);
-    const matchesFavorite = query === 'favorites' || query === 'favorite' ? isFavorite : true;
-    
-    if (matchesQuery && matchesFavorite) {
-      card.style.display = 'block';
-    } else if (query === 'favorites' || query === 'favorite') {
-        card.style.display = isFavorite ? 'block' : 'none';
-    } else {
-      card.style.display = 'none';
+async function performServerSearch(query) {
+  const loader = document.getElementById('searchLoader');
+  const sections = document.querySelectorAll('.events-section');
+  const allEventsSection = document.getElementById('all-events');
+  const allEventsTitle = allEventsSection?.querySelector('.section-title');
+  const allEventsGrid = document.getElementById('all-events-grid');
+
+  if (!query) {
+    if (loader) loader.style.display = 'none';
+    sections.forEach(section => {
+      section.style.display = 'block';
+    });
+    if (allEventsTitle) allEventsTitle.textContent = '🌍 All Events';
+    loadEvents(); // Reload default events
+    return;
+  }
+
+  // Toggle sections visibility
+  sections.forEach(section => {
+    if (section.id !== 'all-events') {
+      section.style.display = 'none';
     }
   });
+  if (allEventsTitle) allEventsTitle.textContent = `🔍 Results for "${query}"`;
+
+  try {
+    const url = new URL('../../api/events/search-events.php', window.location.href);
+    url.searchParams.set('q', query);
+
+    const response = await apiFetch(url.toString());
+    const result = await response.json();
+
+    if (loader) loader.style.display = 'none';
+
+    if (result.success) {
+      eventsData.all = result.events;
+      renderSearchResults(result.events);
+    }
+  } catch (error) {
+    if (loader) loader.style.display = 'none';
+    console.error('Search error:', error);
+    showNotification('Error performing search. Please try again.', 'error');
+  }
 }
 
-function filterEvents(query) {
-  const allCards = document.querySelectorAll('.event-card');
-  
-  allCards.forEach(card => {
-    const title = card.querySelector('.event-title').textContent.toLowerCase();
-    const location = card.querySelector('.event-location').textContent.toLowerCase();
-    
-    if (title.includes(query) || location.includes(query)) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
-  });
+function renderSearchResults(events) {
+  const grid = document.getElementById('all-events-grid');
+  if (!grid) return;
+
+  if (events.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state-container">
+        <span class="empty-state-icon">🕵️‍♂️</span>
+        <div class="empty-state-text">
+          <h3>No results found</h3>
+          <p>We couldn't find any events matching your search. Try different keywords.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = events.map((e, i) => createEventCard(e, i)).join('');
+}
+
+function renderEventsGrid(gridId, events, emptyMessage) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+
+  grid.innerHTML = events.length > 0
+    ? events.map((e, i) => createEventCard(e, i)).join('')
+    : `<div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 4rem;">
+         <div style="font-size: 3rem; margin-bottom: 1rem;">🔎</div>
+         <h3 style="color: #4b5563;">${emptyMessage}</h3>
+       </div>`;
+}
+
+
+// XSS mitigation helper
+function escapeHTML(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>'"]/g, 
+    tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag])
+  );
 }
 
 // Create event card
 function createEventCard(event, index) {
   const price = !event.price || parseFloat(event.price) === 0 ? 'Free' : `₦${parseFloat(event.price).toLocaleString()}`;
-  const eventImage = event.image_path || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=250&fit=crop';
+  const eventImage = escapeHTML(event.image_path) || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=250&fit=crop';
   const eventDate = new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const eventTime = event.event_time || 'TBA';
+  const eventTime = escapeHTML(event.event_time) || 'TBA';
   const isFavorite = event.is_favorite ? 'active' : '';
+  const eventName = escapeHTML(event.event_name);
+  const category = escapeHTML(event.category) || 'Event';
+  const city = escapeHTML(event.city) || '';
+  const state = escapeHTML(event.state) || 'Nigeria';
+  const desc = escapeHTML(event.description || '');
+  const organizer = escapeHTML(event.organizer_name || event.client_name || 'Eventra');
+  const priority = escapeHTML(event.priority || '');
   
-  // Modern HTML structure with staggered animation delay
   return `
-    <div class="event-card" data-id="${event.id}" data-tag="${event.tag || event.id}" style="animation-delay: ${index * 0.1}s">
+    <div class="event-card" data-id="${event.id}" data-tag="${escapeHTML(event.tag) || event.id}" style="animation-delay: ${index * 0.1}s">
       <div class="event-image-container enhanced-hd">
-        <img src="${eventImage}" alt="${event.event_name}" class="event-image">
+        <img src="${eventImage}" alt="${eventName}" class="event-image">
         <div class="event-badges">
-          <div class="event-category-badge">${event.category || 'Event'}</div>
+          <div class="event-category-badge">${category}</div>
           ${event.priority ? `
             <div class="event-status-badge">
               <span class="status-dot"></span>
-              ${event.priority.toUpperCase()}
+              ${priority.toUpperCase()}
             </div>
           ` : ''}
         </div>
       </div>
       <div class="event-content">
         <div class="event-date-time">${eventDate} • ${eventTime}</div>
-        <h3 class="event-title">${event.event_name}</h3>
+        <h3 class="event-title">${eventName}</h3>
         <div class="event-location">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-          ${event.city || ''} ${event.state || 'Nigeria'}
+          ${city} ${state}
         </div>
-        <p class="event-description">${(event.description || '').substring(0, 100)}${event.description && event.description.length > 100 ? '...' : ''}</p>
-        <div class="event-organizer">Organized by ${event.organizer_name || event.client_name || 'Eventra'}</div>
+        <p class="event-description">${desc.substring(0, 100)}${desc.length > 100 ? '...' : ''}</p>
+        <div class="event-organizer">Organized by ${organizer}</div>
+
         
         <div class="event-footer">
           <span class="event-price">${price}</span>
@@ -493,85 +635,20 @@ function createEventCard(event, index) {
   `;
 }
 
-// Redirect to new event details page using ID
-function viewEventDetails(id) {
-  if (!id) {
-      showNotification('Event ID missing', 'error');
-      return;
-  }
-  // We are in /public/pages/index.html, so event-details.html is in the same directory
-  window.location.href = `event-details.html?id=${id}`;
-}
-
-// Buy ticket handler (legacy, but updated)
-function buyTicket(eventId) {
-  // If we have the tag, use it. Otherwise fallback.
-  const card = document.querySelector(`.event-card[data-id="${eventId}"]`);
-  if (card && card.dataset.tag) {
-      viewEventDetails(card.dataset.tag);
-  } else {
-      window.location.href = `pages/buy-ticket.html?id=${eventId}`;
-  }
-}
-
 // Render events
 function renderEvents() {
-  const hotGrid = document.getElementById('hot-events-grid');
-  const trendingGrid = document.getElementById('trending-events-grid');
-  const featuredGrid = document.getElementById('featured-events-grid');
-  const upcomingGrid = document.getElementById('upcoming-events-grid');
-
-  const allGrid = document.getElementById('all-events-grid');
-
-  if (allGrid) {
-    allGrid.innerHTML = eventsData.all.length > 0 
-      ? eventsData.all.map((e, i) => createEventCard(e, i)).join('') 
-      : '<p style="text-align: center; color: #666; padding: 2rem;">No events available at the moment</p>';
-  }
-
-  if (hotGrid) {
-    hotGrid.innerHTML = eventsData.hot.length > 0 
-      ? eventsData.hot.map((e, i) => createEventCard(e, i)).join('') 
-      : '<p style="text-align: center; color: #666; padding: 2rem;">No hot events at the moment</p>';
-  }
-
-  if (trendingGrid) {
-    trendingGrid.innerHTML = eventsData.trending.length > 0 
-      ? eventsData.trending.map((e, i) => createEventCard(e, i)).join('') 
-      : '<p style="text-align: center; color: #666; padding: 2rem;">No trending events at the moment</p>';
-  }
-
-  if (featuredGrid) {
-    featuredGrid.innerHTML = eventsData.featured.length > 0 
-      ? eventsData.featured.map((e, i) => createEventCard(e, i)).join('') 
-      : '<p style="text-align: center; color: #666; padding: 2rem;">No featured events at the moment</p>';
-  }
-
-  if (upcomingGrid) {
-    upcomingGrid.innerHTML = eventsData.upcoming.length > 0 
-      ? eventsData.upcoming.map((e, i) => createEventCard(e, i)).join('') 
-      : '<p style="text-align: center; color: #666; padding: 2rem;">No upcoming events at the moment</p>';
-  }
-
-  const nearbyGrid = document.getElementById('nearby-events-grid');
-  if (nearbyGrid) {
-    nearbyGrid.innerHTML = eventsData.nearby.length > 0 
-      ? eventsData.nearby.map((e, i) => createEventCard(e, i)).join('') 
-      : '<div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 3rem; background: rgba(0,0,0,0.02); border-radius: 20px; border: 2px dashed rgba(0,0,0,0.05);">' +
-        '<div style="font-size: 3rem; margin-bottom: 1rem;">📍</div>' +
-        '<h3 style="margin-bottom: 0.5rem; color: #4b5563;">Check back soon!</h3>' +
-        '<p style="color: #6b7280;">No events found in your area at the moment.</p>' +
-        '</div>';
-  }
+  renderEventsGrid('all-events-grid', eventsData.all, 'No events available at the moment');
+  renderEventsGrid('hot-events-grid', eventsData.hot, 'No hot events at the moment');
+  renderEventsGrid('trending-events-grid', eventsData.trending, 'No trending events at the moment');
+  renderEventsGrid('featured-events-grid', eventsData.featured, 'No featured events at the moment');
+  renderEventsGrid('upcoming-events-grid', eventsData.upcoming, 'No upcoming events at the moment');
+  renderEventsGrid('nearby-events-grid', eventsData.nearby, 'No events found in your area at the moment');
 }
-
 
 // Share event function
 function shareEvent(e, eventId) {
   if(e) e.stopPropagation();
-  
   const shareUrl = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
-  
   if (navigator.share) {
     navigator.share({
       title: 'Check out this event!',
@@ -579,7 +656,6 @@ function shareEvent(e, eventId) {
       url: shareUrl
     }).catch(err => console.log('Error sharing:', err));
   } else {
-    // Fallback: Copy to clipboard
     navigator.clipboard.writeText(shareUrl).then(() => {
         showNotification('Share link copied to clipboard!', 'success');
     });
@@ -589,12 +665,10 @@ function shareEvent(e, eventId) {
 // Favorite toggle function
 async function toggleFavorite(e, eventId) {
     if(e) e.stopPropagation();
-    
     if (!isAuthenticated()) {
         showNotification('Please login to favorite events', 'info');
         return;
     }
-
     try {
         const response = await apiFetch('../../api/events/favorite.php', {
             method: 'POST',
@@ -602,11 +676,10 @@ async function toggleFavorite(e, eventId) {
             body: JSON.stringify({ event_id: eventId })
         });
         const result = await response.json();
-
         if (result.success) {
             const card = document.querySelector(`.event-card[data-id="${eventId}"]`);
             if (card) {
-                const favIcon = card.querySelector('.favorite-icon');
+                const favIcon = card.querySelector('.favorite-btn');
                 if (result.is_favorite) {
                     favIcon.classList.add('active');
                 } else {
@@ -624,7 +697,6 @@ async function toggleFavorite(e, eventId) {
 // Smooth scroll for navigation
 function initSmoothScroll() {
   const links = document.querySelectorAll('a[href^="#"]');
-  
   links.forEach(link => {
     link.addEventListener('click', (e) => {
       const href = link.getAttribute('href');
@@ -642,92 +714,37 @@ function initSmoothScroll() {
 // Header scroll effect
 function initHeaderScroll() {
   const header = document.querySelector('.header');
-  let lastScroll = 0;
-
   window.addEventListener('scroll', () => {
     const currentScroll = window.pageYOffset;
-
-    if (currentScroll > 100) {
-      header.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-    } else {
-      header.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+    if (header) {
+      if (currentScroll > 100) {
+        header.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+      } else {
+        header.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+      }
     }
-
-    lastScroll = currentScroll;
   });
 }
+
 
 // Initialize all functions
 function init() {
   loadEvents();
   initMobileMenu();
   initUserIcon();
-  initEnhancedSearch();  // New enhanced search
-  initEventModal();  // New event modal handler
+  initEnhancedSearch();
+  initEventModal();
   initSmoothScroll();
   initHeaderScroll();
   initGoogleAuth();
   
-  // Real-time synchronization (10s polling)
-  setInterval(loadEvents, 10000);
-}
-
-// Enhanced search with filters
-function initEnhancedSearch() {
-  const searchInput = document.getElementById('searchInput');
-  const searchButton = document.querySelector('.search-button-modern');
-  const categoryFilter = document.getElementById('categoryFilter');
-  const locationFilter = document.getElementById('locationFilter');
-
-  if (searchButton) {
-    searchButton.addEventListener('click', performSearch);
-  }
-
-  if (searchInput) {
-    searchInput.addEventListener('keyup', performSearch);
-    searchInput.addEventListener('input', performSearch);
-  }
-
-  if (categoryFilter) {
-    categoryFilter.addEventListener('change', performSearch);
-  }
-
-  if (locationFilter) {
-    locationFilter.addEventListener('change', performSearch);
-  }
-}
-
-function performSearch() {
-  const searchInput = document.getElementById('searchInput');
-  const categoryFilter = document.getElementById('categoryFilter');
-  const locationFilter = document.getElementById('locationFilter');
-
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-  const category = categoryFilter ? categoryFilter.value : '';
-  const location = locationFilter ? locationFilter.value : '';
-
-  const allCards = document.querySelectorAll('.event-card');
-
-  allCards.forEach(card => {
-    const title = card.querySelector('.event-title')?.textContent.toLowerCase() || '';
-    const cardLocation = card.querySelector('.event-location')?.textContent.toLowerCase() || '';
-    const description = card.querySelector('.event-description')?.textContent.toLowerCase() || '';
-
-    // Get event from allEvents array based on card data-id
-    const eventId = card.dataset.id;
-    const event = allEvents.find(e => e.id == eventId);
-
-    const matchesQuery = !query || title.includes(query) || description.includes(query) || cardLocation.includes(query);
-    const matchesCategory = !category || (event && event.category && event.category.toLowerCase() === category.toLowerCase());
-    const matchesLocation = !location || cardLocation.includes(location.toLowerCase());
-
-    if (matchesQuery && matchesCategory && matchesLocation) {
-      card.style.display = 'block';
-      card.style.animation = 'fadeIn 0.5s ease-in-out';
-    } else {
-      card.style.display = 'none';
+  // Real-time synchronization (60s polling, only if not searching)
+  setInterval(() => {
+    const globalSearch = document.getElementById('globalSearch');
+    if (!globalSearch || !globalSearch.value.trim()) {
+      loadEvents();
     }
-  });
+  }, 60000);
 }
 
 // Event modal functionality

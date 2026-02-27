@@ -18,7 +18,7 @@ try {
     $status = $_GET['status'] ?? null;
     $limit = $_GET['limit'] ?? 10;
     $offset = $_GET['offset'] ?? 0;
-    $user_role = $_SESSION['role'] ?? 'guest';
+    $user_role = $_SESSION['user_role'] ?? 'guest';
 
     // Build query
     $where_clauses = [];
@@ -63,7 +63,16 @@ try {
     $total = $count_stmt->fetch()['total'];
 
     // Get events with client information and favorite status if user is logged in
-    $user_id = $_SESSION['user_id'] ?? null;
+    // Get appropriate user_id based on role
+    $user_id = null;
+    if ($user_role === 'admin') {
+        $user_id = $_SESSION['admin_id'] ?? null;
+    } elseif ($user_role === 'client') {
+        $user_id = $_SESSION['client_id'] ?? null;
+    } else {
+        $user_id = $_SESSION['user_id'] ?? null;
+    }
+
     // Favorites table does not exist, setting is_favorite to 0
     // $favorite_select = $user_id ? ", (SELECT COUNT(*) FROM favorites WHERE user_id = ? AND event_id = e.id) as is_favorite" : ", 0 as is_favorite";
     $favorite_select = ", 0 as is_favorite";

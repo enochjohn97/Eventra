@@ -136,6 +136,16 @@ function getRoleKeys() {
   return { user: 'user', token: 'auth_token' };
 }
 
+function getBasePath() {
+    const path = window.location.pathname;
+    // Current detection: if in /public/pages/ or /client/pages/ or /admin/pages/
+    if (path.includes('/pages/')) return '../../';
+    // If in /admin/ or /client/ root
+    if (path.includes('/admin/') || path.includes('/client/')) return '../';
+    // If in root or /public/ root
+    return './';
+}
+
 function isAuthenticated() {
   const keys = getRoleKeys();
   const user = storage.get(keys.user);
@@ -143,22 +153,57 @@ function isAuthenticated() {
   return !!(user && token);
 }
 
+// Session Sync: Strictly verify authentication with the server
+async function syncSession() {
+  try {
+    const basePath = getBasePath();
+    
+    // Skip sync for login pages to avoid loops
+    if (window.location.pathname.includes('Login.html')) return;
+
+    const response = await apiFetch(basePath + 'api/auth/check-session.php');
+    if (!response) {
+      window.dispatchEvent(new CustomEvent('sessionSyncComplete', { detail: { success: false } }));
+      return;
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      storage.setUser(result.user);
+      storage.setToken(result.user.token);
+      window.dispatchEvent(new CustomEvent('sessionSyncComplete', { detail: { success: true, user: result.user } }));
+    } else {
+      // Only clear if we were previously logged in to avoid constant clearing
+      if (isAuthenticated()) {
+         storage.clearRoleSessions();
+      }
+      window.dispatchEvent(new CustomEvent('sessionSyncComplete', { detail: { success: false } }));
+    }
+
+  } catch (error) {
+    console.error('Session sync failed:', error);
+    window.dispatchEvent(new CustomEvent('sessionSyncComplete', { detail: { success: false, error } }));
+  }
+}
+
+// Trigger sync on load
+if (typeof window !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', syncSession);
+}
+
 function handleAuthRedirect(targetURL) {
   if (!isAuthenticated()) {
-    const path = window.location.pathname;
-    const basePath = path.includes('/pages/') ? '../../' : (path.includes('/admin/') || path.includes('/client/')) ? '../' : './';
-    
-    // Fallback if targetURL is not provided
     const effectiveTarget = targetURL || window.location.href;
     storage.set('redirect_after_login', effectiveTarget);
     
-    // Redirect to gate for Admin/Client paths
-    if (effectiveTarget.includes('/admin/') || effectiveTarget.includes('/client/')) {
-      const loginPage = effectiveTarget.includes('/admin/') ? 'admin/pages/adminLogin.html' : 'client/pages/clientLogin.html';
-      window.location.href = basePath + loginPage;
+    // Use origin-based absolute URLs to avoid broken relative path resolution
+    const origin = window.location.origin;
+    if (effectiveTarget.includes('/admin/')) {
+      window.location.href = origin + '/admin/pages/adminLogin.html';
+    } else if (effectiveTarget.includes('/client/')) {
+      window.location.href = origin + '/client/pages/clientLogin.html';
     } else {
-      // General user login
-      window.location.href = basePath + 'public/pages/index.html?trigger=login';
+      window.location.href = origin + '/public/pages/index.html?trigger=login';
     }
     return false;
   }
@@ -187,17 +232,24 @@ async function apiFetch(url, options = {}) {
     // Handle 401 (Unauthorized) or 403 (Forbidden) indicating session expiration
     if (response.status === 401 || response.status === 403) {
       // Skip redirect for login endpoints themselves to avoid infinite loops
-      if (!url.includes('login.php') && !url.includes('google-handler.php')) {
+      if (!url.includes('login.php') && !url.includes('google-handler.php') && !url.includes('check-session.php')) {
         const path = window.location.pathname;
-        const basePath = path.includes('/pages/') ? '../../' : (path.includes('/admin/') || path.includes('/client/')) ? '../' : './';
+        const origin = window.location.origin;
         
-        let loginPage = 'client/pages/clientLogin.html';
+        let loginPage;
         if (path.includes('/admin/')) {
-          loginPage = 'admin/pages/adminLogin.html';
+          loginPage = origin + '/admin/pages/adminLogin.html?error=session_timeout';
+        } else if (path.includes('/client/')) {
+          loginPage = origin + '/client/pages/clientLogin.html?error=session_timeout';
+        } else {
+          loginPage = origin + '/public/pages/index.html?trigger=login&error=session_timeout';
         }
         
-        // Redirect with error code
-        window.location.href = basePath + loginPage + '?error=session_timeout';
+        // Clear stale local data
+        storage.remove('user');
+        storage.remove('auth_token');
+        
+        window.location.href = loginPage;
         return null;
       }
     }

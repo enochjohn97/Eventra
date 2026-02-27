@@ -53,15 +53,15 @@ function resolveEntity($email)
         $table = 'users';
 
     if ($table) {
-        // Correct name column mapping
-        $name_col = ($role === 'client') ? 'business_name' : (($role === 'user') ? 'display_name' : 'name');
+        // Correct name column mapping (Users table uses 'name', not 'display_name')
+        $name_col = ($role === 'client') ? 'business_name' : 'name';
 
         // Admins and clients have a 'password' column, users do not.
         $role_password_col = in_array($role, ['admin', 'client']) ? 'p.password as profile_password_hash' : 'NULL as profile_password_hash';
 
         // We also fetch password from the specific table to ensure redundancy works correctly
         $auth_col = ($role === 'client') ? 'client_auth_id' : (($role === 'user') ? 'user_auth_id' : 'admin_auth_id');
-        $stmt = $pdo->prepare("SELECT a.id as auth_id, a.email, a.role, a.is_active, a.password_hash as auth_password_hash, p.*, p.id as profile_id, p.$name_col as display_name, p.profile_pic, $role_password_col FROM auth_accounts a LEFT JOIN $table p ON a.id = p.$auth_col WHERE a.id = ?");
+        $stmt = $pdo->prepare("SELECT a.id as auth_id, a.email, a.role, a.is_active, a.auth_provider, a.provider_id, a.password_hash as auth_password_hash, p.*, p.id as profile_id, p.$name_col as display_name, p.profile_pic, $role_password_col FROM auth_accounts a LEFT JOIN $table p ON a.id = p.$auth_col WHERE a.id = ?");
         $stmt->execute([$auth['id']]);
         $fullUser = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -154,10 +154,10 @@ function getAuthPolicy($role, $method, $user = null)
     }
 
     if ($role === 'client') {
-        if ($user && $user['auth_method'] === 'password' && $method === 'google') {
+        if ($user && $user['auth_provider'] === 'local' && $method === 'google') {
             return [
                 'allowed' => false,
-                'message' => 'This account is bound to Password authentication and cannot use Google.'
+                'message' => 'This account is bound to local Password authentication and cannot use Google.'
             ];
         }
         return ['allowed' => true];
@@ -176,8 +176,18 @@ function logSecurityEvent($authId, $email, $eventType, $authMethod, $details = n
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO auth_logs (auth_id, email, event_type, auth_method, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$authId, $email, $eventType, $authMethod, $ip, $ua, $details]);
+        // Fetch username if not provided (fallback to email)
+        $username = $email;
+        if ($authId) {
+            $stmt = $pdo->prepare("SELECT username FROM auth_accounts WHERE id = ?");
+            $stmt->execute([$authId]);
+            $res = $stmt->fetchColumn();
+            if ($res)
+                $username = $res;
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO auth_logs (auth_id, email, username, event_type, auth_method, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$authId, $email, $username, $eventType, $authMethod, $ip, $ua, $details]);
     } catch (PDOException $e) {
         error_log("Failed to log security event: " . $e->getMessage());
     }

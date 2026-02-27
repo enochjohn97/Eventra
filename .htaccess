@@ -1,1 +1,5 @@
 # Apache configuration for URL rewriting and security
+
+<IfModule mod_headers.c>
+    Header set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+</IfModule>

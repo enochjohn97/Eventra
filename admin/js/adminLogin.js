@@ -106,14 +106,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loginButton.innerHTML = '<span class="spinner"></span> Logging in...';
 
         try {
-            const response = await apiFetch(basePath + 'api/auth/login.php', {
+            const response = await apiFetch(basePath + 'api/admin/login.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: emailInput.value,
                     password: passwordInput.value,
                     remember_me: rememberMeInput?.checked || false,
-                    intent: intent
                 })
             });
 
@@ -187,26 +186,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        if (typeof google === 'undefined') {
-            const errorMsg = 'Google Sign-in is currently blocked by your browser or an extension (e.g., ad-blocker, privacy extension).\n\nTo use Google Sign-in:\n1. Disable your ad blocker for this site\n2. Disable privacy extensions temporarily\n3. Try again\n\nAlternatively, you can sign in using email and password.';
-            Swal.fire('Blocked', errorMsg, 'warning');
-            return;
-        }
+        let attempts = 0;
+        const attemptGoogleInit = () => {
+            if (typeof google !== 'undefined') {
+                try {
+                    google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: handleCredentialResponse,
+                        auto_select: false,
+                        cancel_on_tap_outside: true,
+                    });
 
-        try {
-            google.accounts.id.initialize({
-                client_id: clientId,
-                callback: handleCredentialResponse,
-                auto_select: false,
-                cancel_on_tap_outside: true,
-            });
-
-            google.accounts.id.prompt();
-        } catch (error) {
-            console.error('Google Initialization Error:', error);
-            const errorMsg = 'Could not initialize Google Sign-in.\n\nPossible causes:\n- Ad blocker or privacy extension is blocking Google\n- Network connectivity issues\n- Browser security settings\n\nPlease try:\n1. Disabling ad blockers\n2. Using email/password login instead';
-            Swal.fire('Error', errorMsg, 'error');
-        }
+                    google.accounts.id.prompt();
+                } catch (error) {
+                    console.error('Google Initialization Error:', error);
+                    const errorMsg = 'Could not initialize Google Sign-in.\n\nPossible causes:\n- Ad blocker or privacy extension is blocking Google\n- Network connectivity issues\n- Browser security settings\n\nPlease try:\n1. Disabling ad blockers\n2. Using email/password login instead';
+                    Swal.fire('Error', errorMsg, 'error');
+                }
+            } else if (attempts < 20) {
+                attempts++;
+                setTimeout(attemptGoogleInit, 100);
+            } else {
+                const errorMsg = 'Google Sign-in is currently blocked by your browser or an extension (e.g., ad-blocker, privacy extension).\n\nTo use Google Sign-in:\n1. Disable your ad blocker for this site\n2. Disable privacy extensions temporarily\n3. Try again\n\nAlternatively, you can sign in using email and password.';
+                Swal.fire('Blocked', errorMsg, 'warning');
+            }
+        };
+        attemptGoogleInit();
     }
 
     async function handleCredentialResponse(response) {

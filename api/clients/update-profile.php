@@ -6,13 +6,13 @@ header('Content-Type: application/json');
 require_once '../../config/database.php';
 
 // Check authentication
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
+if (!isset($_SESSION['client_id']) || ($_SESSION['user_role'] ?? $_SESSION['role']) !== 'client') {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
 
-$client_id = $_SESSION['user_id'];
+$client_id = $_SESSION['client_id'];
 $name = $_POST['name'] ?? null;
 $business_name = $_POST['business_name'] ?? null;
 $phone = $_POST['phone'] ?? null;

@@ -1,0 +1,304 @@
+[Thu Feb 26 15:57:33 2026] PHP 8.3.6 Development Server (http://localhost:8001) started
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53544 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53544 [200]: GET /public/pages/index.html
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53544 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53548 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53562 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53548 [200]: GET /public/css/variables.css
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53548 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53566 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53562 [200]: GET /public/css/style.css
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53562 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53580 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53566 [200]: GET /public/css/media-enhancement.css
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53580 [200]: GET /public/js/utils.js
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53566 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53580 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53586 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53586 [200]: GET /public/js/main.js
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53586 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53596 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53596 [200]: GET /public/assets/imgs/severex.cross.word.puzzle.logic.jpg
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53596 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53602 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53602 [200]: GET /public/assets/hd-enhancement.svg
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53602 Closing
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53614 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53616 Accepted
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53614 [200]: GET /api/auth/check-session.php
+[Thu Feb 26 15:57:53 2026] 127.0.0.1:53614 Closing
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53616 [200]: GET /api/events/get-events.php
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53616 Closing
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53632 Accepted
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53632 [200]: GET /api/config/get-google-config.php
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53632 Closing
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53648 Accepted
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53656 Accepted
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53672 Accepted
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53648 [200]: GET /uploads/events/event_699dbfc9ee9df.png
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53656 [200]: GET /uploads/events/event_699dbf34a3cc3.png
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53648 Closing
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53656 Closing
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53672 [200]: GET /uploads/events/event_699dab51cf53e.png
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53672 Closing
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53686 Accepted
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53686 [200]: GET /public/favicon.ico
+[Thu Feb 26 15:57:54 2026] 127.0.0.1:53686 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44110 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44110 [200]: GET /public/pages/index.html
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44110 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44116 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44116 [200]: GET /public/css/variables.css
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44116 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44122 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44136 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44122 [200]: GET /public/css/style.css
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44136 [200]: GET /public/css/media-enhancement.css
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44122 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44136 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44150 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44160 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44150 [200]: GET /public/js/utils.js
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44160 [200]: GET /public/js/main.js
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44150 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44160 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44170 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44170 [200]: GET /public/assets/imgs/severex.cross.word.puzzle.logic.jpg
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44170 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44174 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44174 [200]: GET /public/assets/hd-enhancement.svg
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44174 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44178 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44178 [200]: GET /api/auth/check-session.php
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44178 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44194 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44194 [200]: GET /api/events/get-events.php
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44194 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44196 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44196 [200]: GET /api/config/get-google-config.php
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44196 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44202 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44208 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44222 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44228 Accepted
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44202 [200]: GET /public/favicon.ico
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44208 [200]: GET /uploads/events/event_699dbfc9ee9df.png
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44222 [200]: GET /uploads/events/event_699dbf34a3cc3.png
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44228 [200]: GET /uploads/events/event_699dab51cf53e.png
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44202 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44222 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44208 Closing
+[Thu Feb 26 15:58:38 2026] 127.0.0.1:44228 Closing
+[Thu Feb 26 15:59:38 2026] 127.0.0.1:39868 Accepted
+[Thu Feb 26 15:59:38 2026] 127.0.0.1:39868 [200]: GET /api/events/get-events.php
+[Thu Feb 26 15:59:38 2026] 127.0.0.1:39868 Closing
+[Thu Feb 26 16:00:38 2026] 127.0.0.1:59170 Accepted
+[Thu Feb 26 16:00:38 2026] 127.0.0.1:59170 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:00:38 2026] 127.0.0.1:59170 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34890 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34902 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34890 [200]: GET /public/pages/index.html
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34890 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34902 [200]: GET /public/css/variables.css
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34902 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34908 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34918 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34928 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34908 [200]: GET /public/css/style.css
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34918 [200]: GET /public/css/media-enhancement.css
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34928 [200]: GET /public/js/utils.js
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34908 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34918 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34928 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34934 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34934 [200]: GET /public/js/main.js
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34934 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34946 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34946 [200]: GET /public/assets/hd-enhancement.svg
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34946 Closing
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34958 Accepted
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34958 [200]: GET /public/assets/imgs/severex.cross.word.puzzle.logic.jpg
+[Thu Feb 26 16:11:18 2026] 127.0.0.1:34958 Closing
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59604 Accepted
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59610 Accepted
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59604 [200]: GET /api/auth/check-session.php
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59604 Closing
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59626 Accepted
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59610 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59610 Closing
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59626 [200]: GET /api/config/get-google-config.php
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59626 Closing
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59634 Accepted
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59642 Accepted
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59644 Accepted
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59634 [200]: GET /uploads/events/event_699dbfc9ee9df.png
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59642 [200]: GET /uploads/events/event_699dbf34a3cc3.png
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59644 [200]: GET /uploads/events/event_699dab51cf53e.png
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59634 Closing
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59642 Closing
+[Thu Feb 26 16:11:19 2026] 127.0.0.1:59644 Closing
+[Thu Feb 26 16:12:19 2026] 127.0.0.1:50362 Accepted
+[Thu Feb 26 16:12:19 2026] 127.0.0.1:50362 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:12:19 2026] 127.0.0.1:50362 Closing
+[Thu Feb 26 16:13:19 2026] 127.0.0.1:58036 Accepted
+[Thu Feb 26 16:13:19 2026] 127.0.0.1:58036 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:13:19 2026] 127.0.0.1:58036 Closing
+[Thu Feb 26 16:14:19 2026] 127.0.0.1:46338 Accepted
+[Thu Feb 26 16:14:19 2026] 127.0.0.1:46338 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:14:19 2026] 127.0.0.1:46338 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56330 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56330 [200]: GET /public/pages/index.html
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56330 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56336 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56344 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56336 [200]: GET /public/css/variables.css
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56336 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56344 [200]: GET /public/css/style.css
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56344 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56356 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56366 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56378 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56356 [200]: GET /public/css/media-enhancement.css
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56356 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56366 [200]: GET /public/js/utils.js
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56366 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56378 [200]: GET /public/js/main.js
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56378 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56390 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56390 [200]: GET /public/assets/imgs/severex.cross.word.puzzle.logic.jpg
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56390 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56398 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56398 [200]: GET /public/assets/hd-enhancement.svg
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56398 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56408 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56416 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56408 [200]: GET /api/auth/check-session.php
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56408 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56418 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56416 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56416 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56418 [200]: GET /api/config/get-google-config.php
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56418 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56434 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56434 [200]: GET /uploads/events/event_699dbfc9ee9df.png
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56434 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56450 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56462 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56450 [200]: GET /uploads/events/event_699dbf34a3cc3.png
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56462 [200]: GET /uploads/events/event_699dab51cf53e.png
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56450 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56462 Closing
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56468 Accepted
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56468 [200]: GET /public/favicon.ico
+[Thu Feb 26 16:15:00 2026] 127.0.0.1:56468 Closing
+[Thu Feb 26 16:16:00 2026] 127.0.0.1:59578 Accepted
+[Thu Feb 26 16:16:00 2026] 127.0.0.1:59578 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:16:00 2026] 127.0.0.1:59578 Closing
+[Thu Feb 26 16:16:16 2026] 127.0.0.1:41040 Accepted
+[Thu Feb 26 16:16:16 2026] 127.0.0.1:41040 [200]: GET /public/pages/index.html
+[Thu Feb 26 16:16:16 2026] 127.0.0.1:41040 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41042 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41056 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41064 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41042 [200]: GET /public/css/variables.css
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41068 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41042 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41070 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41056 [200]: GET /public/css/style.css
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41056 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41064 [200]: GET /public/css/media-enhancement.css
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41064 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41068 [200]: GET /public/js/utils.js
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41070 [200]: GET /public/js/main.js
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41068 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41070 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41078 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41078 [200]: GET /public/assets/hd-enhancement.svg
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41078 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41082 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41082 [200]: GET /public/assets/imgs/severex.cross.word.puzzle.logic.jpg
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41082 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41098 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41098 [200]: GET /api/auth/check-session.php
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41098 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41112 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41112 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41112 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41126 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41126 [200]: GET /api/config/get-google-config.php
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41126 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41132 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41132 [200]: GET /public/favicon.ico
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41132 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41134 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41148 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41156 Accepted
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41134 [200]: GET /uploads/events/event_699dbfc9ee9df.png
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41148 [200]: GET /uploads/events/event_699dbf34a3cc3.png
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41148 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41134 Closing
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41156 [200]: GET /uploads/events/event_699dab51cf53e.png
+[Thu Feb 26 16:16:17 2026] 127.0.0.1:41156 Closing
+[Thu Feb 26 16:17:17 2026] 127.0.0.1:51010 Accepted
+[Thu Feb 26 16:17:17 2026] 127.0.0.1:51010 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:17:17 2026] 127.0.0.1:51010 Closing
+[Thu Feb 26 16:18:17 2026] 127.0.0.1:35914 Accepted
+[Thu Feb 26 16:18:17 2026] 127.0.0.1:35914 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:18:17 2026] 127.0.0.1:35914 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45930 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45930 [200]: GET /public/pages/index.html
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45930 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45936 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45936 [200]: GET /public/css/variables.css
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45936 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45950 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45954 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45960 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45976 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45950 [200]: GET /public/css/style.css
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45954 [200]: GET /public/css/media-enhancement.css
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45960 [200]: GET /public/js/utils.js
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45950 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45954 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45976 [200]: GET /public/js/main.js
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45960 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45976 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45988 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45988 [200]: GET /public/assets/hd-enhancement.svg
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45988 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45994 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45994 [200]: GET /public/assets/imgs/severex.cross.word.puzzle.logic.jpg
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:45994 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46002 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46002 [200]: GET /api/auth/check-session.php
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46002 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46008 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46008 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46008 Closing
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46016 Accepted
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46016 [200]: GET /api/config/get-google-config.php
+[Thu Feb 26 16:18:43 2026] 127.0.0.1:46016 Closing
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46022 Accepted
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46022 [200]: GET /public/favicon.ico
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46022 Closing
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46024 Accepted
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46036 Accepted
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46052 Accepted
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46024 [200]: GET /uploads/events/event_699dbfc9ee9df.png
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46024 Closing
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46036 [200]: GET /uploads/events/event_699dbf34a3cc3.png
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46036 Closing
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46052 [200]: GET /uploads/events/event_699dab51cf53e.png
+[Thu Feb 26 16:18:44 2026] 127.0.0.1:46052 Closing
+[Thu Feb 26 16:19:43 2026] 127.0.0.1:45438 Accepted
+[Thu Feb 26 16:19:43 2026] 127.0.0.1:45438 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:19:43 2026] 127.0.0.1:45438 Closing
+[Thu Feb 26 16:20:43 2026] 127.0.0.1:47374 Accepted
+[Thu Feb 26 16:20:43 2026] 127.0.0.1:47374 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:20:43 2026] 127.0.0.1:47374 Closing
+[Thu Feb 26 16:21:43 2026] 127.0.0.1:32824 Accepted
+[Thu Feb 26 16:21:43 2026] 127.0.0.1:32824 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:21:43 2026] 127.0.0.1:32824 Closing
+[Thu Feb 26 16:22:43 2026] 127.0.0.1:59152 Accepted
+[Thu Feb 26 16:22:43 2026] 127.0.0.1:59152 [200]: GET /api/events/get-events.php
+[Thu Feb 26 16:22:43 2026] 127.0.0.1:59152 Closing

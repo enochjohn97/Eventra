@@ -32,7 +32,7 @@
     if (!user || user.role !== requiredRole) {
         const basePath = currentPath.includes('/pages/') ? '../../' : '../';
         
-        if (requiredRole === 'admin') {
+            if (requiredRole === 'admin') {
             window.location.href = basePath + 'admin/pages/adminLogin.html';
         } else {
             window.location.href = basePath + 'client/pages/clientLogin.html';

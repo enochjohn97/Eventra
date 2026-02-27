@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderEventSummary(eventData, currentQuantity);
 
         // Fetch Paystack Config
-        const paystackRes = await apiFetch('../../api/config/get-paystack-config.php');
+        const paystackRes = await apiFetch('../../api/payments/paystack.php');
         const paystackResult = await paystackRes.json();
 
         if (paystackResult.success && paystackResult.public_key) {

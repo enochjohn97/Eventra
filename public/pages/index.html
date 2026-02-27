@@ -27,7 +27,7 @@
     <!-- Header / Navigation -->
     <header class="header">
         <nav class="nav-container">
-            <div class="logo" img src="/public/assets/logo1.png" alt="eventra logo">EVENTRA</div>
+            <div class="logo" img src="/public/assets/logo1.png" alt="eventra logo" >EVENTRA</div>
 
             <ul class="nav-menu">
                 <li><a href="#home">Home</a></li>
@@ -93,6 +93,18 @@
                         <input type="text" id="profilePhone" name="phone" class="form-input">
                     </div>
                     <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" id="profileDob" name="dob" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <input type="text" id="profileGender" name="gender" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <input type="text" id="profileCountry" name="country" class="form-input">
+                    </div>
+                    <div class="form-group">
                         <label>State</label>
                         <input type="text" id="profileState" name="state" class="form-input">
                     </div>
@@ -128,8 +140,9 @@
                             <circle cx="11" cy="11" r="8"></circle>
                             <path d="m21 21-4.35-4.35"></path>
                         </svg>
-                        <input type="text" id="searchInput" class="search-input-modern" placeholder="Search events, locations, categories..."
-                            aria-label="Search events">
+                        <input type="text" id="globalSearch" class="search-input-modern" placeholder="Search events, organizers, locations..."
+                            aria-label="Search events" autocomplete="off">
+                        <div id="searchLoader" class="search-loader" style="display: none;"></div>
                     </div>
                     <button class="search-button-modern" aria-label="Search">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

@@ -5,15 +5,48 @@ require_once '../../includes/helpers/entity-resolver.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-if (!isset($data['google_id']) || !isset($data['email'])) {
-    echo json_encode(['success' => false, 'message' => 'Google information is missing.']);
+
+// Verify Google JWT credential using Google tokeninfo endpoint
+require_once '../../config/env-loader.php';
+
+if (!isset($data['credential']) || empty($data['credential'])) {
+    echo json_encode(['success' => false, 'message' => 'Google credential is required.']);
     exit;
 }
 
-$google_id = $data['google_id'];
-$email = $data['email'];
-$name = $data['name'] ?? 'Google User';
-$profile_pic = $data['profile_pic'] ?? null;
+$jwt = $data['credential'];
+$url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($jwt);
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($httpCode !== 200 || !$response) {
+    echo json_encode(['success' => false, 'message' => 'Invalid Google token.']);
+    exit;
+}
+
+$payload = json_decode($response, true);
+$clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? '';
+
+if (empty($clientId) || !isset($payload['aud']) || $payload['aud'] !== $clientId) {
+    echo json_encode(['success' => false, 'message' => 'Token audience mismatch.']);
+    exit;
+}
+
+if (!isset($payload['sub']) || empty($payload['sub']) || !isset($payload['email'])) {
+    echo json_encode(['success' => false, 'message' => 'Google information is missing from token.']);
+    exit;
+}
+
+$google_id = $payload['sub'];
+$email = $payload['email'];
+$name = $payload['name'] ?? 'Google User';
+$profile_pic = $payload['picture'] ?? null;
 
 // Implicit Intent Resolution (from dedicated login pages)
 $intent = $data['intent'] ?? 'user';
@@ -123,9 +156,18 @@ try {
         $_SESSION = [];
     }
 
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['role'] = $userRole;
+    // Strict Role-Specific Session Keys
+    if ($userRole === 'admin') {
+        $_SESSION['admin_id'] = $user['id'];
+    } elseif ($userRole === 'client') {
+        $_SESSION['client_id'] = $user['id'];
+    } else {
+        $_SESSION['user_id'] = $user['id'];
+    }
+
+    $_SESSION['user_role'] = $userRole;
     $_SESSION['auth_token'] = $token;
+
 
     // Log success
     logSecurityEvent($user['id'], $email, 'login_success', 'google', "Logged in as $userRole via portal $intent");
@@ -142,8 +184,12 @@ try {
     }
 
     // Redirection logic
-    $redirect = ($userRole === 'admin') ? 'admin/pages/adminDashboard.html' :
-        (($userRole === 'client') ? 'client/pages/clientDashboard.html' : 'public/pages/index.html');
+    $redirect = 'public/pages/index.html'; // Default for users
+    if ($userRole === 'admin') {
+        $redirect = 'admin/pages/adminDashboard.html';
+    } elseif ($userRole === 'client') {
+        $redirect = 'client/pages/clientDashboard.html';
+    }
 
     echo json_encode([
         'success' => true,
