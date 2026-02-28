@@ -138,7 +138,7 @@ try {
         }
 
         // Role-Based Redirects
-        $redirect = 'index.html'; // Default for users
+        $redirect = 'public/pages/index.html'; // Default for users
         if ($userRole === 'admin') {
             $redirect = 'admin/pages/adminDashboard.html';
         } elseif ($userRole === 'client') {

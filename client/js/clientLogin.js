@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 setTimeout(() => {
-                    const redirectUrl = result.redirect || 'public/pages/index.html';
+                    let redirectUrl = result.redirect || 'public/pages/index.html';
                     const cleanRedirect = redirectUrl.startsWith('/') ? redirectUrl.substring(1) : redirectUrl;
                     const finalTarget = basePath + cleanRedirect;
                     window.location.href = finalTarget;

@@ -26,6 +26,22 @@ if (!$event_id || $quantity < 1) {
     exit;
 }
 
+// 0. OTP Verification Check (Secure Requirement)
+if ($payment_reference && $payment_reference !== 'free') {
+    if (!isset($_SESSION['otp_verified_ref']) || $_SESSION['otp_verified_ref'] !== $payment_reference) {
+        // Double check database if session expired but OTP was valid
+        $stmt = $pdo->prepare("SELECT id FROM payment_otps WHERE user_id = ? AND payment_reference = ? AND attempts < 5 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1");
+        $stmt->execute([$user_id, $payment_reference]);
+        if (!$stmt->fetch()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'OTP verification required before payment confirmation.']);
+            exit;
+        }
+    }
+    // Clear session flag after use to prevent reuse if necessary, 
+    // but keep it for the duration of this request
+}
+
 try {
     $pdo->beginTransaction();
 

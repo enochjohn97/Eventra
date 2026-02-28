@@ -737,6 +737,7 @@ function init() {
   initSmoothScroll();
   initHeaderScroll();
   initGoogleAuth();
+  initUserLogin();
   
   // Real-time synchronization (60s polling, only if not searching)
   setInterval(() => {
@@ -855,3 +856,58 @@ if (document.readyState === 'loading') {
 // Make shareEvent available globally
 window.shareEvent = shareEvent;
 window.viewEventDetails = viewEventDetails;
+// User login from homepage modal
+async function initUserLogin() {
+    const loginForm = document.getElementById('userLoginForm');
+    const loginBtn = document.getElementById('userLoginBtn');
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('userEmail').value;
+            const password = document.getElementById('userPassword').value;
+            
+            const originalBtnText = loginBtn.innerHTML;
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner" style="width: 18px; height: 18px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; display: inline-block; animation: spin 0.8s linear infinite;"></span> Logging in...';
+
+            try {
+                const response = await apiFetch('../../api/auth/login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        intent: 'user'
+                    })
+                });
+
+                if (!response) throw new Error('No response from server');
+
+                const result = await response.json();
+                if (result.success) {
+                    const keys = typeof getRoleKeys === 'function' ? getRoleKeys() : { user: 'user', token: 'auth_token' };
+                    storage.set(keys.user, result.user);
+                    storage.set(keys.token, result.user.token);
+                    
+                    showNotification('Welcome back!', 'success');
+                    
+                    setTimeout(() => {
+                        const redirectUrl = result.redirect || 'index.html';
+                        window.location.href = redirectUrl.includes('://') ? redirectUrl : '../../' + redirectUrl.replace(/^\//, '');
+                    }, 1500);
+                } else {
+                    showNotification(result.message || 'Login failed', 'error');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = originalBtnText;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = originalBtnText;
+            }
+        });
+    }
+}

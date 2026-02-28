@@ -144,10 +144,10 @@ function getAuthPolicy($role, $method, $user = null)
     }
 
     if ($role === 'user') {
-        if ($method === 'password') {
+        if ($method === 'password' && empty($user['password_hash'])) {
             return [
                 'allowed' => false,
-                'message' => 'User accounts are restricted to Google Sign-In only.'
+                'message' => 'This account is restricted to Google Sign-In only.'
             ];
         }
         return ['allowed' => true];

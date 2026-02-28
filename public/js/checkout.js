@@ -79,11 +79,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 3. Setup Paystack Payment Action
+    // 3. Setup Paystack Payment Action WITH OTP
     const payBtn = document.getElementById('paystackBtn');
+    const otpModal = document.getElementById('otpModal');
+    const closeOtpModal = document.getElementById('closeOtpModal');
+    const sendEmailOtp = document.getElementById('sendEmailOtp');
+    const sendSmsOtp = document.getElementById('sendSmsOtp');
+    const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+    const resendOtpBtn = document.getElementById('resendOtpBtn');
+    const backToChannels = document.getElementById('backToChannels');
+    const otpChannelSelection = document.getElementById('otpChannelSelection');
+    const otpInputSection = document.getElementById('otpInputSection');
+    const otpDigits = document.querySelectorAll('.otp-digit');
+
+    let currentPaymentRef = null;
+    let selectedChannel = null;
+
     payBtn.addEventListener('click', () => {
-        payBtn.disabled = true;
-        payBtn.innerHTML = '<span class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></span> Processing...';
-        
         // Validation
         const phone = document.getElementById('phoneNum').value;
         const fname = document.getElementById('firstName').value;
@@ -91,29 +103,128 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!phone || !fname || !lname) {
             showNotification('Please provide all contact information.', 'error');
-            resetPayBtn(eventData, currentQuantity);
             return;
         }
 
         const exactPrice = parseFloat(eventData.price) || 0;
-        const isFree = exactPrice === 0;
-
-        if (isFree) {
-            // Bypass Paystack entirely if free
+        if (exactPrice === 0) {
             createTicket(eventId, currentQuantity, null);
             return;
         }
 
-        if (!paystackPublicKey) {
-            showNotification('Payment gateway not initialized.', 'error');
-            resetPayBtn(eventData, currentQuantity);
+        // Show OTP Modal
+        document.getElementById('otpEmailOverlay').textContent = currentUser.email;
+        document.getElementById('otpPhoneOverlay').textContent = phone;
+        otpModal.style.display = 'flex';
+        resetOtpInput();
+    });
+
+    closeOtpModal.addEventListener('click', () => {
+        otpModal.style.display = 'none';
+        resetPayBtn(eventData, currentQuantity);
+    });
+
+    sendEmailOtp.addEventListener('click', () => initiateOtp('email'));
+    sendSmsOtp.addEventListener('click', () => initiateOtp('sms'));
+
+    async function initiateOtp(channel) {
+        selectedChannel = channel;
+        payBtn.disabled = true;
+        
+        try {
+            const res = await apiFetch('../../api/otps/generate-otp.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel: channel })
+            });
+            const result = await res.json();
+            
+            if (result.success) {
+                currentPaymentRef = result.payment_reference;
+                otpChannelSelection.style.display = 'none';
+                otpInputSection.style.display = 'block';
+                otpDigits[0].focus();
+                showNotification('Verification code sent!', 'success');
+            } else {
+                showNotification(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('OTP Init Error:', error);
+            showNotification('Failed to send verification code', 'error');
+        }
+    }
+
+    verifyOtpBtn.addEventListener('click', async () => {
+        const otp = Array.from(otpDigits).map(i => i.value).join('');
+        if (otp.length < 6) {
+            showNotification('Please enter the full 6-digit code', 'error');
             return;
         }
 
-        const totalAmountNaira = exactPrice * currentQuantity;
+        verifyOtpBtn.disabled = true;
+        verifyOtpBtn.textContent = 'Verifying...';
+
+        try {
+            const res = await apiFetch('../../api/otps/verify-otp.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ otp: otp, payment_reference: currentPaymentRef })
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                otpModal.style.display = 'none';
+                startPaystackFlow();
+            } else {
+                showNotification(result.message, 'error');
+                verifyOtpBtn.disabled = false;
+                verifyOtpBtn.textContent = 'Verify Code';
+            }
+        } catch (error) {
+            console.error('OTP Verify Error:', error);
+            showNotification('Verification failed', 'error');
+            verifyOtpBtn.disabled = false;
+            verifyOtpBtn.textContent = 'Verify Code';
+        }
+    });
+
+    resendOtpBtn.addEventListener('click', () => initiateOtp(selectedChannel));
+    backToChannels.addEventListener('click', () => {
+        otpInputSection.style.display = 'none';
+        otpChannelSelection.style.display = 'block';
+    });
+
+    // Handle OTP digit inputs
+    otpDigits.forEach((digit, idx) => {
+        digit.addEventListener('input', (e) => {
+            if (e.target.value && idx < 5) {
+                otpDigits[idx + 1].focus();
+            }
+        });
+        digit.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+                otpDigits[idx - 1].focus();
+            }
+        });
+    });
+
+    function resetOtpInput() {
+        otpDigits.forEach(d => d.value = '');
+        otpChannelSelection.style.display = 'block';
+        otpInputSection.style.display = 'none';
+        verifyOtpBtn.disabled = false;
+        verifyOtpBtn.textContent = 'Verify Code';
+    }
+
+    function startPaystackFlow() {
+        if (!paystackPublicKey) {
+            showNotification('Payment gateway not initialized.', 'error');
+            return;
+        }
+
+        const totalAmountNaira = (parseFloat(eventData.price) || 0) * currentQuantity;
         const paystackAmountKobo = Math.round(totalAmountNaira * 100);
 
-        // Start Paystack Popup
         const handler = PaystackPop.setup({
             key: paystackPublicKey,
             email: currentUser.email,
@@ -121,28 +232,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             currency: 'NGN',
             metadata: {
                 custom_fields: [
-                    {
-                        display_name: "Event Internal ID",
-                        variable_name: "event_id",
-                        value: eventId
-                    },
-                    {
-                        display_name: "Quantity",
-                        variable_name: "quantity",
-                        value: currentQuantity
-                    }
+                    { display_name: "Event Internal ID", variable_name: "event_id", value: eventId },
+                    { display_name: "Quantity", variable_name: "quantity", value: currentQuantity }
                 ]
             },
             callback: function(response) {
                 // Success!
-                const reference = response.reference;
-                
-                // Show loading block on form
                 document.getElementById('loadingOverlay').style.display = 'flex';
                 document.querySelector('#loadingOverlay h3').textContent = 'Confirming Payment...';
-                
-                // Immediately create the ticket as successful
-                createTicket(eventId, currentQuantity, reference);
+                createTicket(eventId, currentQuantity, currentPaymentRef); // Use currentPaymentRef as our reference
             },
             onClose: function() {
                 showNotification('Payment window closed.', 'info');
@@ -151,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         handler.openIframe();
-    });
+    }
 
 });
 
@@ -201,6 +299,25 @@ async function createTicket(eventId, quantity, paymentReference) {
 
         const result = await response.json();
         if (result.success) {
+            // Send Receipt and Ticket Emails asynchronously
+            apiFetch('../../api/emails/send-email.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'receipt',
+                    payment_reference: paymentReference
+                })
+            }).catch(err => console.error('Receipt Email Error:', err));
+
+            apiFetch('../../api/emails/send-email.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'ticket',
+                    payment_reference: paymentReference
+                })
+            }).catch(err => console.error('Ticket Email Error:', err));
+
             document.getElementById('loadingOverlay').style.display = 'none';
             Swal.fire({
                 title: 'Payment Successful!',
