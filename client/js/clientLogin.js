@@ -33,8 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sliderText) sliderText.style.display = 'none';
        // console.log("Client context activated.");
     } else if (intent === 'user') {
-        document.title = "User Login - Eventra";
-        console.log("User context activated.");
+        // Users should only use Google Sign-in via the homepage modal
+        window.location.href = '../../public/pages/index.html';
+        return;
     }
 
     // Check for session timeout error

@@ -447,6 +447,33 @@ td { padding: 1.25rem 2rem; border-bottom: 1px solid var(--client-border); font-
     .header-search { flex: 0 0 250px; }
 }
 
+@media (max-width: 768px) {
+    .sidebar {
+        left: -100%;
+        transition: var(--transition-base);
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .main-layout {
+        margin-left: 0;
+    }
+
+    .header {
+        padding: 0 1rem;
+    }
+
+    .header-search {
+        display: none; /* Hide search on mobile header to save space */
+    }
+
+    .client-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 
 /* media styles */

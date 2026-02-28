@@ -4,7 +4,7 @@ require_once '../../config/database.php';
 require_once '../../config/payment.php';
 require_once '../../includes/classes/Payment.php';
 require_once '../../includes/helpers/sms-helper.php';
-require_once '../../api/utils/notification-helper.php';
+require_once '../../includes/helpers/email-helper.php';
 
 // Retrieve the request's body
 $input = file_get_contents('php://input');
@@ -41,10 +41,16 @@ if ($event['event'] === 'charge.success') {
             if ($userInfo) {
                 // Send SMS Receipt
                 $smsMessage = "Hi {$userInfo['name']}, your payment for {$userInfo['event_name']} was successful. Ticket barcode has been sent to your email.";
-                sendSMS($userInfo['phone'], $smsMessage, 'payment_confirmation', $payment['user_id']);
+                sendSMS($userInfo['phone'], $smsMessage);
 
-                // Send Email (Mocking for now as per user request to handle OTP choice later)
-                // In a real scenario, we'd use PHPMailer or similar here.
+                // Send Email Ticket (Real implementation)
+                $stmtTicket = $pdo->prepare("SELECT barcode FROM tickets WHERE payment_id = ?");
+                $stmtTicket->execute([$payment['id']]);
+                $ticket = $stmtTicket->fetch();
+
+                if ($ticket) {
+                    sendTicketEmail($userInfo['email'], $userInfo['name'], $userInfo['event_name'], $ticket['barcode']);
+                }
             }
         }
     } catch (Exception $e) {

@@ -27,7 +27,7 @@
     <!-- Header / Navigation -->
     <header class="header">
         <nav class="nav-container">
-            <div class="logo" img src="/public/assets/logo1.png" alt="eventra logo" >EVENTRA</div>
+            <div class="logo">EVENTRA</div>
 
             <ul class="nav-menu">
                 <li><a href="#home">Home</a></li>
@@ -37,6 +37,11 @@
             </ul>
 
             <div class="nav-actions" style="display: flex; align-items: center; gap: 1rem;">
+                <div class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
                 <div class="user-profile-container">
                     <button class="user-profile-btn" id="userProfileBtn">
                         <div class="user-icon-wrapper">
@@ -326,32 +331,11 @@
                 <p>Sign in to discover and manage amazing experiences</p>
             </div>
             <div class="modal-body">
-                <form id="userLoginForm" class="login-form">
-                    <div class="form-group">
-                        <label for="userEmail">Email</label>
-                        <input type="email" id="userEmail" class="form-input" placeholder="m@example.com" required>
-                    </div>
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <label for="userPassword">Password</label>
-                        <input type="password" id="userPassword" class="form-input" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="login-button" id="userLoginBtn" style="width: 100%; margin-top: 1.5rem; padding: 1rem; background: var(--primary-color); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">Login</button>
-                </form>
-
-                <div style="display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; color: #9ca3af; font-size: 0.85rem;">
-                    <div style="flex: 1; height: 1px; background: #e5e7eb;"></div>
-                    <span>OR</span>
-                    <div style="flex: 1; height: 1px; background: #e5e7eb;"></div>
-                </div>
-
                 <div id="googleSignInContainer" class="google-btn-wrapper">
                     <!-- Google button will be rendered here -->
                 </div>
-                
-                <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #64748b;">
-                    Don't have an account? <a href="../../client/pages/signup.html?intent=user" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Sign up</a>
-                </p>
             </div>
+
         </div>
     </div>
 

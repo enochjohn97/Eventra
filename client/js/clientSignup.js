@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         console.log("Admin registration context activated.");
     } else {
+        if (intent === 'user') {
+            window.location.href = '../../public/pages/index.html';
+            return;
+        }
         document.title = (intent === 'client' ? "Client" : "User") + " Registration - Eventra";
         if (signupTitle) signupTitle.textContent = (intent === 'client') ? 'Client Registration' : 'Create Account';
         if (signupButton) signupButton.textContent = (intent === 'client') ? 'Create Client Account' : 'Sign Up';
