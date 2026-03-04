@@ -280,20 +280,20 @@
     </footer>
 
     <!-- Event Details Modal -->
-    <div id="eventDetailsModal" class="event-modal">
-        <div class="event-modal-content">
-            <button class="event-modal-close" id="closeEventModal">&times;</button>
-            <div class="event-modal-body">
-                <div class="event-modal-image">
+    <div id="eventDetailsModal" class="event-details-modal">
+        <div class="event-details-content">
+            <button class="event-details-close" id="closeEventModal">&times;</button>
+            <div class="event-details-body">
+                <div class="event-details-header">
                     <img id="modalEventImage" src="" alt="Event Image">
                     <div class="event-modal-priority-badge" id="modalPriorityBadge"></div>
                 </div>
-                <div class="event-modal-info">
-                    <h2 id="modalEventTitle" class="event-modal-title"></h2>
-                    <p id="modalEventOrganizer" class="event-modal-organizer"></p>
+                <div class="event-details-info">
+                    <h2 id="modalEventTitle" class="event-details-title"></h2>
+                    <p id="modalEventOrganizer" class="event-details-organizer"></p>
                     
-                    <div class="event-modal-meta">
-                        <div class="event-modal-meta-item">
+                    <div class="event-details-meta">
+                        <div class="event-meta-item">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                 <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -302,14 +302,14 @@
                             </svg>
                             <span id="modalEventDate"></span>
                         </div>
-                        <div class="event-modal-meta-item">
+                        <div class="event-meta-item">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
                             <span id="modalEventTime"></span>
                         </div>
-                        <div class="event-modal-meta-item">
+                        <div class="event-meta-item">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                                 <circle cx="12" cy="10" r="3"></circle>
@@ -318,19 +318,19 @@
                         </div>
                     </div>
 
-                    <div class="event-modal-description">
+                    <div class="event-details-description">
                         <h3>About this event</h3>
                         <p id="modalEventDescription"></p>
                     </div>
 
-                    <div class="event-modal-details-grid">
-                        <div class="event-modal-detail-item">
-                            <span class="detail-label">CATEGORY</span>
-                            <span id="modalEventCategory" class="detail-value"></span>
+                    <div class="event-details-info-grid">
+                        <div class="event-info-card">
+                            <span class="event-info-label">CATEGORY</span>
+                            <span id="modalEventCategory" class="event-info-value"></span>
                         </div>
-                        <div class="event-modal-detail-item">
-                            <span class="detail-label">PRICE</span>
-                            <span id="modalEventPrice" class="detail-value"></span>
+                        <div class="event-info-card">
+                            <span class="event-info-label">PRICE</span>
+                            <span id="modalEventPrice" class="event-info-value"></span>
                         </div>
                     </div>
 

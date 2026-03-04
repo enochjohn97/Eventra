@@ -48,8 +48,9 @@ try {
 
     // 4. Verify OTP hash
     if (password_verify($otp, $record['otp_hash'])) {
-        // Success: Mark OTP as verified (could delete or use a status flag, let's just allow the flow)
-        // For simplicity, we just return success. The checkout.js will proceed to payment.
+        // Success: Mark OTP as verified in DB for persistent verification
+        $stmt = $pdo->prepare("UPDATE payment_otps SET verified_at = NOW() WHERE id = ?");
+        $stmt->execute([$record['id']]);
 
         // Optional: Save verification in session for extra security on the purchase endpoint
         $_SESSION['otp_verified_ref'] = $payment_reference;

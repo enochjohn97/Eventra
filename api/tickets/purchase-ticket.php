@@ -89,41 +89,60 @@ try {
             exit;
         }
 
-        // --- Paystack Verification ---
-        $url = "https://api.paystack.co/transaction/verify/" . rawurlencode($payment_reference);
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer " . PAYSTACK_SECRET_KEY,
-            "Cache-Control: no-cache",
-        ]);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        // --- Payment Verification Logic ---
+        $isSimulated = (strpos($payment_reference, 'PAY-') === 0);
+        $verificationSuccess = false;
+        $gatewayResponse = "";
 
-        $paystackResult = json_decode($response);
+        if ($isSimulated) {
+            // Requirement 8: Verify simulated transaction via OTP verification record
+            $stmtVerify = $pdo->prepare("SELECT COUNT(*) FROM payment_otps WHERE user_id = ? AND payment_reference = ? AND verified_at IS NOT NULL AND verified_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)");
+            $stmtVerify->execute([$user_id, $payment_reference]);
+            if ($stmtVerify->fetchColumn() > 0) {
+                $verificationSuccess = true;
+                $gatewayResponse = json_encode(['status' => 'success', 'source' => 'custom_card_simulation']);
+            }
+        } else {
+            // --- Real Paystack Verification ---
+            $url = "https://api.paystack.co/transaction/verify/" . rawurlencode($payment_reference);
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Bearer " . PAYSTACK_SECRET_KEY,
+                "Cache-Control: no-cache",
+            ]);
+            $gatewayResponse = curl_exec($ch);
+            curl_close($ch);
 
-        if (!$paystackResult || !$paystackResult->status || $paystackResult->data->status !== 'success') {
+            $paystackResult = json_decode($gatewayResponse);
+            if ($paystackResult && $paystackResult->status && $paystackResult->data->status === 'success') {
+                $verificationSuccess = true;
+
+                // Extra check: amount match
+                $expectedAmountKobo = round($total_price * 100);
+                if ($paystackResult->data->amount < $expectedAmountKobo) {
+                    $verificationSuccess = false;
+                    $gatewayResponse = json_encode(['success' => false, 'message' => 'Amount mismatch on gateway.']);
+                }
+            }
+        }
+
+        if (!$verificationSuccess) {
             $pdo->rollBack();
-            echo json_encode(['success' => false, 'message' => 'Payment verification failed. Transaction not successful.']);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Payment verification failed. No valid transaction found.']);
             exit;
         }
 
-        // Check amount match (Paystack uses kobo/smallest unit)
-        $expectedAmountKobo = round($total_price * 100);
-        if ($paystackResult->data->amount < $expectedAmountKobo) {
-            $pdo->rollBack();
-            echo json_encode(['success' => false, 'message' => 'Payment amount mismatch.']);
-            exit;
-        }
-
+        // --- Save Payment Record ---
         $stmt = $pdo->prepare("INSERT INTO payments (event_id, user_id, reference, amount, status, paystack_response, paid_at) VALUES (?, ?, ?, ?, 'paid', ?, NOW())");
-        $stmt->execute([$event_id, $user_id, $payment_reference, $total_price, $response]);
+        $stmt->execute([$event_id, $user_id, $payment_reference, $total_price, $gatewayResponse]);
         $payment_id = $pdo->lastInsertId();
     } else {
         // Free ticket
-        $stmt = $pdo->prepare("INSERT INTO payments (event_id, user_id, reference, amount, status, paystack_response, paid_at) VALUES (?, ?, ?, ?, 'paid', 'free', NOW())");
-        $stmt->execute([$event_id, $user_id, 'FREE-' . strtoupper(uniqid()), 0, 'free']);
+        $stmt = $pdo->prepare("INSERT INTO payments (event_id, user_id, reference, amount, status, paystack_response, paid_at) VALUES (?, ?, ?, ?, 'paid', '{\"status\": \"free\"}', NOW())");
+        $stmt->execute([$event_id, $user_id, 'FREE-' . strtoupper(uniqid()), 0]);
         $payment_id = $pdo->lastInsertId();
     }
 

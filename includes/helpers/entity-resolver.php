@@ -61,7 +61,7 @@ function resolveEntity($email)
 
         // We also fetch password from the specific table to ensure redundancy works correctly
         $auth_col = ($role === 'client') ? 'client_auth_id' : (($role === 'user') ? 'user_auth_id' : 'admin_auth_id');
-        $stmt = $pdo->prepare("SELECT a.id as auth_id, a.email, a.role, a.is_active, a.auth_provider, a.provider_id, a.password_hash as auth_password_hash, p.*, p.id as profile_id, p.$name_col as display_name, p.profile_image, $role_password_col FROM auth_accounts a LEFT JOIN $table p ON a.id = p.$auth_col WHERE a.id = ?");
+        $stmt = $pdo->prepare("SELECT a.id as auth_id, a.email, a.role, a.is_active, a.auth_provider, a.provider_id, a.password_hash as auth_password_hash, p.*, p.id as profile_id, p.$name_col as display_name, p.profile_pic, p.profile_pic as profile_image, $role_password_col FROM auth_accounts a LEFT JOIN $table p ON a.id = p.$auth_col WHERE a.id = ?");
         $stmt->execute([$auth['id']]);
         $fullUser = $stmt->fetch(PDO::FETCH_ASSOC);
 

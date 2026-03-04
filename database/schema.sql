@@ -239,6 +239,7 @@ CREATE TABLE IF NOT EXISTS payment_otps (
     channel ENUM('email', 'sms') NOT NULL,
     expires_at DATETIME NOT NULL,
     attempts INT DEFAULT 0,
+    verified_at DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX (user_id),
     INDEX (payment_reference)
@@ -402,6 +403,7 @@ sent_at DATETIME DEFAULT NULL,
 delivered_at DATETIME DEFAULT NULL,
 
 -- Cost tracking (important for financial monitoring)
+
 price DECIMAL(10,5) DEFAULT NULL,
     price_unit VARCHAR(10) DEFAULT NULL,
 

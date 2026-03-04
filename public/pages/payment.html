@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Secure Payment - Eventra">
+    <title>Secure Payment | Eventra</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .payment-header {
+            background: white;
+            padding: 1rem 5%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .payment-logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 3rem auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 2.5rem;
+            width: 100%;
+        }
+
+        /* Payment Card Styles */
+        .payment-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #1e293b;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .input-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(255, 90, 95, 0.1);
+        }
+
+        .pay-btn {
+            width: 100%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1.15rem;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 2rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(255, 90, 95, 0.25);
+        }
+
+        .pay-btn:hover {
+            background: #e0484d;
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(255, 90, 95, 0.3);
+        }
+
+        /* Order Summary Styles */
+        .order-summary {
+            background: #f1f5f9;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            height: fit-content;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .summary-total {
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: #0f172a;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 2rem;
+            padding: 3rem;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .otp-grid {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin: 2rem 0;
+        }
+
+        .otp-input {
+            width: 3.5rem;
+            height: 4.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .otp-input:focus {
+            border-color: var(--primary-color);
+            background: #fffafa;
+            outline: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 850px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .order-summary {
+                order: -1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="payment-header">
+        <a href="checkout.html" class="back-link" style="display: flex; align-items: center; gap: 0.5rem; color: #64748b; text-decoration: none; font-weight: 600;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Cancel
+        </a>
+        <a href="index.html" class="payment-logo">EVENTRA</a>
+        <div style="width: 80px;"></div>
+    </header>
+
+    <main class="container">
+        <!-- Left: Payment Form -->
+        <section class="payment-card">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                Card Information
+            </h2>
+
+            <form id="paymentForm">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label>Cardholder Name</label>
+                        <input type="text" id="cardName" required placeholder="John Doe">
+                    </div>
+                    
+                    <div class="input-group full-width">
+                        <label>Card Number</label>
+                        <input type="text" id="cardNumber" required maxlength="19" placeholder="0000 0000 0000 0000">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Expiry Date</label>
+                        <input type="text" id="cardExpiry" required placeholder="MM/YY" maxlength="5">
+                    </div>
+
+                    <div class="input-group">
+                        <label>CVV</label>
+                        <input type="password" id="cardCvv" required placeholder="123" maxlength="3">
+                    </div>
+                </div>
+
+                <button type="submit" class="pay-btn" id="confirmPaymentBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    Confirm Secure Payment
+                </button>
+            </form>
+
+            <div style="margin-top: 2rem; display: flex; justify-content: center; align-items: center; gap: 0.75rem; color: #94a3b8; font-size: 0.85rem; font-weight: 500;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Verified Secure Transaction via Paystack Gateway
+            </div>
+        </section>
+
+        <!-- Right: Summary -->
+        <aside class="order-summary" id="orderSummary">
+            <h3 style="font-weight: 700; margin-bottom: 1.5rem; color: #1e293b;">Order Detail</h3>
+            <div id="summaryContent">
+                <p>Loading order details...</p>
+            </div>
+        </aside>
+    </main>
+
+    <!-- OTP Selection Modal -->
+    <div id="otpSelectModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="text-align: center; margin-bottom: 1rem; font-weight: 700;">Choose OTP Channel</h3>
+            <p style="text-align: center; color: #64748b; margin-bottom: 2rem;">Where should we send your verification code?</p>
+            
+            <div style="display: grid; gap: 1rem;">
+                <button class="channel-btn" id="channelEmail" style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem; border: 2px solid #e2e8f0; border-radius: 1rem; background: white; cursor: pointer; text-align: left; width: 100%;">
+                    <div style="background: rgba(255, 90, 95, 0.1); padding: 0.5rem; border-radius: 0.5rem;">📧</div>
+                    <div>
+                        <div style="font-weight: 600;">Email Address</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;" id="summaryEmail">...</div>
+                    </div>
+                </button>
+                
+                <button class="channel-btn" id="channelSms" style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem; border: 2px solid #e2e8f0; border-radius: 1rem; background: white; cursor: pointer; text-align: left; width: 100%;">
+                    <div style="background: rgba(59, 130, 246, 0.1); padding: 0.5rem; border-radius: 0.5rem;">📱</div>
+                    <div>
+                        <div style="font-weight: 600;">Phone Number</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;" id="summaryPhone">...</div>
+                    </div>
+                </button>
+            </div>
+            
+            <button onclick="document.getElementById('otpSelectModal').style.display='none'" style="margin-top: 1.5rem; background: none; border: none; color: #64748b; width: 100%; cursor: pointer; font-weight: 500;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- OTP Input Modal -->
+    <div id="otpInputModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="text-align: center; margin-bottom: 0.5rem; font-weight: 700;">Verification Required</h3>
+            <p style="text-align: center; color: #64748b; margin-bottom: 1.5rem;">Enter the 6-digit code sent to your <span id="activeChannel">channel</span></p>
+            
+            <div class="otp-grid">
+                <input type="text" class="otp-input" maxlength="1" pattern="\d*">
+                <input type="text" class="otp-input" maxlength="1" pattern="\d*">
+                <input type="text" class="otp-input" maxlength="1" pattern="\d*">
+                <input type="text" class="otp-input" maxlength="1" pattern="\d*">
+                <input type="text" class="otp-input" maxlength="1" pattern="\d*">
+                <input type="text" class="otp-input" maxlength="1" pattern="\d*">
+            </div>
+
+            <button class="pay-btn" id="verifyOtpBtn">Verify & Complete</button>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button id="resendOtpBtn" style="background: none; border: none; color: var(--primary-color); font-weight: 600; cursor: pointer;">Resend Code</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/auth-controller.js"></script>
+    <script src="../js/payment.js"></script>
+</body>
+</html>

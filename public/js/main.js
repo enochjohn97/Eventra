@@ -565,7 +565,7 @@ function createEventCard(event, index) {
           ${event.priority ? `
             <div class="event-status-badge">
               <span class="status-dot"></span>
-              ${priority.toUpperCase()}
+              ${event.priority.toUpperCase()}
             </div>
           ` : ''}
         </div>
@@ -821,7 +821,8 @@ function showEventModal(eventId) {
   document.getElementById('modalEventOrganizer').textContent = `Organized by ${event.organizer_name || event.client_name || 'Eventra'}`;
   document.getElementById('modalEventDate').textContent = new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   document.getElementById('modalEventTime').textContent = event.event_time || 'TBA';
-  document.getElementById('modalEventLocation').textContent = `${event.city || ''} ${event.state || 'Nigeria'}`.trim();
+  const full_address = `${event.address || ''}, ${event.city || ''}, ${event.state || ''}`.replace(/^, /, '').replace(/, , /g, ', ').trim() || 'Nigeria';
+  document.getElementById('modalEventLocation').textContent = full_address;
   document.getElementById('modalEventDescription').textContent = event.description || 'No description available';
   document.getElementById('modalEventCategory').textContent = event.category || event.event_type || 'General';
   const modalPrice = !event.price || parseFloat(event.price) === 0 ? 'Free' : `₦${parseFloat(event.price).toLocaleString()}`;
