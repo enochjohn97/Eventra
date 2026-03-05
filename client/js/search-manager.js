@@ -34,7 +34,8 @@ async function performSearch(query) {
     }
 
     try {
-        const response = await apiFetch(`../../api/utils/search.php?q=${encodeURIComponent(query)}`);
+        const basePath = typeof getBasePath === 'function' ? getBasePath() : '../../';
+        const response = await apiFetch(`${basePath}api/utils/search.php?q=${encodeURIComponent(query)}`);
         const result = await response.json();
 
         if (result.success) {
@@ -67,8 +68,10 @@ function displaySearchResults(results, query) {
         `;
         
         const searchContainer = document.querySelector('.header-search');
-        searchContainer.style.position = 'relative';
-        searchContainer.appendChild(resultsContainer);
+        if (searchContainer) {
+            searchContainer.style.position = 'relative';
+            searchContainer.appendChild(resultsContainer);
+        }
     }
 
     const hasResults = results.events.length > 0 || results.tickets.length > 0 || results.users.length > 0 || (results.media && results.media.length > 0);
@@ -107,7 +110,7 @@ function displaySearchResults(results, query) {
     if (results.tickets.length > 0) {
         html += `<div style="padding: 0.75rem 1rem; background: #f9fafb; font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f4f8;">Tickets</div>`;
         html += results.tickets.map(ticket => `
-            <div class="search-result-item" onclick="window.location.href='tickets.html?highlight=${ticket.id}'" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+            <div class="search-result-item" onclick="goToTickets(${ticket.id})" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
                 <div style="width: 32px; height: 32px; border-radius: 6px; background: #fef2f2; display: flex; align-items: center; justify-content: center; font-size: 1rem;">🎫</div>
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 0.9rem; color: #111827;">${highlightText(ticket.title, query)}</div>
@@ -121,7 +124,7 @@ function displaySearchResults(results, query) {
     if (results.users.length > 0) {
         html += `<div style="padding: 0.75rem 1rem; background: #f9fafb; font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f4f8;">Users</div>`;
         html += results.users.map(user => `
-            <div class="search-result-item" onclick="window.location.href='users.html?highlight=${user.id}'" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+            <div class="search-result-item" onclick="goToUsers(${user.id})" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
                 <div style="width: 32px; height: 32px; border-radius: 50%; background: #eef2ff; display: flex; align-items: center; justify-content: center; font-size: 1rem;">👤</div>
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 0.9rem; color: #111827;">${highlightText(user.title, query)}</div>
@@ -135,7 +138,7 @@ function displaySearchResults(results, query) {
     if (results.media && results.media.length > 0) {
         html += `<div style="padding: 0.75rem 1rem; background: #f9fafb; font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f4f8;">Media & Folders</div>`;
         html += results.media.map(item => `
-            <div class="search-result-item" onclick="window.location.href='media.html?highlight=${item.id}&type=${item.item_type}'" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+            <div class="search-result-item" onclick="goToMedia(${item.id}, '${item.item_type}')" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
                 <div style="width: 32px; height: 32px; border-radius: 6px; background: ${item.item_type === 'folder' ? '#fff7ed' : '#f0fdf4'}; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
                     ${item.item_type === 'folder' ? '📁' : '📄'}
                 </div>
@@ -180,7 +183,26 @@ function highlightText(text, query) {
 }
 
 function goToEvent(eventId) {
-    window.location.href = `events.html?highlight=${eventId}`;
+    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+    window.location.href = `${basePath}pages/events.html?highlight=${eventId}`;
+    hideSearchResults();
+}
+
+function goToTickets(ticketId) {
+    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+    window.location.href = `${basePath}pages/tickets.html?highlight=${ticketId}`;
+    hideSearchResults();
+}
+
+function goToUsers(userId) {
+    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+    window.location.href = `${basePath}pages/users.html?highlight=${userId}`;
+    hideSearchResults();
+}
+
+function goToMedia(id, type) {
+    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+    window.location.href = `${basePath}pages/media.html?highlight=${id}&type=${type}`;
     hideSearchResults();
 }
 

@@ -13,29 +13,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadUsers(user.id);
     initializeTableSorting();
-    
-    // Sort Select Wiring
-    const sortSelect = document.getElementById('userSortSelect');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', (e) => {
-            if (e.target.value !== 'none') {
-                const parts = e.target.value.split('_');
-                const colIndex = parseInt(parts[0]);
-                const isDesc = parts[1] === 'desc';
-                
-                const table = document.querySelector('table');
-                const headers = table.querySelectorAll('th');
-                const header = headers[colIndex];
-                
-                // Set the status intentionally opposite so that .click() toggles it to the target status
-                if (isDesc) {
-                    header.classList.add('sort-asc');
-                } else {
-                    header.classList.add('sort-desc');
+
+    // Handle search highlighting
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+        setTimeout(() => {
+            const rows = document.querySelectorAll('#usersTableBody tr');
+            rows.forEach(row => {
+                // If we use ID in the data-id attribute or similar
+                if (row.innerHTML.includes(`id":${highlightId}`)) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.style.transition = 'background 0.5s';
+                    row.style.background = 'rgba(99, 91, 255, 0.15)';
+                    setTimeout(() => {
+                        row.style.background = '';
+                    }, 3000);
                 }
-                header.click();
-            }
-        });
+            });
+        }, 500);
     }
 });
 

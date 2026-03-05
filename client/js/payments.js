@@ -28,22 +28,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) return;
 
     // Avatar
-    const avatar = document.getElementById('userAvatar');
-    if (avatar) avatar.textContent = (user.name || 'U')[0].toUpperCase();
-
-    // Wire search with debounce
-    const searchInput = document.getElementById('paymentSearch');
-    if (searchInput) {
-        let debounce;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(debounce);
-            debounce = setTimeout(() => {
-                _paymentsState.search = e.target.value.trim();
-                _paymentsState.page = 1;
-                loadPayments();
-            }, 400);
+    // Load client profile for avatar consistency
+    const userProfileAvatars = document.querySelectorAll('.user-avatar');
+    if (userProfileAvatars.length > 0) {
+        const avatarUrl = user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.business_name || 'User')}&background=random&color=fff`;
+        userProfileAvatars.forEach(avatar => {
+            avatar.style.backgroundImage = `url(${avatarUrl})`;
+            avatar.style.backgroundSize = 'cover';
+            avatar.style.backgroundPosition = 'center';
+            avatar.textContent = '';
         });
     }
+
+    // Search functionality handled by global search in header if needed, 
+    // or removed as per user request to declutter the table area.
 
     // Wire sort
     const sortSelect = document.getElementById('sortSelect');

@@ -26,14 +26,15 @@ async function loadClientProfile() {
             const user = result.user;
             
             // Update profile display using unified elements
-            const profileAvatar = document.querySelector('.user-avatar');
+            const profileAvatars = document.querySelectorAll('.user-avatar');
             
-            if (profileAvatar) {
+            profileAvatars.forEach(avatar => {
                 const avatarUrl = user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.business_name || 'User')}&background=random&color=fff`;
-                profileAvatar.style.backgroundImage = `url(${avatarUrl})`;
-                profileAvatar.style.backgroundSize = 'cover';
-                profileAvatar.style.backgroundPosition = 'center';
-            }
+                avatar.style.backgroundImage = `url(${avatarUrl})`;
+                avatar.style.backgroundSize = 'cover';
+                avatar.style.backgroundPosition = 'center';
+                avatar.textContent = ''; // clear initial if any
+            });
             
             if (window.stateManager) {
                 window.stateManager.setState({ user: user, profilePicture: user.profile_pic });
@@ -57,19 +58,18 @@ async function loadDashboardStats() {
         }
 
         const stats = result.stats;
-        
-        // Update stats cards using background colors matching HTML
-        const cardMapping = {
-            purple: stats.total_events || 0,
-            blue: stats.total_tickets || 0,
-            orange: stats.total_users || 0,
-            red: stats.total_media || 0
-        };
+        if (!stats) return;
 
-        Object.keys(cardMapping).forEach(color => {
-            const cardValue = document.querySelector(`.client-stat-card.${color} .stat-main-value`);
-            if (cardValue) cardValue.textContent = cardMapping[color];
-        });
+        // Update stats cards using specific IDs
+        const upcomingEventsEl = document.getElementById('upcomingEventsCount');
+        const ticketsEl = document.getElementById('ticketsCount');
+        const usersEl = document.getElementById('usersCount');
+        const mediaEl = document.getElementById('mediaCount');
+
+        if (upcomingEventsEl) upcomingEventsEl.textContent = stats.total_events !== undefined ? stats.total_events : 0;
+        if (ticketsEl) ticketsEl.textContent = stats.total_tickets !== undefined ? stats.total_tickets : 0;
+        if (usersEl) usersEl.textContent = stats.total_users !== undefined ? stats.total_users : 0;
+        if (mediaEl) mediaEl.textContent = stats.total_media !== undefined ? stats.total_media : 0;
 
         // Load upcoming events / performance breakdown
         loadUpcomingEvents(result.events);

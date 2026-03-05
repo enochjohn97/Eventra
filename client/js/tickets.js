@@ -12,8 +12,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadTickets(user.id);
-    initializeTableSorting();
     
+    // Handle search highlighting
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+        setTimeout(() => {
+            const rows = document.querySelectorAll('#ticketsTableBody tr');
+            rows.forEach(row => {
+                if (row.innerHTML.includes(`"id":${highlightId}`) || row.children[0].textContent.trim() == highlightId) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.style.transition = 'background 0.5s';
+                    row.style.background = 'rgba(99, 91, 255, 0.15)';
+                    setTimeout(() => { row.style.background = ''; }, 3000);
+                }
+            });
+        }, 500);
+    }
+
     // Sort Select Wiring
     const sortSelect = document.getElementById('ticketSortSelect');
     if (sortSelect) {
@@ -40,90 +56,110 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function initializeTableSorting() {
+function sortTickets(index) {
     const table = document.querySelector('table');
     if (!table) return;
 
     const headers = table.querySelectorAll('th');
+    const header = headers[index];
     
-    headers.forEach((header, index) => {
-        header.style.cursor = 'pointer';
-        header.addEventListener('click', () => {
-            const tbody = table.querySelector('tbody');
-            if (!tbody) return;
-            
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            if (rows.length <= 1 && rows[0]?.children.length <= 1) return;
-            
-            const isAsc = header.classList.contains('sort-asc');
-            headers.forEach(h => {
-                h.classList.remove('sort-asc', 'sort-desc');
-                h.innerHTML = h.textContent.replace(' ↑', '').replace(' ↓', '');
-            });
-            
-            if (isAsc) {
-                header.classList.add('sort-desc');
-                header.innerHTML = header.textContent + ' ↓';
-            } else {
-                header.classList.add('sort-asc');
-                header.innerHTML = header.textContent + ' ↑';
-            }
-            
-            rows.sort((rowA, rowB) => {
-                let cellA = rowA.children[index].textContent.trim();
-                let cellB = rowB.children[index].textContent.trim();
-                
-                // Special handling for Price (₦1,234.56)
-                if (index === 3) { // Price column
-                    cellA = cellA.replace('₦', '').replace(/,/g, '');
-                    cellB = cellB.replace('₦', '').replace(/,/g, '');
-                }
-
-                // Date parsing
-                const dateA = new Date(cellA);
-                const dateB = new Date(cellB);
-                
-                if (!isNaN(dateA) && !isNaN(dateB) && cellA.includes('-')) {
-                    return isAsc ? dateB - dateA : dateA - dateB;
-                }
-                
-                // Numeric
-                if (!isNaN(cellA) && !isNaN(cellB) && cellA !== '' && cellB !== '') {
-                    return isAsc ? Number(cellB) - Number(cellA) : Number(cellA) - Number(cellB);
-                }
-                
-                return isAsc ? cellB.localeCompare(cellA) : cellA.localeCompare(cellB);
-            });
-            
-            rows.forEach(row => tbody.appendChild(row));
-        });
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (rows.length <= 1 && rows[0]?.children.length <= 1) return;
+    
+    const isAsc = header.classList.contains('sort-asc');
+    headers.forEach(h => {
+        h.classList.remove('sort-asc', 'sort-desc');
+        h.innerHTML = h.textContent.replace(' ↑', '').replace(' ↓', '');
     });
+    
+    if (isAsc) {
+        header.classList.add('sort-desc');
+        header.innerHTML = header.textContent + ' ↓';
+    } else {
+        header.classList.add('sort-asc');
+        header.innerHTML = header.textContent + ' ↑';
+    }
+    
+    rows.sort((rowA, rowB) => {
+        let cellA = rowA.children[index].textContent.trim();
+        let cellB = rowB.children[index].textContent.trim();
+        
+        // Special handling for Price (₦1,234.56)
+        if (index === 3) { // Price column
+            cellA = cellA.replace('₦', '').replace(/,/g, '');
+            cellB = cellB.replace('₦', '').replace(/,/g, '');
+            return isAsc ? Number(cellB) - Number(cellA) : Number(cellA) - Number(cellB);
+        }
+
+        // Date parsing
+        const dateA = new Date(cellA);
+        const dateB = new Date(cellB);
+        
+        if (!isNaN(dateA) && !isNaN(dateB)) {
+            return isAsc ? dateB - dateA : dateA - dateB;
+        }
+        
+        // Numeric
+        if (!isNaN(cellA) && !isNaN(cellB) && cellA !== '' && cellB !== '') {
+            return isAsc ? Number(cellB) - Number(cellA) : Number(cellA) - Number(cellB);
+        }
+        
+        return isAsc ? cellB.localeCompare(cellA) : cellA.localeCompare(cellB);
+    });
+    
+    rows.forEach(row => tbody.appendChild(row));
 }
+
+// Expose globally
+window.sortTickets = sortTickets;
 
 async function loadTickets(clientId) {
     try {
         const response = await apiFetch(`../../api/tickets/get-tickets.php?client_id=${clientId}`);
-        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const text = await response.text();
+        if (!text) {
+            throw new Error('Empty response from server');
+        }
+
+        const result = JSON.parse(text);
 
         if (result.success) {
             updateTicketsTable(result.tickets || []);
             if (result.stats) {
                 updateStatsCards(result.stats);
             }
+        } else {
+            console.error('API Error:', result.message);
+            showNotification(result.message || 'Failed to load tickets', 'error');
         }
     } catch (error) {
         console.error('Error loading tickets:', error);
+        const tbody = document.getElementById('ticketsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #ef4444;">Error loading tickets. Please try again later.</td></tr>';
+        }
     }
 }
 
 function updateStatsCards(stats) {
-    const cards = document.querySelectorAll('.summary-card .summary-value');
-    if (cards.length >= 4) {
-        cards[0].textContent = stats.total_tickets || 0;
-        cards[1].textContent = `₦${(stats.total_revenue || 0).toLocaleString()}`;
-        cards[2].textContent = stats.pending_tickets || 0;
-        cards[3].textContent = stats.cancelled_tickets || 0;
-    }
+    if (!stats) return;
+    const ticketsSoldEl = document.getElementById('ticketsSold');
+    const totalRevenueEl = document.getElementById('totalRevenue');
+    const pendingTicketsEl = document.getElementById('pendingTickets');
+    const cancelledTicketsEl = document.getElementById('cancelledTickets');
+
+    if (ticketsSoldEl) ticketsSoldEl.textContent = stats.total_tickets !== undefined ? stats.total_tickets : 0;
+    if (totalRevenueEl) totalRevenueEl.textContent = `₦${(stats.total_revenue || 0).toLocaleString()}`;
+    if (pendingTicketsEl) pendingTicketsEl.textContent = stats.pending_tickets !== undefined ? stats.pending_tickets : 0;
+    if (cancelledTicketsEl) cancelledTicketsEl.textContent = stats.cancelled_tickets !== undefined ? stats.cancelled_tickets : 0;
 }
 
 function updateTicketsTable(tickets) {
@@ -137,7 +173,7 @@ function updateTicketsTable(tickets) {
 
     tbody.innerHTML = tickets.map(ticket => `
         <tr style="cursor: pointer;" onclick='showTicketPreviewModal(${JSON.stringify(ticket).replace(/'/g, "&#39;")})'>
-            <td>#${ticket.id}</td>
+            <td>${ticket.id}</td>
             <td>${ticket.event_name || 'N/A'}</td>
             <td>${ticket.buyer_name || ticket.user_name || 'N/A'}</td>
             <td>₦${parseFloat(ticket.total_price || ticket.price || 0).toLocaleString()}</td>

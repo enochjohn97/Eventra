@@ -29,7 +29,7 @@
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
     
     /* Dimensions & Spacing */
-    --client-sidebar-width: 260px;
+    --client-sidebar-width: 280px;
     --client-header-height: 80px;
     --client-radius: 16px;
     --client-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -138,7 +138,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 3rem;
+    padding: 0 4rem;
     border-bottom: 1px solid var(--client-border);
     position: sticky;
     top: 0;
@@ -203,7 +203,7 @@ body {
 
 /* Page Content */
 .content-area {
-    padding: 2rem;
+    padding: 2rem 4rem;
     width: 100%;
 }
 
@@ -217,21 +217,30 @@ body {
 /* Stats Dashboard (Colored) */
 .client-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
+    color: var(--client-text-main);
 }
 
 .client-stat-card {
     padding: 2rem;
     border-radius: var(--client-radius);
-    color: white;
+    background: white;
+    color: var(--client-text-main);
     position: relative;
     overflow: hidden;
     box-shadow: var(--client-shadow);
     transition: var(--transition-base);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--client-border);
 }
+
+.stat-icon { font-size: 1.5rem; transition: transform 0.3s; }
+.stat-icon.icon-purple { color: #8b5cf6; }
+.stat-icon.icon-blue { color: #3b82f6; }
+.stat-icon.icon-orange { color: #f59e0b; }
+.stat-icon.icon-red { color: #ef4444; }
+.stat-icon.icon-green { color: #10b981; }
 
 .client-stat-card:hover {
     transform: translateY(-8px);
@@ -278,7 +287,7 @@ body {
     font-size: 2.5rem; 
     font-weight: 800; 
     letter-spacing: -1px;
-    color: #fff;
+    color: var(--client-text-main);
 }
 
 /* Dashboard Content Grid */

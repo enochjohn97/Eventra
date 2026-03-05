@@ -810,7 +810,10 @@ function showEventModal(eventId) {
 
   // Populate modal
   const modal = document.getElementById('eventDetailsModal');
-  document.getElementById('modalEventImage').src = event.absolute_image_url || event.image_path || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop';
+  const modalImage = document.getElementById('modalEventImage');
+  if (modalImage) {
+      modalImage.src = event.absolute_image_url || event.image_path || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop';
+  }
   document.getElementById('modalEventTitle').textContent = event.event_name;
   document.getElementById('modalEventOrganizer').textContent = `Organized by ${event.organizer_name || event.client_name || 'Eventra'}`;
   document.getElementById('modalEventDate').textContent = new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });

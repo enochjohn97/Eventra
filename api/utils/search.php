@@ -127,7 +127,7 @@ try {
     if (($userRole === 'admin' || $userRole === 'client') && ($type === 'all' || $type === 'users')) {
         if ($userRole === 'admin') {
             // FIXED: Properly join users and auth_accounts
-            $sql = "SELECT a.id, a.email as title, a.role as subtitle, u.name as display_name, u.profile_image, a.created_at 
+            $sql = "SELECT a.id, a.email as title, a.role as subtitle, u.name as display_name, u.profile_pic as profile_image, a.created_at 
                     FROM auth_accounts a
                     LEFT JOIN users u ON a.id = u.user_auth_id
                     WHERE a.email LIKE ? OR u.name LIKE ? 
@@ -139,7 +139,7 @@ try {
             $c_stmt->execute([$userId]);
             $realClientId = $c_stmt->fetchColumn();
 
-            $sql = "SELECT DISTINCT u.user_auth_id as id, u.name as title, a.email as subtitle, u.profile_image
+            $sql = "SELECT DISTINCT u.user_auth_id as id, u.name as title, a.email as subtitle, u.profile_pic as profile_image
                     FROM users u
                     INNER JOIN payments p ON u.user_auth_id = p.user_id
                     INNER JOIN tickets t ON p.id = t.payment_id

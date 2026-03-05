@@ -20,6 +20,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load events
     await loadEvents(clientId);
 
+    // Handle search highlighting
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+        setTimeout(() => {
+            const row = document.querySelector(`tr[data-id="${highlightId}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.style.transition = 'background 0.5s';
+                row.style.background = 'rgba(99, 91, 255, 0.15)';
+                setTimeout(() => { row.style.background = ''; }, 3000);
+            }
+        }, 800);
+    }
+
     // Initialize create event button
     initCreateEventButton();
 });

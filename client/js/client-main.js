@@ -124,25 +124,36 @@ function initLogout() {
         });
     });
 
-    // Centralized Global Listeners (Export, Profile)
+    // Centralized Global Listeners (Export, Notifications, Profile)
     document.addEventListener('click', (e) => {
         // Global Export Button
-        if (e.target.closest('#globalExportBtn')) {
+        const exportBtn = e.target.closest('#globalExportBtn');
+        if (exportBtn) {
             const path = window.location.pathname;
-            let dataType = 'events'; // default
+            let dataType = 'events';
             if (path.includes('tickets.html')) dataType = 'tickets';
+            else if (path.includes('payments.html')) dataType = 'payments';
             else if (path.includes('users.html')) dataType = 'users';
             else if (path.includes('media.html')) dataType = 'media';
 
-            if (typeof showExportModal === 'function') {
-                showExportModal(dataType);
+            if (typeof window.showExportModal === 'function') {
+                window.showExportModal(dataType);
+            }
+        }
+
+        // Global Notifications
+        const notificationIcon = e.target.closest('[data-drawer="notifications"]');
+        if (notificationIcon) {
+            if (window.drawerSystem && typeof window.drawerSystem.open === 'function') {
+                window.drawerSystem.open('notifications');
             }
         }
 
         // Global Profile Click
-        if (e.target.closest('.user-avatar')) {
-            if (typeof showProfileEditModal === 'function') {
-                showProfileEditModal();
+        const profileAvatar = e.target.closest('.user-profile') || e.target.closest('.user-avatar');
+        if (profileAvatar) {
+            if (typeof window.showProfileEditModal === 'function') {
+                window.showProfileEditModal();
             }
         }
     });

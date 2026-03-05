@@ -97,35 +97,52 @@
                 <h1 style="font-size: 1.5rem; font-weight: 800;">Tickets</h1>
             </div>
 
-            <div class="summary-grid">
-                <div class="summary-card"><div class="summary-label">Tickets Sold</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Total Revenue</div><div class="summary-value">₦0</div></div>
-                <div class="summary-card"><div class="summary-label">Pending Tickets</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Cancelled Tickets</div><div class="summary-value">0</div></div>
+            <div class="client-stats-grid">
+                <div class="client-stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Tickets Sold</span>
+                        <i data-lucide="ticket" class="stat-icon icon-purple"></i>
+                    </div>
+                    <div class="stat-main-value" id="ticketsSold">0</div>
+                </div>
+                <div class="client-stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Revenue</span>
+                        <i data-lucide="banknote" class="stat-icon icon-blue"></i>
+                    </div>
+                    <div class="stat-main-value" id="totalRevenue">₦0</div>
+                </div>
+                <div class="client-stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Pending Tickets</span>
+                        <i data-lucide="clock" class="stat-icon icon-orange"></i>
+                    </div>
+                    <div class="stat-main-value" id="pendingTickets">0</div>
+                </div>
+                <div class="client-stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Cancelled Tickets</span>
+                        <i data-lucide="x-circle" class="stat-icon icon-red"></i>
+                    </div>
+                    <div class="stat-main-value" id="cancelledTickets">0</div>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 style="font-size: 1.1rem; margin: 0;">All Tickets</h3>
-                <select class="sort-select" id="ticketSortSelect" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1.5px solid #e2e8f0; background: white; outline: none; cursor: pointer; color: #374151; font-weight: 500;">
-                    <option value="none">Sort by...</option>
-                    <option value="5_desc">Newest First</option>
-                    <option value="5_asc">Oldest First</option>
-                    <option value="3_desc">Price: High to Low</option>
-                    <option value="3_asc">Price: Low to High</option>
-                </select>
             </div>
 
             <div class="table-card">
                 <table>
                     <thead>
                         <tr>
-                            <th>Ticket ID</th>
-                            <th>Event Name</th>
-                            <th>Buyer</th>
-                            <th>Price</th>
-                            <th>Organiser</th>
-                            <th>Date</th>
-                            <th>Status</th>
+                            <th onclick="sortTickets(0)">Ticket ID</th>
+                            <th onclick="sortTickets(1)">Event Name</th>
+                            <th onclick="sortTickets(2)">Buyer</th>
+                            <th onclick="sortTickets(3)">Price</th>
+                            <th onclick="sortTickets(4)">Organiser</th>
+                            <th onclick="sortTickets(5)">Date</th>
+                            <th onclick="sortTickets(6)">Status</th>
                         </tr>
                     </thead>
                     <tbody id="ticketsTableBody">

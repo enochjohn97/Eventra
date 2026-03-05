@@ -120,6 +120,7 @@ function renderEvent(event) {
         bookBtn.style.cursor = 'not-allowed';
         bookBtn.style.boxShadow = 'none';
         buyTicketText.textContent = 'Event Concluded';
+    } else {
         buyTicketText.textContent = isFree ? 'Book Your Spot' : 'Buy Ticket Now';
         bookBtn.onclick = () => {
             window.location.href = `checkout.html?id=${event.id}&quantity=1`;

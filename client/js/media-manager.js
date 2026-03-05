@@ -3,8 +3,41 @@
  * Handles file uploads, folder creation, and media display
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadMedia();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadMedia();
+
+    // Handle search highlighting
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    const type = urlParams.get('type');
+    
+    if (highlightId) {
+        setTimeout(() => {
+            let element;
+            if (type === 'folder') {
+                // Find folder card
+                const cards = document.querySelectorAll('.media-card');
+                cards.forEach(card => {
+                    if (card.onclick && card.onclick.toString().includes(`openFolder(${highlightId}`)) {
+                        element = card;
+                    }
+                });
+            } else {
+                element = document.getElementById(`media-${highlightId}`);
+            }
+
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.style.transition = 'box-shadow 0.5s, background 0.5s';
+                element.style.boxShadow = '0 0 15px rgba(99, 91, 255, 0.4)';
+                element.style.background = 'rgba(99, 91, 255, 0.05)';
+                setTimeout(() => {
+                    element.style.boxShadow = '';
+                    element.style.background = '';
+                }, 3000);
+            }
+        }, 800);
+    }
 });
 
 // Global state to track folders
