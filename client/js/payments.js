@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ─── Load payments from API ────────────────────────────────────────────────
 async function loadPayments() {
     const tbody = document.getElementById('paymentsTableBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#94a3b8;"><span class="btn-spinner" style="margin-right:8px"></span>Loading...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#94a3b8;"><span class="btn-spinner" style="margin-right:8px"></span>Loading...</td></tr>';
 
     const { page, limit, sort, dateRange, status, search } = _paymentsState;
     const params = new URLSearchParams({
@@ -96,7 +96,7 @@ async function loadPayments() {
         const data = await res.json();
 
         if (!data.success) {
-            if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:#ef4444;">Failed to load payments: ${data.message}</td></tr>`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;">Failed to load payments: ${data.message}</td></tr>`;
             return;
         }
 
@@ -108,7 +108,7 @@ async function loadPayments() {
         computeStats(data.payments, data.total);
     } catch (err) {
         console.error('Payments load error', err);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#ef4444;">An error occurred loading payments.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;">An error occurred loading payments.</td></tr>';
     }
 }
 
@@ -118,7 +118,7 @@ function renderPaymentsTable(payments) {
     if (!tbody) return;
 
     if (!payments.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#94a3b8;">No payments found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#94a3b8;">No payments found.</td></tr>';
         return;
     }
 
@@ -135,12 +135,15 @@ function renderPaymentsTable(payments) {
             <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(p.event_name || '-')}">
                 ${escapeHtml(p.event_name || '—')}
             </td>
+            <td>
+                <span style="font-size:0.85rem;color:#475569;font-weight:500;">${escapeHtml(p.client_name || '—')}</span>
+            </td>
             <td style="font-weight:700;">${amountDisplay}</td>
             <td style="text-align:center;">
                 <span style="background:#e0f2fe;color:#0369a1;padding:2px 10px;border-radius:20px;font-size:0.8rem;font-weight:700;">${p.ticket_count || 0}</span>
             </td>
             <td>
-                <code style="font-size:0.78rem;background:#f8fafc;padding:2px 8px;border-radius:4px;color:#64748b;">${p.reference || '—'}</code>
+                <span style="font-size:0.85rem;color:#64748b;">${escapeHtml(p.buyer_email || '—')}</span>
             </td>
             <td><span class="status-badge ${badgeClass}">${ucfirst(p.status)}</span></td>
         </tr>`;
@@ -208,12 +211,17 @@ function openDetailModal(payment) {
         ? '<span style="color:#10b981;font-weight:700">Free</span>'
         : `<strong>₦${parseFloat(payment.amount).toLocaleString()}</strong>`;
 
+    const imageUrl = payment.event_image ? payment.event_image : '/public/assets/event-placeholder.jpg';
+    const backgroundImage = payment.event_image ? `url(${imageUrl})` : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)';
+
     content.innerHTML = `
         <div style="text-align:center;margin-bottom:1.5rem;">
+            <div style="width: 100px; height: 100px; border-radius: 16px; background: ${backgroundImage}; background-size: cover; background-position: center; margin: 0 auto 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+            <h3 style="font-size:1.25rem;font-weight:700;color:#1e293b;margin:0 0 0.5rem;">${escapeHtml(payment.event_name || '—')}</h3>
+            <p style="font-size:0.9rem;color:#64748b;margin:0 0 1rem;">Organized by: <span style="font-weight:600;color:#1e293b;">${escapeHtml(payment.client_name || '—')}</span></p>
             <span class="status-badge ${statusClass}" style="font-size:1rem;padding:.4rem 1.2rem;">${ucfirst(payment.status)}</span>
         </div>
         <div class="detail-row"><span class="detail-label">Reference</span><span class="detail-value" style="font-family:monospace;font-size:0.85rem">${payment.reference || '—'}</span></div>
-        <div class="detail-row"><span class="detail-label">Event</span><span class="detail-value">${escapeHtml(payment.event_name || '—')}</span></div>
         <div class="detail-row"><span class="detail-label">Amount</span><span class="detail-value">${amountDisplay}</span></div>
         <div class="detail-row"><span class="detail-label">Tickets</span><span class="detail-value">${payment.ticket_count || 0} ticket(s)</span></div>
         <div class="detail-row"><span class="detail-label">Buyer</span><span class="detail-value">${escapeHtml(payment.buyer_name || '—')}</span></div>

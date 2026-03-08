@@ -98,10 +98,28 @@
                 <h1 style="font-size: 1.5rem; font-weight: 800;">Media</h1>
             </div>
 
-            <div class="summary-grid">
-                <div class="summary-card"><div class="summary-label">Folder Created</div><div class="summary-value" id="foldersCreatedCount">0</div></div>
-                <div class="summary-card"><div class="summary-label">Folder Deleted</div><div class="summary-value" id="mediaDeletedCount">0</div></div>
-                <div class="summary-card"><div class="summary-label">Restored Folder</div><div class="summary-value" id="restoredFilesCount">0</div></div>
+            <div class="client-stats-grid">
+                <div class="client-stat-card blue">
+                    <div class="stat-header">
+                        <span class="stat-title">Folder Created</span>
+                        <i data-lucide="folder-plus" class="stat-icon icon-blue"></i>
+                    </div>
+                    <div class="stat-main-value" id="foldersCreatedCount">0</div>
+                </div>
+                <div class="client-stat-card red">
+                    <div class="stat-header">
+                        <span class="stat-title">Folder Deleted</span>
+                        <i data-lucide="folder-minus" class="stat-icon icon-red"></i>
+                    </div>
+                    <div class="stat-main-value" id="mediaDeletedCount">0</div>
+                </div>
+                <div class="client-stat-card green">
+                    <div class="stat-header">
+                        <span class="stat-title">Restored Folder</span>
+                        <i data-lucide="folder-sync" class="stat-icon icon-green"></i>
+                    </div>
+                    <div class="stat-main-value" id="restoredFilesCount">0</div>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0 1rem;">

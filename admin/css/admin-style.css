@@ -3,9 +3,9 @@
     --admin-bg-body: #f8fafc;
     --admin-bg-sidebar: #0f172a;
     --admin-bg-card: rgba(255, 255, 255, 0.82);
-    --admin-primary: #1976D2;
-    --admin-primary-dark: #1565c0;
-    --admin-primary-light: #e3f2fd;
+    --admin-primary: #8b5cf6;
+    --admin-primary-dark: #7c3aed;
+    --admin-primary-light: #a78bfa;
     --admin-text-main: #1e293b;
     --admin-text-muted: #64748b;
     --admin-text-white: #ffffff;
@@ -86,7 +86,7 @@ body {
     font-size: 1.75rem;
     font-weight: 900;
     letter-spacing: 2px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -121,8 +121,8 @@ body {
 }
 
 .menu-item.active a {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
 .sidebar-footer {

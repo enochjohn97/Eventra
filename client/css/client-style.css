@@ -3,9 +3,9 @@
     --client-bg-body: #f8fafc;
     --client-bg-sidebar: #0f172a;
     --client-bg-card: rgba(255, 255, 255, 0.8);
-    --client-primary: #6366f1;
-    --client-primary-dark: #4f46e5;
-    --client-primary-light: #818cf8;
+    --client-primary: #8b5cf6;
+    --client-primary-dark: #7c3aed;
+    --client-primary-light: #a78bfa;
     --client-accent: #f59e0b;
     --client-text-main: #1e293b;
     --client-text-muted: #64748b;
@@ -112,9 +112,9 @@ body {
 }
 
 .menu-item.active a {
-    background: var(--grad-indigo);
+    background: var(--grad-purple);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
 .sidebar-footer {
@@ -254,15 +254,15 @@ body {
     right: -10%;
     width: 120px;
     height: 120px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.03);
     border-radius: 50%;
 }
 
-.client-stat-card.green { background: var(--grad-green); }
-.client-stat-card.purple { background: var(--grad-indigo); }
-.client-stat-card.blue { background: var(--grad-blue); }
-.client-stat-card.red { background: var(--grad-red); }
-.client-stat-card.orange { background: var(--grad-orange); }
+.client-stat-card.green { border-top: 4px solid var(--card-green); }
+.client-stat-card.purple { border-top: 4px solid var(--client-primary); }
+.client-stat-card.blue { border-top: 4px solid var(--card-blue); }
+.client-stat-card.red { border-top: 4px solid var(--card-red); }
+.client-stat-card.orange { border-top: 4px solid var(--client-accent); }
 
 .stat-header {
     display: flex;
@@ -385,8 +385,8 @@ td { padding: 1.25rem 2rem; border-bottom: 1px solid var(--client-border); font-
 
 /* Buttons & Modals */
 .btn { padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-.btn-primary { background: var(--card-blue); color: white; }
-.btn-primary:hover { background: var(--card-blue); }
+.btn-primary { background: var(--client-primary); color: white; }
+.btn-primary:hover { background: var(--client-primary-dark); }
 
 /* Standardized Modal System */
 .modal-backdrop {

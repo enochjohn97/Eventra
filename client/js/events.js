@@ -50,7 +50,7 @@ function switchEventTab(tab) {
         const isActive = btn.dataset.tab === tab;
         btn.classList.toggle('active', isActive);
         if (isActive) {
-            btn.style.background = tab === 'trash' ? '#ef4444' : 'var(--card-blue)';
+            btn.style.background = tab === 'trash' ? '#ef4444' : 'var(--client-primary)';
             btn.style.color = 'white';
         } else {
             btn.style.background = '#f3f4f6';
@@ -98,14 +98,17 @@ function updateTrashBadge(count) {
 }
 
 function updateStatsCards(stats) {
-    const cards = document.querySelectorAll('.summary-card .summary-value');
-    if (cards.length >= 5) {
-        cards[0].textContent = stats.total_events || 0;
-        cards[1].textContent = stats.published_events || 0;
-        cards[2].textContent = stats.deleted_events || 0;
-        cards[3].textContent = stats.scheduled_events || 0;
-        cards[4].textContent = stats.restored_events || 0;
-    }
+    const createdCard = document.getElementById('statCreated');
+    const publishedCard = document.getElementById('statPublished');
+    const scheduledCard = document.getElementById('statScheduled');
+    const deletedCard = document.getElementById('statDeleted');
+    const restoredCard = document.getElementById('statRestored');
+    
+    if (createdCard) createdCard.textContent = stats.total_events || 0;
+    if (publishedCard) publishedCard.textContent = stats.published_events || 0;
+    if (scheduledCard) scheduledCard.textContent = stats.scheduled_events || 0;
+    if (deletedCard) deletedCard.textContent = stats.deleted_events || 0;
+    if (restoredCard) restoredCard.textContent = stats.restored_events || 0;
 }
 
 function updateEventsTable(events) {

@@ -39,7 +39,7 @@ try {
             c.business_name as client_name
         FROM users u
         JOIN auth_accounts a ON u.user_auth_id = a.id
-        JOIN payments p ON a.id = p.user_id
+        JOIN payments p ON u.id = p.user_id
         JOIN events e ON p.event_id = e.id
         JOIN clients c ON e.client_id = c.id
         WHERE e.client_id = ? AND p.status = 'paid'

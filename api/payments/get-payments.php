@@ -120,12 +120,15 @@ $sql = "
         COALESCE(u.name, 'Guest') AS buyer_name,
         COALESCE(au.email, '') AS buyer_email,
         GROUP_CONCAT(t.barcode SEPARATOR ', ') AS ticket_barcodes,
-        COUNT(t.id) AS ticket_count
+        COUNT(t.id) AS ticket_count,
+        c.name AS client_name,
+        e.image_path AS event_image
     FROM payments p
     LEFT JOIN events e ON p.event_id = e.id
     LEFT JOIN users u ON p.user_id = u.id
     LEFT JOIN auth_accounts au ON u.user_auth_id = au.id
     LEFT JOIN tickets t ON t.payment_id = p.id
+    LEFT JOIN clients c ON e.client_id = c.id
     WHERE 1=1
     $scopeWhere
     $dateWhere

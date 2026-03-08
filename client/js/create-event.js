@@ -41,7 +41,7 @@ function showCreateEventModal() {
                                     <img id="eventImagePreview" 
                                          src="" 
                                          style="width: 100%; height: 280px; object-fit: cover; border-radius: 20px; border: 3px solid rgba(255, 255, 255, 0.8); box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-                                    <label for="eventImageInput" style="position: absolute; bottom: 1.5rem; right: 1.5rem; background: rgba(255, 255, 255, 0.95); color: #5c8df6ff; padding: 0.875rem 1.75rem; border-radius: 50px; cursor: pointer; font-weight: 700; box-shadow: 0 8px 20px rgba(9, 82, 190, 0.3); backdrop-filter: blur(10px); transition: all 0.3s; border: 2px solid rgba(5, 16, 112, 0.2);">
+                                    <label for="eventImageInput" style="position: absolute; bottom: 1.5rem; right: 1.5rem; background: rgba(255, 255, 255, 0.95); color: #8b5cf6; padding: 0.875rem 1.75rem; border-radius: 50px; cursor: pointer; font-weight: 700; box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3); backdrop-filter: blur(10px); transition: all 0.3s; border: 2px solid rgba(139, 92, 246, 0.2);">
                                         📷 Upload Banner
                                     </label>
                                     <input type="file" id="eventImageInput" name="event_image" accept="image/*" style="display: none;" onchange="previewEventImage(event)">
@@ -130,7 +130,7 @@ function showCreateEventModal() {
                                             <input type="number" name="price" id="priceInput" required placeholder="5000" min="0" step="0.01" 
                                                    style="flex: 1; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; font-weight: 600; color: #6b7280; background: white; padding: 0.75rem 1.25rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 2px solid #e5e7eb;">
-                                                <input type="checkbox" id="freeEventCheckbox" style="width: 1.2rem; height: 1.2rem; accent-color: #5c8df6ff;"> Free
+                                                <input type="checkbox" id="freeEventCheckbox" style="width: 1.2rem; height: 1.2rem; accent-color: #8b5cf6;"> Free
                                             </label>
                                         </div>
                                     </div>
@@ -173,26 +173,26 @@ function showCreateEventModal() {
                                 </div>
 
                                 <!-- Auto-Generated Info -->
-                                <div style="background: linear-gradient(135deg, color: #5c8df6ff, color: #5c8df6ff); padding: 2rem; border-radius: 16px; border: 2px solid rgba(16, 40, 148, 0.2);">
-                                    <h4 style="margin: 0 0 1.25rem 0; font-weight: 800; color: #5c8df6ff; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;">🔗 Auto-Generated Links</h4>
+                                <div style="background: rgba(139, 92, 246, 0.05); padding: 2rem; border-radius: 16px; border: 2px solid rgba(139, 92, 246, 0.2);">
+                                    <h4 style="margin: 0 0 1.25rem 0; font-weight: 800; color: #8b5cf6; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;">🔗 Auto-Generated Links</h4>
                                     <div style="display: grid; gap: 1.25rem;">
                                         <div>
-                                            <label style="font-size: 0.8rem; font-weight: 700; color: #5c8df6ff; margin-bottom: 0.5rem; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Event Tag</label>
+                                            <label style="font-size: 0.8rem; font-weight: 700; color: #8b5cf6; margin-bottom: 0.5rem; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Event Tag</label>
                                             <input type="text" id="eventTagField" name="tag" readonly placeholder="Enter event name first..." 
-                                                   style="width: 100%; padding: 0.875rem 1.25rem; background: white; border: 2px solid rgba(8, 88, 134, 0.2); border-radius: 10px; font-family: 'Courier New', monospace; color: #5c8df6ff; font-weight: 600; font-size: 0.95rem;">
+                                                   style="width: 100%; padding: 0.875rem 1.25rem; background: white; border: 2px solid rgba(139, 92, 246, 0.2); border-radius: 10px; font-family: 'Courier New', monospace; color: #8b5cf6; font-weight: 600; font-size: 0.95rem;">
                                         </div>
 
                                         <div>
-                                            <label style="font-size: 0.8rem; font-weight: 700; color: #5c8df6ff; margin-bottom: 0.5rem; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Shareable Link</label>
+                                            <label style="font-size: 0.8rem; font-weight: 700; color: #8b5cf6; margin-bottom: 0.5rem; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Shareable Link</label>
                                             <input type="text" id="eventLinkField" name="external_link" readonly placeholder="Enter event name first..." 
-                                                   style="width: 100%; padding: 0.875rem 1.25rem; background: white; border: 2px solid rgba(5, 62, 95, 0.2); border-radius: 10px; font-family: 'Courier New', monospace; color: #5c8df6ff; font-weight: 600; font-size: 0.85rem;">
+                                                   style="width: 100%; padding: 0.875rem 1.25rem; background: white; border: 2px solid rgba(139, 92, 246, 0.2); border-radius: 10px; font-family: 'Courier New', monospace; color: #8b5cf6; font-weight: 600; font-size: 0.85rem;">
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Submit Buttons -->
                                 <div style="display: flex; gap: 1.25rem; margin-top: 1rem;">
-                                    <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1.25rem; font-size: 1.125rem; font-weight: 700; justify-content: center; background: linear-gradient(135deg, #5c8df6ff, #030c42ff); border: none; border-radius: 14px; color: white; cursor: pointer; box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3); transition: all 0.3s;">
+                                    <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1.25rem; font-size: 1.125rem; font-weight: 700; justify-content: center; background: linear-gradient(135deg, #8b5cf6, #4c1d95); border: none; border-radius: 14px; color: white; cursor: pointer; box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3); transition: all 0.3s;">
                                         Create Event ✨
                                     </button>
                                     <button type="button" class="btn btn-secondary" onclick="closeCreateEventModal()" style="flex: 1; padding: 1.25rem; font-size: 1.125rem; justify-content: center; background: white; border: 2px solid #e5e7eb; border-radius: 14px; color: #6b7280; cursor: pointer; font-weight: 600; transition: all 0.3s;">
@@ -222,8 +222,8 @@ function showCreateEventModal() {
             #createEventModal select:focus,
             #createEventModal textarea:focus {
                 outline: none;
-                border-color: #5c8df6ff !important;
-                box-shadow: 0 0 0 4px rgba(9, 45, 145, 0.49) !important;
+                border-color: #8b5cf6 !important;
+                box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2) !important;
             }
 
             #createEventModal input::placeholder,

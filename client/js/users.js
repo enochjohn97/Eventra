@@ -113,12 +113,13 @@ async function loadUsers(clientId) {
 }
 
 function updateStatsCards(stats) {
-    const cards = document.querySelectorAll('.summary-card .summary-value');
-    if (cards.length >= 3) {
-        cards[0].textContent = stats.active_users || 0;
-        cards[1].textContent = stats.engaged_users || 0;
-        cards[2].textContent = stats.registered_users || 0;
-    }
+    const activeCard = document.getElementById('statActive');
+    const engagedCard = document.getElementById('statEngaged');
+    const registeredCard = document.getElementById('statRegistered');
+    
+    if (activeCard) activeCard.textContent = stats.active_users || 0;
+    if (engagedCard) engagedCard.textContent = stats.engaged_users || 0;
+    if (registeredCard) registeredCard.textContent = stats.registered_users || 0;
 }
 
 function updateUsersTable(users) {
@@ -136,8 +137,9 @@ function updateUsersTable(users) {
         const statusText = isActive ? 'Active' : 'Inactive';
         const statusColor = isActive ? '#10b981' : '#ef4444';
         
+        const hasValidUrl = user.profile_pic && user.profile_pic.startsWith('http');
         const profileImage = user.profile_pic 
-            ? `../../${user.profile_pic}`
+            ? (hasValidUrl ? user.profile_pic : `../../${user.profile_pic}`)
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`;
 
         return `

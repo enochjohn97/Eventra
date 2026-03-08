@@ -760,47 +760,83 @@ function closeTicketPreviewModal() {
 
 // User Preview Modal
 function showUserPreviewModal(user) {
+    const hasValidUrl = user.profile_pic && user.profile_pic.startsWith('http');
+    const profileImage = user.profile_pic 
+        ? (hasValidUrl ? user.profile_pic : `../../${user.profile_pic}`)
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&size=150`;
+
     const modalContent = `
         <div id="userPreviewModal" class="modal-backdrop active" role="dialog" aria-modal="true" aria-hidden="false">
-            <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h2>User Details</h2>
-                    <button class="modal-close" onclick="closeUserPreviewModal()">×</button>
+            <div class="modal-content" style="max-width: 800px; border-radius: 16px; overflow: hidden; padding: 0;">
+                <div class="modal-header" style="background: var(--client-bg-body); padding: 1.5rem 2rem; border-bottom: 1px solid var(--client-border);">
+                    <h2 style="margin: 0; font-size: 1.25rem;">User Details</h2>
+                    <button class="modal-close" onclick="closeUserPreviewModal()" style="font-size: 1.5rem;">×</button>
                 </div>
-                <div class="modal-body">
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <img src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&size=150`}" 
-                             style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--client-primary);">
-                    </div>
-                    <div style="display: grid; gap: 1.5rem;">
-                        <div>
-                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">👤 Name</div>
-                            <div style="font-weight: 600;">${user.name || 'N/A'}</div>
+                <div class="modal-body" style="padding: 2.5rem 2rem;">
+                    <div style="display: flex; gap: 2.5rem; flex-wrap: wrap;">
+                        <div style="text-align: center; flex: 0 0 160px;">
+                            <img src="${profileImage}" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 4px solid var(--client-primary); box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+                            <div style="margin-top: 1rem; font-weight: 800; font-size: 1.25rem; color: var(--client-text-main);">${user.name || 'N/A'}</div>
+                            <div style="font-size: 0.9rem; color: var(--client-text-muted); font-weight: 500;">${user.email || 'N/A'}</div>
                         </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📧 Email</div>
-                            <div style="font-weight: 600;">${user.email || 'N/A'}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📊 Status</div>
-                            <div style="font-weight: 600; color: ${user.status === 'active' ? '#10b981' : '#ef4444'};">
-                                ${user.status ? user.status.toUpperCase() : 'N/A'}
+                        
+                        <div style="flex: 1; min-width: 300px; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem;">
+                            <!-- Column 1 -->
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Phone</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.phone || 'N/A'}</div>
+                            </div>
+                            
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">State / Province</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.state || 'N/A'}</div>
+                            </div>
+
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">City</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.city || 'N/A'}</div>
+                            </div>
+                            
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Country</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.country || 'N/A'}</div>
+                            </div>
+
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Gender</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem; text-transform: capitalize;">${user.gender || 'N/A'}</div>
+                            </div>
+                            
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Date of Birth</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.dob ? formatDate(user.dob) : 'N/A'}</div>
+                            </div>
+
+                            <div style="grid-column: 1 / -1; height: 1px; background: var(--client-border); margin: 0.5rem 0;"></div>
+
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Organiser</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.client_name || 'Direct'}</div>
+                            </div>
+
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Date Joined</div>
+                                <div style="font-weight: 600; color: var(--client-text-main); font-size: 1rem;">${user.created_at ? formatDate(user.created_at) : 'N/A'}</div>
+                            </div>
+
+                            <div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.5px;">Status</div>
+                                <div style="font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; ${(user.status === 'active' || user.status === 1 || user.status === '1') ? 'background: #d1fae5; color: #10b981;' : 'background: #fee2e2; color: #ef4444;'}">
+                                    ${(user.status === 'active' || user.status === 1 || user.status === '1') ? 'Active' : 'Inactive'}
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📈 Engagement</div>
-                            <div style="font-weight: 600;">${user.engagement || 'N/A'}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📅 Date Joined</div>
-                            <div style="font-weight: 600;">${user.date_joined ? formatDate(user.date_joined) : 'N/A'}</div>
-                        </div>
                     </div>
-                    <div style="margin-top: 2rem;">
-                        <button onclick="closeUserPreviewModal()" class="btn btn-secondary" style="width: 100%;">
-                            Close
-                        </button>
-                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 1.5rem 2rem; background: #f9fafb; border-top: 1px solid var(--client-border); display: flex; justify-content: flex-end;">
+                    <button onclick="closeUserPreviewModal()" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+                        Close
+                    </button>
                 </div>
             </div>
         </div>

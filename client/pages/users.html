@@ -97,10 +97,28 @@
                 <h1 style="font-size: 1.5rem; font-weight: 800;">Users</h1>
             </div>
 
-            <div class="summary-grid">
-                <div class="summary-card"><div class="summary-label">User Active</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">User Engaged</div><div class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">User Registered</div><div class="summary-value">0</div></div>
+            <div class="client-stats-grid">
+                <div class="client-stat-card green">
+                    <div class="stat-header">
+                        <span class="stat-title">User Active</span>
+                        <i data-lucide="user-check" class="stat-icon icon-green"></i>
+                    </div>
+                    <div class="stat-main-value" id="statActive">0</div>
+                </div>
+                <div class="client-stat-card blue">
+                    <div class="stat-header">
+                        <span class="stat-title">User Engaged</span>
+                        <i data-lucide="activity" class="stat-icon icon-blue"></i>
+                    </div>
+                    <div class="stat-main-value" id="statEngaged">0</div>
+                </div>
+                <div class="client-stat-card purple">
+                    <div class="stat-header">
+                        <span class="stat-title">User Registered</span>
+                        <i data-lucide="users" class="stat-icon icon-purple"></i>
+                    </div>
+                    <div class="stat-main-value" id="statRegistered">0</div>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">

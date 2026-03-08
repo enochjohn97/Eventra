@@ -9,6 +9,7 @@ class NotificationManager {
         this.pollDuration = 15000; // Poll every 15 seconds (reduced from 30)
         this.lastNotificationId = 0;
         this.isPolling = false;
+        this.currentAbortController = null;
     }
 
     // Start polling for notifications
@@ -37,8 +38,14 @@ class NotificationManager {
 
     // Fetch notifications from API
     async fetchNotifications() {
+        if (this.currentAbortController) {
+            this.currentAbortController.abort();
+        }
+        this.currentAbortController = new AbortController();
+        const signal = this.currentAbortController.signal;
+
         try {
-            const response = await apiFetch('../../api/notifications/get-notifications.php');
+            const response = await apiFetch('../../api/notifications/get-notifications.php', { signal });
             
             if (!response) {
                 this.stopPolling();
@@ -86,7 +93,13 @@ class NotificationManager {
                 }
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                // Ignore aborted fetches silently
+                return;
+            }
             console.error('Error fetching notifications:', error);
+        } finally {
+            this.currentAbortController = null;
         }
     }
 
