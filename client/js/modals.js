@@ -10,7 +10,7 @@ function showProfileEditModal() {
 
     const modalHTML = `
         <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true" aria-hidden="false">
-            <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; margin: auto;">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; margin: auto;">
                 <div class="modal-header">
                     <h2>Edit Profile</h2>
                     <button class="modal-close" onclick="closeProfileEditModal()">×</button>
@@ -18,77 +18,125 @@ function showProfileEditModal() {
                 <div class="modal-body">
                     <form id="profileEditForm" enctype="multipart/form-data">
                         <!-- Profile Picture -->
-                        <div style="text-align: center; margin-bottom: 2rem;">
+                        <div style="text-align: center; margin-bottom: 3.5rem; margin-top: 1rem;">
                             <div style="position: relative; display: inline-block;">
                                 <img id="profilePreview" 
-                                     src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=150`}" 
-                                     style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--client-primary);">
-                                <label for="profilePicInput" style="position: absolute; bottom: 0; right: 0; background: var(--client-primary); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem;">
+                                     src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}" 
+                                     style="width: 160px; height: 160px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                                     
+                                <div class="profile-badge-overlay" style="position: absolute; bottom: 8px; right: 8px; background: white; border-radius: 50%; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; z-index: 2;">
+                                    ${(Number(user.nin_verified) === 1 && Number(user.bvn_verified) === 1)
+                                       ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#10b981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border-radius: 50%;"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                                       : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ef4444" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border-radius: 50%;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'}
+                                </div>
+                                
+                                <label for="profilePicInput" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(139, 92, 246, 0.8); color: white; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.2s; z-index: 3;" onmouseover="this.style.transform='translate(-50%, -50%) scale(1.1)'; this.style.background='rgba(139, 92, 246, 0.9)'" onmouseout="this.style.transform='translate(-50%, -50%)'; this.style.background='rgba(139, 92, 246, 0.8)'">
                                     📷
                                 </label>
                                 <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePic(event)">
                             </div>
                         </div>
 
-                        <!-- Personal Information -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>Full Name *</label>
-                                <input type="text" name="name" value="${user.name}" required>
+                        <!-- Personal Information Section -->
+                        <h3 style="margin-top: 1rem; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f0f0f0; color: #333; font-size: 1.25rem;">Personal Information</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Full Name *</label>
+                                <input type="text" name="name" value="${user.name}" required style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
                             </div>
                             <div class="form-group">
-                                <label>Email</label>
-                                <input type="email" value="${user.email}" disabled style="background: #f5f5f5;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Email</label>
+                                <input type="email" value="${user.email}" disabled style="width: 100%; padding: 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; background: #f9f9f9; color: #777;">
                             </div>
                             <div class="form-group">
-                                <label>Phone</label>
-                                <input type="tel" name="phone" value="${user.phone || ''}" placeholder="+234...">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Phone</label>
+                                <input type="tel" name="phone" value="${user.phone || ''}" placeholder="+234..." style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
+                            
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                    <span>NIN (National Identity Number)</span>
+                                    <div id="ninStatus" class="verification-status-indicator" style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <!-- Will be populated dynamically -->
+                                    </div>
+                                </label>
+                                <input type="text" id="ninInput" name="nin" value="${user.nin || ''}" placeholder="11-digit NIN" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;" onblur="validateAndVerifyField('nin')">
+                            </div>
+
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Date of Birth</label>
+                                <input type="date" name="dob" value="${user.dob || ''}" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
                             </div>
                             <div class="form-group">
-                                <label>Job Title</label>
-                                <input type="text" name="job_title" value="${user.job_title || ''}" placeholder="Event Organizer">
-                            </div>
-                            <div class="form-group">
-                                <label>Company</label>
-                                <input type="text" name="company" value="${user.company || ''}" placeholder="Company Name">
-                            </div>
-                            <div class="form-group">
-                                <label>City</label>
-                                <input type="text" name="city" value="${user.city || ''}" placeholder="Lagos">
-                            </div>
-                            <div class="form-group">
-                                <label>State</label>
-                                <select name="state">
-                                    <option value="">Select State</option>
-                                    ${getNigerianStates().map(state => 
-                                        `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
-                                    ).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Country</label>
-                                <input type="text" name="country" value="${user.country || ''}" placeholder="Nigeria">
-                            </div>
-                            <div class="form-group">
-                                <label>Date of Birth</label>
-                                <input type="date" name="dob" value="${user.dob || ''}">
-                            </div>
-                            <div class="form-group">
-                                <label>Gender</label>
-                                <select name="gender">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Gender</label>
+                                <select name="gender" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; background: white;">
                                     <option value="">Select Gender</option>
                                     <option value="male" ${user.gender === 'male' ? 'selected' : ''}>Male</option>
                                     <option value="female" ${user.gender === 'female' ? 'selected' : ''}>Female</option>
                                     <option value="other" ${user.gender === 'other' ? 'selected' : ''}>Other</option>
                                 </select>
                             </div>
+                            
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Address</label>
+                                <textarea name="address" rows="2" placeholder="Full address" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">${user.address || ''}</textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Job Title</label>
+                                <input type="text" name="job_title" value="${user.job_title || ''}" placeholder="Event Organizer" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Company</label>
+                                <input type="text" name="company" value="${user.company || ''}" placeholder="Company Name" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">City</label>
+                                <input type="text" name="city" value="${user.city || ''}" placeholder="Lagos" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State</label>
+                                <select name="state" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; background: white;">
+                                    <option value="">Select State</option>
+                                    ${getNigerianStates().map(state => 
+                                        `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Country</label>
+                                <input type="text" name="country" value="${user.country || ''}" placeholder="Nigeria" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
                         </div>
 
-                        <!-- Address -->
-                        <div class="form-group" style="margin-top: 1rem;">
-                            <label>Address</label>
-                            <textarea name="address" rows="3" placeholder="Full address">${user.address || ''}</textarea>
+                        <!-- Payment Information Section -->
+                        <h3 style="margin-top: 2.5rem; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f0f0f0; color: #333; font-size: 1.25rem;">Payment Information</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                    <span>BVN (Bank Verification Number)</span>
+                                    <div id="bvnStatus" class="verification-status-indicator" style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <!-- Will be populated dynamically -->
+                                    </div>
+                                </label>
+                                <input type="text" id="bvnInput" name="bvn" value="${user.bvn || ''}" placeholder="11-digit BVN" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;" onblur="validateAndVerifyField('bvn')">
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Name</label>
+                                <input type="text" name="account_name" value="${user.account_name || ''}" placeholder="John Doe" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Number</label>
+                                <input type="text" name="account_number" value="${user.account_number || ''}" placeholder="0123456789" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Bank Name</label>
+                                <input type="text" name="bank_name" value="${user.bank_name || ''}" placeholder="e.g. GTBank" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;">
+                            </div>
                         </div>
+
 
                         <!-- Submit Button -->
                         <div style="display: flex; gap: 1rem; margin-top: 2rem;">
@@ -155,17 +203,16 @@ async function handleProfileUpdate(e) {
             closeProfileEditModal();
             
             // Reload page to reflect changes
-            if (window.stateManager) {
-                if (result.user.profile_pic) {
-                    sessionStorage.setItem('profile_picture', result.user.profile_pic);
-                }
-                window.stateManager.setState({
-                    user: result.user,
-                    profilePicture: result.user.profile_pic || sessionStorage.getItem('profile_picture')
-                });
-            } else {
-                setTimeout(() => window.location.reload(), 1000);
+            if (window.loadDashboardStats) {
+                window.loadDashboardStats(result.user.id);
             }
+            
+            // Update sidebar profile if exists
+            if (document.getElementById('sidebarUserName')) {
+                document.getElementById('sidebarUserName').textContent = result.user.name;
+            }
+            
+            setTimeout(() => window.location.reload(), 1000);
         } else {
             showNotification('Failed to update profile: ' + result.message, 'error');
         }
@@ -173,6 +220,95 @@ async function handleProfileUpdate(e) {
         console.error('Error updating profile:', error);
         showNotification('An error occurred while updating profile', 'error');
     }
+}
+
+// Dynamic Field Verification Logic
+async function validateAndVerifyField(type) {
+    const input = document.getElementById(`${type}Input`);
+    const statusDiv = document.getElementById(`${type}Status`);
+    if (!input || !statusDiv) return;
+
+    const value = input.value.trim();
+    if (!value) {
+        statusDiv.innerHTML = ''; // Hide if empty
+        return;
+    }
+
+    // Show Spinner
+    updateFieldStatus(type, 'loading');
+
+    try {
+        const response = await apiFetch('../../api/admin/dojah-mock.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type, number: value })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data.verified) {
+            updateFieldStatus(type, 'success');
+            showNotification(`${type.toUpperCase()} verified successfully!`, 'success');
+            
+            // Update local user object for preview
+            const user = storage.get('client_user') || storage.get('user');
+            if (user) {
+                user[`${type}_verified`] = 1;
+                user[type] = value;
+                storage.set('client_user', user);
+                updateVerificationBadge();
+            }
+        } else {
+            const errorMsg = result.data?.message || `Invalid ${type.toUpperCase()}`;
+            updateFieldStatus(type, 'error', errorMsg);
+            showNotification(`${type.toUpperCase()} verification failed.`, 'error');
+            
+            const user = storage.get('client_user') || storage.get('user');
+            if (user) {
+                user[`${type}_verified`] = 0;
+                storage.set('client_user', user);
+                updateVerificationBadge();
+            }
+        }
+    } catch (error) {
+        console.error(`Error verifying ${type}:`, error);
+        updateFieldStatus(type, 'error', 'Connection error');
+    }
+}
+
+function updateFieldStatus(type, status, message = '') {
+    const statusDiv = document.getElementById(`${type}Status`);
+    if (!statusDiv) return;
+
+    if (status === 'loading') {
+        statusDiv.innerHTML = '<span class="spinner" style="width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; display: inline-block; animation: spin 0.8s linear infinite;"></span>';
+    } else if (status === 'success') {
+        statusDiv.innerHTML = '<span style="color:#10b981; font-size: 1.1rem; font-weight: bold;" title="Verified">✓</span>';
+    } else if (status === 'error') {
+        statusDiv.innerHTML = `<span style="color:#ef4444; font-size: 1.1rem; font-weight: bold; cursor: help;" title="${message}">✕</span>`;
+    }
+}
+
+function updateVerificationBadge() {
+    const user = storage.get('client_user') || storage.get('user');
+    const badgeContainer = document.querySelector('.profile-badge-overlay');
+    if (!badgeContainer || !user) return;
+
+    const isFullyVerified = Number(user.nin_verified) === 1 && Number(user.bvn_verified) === 1;
+    
+    badgeContainer.innerHTML = isFullyVerified 
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#10b981" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border-radius: 50%;"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ef4444" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border-radius: 50%;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+}
+
+// Add CSS for spin animation
+if (!document.getElementById('modal-animations')) {
+    const style = document.createElement('style');
+    style.id = 'modal-animations';
+    style.textContent = `
+        @keyframes spin { to { transform: rotate(360deg); } }
+    `;
+    document.head.appendChild(style);
 }
 
 // Event Preview Modal
@@ -853,24 +989,7 @@ function closeUserPreviewModal() {
     if (modal) modal.remove();
 }
 
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
-
-}
+// Removed local showNotification to use global one from utils.js
 
 // Make functions globally available
 window.showProfileEditModal = showProfileEditModal;

@@ -26,7 +26,7 @@ if (!$event_id) {
 try {
     // Get event details with client information
     $stmt = $pdo->prepare("
-        SELECT e.*, c.business_name as client_name, c.profile_pic as client_profile_pic
+        SELECT e.*, c.business_name as client_name, c.profile_pic as client_profile_pic, c.is_verified as client_is_verified
         FROM events e
         LEFT JOIN clients c ON e.client_id = c.id
         WHERE e.id = ?

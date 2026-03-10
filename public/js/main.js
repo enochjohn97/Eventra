@@ -534,9 +534,11 @@ function createEventCard(event, index) {
   const price = !event.price || parseFloat(event.price) === 0 ? 'Free' : `₦${parseFloat(event.price).toLocaleString()}`;
   
   // Security: Sanitize and Path Priority
-  const relPath = event.image_path ? ltrim(event.image_path, '/') : null;
+  const relPath = event.image_path ? event.image_path.replace(/^\/+/, '') : null;
   const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=250&fit=crop';
-  const eventImage = encodeURI(relPath || event.absolute_image_url || fallback);
+  const basePath = typeof getBasePath === 'function' ? getBasePath() : '/';
+  const resolvedPath = relPath ? (relPath.startsWith('http') ? relPath : basePath + relPath) : null;
+  const eventImage = encodeURI(resolvedPath || event.absolute_image_url || fallback);
   
   let eventDate = 'Date TBA';
   if (event.event_date) {
@@ -590,7 +592,17 @@ function createEventCard(event, index) {
           </div>
           
           <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.8rem;">
-            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 500;">By ${organizer}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 500; display: flex; align-items: center; gap: 0.3rem;">
+              By ${organizer}
+              ${event.is_verified == 1 ? 
+                `<svg title="Verified Organizer" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border-radius: 50%;">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>` : 
+                `<svg title="Unverified" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>`
+              }
+            </div>
             <div class="event-card-actions">
               <!-- Heart Icon -->
               <button class="card-action-btn favorite-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id})" title="Favorite">
@@ -655,17 +667,38 @@ async function toggleFavorite(e, eventId) {
         });
         const result = await response.json();
         if (result.success) {
-            const cards = document.querySelectorAll(`.event-card[data-id="${eventId}"]`);
-            cards.forEach(cardItem => {
-                const favIcon = cardItem.querySelector('.favorite-btn');
-                if (favIcon) {
-                    if (result.is_favorite) {
-                        favIcon.classList.add('active');
-                    } else {
-                        favIcon.classList.remove('active');
+            // Update local eventsData reactively
+            if (typeof eventsData !== 'undefined') {
+                // Update in all categories
+                Object.keys(eventsData).forEach(category => {
+                    if (Array.isArray(eventsData[category])) {
+                        eventsData[category].forEach(ev => {
+                            if (ev.id == eventId) ev.is_favorite = result.is_favorite ? 1 : 0;
+                        });
                     }
+                });
+
+                // Re-sync favorites array
+                eventsData.favorites = eventsData.all.filter(e => parseInt(e.is_favorite) === 1);
+                
+                // Update UI components
+                const cards = document.querySelectorAll(`.event-card[data-id="${eventId}"]`);
+                cards.forEach(cardItem => {
+                    const favIcon = cardItem.querySelector('.favorite-btn');
+                    if (favIcon) {
+                        if (result.is_favorite) {
+                            favIcon.classList.add('active');
+                        } else {
+                            favIcon.classList.remove('active');
+                        }
+                    }
+                });
+
+                if (typeof updateCartUI === 'function') {
+                    updateCartUI();
                 }
-            });
+            }
+
             showNotification(result.message, 'success');
         }
     } catch (error) {
@@ -816,9 +849,11 @@ function showEventModal(eventId) {
   const modal = document.getElementById('eventDetailsModal');
   const modalImage = document.getElementById('modalEventImage');
   if (modalImage) {
-      const relPath = event.image_path ? ltrim(event.image_path, '/') : null;
+      const relPath = event.image_path ? event.image_path.replace(/^\/+/, '') : null;
       const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop';
-      modalImage.src = encodeURI(relPath || event.absolute_image_url || fallback);
+      const basePath = typeof getBasePath === 'function' ? getBasePath() : '/';
+      const resolvedPath = relPath ? (relPath.startsWith('http') ? relPath : basePath + relPath) : null;
+      modalImage.src = encodeURI(resolvedPath || event.absolute_image_url || fallback);
       modalImage.loading = 'lazy';
       modalImage.onerror = () => { modalImage.src = fallback; };
   }
@@ -948,4 +983,97 @@ async function initUserLogin() {
             }
         });
     }
+}
+// Cart/Favorites View Logic
+function toggleCartView() {
+    const modal = document.getElementById('cartSideModal');
+    if (modal) {
+        modal.classList.toggle('open');
+        if (modal.classList.contains('open')) {
+            updateCartUI();
+        }
+    }
+}
+
+function updateCartUI() {
+    const cartItemsGrid = document.getElementById('cartItemsGrid');
+    const cartEmptyState = document.getElementById('cartEmptyState');
+    const cartBadge = document.getElementById('cartBadge');
+    const cartModalFooter = document.getElementById('cartModalFooter');
+    
+    if (!cartItemsGrid || !cartEmptyState) return;
+    
+    // Favorites are our "cart items"
+    const favorites = eventsData.favorites || [];
+    
+    // Update Badge
+    if (cartBadge) {
+        if (favorites.length > 0) {
+            cartBadge.textContent = favorites.length;
+            cartBadge.style.display = 'flex';
+        } else {
+            cartBadge.style.display = 'none';
+        }
+    }
+    
+    if (favorites.length === 0) {
+        cartEmptyState.style.display = 'block';
+        cartItemsGrid.innerHTML = '';
+        if (cartModalFooter) cartModalFooter.style.display = 'none';
+    } else {
+        cartEmptyState.style.display = 'none';
+        if (cartModalFooter) cartModalFooter.style.display = 'block';
+        
+        cartItemsGrid.innerHTML = favorites.map(event => {
+            const price = !event.price || parseFloat(event.price) === 0 ? 'Free' : `₦${parseFloat(event.price).toLocaleString()}`;
+            const relPath = event.image_path ? event.image_path.replace(/^\/+/, '') : null;
+            const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&h=100&fit=crop';
+            const basePath = typeof getBasePath === 'function' ? getBasePath() : '/';
+            const resolvedPath = relPath ? (relPath.startsWith('http') ? relPath : basePath + relPath) : null;
+            const eventImage = encodeURI(resolvedPath || event.absolute_image_url || fallback);
+            
+            return `
+                <div class="cart-item">
+                    <img src="${eventImage}" alt="${escapeHTML(event.event_name)}" class="cart-item-img" onerror="this.src='${fallback}'">
+                    <div class="cart-item-info">
+                        <div class="cart-item-title">${escapeHTML(event.event_name)}</div>
+                        <div class="cart-item-price">${price}</div>
+                    </div>
+                    <button class="cart-item-remove" onclick="toggleFavorite(event, ${event.id})" title="Remove from favorites">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
+function proceedToPayment() {
+    const favorites = eventsData.favorites || [];
+    if (favorites.length === 0) {
+        showNotification('Your cart is empty', 'info');
+        return;
+    }
+    
+    // For now, redirect to checkout of the first item, or a bulk checkout if supported
+    // Since the system seems designed for single event checkout:
+    const firstEvent = favorites[0];
+    window.location.href = `checkout.html?id=${firstEvent.id}&quantity=1`;
+}
+
+// Make functions global
+window.toggleCartView = toggleCartView;
+window.proceedToPayment = proceedToPayment;
+
+// Make functions global
+window.toggleCartView = toggleCartView;
+window.proceedToPayment = proceedToPayment;
+
+// Initial cart UI update
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', updateCartUI);
+} else {
+    updateCartUI();
 }

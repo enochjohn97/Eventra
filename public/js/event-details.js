@@ -72,7 +72,14 @@ function renderEvent(event) {
     document.getElementById('eventAddress').textContent = `${event.address || 'N/A'}, ${event.state}`;
     document.getElementById('eventDate').textContent = formatDate(event.event_date);
     document.getElementById('eventTime').textContent = event.event_time;
-    document.getElementById('clientName').textContent = event.client_name || 'Eventra Organizer';
+    
+    // Client Verification Badge
+    const clientNameContainer = document.getElementById('clientName');
+    let clientHTML = event.client_name || 'Eventra Organizer';
+    if (Number(event.client_is_verified) === 1) {
+        clientHTML += ' <span style="display: inline-flex; align-items: center; justify-content: center; background: #10b981; color: white; width: 16px; height: 16px; border-radius: 50%; font-size: 10px; margin-left: 4px; border: 1.5px solid white; box-shadow: 0 0 0 1px #10b981;" title="Verified Event Planner">✓</span>';
+    }
+    clientNameContainer.innerHTML = clientHTML;
     
     const priceValue = parseFloat(event.price);
     const isFree = !event.price || priceValue === 0;

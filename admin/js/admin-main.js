@@ -509,7 +509,7 @@ window.initPreviews = function() {
                                         <img src="${profilePic}" alt="Cover">
                                         <div class="profile-preview-avatar-wrapper">
                                             <img src="${profilePic}" class="profile-preview-avatar" alt="Avatar">
-                                            <div class="profile-verified-badge">✓</div>
+                                            ${Number(client.is_verified) === 1 ? '<div class="profile-verified-badge" style="background:#10b981; border:none; color:white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); white-space:nowrap; z-index: 10;">✓ Verified</div>' : '<div class="profile-verified-badge" style="background:#ef4444; border:none; color:white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); white-space:nowrap; z-index: 10;">✕ Unverified</div>'}
                                         </div>
                                     </div>
                                     <div class="profile-preview-info">
@@ -520,6 +520,40 @@ window.initPreviews = function() {
                                         <div class="profile-preview-detail-item"><span class="profile-detail-label">Phone</span><span class="profile-detail-val">${client.phone || 'N/A'}</span></div>
                                         <div class="profile-preview-detail-item"><span class="profile-detail-label">State</span><span class="profile-detail-val">${client.state || 'N/A'}</span></div>
                                         <div class="profile-preview-detail-item"><span class="profile-detail-label">Company</span><span class="profile-detail-val">${client.company || 'N/A'}</span></div>
+                                        
+                                        <div class="profile-preview-detail-item" style="grid-column: span 2; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                                            <div style="font-weight: 700; color: #333; margin-bottom: 0.5rem; font-size: 0.9rem; text-transform: uppercase;">Verification Status</div>
+                                            
+                                            <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                                                <button onclick="approveClient(${client.id}, 1, this)" style="flex:1; background: #10b981; color: white; border: none; padding: 0.6rem; border-radius: 8px; font-weight: bold; cursor: pointer; opacity: ${Number(client.is_verified) === 1 ? '0.5' : '1'};" ${Number(client.is_verified) === 1 ? 'disabled' : ''}>Approve Client</button>
+                                                <button onclick="approveClient(${client.id}, 0, this)" style="flex:1; background: #ef4444; color: white; border: none; padding: 0.6rem; border-radius: 8px; font-weight: bold; cursor: pointer; opacity: ${Number(client.is_verified) === 0 ? '0.5' : '1'};" ${Number(client.is_verified) === 0 ? 'disabled' : ''}>Decline Client</button>
+                                            </div>
+
+                                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 0.75rem; border-radius: 8px;">
+                                                    <div>
+                                                        <span style="font-size: 0.8rem; font-weight: 600; color: #666; display: block;">NIN: ${client.nin || 'Not Provided'}</span>
+                                                        <span style="font-size: 0.85rem; font-weight: 700; color: ${Number(client.nin_verified) === 1 ? '#10b981' : '#f59e0b'};">
+                                                            ${Number(client.nin_verified) === 1 ? '✓ Verified' : 'Pending'}
+                                                        </span>
+                                                    </div>
+                                                    <button onclick="toggleVerification(${client.id}, 'nin', ${Number(client.nin_verified) === 1 ? 0 : 1})" style="background: ${Number(client.nin_verified) === 1 ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: bold; cursor: pointer;">
+                                                        ${Number(client.nin_verified) === 1 ? 'Revoke' : 'Verify'}
+                                                    </button>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 0.75rem; border-radius: 8px;">
+                                                    <div>
+                                                        <span style="font-size: 0.8rem; font-weight: 600; color: #666; display: block;">BVN: ${client.bvn || 'Not Provided'}</span>
+                                                        <span style="font-size: 0.85rem; font-weight: 700; color: ${Number(client.bvn_verified) === 1 ? '#10b981' : '#f59e0b'};">
+                                                            ${Number(client.bvn_verified) === 1 ? '✓ Verified' : 'Pending'}
+                                                        </span>
+                                                    </div>
+                                                    <button onclick="toggleVerification(${client.id}, 'bvn', ${Number(client.bvn_verified) === 1 ? 0 : 1})" style="background: ${Number(client.bvn_verified) === 1 ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: bold; cursor: pointer;">
+                                                        ${Number(client.bvn_verified) === 1 ? 'Revoke' : 'Verify'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div style="padding: 1.5rem; border-top: 1px solid #f1f5f9;">
@@ -698,6 +732,81 @@ window.copyToClipboard = function(text, successMsg) {
         console.error('Failed to copy:', err);
         Swal.fire('Error', 'Failed to copy to clipboard', 'error');
     });
+};
+
+window.approveClient = async function(clientId, status, btnElement) {
+    if (!confirm(`Are you sure you want to ${status ? 'approve' : 'decline'} this client?`)) return;
+    
+    btnElement.disabled = true;
+    const ogText = btnElement.innerText;
+    btnElement.innerText = 'Processing...';
+
+    try {
+        const res = await apiFetch('../../api/admin/approve-client.php', {
+            method: 'POST',
+            body: JSON.stringify({ client_id: clientId, status: status })
+        });
+        const data = await res.json();
+        if (data.success) {
+            Swal.fire('Success', `Client ${status ? 'approved' : 'declined'} successfully.`, 'success');
+            // Close preview to force refresh next time it's opened
+            setTimeout(() => {
+                const closeBtn = document.querySelector('.preview-close');
+                if (closeBtn) closeBtn.click();
+            }, 1000);
+        } else {
+            Swal.fire('Error', data.message || 'Verification failed', 'error');
+            btnElement.disabled = false;
+            btnElement.innerText = ogText;
+        }
+    } catch(e) {
+        Swal.fire('Error', 'Network error. Please try again.', 'error');
+        btnElement.disabled = false;
+        btnElement.innerText = ogText;
+    }
+}
+
+window.toggleVerification = async function(clientId, type, status) {
+    if (!clientId || !type) return;
+    
+    try {
+        const response = await apiFetch('../../api/admin/verify-client.php', {
+            method: 'POST',
+            body: JSON.stringify({ client_id: clientId, type: type, status: status })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            if (window.showToast) {
+                window.showToast(result.message, 'success');
+            } else {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: result.message,
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+            
+            // Re-open the modal to refresh the data
+            const row = document.querySelector(`tr[data-id="${clientId}"]`);
+            if (row) {
+                // remove dataset attached to force unbind is hard, let's just trigger the click on the backdrop close and then row click
+                const backdrop = document.querySelector('.preview-modal-backdrop');
+                if (backdrop) backdrop.classList.remove('active');
+                
+                // Fetch data again manually or just let row click handle it
+                setTimeout(() => row.click(), 300);
+            }
+        } else {
+            Swal.fire('Error', result.message || 'Failed to update verification status', 'error');
+        }
+    } catch (e) {
+        console.error('Error toggling verification', e);
+        Swal.fire('Error', 'An unexpected error occurred.', 'error');
+    }
 };
 
 function initSettings() {

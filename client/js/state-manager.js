@@ -170,14 +170,32 @@ class StateManager {
      */
     updateProfilePictures() {
         const profilePic = this.getProfilePic();
-        if (!profilePic) return;
+        const user = this.getUser();
+        if (!profilePic || !user) return;
         
+        const isVerified = parseInt(user.nin_verified) === 1 && parseInt(user.bvn_verified) === 1;
+
         // Update all user avatar elements
         document.querySelectorAll('.user-avatar, .user-avatar-display').forEach(avatar => {
             avatar.style.backgroundImage = `url('${profilePic}')`;
             avatar.style.backgroundSize = 'cover';
             avatar.style.backgroundPosition = 'center';
             avatar.title = 'User Profile';
+            avatar.style.position = 'relative';
+
+            // Sync Verification Badge
+            let badge = avatar.querySelector('.verification-badge-overlay');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'verification-badge-overlay';
+                avatar.appendChild(badge);
+            }
+            
+            badge.className = `verification-badge-overlay ${isVerified ? 'verified' : 'unverified'}`;
+            badge.innerHTML = isVerified ? 
+                '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : 
+                '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line><circle cx="12" cy="12" r="10"></circle></svg>';
+            badge.title = isVerified ? 'Verified Organizer' : 'Verification Pending';
         });
 
         // Update large profile avatars

@@ -34,6 +34,19 @@ async function loadClientProfile() {
                 avatar.style.backgroundSize = 'cover';
                 avatar.style.backgroundPosition = 'center';
                 avatar.textContent = ''; // clear initial if any
+
+                // Add Verification Badge if not already present
+                if (!avatar.querySelector('.verification-badge-overlay')) {
+                    const isVerified = parseInt(user.nin_verified) === 1 && parseInt(user.bvn_verified) === 1;
+                    const badge = document.createElement('div');
+                    badge.className = `verification-badge-overlay ${isVerified ? 'verified' : 'unverified'}`;
+                    badge.innerHTML = isVerified ? 
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : 
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line><circle cx="12" cy="12" r="10"></circle></svg>';
+                    badge.title = isVerified ? 'Verified Organizer' : 'Verification Pending';
+                    avatar.style.position = 'relative'; 
+                    avatar.appendChild(badge);
+                }
             });
             
             if (window.stateManager) {

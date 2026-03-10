@@ -451,6 +451,15 @@ FROM auth_accounts
 WHERE
     deleted_at IS NULL;
 
+ALTER TABLE clients
+ADD COLUMN nin VARCHAR(20) DEFAULT NULL AFTER gender,
+ADD COLUMN bvn VARCHAR(20) DEFAULT NULL AFTER nin,
+ADD COLUMN nin_verified TINYINT(1) DEFAULT 0 AFTER bvn,
+ADD COLUMN bvn_verified TINYINT(1) DEFAULT 0 AFTER nin_verified,
+ADD COLUMN account_name VARCHAR(150) DEFAULT NULL AFTER bvn_verified,
+ADD COLUMN account_number VARCHAR(50) DEFAULT NULL AFTER account_name,
+ADD COLUMN bank_name VARCHAR(100) DEFAULT NULL AFTER account_number;
+
 -- =============================================================================
 -- SEED DEFAULT SYSTEM ADMIN (LOCAL AUTH ONLY)
 -- =============================================================================
