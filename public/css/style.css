@@ -244,6 +244,7 @@ body {
   font-size: 1rem;
   outline: none;
   font-family: var(--font-primary);
+  color: #111827;
 }
 
 .search-button {
@@ -408,7 +409,7 @@ body {
   outline: none;
   font-family: var(--font-primary);
   background: transparent;
-  color: var(--text-dark);
+  color: #111827;
 }
 
 .search-input-modern::placeholder {
