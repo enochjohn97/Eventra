@@ -90,15 +90,16 @@ async function loadEvents() {
       // Favorites: events where is_favorite is 1
       eventsData.favorites = publishedEvents.filter(e => parseInt(e.is_favorite) === 1);
       
-      // Render events
-      renderEvents();
+      // Discovery logic
+      initDiscoveryFilters();
+      applyFilters();
     } else {
       console.error('Failed to load events:', result.message);
-      renderEvents();
+      renderDiscovery([]);
     }
   } catch (error) {
     console.error('Error loading events:', error);
-    renderEvents();
+    renderDiscovery([]);
   }
 }
 
@@ -547,6 +548,11 @@ function createEventCard(event, index) {
           eventDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
   }
+  const isPassed = new Date(event.event_date) < new Date();
+  const status = isPassed ? 'passed' : (event.sold_out ? 'sold-out' : 'upcoming');
+  const statusLabel = isPassed ? 'Passed' : (event.sold_out ? 'Sold Out' : 'Upcoming');
+  const statusColor = isPassed ? '#6b7280' : (event.sold_out ? '#ef4444' : '#10b981');
+  
   const eventTime = escapeHTML(event.event_time) || '12:00:00';
   const isFavorite = event.is_favorite ? 'active' : '';
   const eventName = escapeHTML(event.event_name);
@@ -557,82 +563,210 @@ function createEventCard(event, index) {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full_address || 'Nigeria')}`;
   const shareTitle = `Eventra: ${eventName}`;
   const shareText = `Check out ${eventName} organized by ${organizer} on Eventra!`;
+
   return `
-    <div class="event-card" data-id="${event.id}" data-tag="${escapeHTML(event.tag) || event.id}" onclick="typeof openEventModal === 'function' ? openEventModal(${event.id}) : window.location.href='event-details.html?id=${event.id}'">
-      <div class="event-image-container">
-        <img src="${eventImage}" alt="${eventName}" loading="lazy" class="event-image" onerror="this.src='${fallback}'">
-        <div class="event-badges">
-          <div class="event-category-badge">${category}</div>
-          ${event.priority ? `
-            <div class="event-status-badge">
-              <span class="status-dot"></span>
-              ${event.priority.toUpperCase()}
-            </div>
-          ` : ''}
-        </div>
+    <div class="event-card modern-card" data-id="${event.id}" data-status="${status}" onclick="showEventModal(${event.id})">
+      <div class="card-image-wrapper">
+        <img src="${eventImage}" alt="${eventName}" loading="lazy" class="card-main-img" onerror="this.src='${fallback}'">
+        <div class="card-badge-top" style="background: ${statusColor};">${statusLabel}</div>
+        <div class="card-category-tag">${category}</div>
       </div>
-      <div class="event-content">
-        <div class="event-date-time">${eventDate} • ${eventTime}</div>
-        <h3 class="event-title">${eventName}</h3>
-        
-        <div class="event-description">
-          ${desc.substring(0, 100)}${desc.length > 100 ? '...' : ''}
+      
+      <div class="card-body">
+        <div class="card-meta-top">
+          <span class="card-date">${new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          <span class="card-dot"></span>
+          <span class="card-time">${eventTime}</span>
         </div>
         
-        <div class="event-location" onclick="window.open('${mapUrl}', '_blank'); event.stopPropagation();" title="Open in Google Maps">
-          <span class="location-text" title="${escapeHTML(full_address)}">${escapeHTML(full_address)}</span>
-          <svg class="location-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5A5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        <h3 class="card-title">${eventName}</h3>
+        
+        <div class="card-location">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
           </svg>
+          <span class="location-truncate">${escapeHTML(full_address)}</span>
         </div>
-        
-        <div class="event-footer" style="align-items: flex-end;">
-          <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-            <div style="font-size: 1.2rem; font-weight: 800; color: ${price.toLowerCase() === 'free' ? '#FF5A5F' : '#111'};">${price}</div>
+
+        <div class="card-footer-modern">
+          <div class="card-organizer-info">
+            <span class="organizer-name-tiny">By ${organizer}</span>
+            ${event.is_verified == 1 ? '<span class="verified-check" title="Verified">✓</span>' : ''}
           </div>
           
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.8rem;">
-            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 500; display: flex; align-items: center; gap: 0.3rem;">
-              By ${organizer}
-              ${event.is_verified == 1 ? 
-                `<svg title="Verified Organizer" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="border-radius: 50%;">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>` : 
-                `<svg title="Unverified" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>`
-              }
-            </div>
-            <div class="event-card-actions">
-              <!-- Heart Icon -->
-              <button class="card-action-btn favorite-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id})" title="Favorite">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
-              <!-- Share Icon -->
-              <button class="card-action-btn share-btn" onclick="shareEvent(event, ${event.id}, '${escapeHTML(shareTitle)}', '${escapeHTML(shareText)}')" title="Share">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line>
-                </svg>
-              </button>
-            </div>
+          <div class="card-price-display">
+             ${price.toLowerCase() === 'free' ? '<span class="price-free">Free</span>' : `<span class="price-amount">${price}</span>`}
           </div>
+        </div>
+
+        <div class="card-hover-actions">
+          ${!isPassed ? `
+            <button class="action-btn-circle fav-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id}); event.stopPropagation();" title="Favorite">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </button>
+          ` : ''}
+          <button class="action-btn-circle share-btn" onclick="shareEvent(event, ${event.id}, '${escapeHTML(shareTitle)}', '${escapeHTML(shareText)}'); event.stopPropagation();" title="Share">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
   `;
 }
 
-// Render events
-function renderEvents() {
-  renderEventsGrid('all-events-grid', eventsData.all, 'No events available at the moment');
-  renderEventsGrid('hot-events-grid', eventsData.hot, 'No hot events at the moment');
-  renderEventsGrid('favorites-grid', eventsData.favorites, 'You haven\'t favorited any events yet');
-  renderEventsGrid('trending-events-grid', eventsData.trending, 'No trending events at the moment');
-  renderEventsGrid('featured-events-grid', eventsData.featured, 'No featured events at the moment');
-  renderEventsGrid('upcoming-events-grid', eventsData.upcoming, 'No upcoming events at the moment');
-  renderEventsGrid('nearby-events-grid', eventsData.nearby, 'No events found in your area at the moment');
+// Toggle Sidebar Sections
+function toggleSidebarSection(id) {
+  const content = document.getElementById(id);
+  const header = content.previousElementSibling;
+  const chevron = header.querySelector('.chevron-icon');
+  
+  const isExpanded = content.classList.toggle('expanded');
+  chevron.classList.toggle('rotated', isExpanded);
+}
+
+// Hardcoded Filter Lists
+const NIGERIA_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 
+  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa', 
+  'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 
+  'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT'
+];
+
+const EVENT_CATEGORIES = [
+  'Conference', 'Workshop', 'Seminar', 'Entertainment', 'Sports', 'Exhibition', 
+  'Networking', 'Festival', 'Social', 'Educational', 'Personal', 'Religious', 
+  'Cultural', 'Community', 'Concert', 'Other'
+];
+
+const PRIORITY_TAGS = ['nearby', 'hot', 'upcoming', 'trending', 'featured'];
+
+// Redesigned discovery rendering
+function renderDiscovery(events = eventsData.all) {
+  const container = document.getElementById('all-events-grid');
+  const countEl = document.getElementById('resultsCount');
+  
+  if (!container) return;
+  
+  if (events.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted); width: 100%;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-md);">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <h3>No matching events found</h3>
+        <p>Try adjusting your filters or search terms.</p>
+      </div>
+    `;
+    if (countEl) countEl.textContent = '0 events found';
+    return;
+  }
+
+  container.innerHTML = events.map(event => createEventCard(event)).join('');
+  if (countEl) countEl.textContent = `${events.length} events found`;
+}
+
+// Filter Initialization
+function initDiscoveryFilters() {
+  // Populate UI with hardcoded lists
+  const populate = (id, items) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = items.map(item => `
+      <label class="checkbox-item">
+        <input type="checkbox" value="${item.toLowerCase()}" data-group="${id}">
+        <span>${item}</span>
+      </label>
+    `).join('');
+  };
+
+  populate('stateFilters', NIGERIA_STATES);
+  populate('categoryFilters', EVENT_CATEGORIES);
+  populate('priorityFilters', PRIORITY_TAGS.map(p => p.charAt(0).toUpperCase() + p.slice(1)));
+
+  // Add event listeners
+  const inputs = document.querySelectorAll('.filter-sidebar input, .filter-sidebar select, #sortBy');
+  inputs.forEach(input => {
+    input.addEventListener('change', applyFilters);
+  });
+
+  document.getElementById('resetFilters')?.addEventListener('click', () => {
+    inputs.forEach(i => {
+      if (i.type === 'checkbox') i.checked = false;
+      else if (i.type === 'text') i.value = '';
+    });
+    applyFilters();
+  });
+}
+
+function toggleSidebarSection(sectionId) {
+    const content = document.getElementById(sectionId);
+    const header = content?.previousElementSibling;
+    const chevron = header?.querySelector('.chevron-icon');
+    
+    if (content) {
+        content.classList.toggle('expanded');
+        if (chevron) {
+            chevron.classList.toggle('rotated');
+        }
+    }
+}
+
+function applyFilters() {
+  const searchQuery = document.getElementById('globalSearch')?.value.toLowerCase() || '';
+  
+  const selectedStates = Array.from(document.querySelectorAll('#stateFiltersWrapper input:checked')).map(i => i.value);
+  const selectedCategories = Array.from(document.querySelectorAll('#categoryFiltersWrapper input:checked')).map(i => i.value);
+  const selectedPriorities = Array.from(document.querySelectorAll('#priorityFiltersWrapper input:checked')).map(i => i.value);
+  
+  const freeOnly = document.getElementById('freeOnlyToggle')?.checked;
+
+  const filtered = allEvents.filter(event => {
+    // 1. Global Search
+    const matchesSearch = !searchQuery || 
+      event.event_name.toLowerCase().includes(searchQuery) ||
+      (event.description && event.description.toLowerCase().includes(searchQuery));
+
+    // 2. State Filter (OR within group)
+    const matchesState = selectedStates.length === 0 || (event.state && selectedStates.includes(event.state.toLowerCase()));
+    
+    // 3. Category Filter (OR within group)
+    const matchesCategory = selectedCategories.length === 0 || 
+      selectedCategories.includes((event.category || event.event_type || 'General').toLowerCase());
+    
+    // 4. Priority Filter (OR within group - requirement: show events matching any selected priority)
+    const matchesPriority = selectedPriorities.length === 0 || (event.priority && selectedPriorities.includes(event.priority.toLowerCase()));
+    
+    // 5. Price Filter
+    const isFree = !event.price || parseFloat(event.price.toString().replace(/[^0.00-9.99]/g, '')) === 0;
+    const matchesPrice = !freeOnly || isFree;
+
+    // Logic: AND across different groups
+    return matchesSearch && matchesState && matchesCategory && matchesPriority && matchesPrice;
+  });
+
+  // Sorting logic
+  const sortBy = document.getElementById('sortBy')?.value;
+  
+  const getPrice = (p) => {
+    if (!p || p.toString().toLowerCase() === 'free') return 0;
+    return parseFloat(p.toString().replace(/[^0-9.]/g, '')) || 0;
+  };
+
+  if (sortBy === 'price-low') {
+    filtered.sort((a, b) => getPrice(a.price) - getPrice(b.price));
+  } else if (sortBy === 'price-high') {
+    filtered.sort((a, b) => getPrice(b.price) - getPrice(a.price));
+  } else if (sortBy === 'newest') {
+    filtered.sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+  } else if (sortBy === 'oldest') {
+    filtered.sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+  }
+
+  renderDiscovery(filtered);
 }
 
 // Share event function
@@ -887,13 +1021,27 @@ function showEventModal(eventId) {
     priorityBadge.style.display = 'none';
   }
 
-  // Buy ticket button
+  // Buy ticket button logic
   const buyTicketBtn = document.getElementById('bookNowBtn');
+  const isPassed = new Date(event.event_date) < new Date();
+  
   if (buyTicketBtn) {
-    buyTicketBtn.onclick = () => {
-      closeEventModal();
-      window.location.href = `checkout.html?id=${event.id}&quantity=1`;
-    };
+    if (isPassed) {
+      buyTicketBtn.textContent = 'Event Ended';
+      buyTicketBtn.disabled = true;
+      buyTicketBtn.style.background = '#6b7280';
+      buyTicketBtn.style.cursor = 'not-allowed';
+      buyTicketBtn.onclick = null;
+    } else {
+      buyTicketBtn.textContent = 'Get Tickets';
+      buyTicketBtn.disabled = false;
+      buyTicketBtn.style.background = ''; // Revert to default
+      buyTicketBtn.style.cursor = 'pointer';
+      buyTicketBtn.onclick = () => {
+        closeEventModal();
+        window.location.href = `checkout.html?id=${event.id}&quantity=1`;
+      };
+    }
   }
 
   // Show modal
@@ -985,23 +1133,33 @@ async function initUserLogin() {
     }
 }
 // Cart/Favorites View Logic
-function toggleCartView() {
-    const modal = document.getElementById('cartSideModal');
-    if (modal) {
-        modal.classList.toggle('open');
-        if (modal.classList.contains('open')) {
+function toggleCartView(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('cartDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+        if (dropdown.classList.contains('show')) {
             updateCartUI();
+            
+            // Close dropdown when clicking outside
+            const closeHandler = (event) => {
+                if (!dropdown.contains(event.target) && !document.getElementById('cartIconContainer').contains(event.target)) {
+                    dropdown.classList.remove('show');
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            document.addEventListener('click', closeHandler);
         }
     }
 }
 
 function updateCartUI() {
-    const cartItemsGrid = document.getElementById('cartItemsGrid');
-    const cartEmptyState = document.getElementById('cartEmptyState');
+    const cartItemsContainer = document.getElementById('cartItemsContainer');
     const cartBadge = document.getElementById('cartBadge');
-    const cartModalFooter = document.getElementById('cartModalFooter');
+    const cartFooter = document.getElementById('cartFooter');
+    const cartTotalCount = document.getElementById('cartTotalCount');
     
-    if (!cartItemsGrid || !cartEmptyState) return;
+    if (!cartItemsContainer) return;
     
     // Favorites are our "cart items"
     const favorites = eventsData.favorites || [];
@@ -1015,16 +1173,23 @@ function updateCartUI() {
             cartBadge.style.display = 'none';
         }
     }
+
+    if (cartTotalCount) {
+        cartTotalCount.textContent = favorites.length;
+    }
     
     if (favorites.length === 0) {
-        cartEmptyState.style.display = 'block';
-        cartItemsGrid.innerHTML = '';
-        if (cartModalFooter) cartModalFooter.style.display = 'none';
+        cartItemsContainer.innerHTML = `
+            <div class="empty-cart-message">
+                <p>Your favorites list is empty</p>
+            </div>
+        `;
+        if (cartFooter) cartFooter.style.display = 'none';
     } else {
-        cartEmptyState.style.display = 'none';
-        if (cartModalFooter) cartModalFooter.style.display = 'block';
+        if (cartFooter) cartFooter.style.display = 'block';
         
-        cartItemsGrid.innerHTML = favorites.map(event => {
+        // Clear and render items
+        cartItemsContainer.innerHTML = favorites.map(event => {
             const price = !event.price || parseFloat(event.price) === 0 ? 'Free' : `₦${parseFloat(event.price).toLocaleString()}`;
             const relPath = event.image_path ? event.image_path.replace(/^\/+/, '') : null;
             const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&h=100&fit=crop';
@@ -1032,44 +1197,95 @@ function updateCartUI() {
             const resolvedPath = relPath ? (relPath.startsWith('http') ? relPath : basePath + relPath) : null;
             const eventImage = encodeURI(resolvedPath || event.absolute_image_url || fallback);
             
+            let eventDate = 'Date TBA';
+            if (event.event_date) {
+                const d = new Date(event.event_date);
+                if (!isNaN(d.getTime())) {
+                    eventDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+            }
+
             return `
-                <div class="cart-item">
+                <div class="cart-item" onclick="event.stopPropagation(); showEventModal(${event.id})">
                     <img src="${eventImage}" alt="${escapeHTML(event.event_name)}" class="cart-item-img" onerror="this.src='${fallback}'">
                     <div class="cart-item-info">
                         <div class="cart-item-title">${escapeHTML(event.event_name)}</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem;">${eventDate} • ${escapeHTML(event.city || 'Online')}</div>
                         <div class="cart-item-price">${price}</div>
                     </div>
-                    <button class="cart-item-remove" onclick="toggleFavorite(event, ${event.id})" title="Remove from favorites">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                    </button>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="cart-item-remove" onclick="toggleFavorite(event, ${event.id})" title="Remove">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                        </button>
+                        <button class="checkout-mini-btn" onclick="proceedToPayment(event, ${event.id})" title="Checkout">
+                            <span class="btn-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12h14m-4-4 4 4-4 4"/>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
+
+        // Add Checkout All button to footer if not already present
+        if (cartFooter && !cartFooter.querySelector('.checkout-btn')) {
+            const checkoutAllBtn = document.createElement('button');
+            checkoutAllBtn.className = 'checkout-btn';
+            checkoutAllBtn.textContent = 'Checkout All';
+            checkoutAllBtn.onclick = (e) => {
+                e.stopPropagation();
+                proceedToPayment(null);
+            };
+            cartFooter.appendChild(checkoutAllBtn);
+        }
     }
 }
 
-function proceedToPayment() {
+function clearFavorites(e) {
+    if (e) e.stopPropagation();
+    Swal.fire({
+        title: 'Clear all favorites?',
+        text: "This will remove all events from your favorites list.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#FF5A5F',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Yes, clear all'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // In a real app, we'd call an API to clear all. 
+            // Here we'll toggle them one by one for simplicity if no bulk API exists.
+            const favorites = [...eventsData.favorites];
+            favorites.forEach(async (event) => {
+                await toggleFavorite(null, event.id);
+            });
+            showNotification('Favorites cleared', 'success');
+        }
+    });
+}
+
+function proceedToPayment(e, eventId) {
+    if (e) e.stopPropagation();
     const favorites = eventsData.favorites || [];
     if (favorites.length === 0) {
-        showNotification('Your cart is empty', 'info');
+        showNotification('Your favorites list is empty', 'info');
         return;
     }
     
-    // For now, redirect to checkout of the first item, or a bulk checkout if supported
-    // Since the system seems designed for single event checkout:
-    const firstEvent = favorites[0];
-    window.location.href = `checkout.html?id=${firstEvent.id}&quantity=1`;
+    // If eventId is provided, proceed with that specific event
+    // Otherwise, proceed with the first event in the list (legacy/simple behavior)
+    const targetId = eventId || favorites[0].id;
+    window.location.href = `payment.html?event_id=${targetId}&quantity=1`;
 }
 
 // Make functions global
 window.toggleCartView = toggleCartView;
 window.proceedToPayment = proceedToPayment;
-
-// Make functions global
-window.toggleCartView = toggleCartView;
-window.proceedToPayment = proceedToPayment;
+window.clearFavorites = clearFavorites;
 
 // Initial cart UI update
 if (document.readyState === 'loading') {

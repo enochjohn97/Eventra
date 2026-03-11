@@ -1,0 +1,291 @@
+/* Discovery Layout & Sidebar Styles */
+
+.discovery-layout.full-width {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    gap: 0; /* Remove gap in full-width mode for seamless look */
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-page);
+    min-height: calc(100vh - var(--header-height));
+}
+
+/* Sidebar Styling */
+.filter-sidebar {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-light);
+    padding: var(--space-md);
+    height: calc(100vh - var(--header-height));
+    position: sticky;
+    top: var(--header-height);
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.sidebar-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.sidebar-header button {
+    background: none;
+    border: none;
+    color: var(--nav-text-muted);
+    border-radius: 10px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sidebar-header button:hover {
+    color: var(--danger-color)
+}
+    
+
+/* Collapsible Sections */
+.filter-group-collapsible {
+    margin-bottom: 8px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: white;
+}
+
+.filter-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: #fcfdfe;
+    transition: var(--transition-base);
+}
+
+.filter-group-header:hover {
+    background: #f8fafc;
+}
+
+.filter-group-header label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chevron-icon {
+    transition: transform 0.3s ease;
+    color: var(--text-muted);
+}
+
+.collapsible-content {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    padding: 0 16px;
+}
+
+.collapsible-content.expanded {
+    max-height: 500px;
+    opacity: 1;
+    padding: 16px;
+    border-top: 1px solid var(--border-light);
+}
+
+.collapsible-content.expanded + .filter-group-header .chevron-icon,
+.filter-group-header .chevron-icon.rotated {
+    transform: rotate(180deg);
+}
+
+/* Horizontal Scroll Grid */
+.discovery-content {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-xl);
+    background: white;
+    width: 100%;
+}
+
+.events-grid-container {
+    width: 100%;
+    position: relative;
+    margin-top: var(--space-md);
+}
+
+.events-grid.horizontal-scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: var(--space-lg);
+    padding: var(--space-sm) 4px var(--space-lg) 4px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Scrollbar for Grid */
+.events-grid.horizontal-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.events-grid.horizontal-scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.events-grid.horizontal-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.events-grid.horizontal-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Card overrides for horizontal scroll */
+.events-grid.horizontal-scroll .modern-card {
+    flex: 0 0 320px; /* Fixed width for horizontal scroll */
+    min-width: 320px;
+}
+
+/* Sorting & Header - Modern Title Row */
+.results-header {
+    margin-bottom: var(--space-lg);
+    width: 100%;
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.results-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.results-info h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-main);
+}
+
+.results-info span {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.sorting-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sorting-controls label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.sort-select {
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    background-color: white;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 170px;
+}
+
+.sort-select:hover {
+    border-color: var(--primary-color);
+}
+
+.sort-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Individual Filter Items */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 250px; /* Limit height */
+    overflow-y: auto;  /* Enable scroll */
+    padding-right: 8px; /* Space for scrollbar */
+}
+
+/* Custom Scrollbar for Groups */
+.checkbox-group::-webkit-scrollbar {
+    width: 4px;
+}
+
+.checkbox-group::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.checkbox-group::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+.checkbox-group::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
+.checkbox-item {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.checkbox-item:hover {
+    color: var(--primary-color);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 1024px) {
+    .discovery-layout.full-width {
+        grid-template-columns: 1fr;
+    }
+    .filter-sidebar {
+        height: auto;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .events-grid.horizontal-scroll {
+        flex-wrap: wrap; /* Wrap on mobile for better usability */
+        overflow-x: visible;
+    }
+    .events-grid.horizontal-scroll .modern-card {
+        flex: 0 0 calc(50% - var(--space-lg));
+        min-width: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .events-grid.horizontal-scroll .modern-card {
+        flex: 0 0 100%;
+    }
+}
