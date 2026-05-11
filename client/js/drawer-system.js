@@ -93,13 +93,14 @@ function initializeDrawers() {
     // Add drawer styles
     addDrawerStyles();
 
-    // Attach click handlers to drawer triggers
-    document.querySelectorAll('[data-drawer]').forEach(trigger => {
-        trigger.addEventListener('click', (e) => {
+    // Attach delegated click handler to document for drawer triggers
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-drawer]');
+        if (trigger) {
             e.stopPropagation();
-            const drawerName = trigger.getAttribute('data-drawer');
-            openDrawer(drawerName);
-        });
+            const drawerId = trigger.getAttribute('data-drawer');
+            openDrawer(drawerId);
+        }
     });
 
     // Add ESC key listener to close drawers

@@ -137,13 +137,17 @@ async function startPolling(reference) {
                         ? `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(firstBarcode)}`
                         : `${window.location.origin}/api/payments/get-order.php?reference=${reference}`;
                     
-                    const qrGenUrl = `C:\\Users\\9ine\\Documents\\Eventra\\public\\assets\\qrcode.png`;
+                    const qrGenUrl = `../assets/qrcode.png`;
                     
-                    icon.innerHTML = `<div id="qrcode-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                                        <div id="qrcode"></div>
-                                        <img id="qrcodePlaceholder" src="${qrGenUrl}" alt="QR Code Placeholder" style="display: none; width: 160px; height: 160px; border-radius: 1rem; box-shadow: 0 8px 16px rgba(0,0,0,0.12); border: 4px solid white;">
+                    icon.innerHTML = `<div id="qrcode-container" 
+                                           oncontextmenu="return false;" 
+                                           onmousedown="return false;"
+                                           style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem; pointer-events: none; user-select: none;">
+                                        <div id="qrcode" style="position: relative;"></div>
+                                        <img id="qrcodePlaceholder" src="${qrGenUrl}" alt="QR Code" style="display: none; width: 160px; height: 160px; border-radius: 1rem; box-shadow: 0 8px 16px rgba(0,0,0,0.12); border: 4px solid white;">
+                                        <div style="position: absolute; width: 160px; height: 160px; background: transparent; z-index: 5;"></div>
                                       </div>
-                                      <div style="font-size:0.72rem;color:#6b7280;margin-top:-0.5rem;margin-bottom:0.5rem;">Scan to validate ticket</div>`;
+                                      <div style="font-size:0.72rem;color:#6b7280;margin-top:-0.5rem;margin-bottom:0.5rem;user-select: none;">Scan to validate ticket</div>`;
                     
                     try {
                         new QRCode(document.getElementById("qrcode"), {
@@ -177,9 +181,15 @@ async function startPolling(reference) {
                             const opt = {
                                 margin:       0,
                                 filename:     `eventra_ticket_${firstBarcode}.pdf`,
-                                image:        { type: 'jpeg', quality: 0.98 },
-                                html2canvas:  { scale: 2, useCORS: true },
-                                jsPDF:        { unit: 'px', format: [800, 350], orientation: 'landscape' }
+                                image:        { type: 'jpeg', quality: 1.0 },
+                                html2canvas:  { 
+                                    scale: 3, 
+                                    useCORS: true, 
+                                    letterRendering: true,
+                                    allowTaint: false,
+                                    logging: false
+                                },
+                                jsPDF:        { unit: 'px', format: [800, 350], orientation: 'landscape', hotfixes: ["bold-italic-fonts"] }
                             };
                             html2pdf().set(opt).from(element).save();
                         };
@@ -386,6 +396,14 @@ function prepareTicketForDownload(order, barcode) {
     if(elAttendee) elAttendee.textContent = attendee;
     if(elID) elID.textContent = barcode;
     if(elBarcodeText) elBarcodeText.textContent = barcode;
+    
+    // Apply interaction restrictions to ticket QR as well
+    const ticketQR = document.getElementById('ticketQR');
+    if (ticketQR) {
+        ticketQR.style.pointerEvents = 'none';
+        ticketQR.style.userSelect = 'none';
+        ticketQR.oncontextmenu = () => false;
+    }
     
     // Set banner image
     const banner = document.getElementById('ticketEventBanner');

@@ -522,8 +522,8 @@ class EmailHelper
         }
 
         if ($qrHtml === '') {
-            // Fallback to absolute local path as requested by user
-            $qrSrc = "C:\\Users\\9ine\\Documents\\Eventra\\public\\assets\\qrcode.png";
+            // Fallback to project-relative path
+            $qrSrc = self::normalisePath(__DIR__ . '/../../public/assets/qrcode.png');
             $qrHtml = "<img id=\"qrcode\" src=\"{$qrSrc}\" alt=\"QR Code\" width=\"80\" height=\"80\""
                 . " style=\"width:80px;height:80px;display:block;\">";
         }

@@ -88,8 +88,8 @@ try {
     // 6. Detailed Attendee List (With profile pics)
     $stmt = $pdo->prepare("
         SELECT u.name, a.email, u.profile_pic, e.event_name, p.paid_at, t.barcode, t.used, p.amount, t.created_at, p.paystack_response,
-               e.price as event_price,
-               CASE WHEN e.price = 0 OR e.price IS NULL THEN 'Free' ELSE CONCAT('₦', FORMAT(e.price, 0)) END as price_display
+               p.amount / p.quantity as individual_price,
+               CASE WHEN p.amount = 0 THEN 'Free' ELSE CONCAT('₦', FORMAT(p.amount / p.quantity, 0)) END as price_display
         FROM tickets t
         JOIN payments p ON t.payment_id = p.id
         JOIN users u ON p.user_id = u.id

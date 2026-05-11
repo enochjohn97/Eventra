@@ -188,8 +188,13 @@ class NotificationManager {
 
         notifications.forEach(notif => {
             const title = notif.title || (notif.type ? String(notif.type).replace(/_/g, ' ').toUpperCase() : 'NOTIFICATION');
-            const metadata = notif.metadata ? JSON.parse(notif.metadata) : null;
-            const isRead = String(notif.is_read) === '1';
+            let metadata = null;
+            try {
+                metadata = notif.metadata ? (typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata) : null;
+            } catch (e) {
+                console.warn("Failed to parse notification metadata:", e);
+            }
+            const isRead = String(notif.is_read) === '1' || notif.is_read === 1;
             
             const notifItem = document.createElement('div');
             notifItem.className = `notif-item ${isRead ? '' : 'unread'}`;
