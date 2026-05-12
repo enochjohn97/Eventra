@@ -350,7 +350,7 @@ class EmailHelper
         }
 
         // If qr_base64 is missing, attempt to use a provided local qr_path or staticPath
-        $qrPath = trim((string)($ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? $staticPath ?? ''));
+        $qrPath = trim((string) ($ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? $staticPath ?? ''));
         if ($qrPath !== '') {
             $localPath = $qrPath;
             // Only treat as local file when not a remote URL
@@ -364,6 +364,11 @@ class EmailHelper
             }
 
             if (file_exists($localPath) && filesize($localPath) > 0) {
+                // If email rendering (forceRemote) is requested, return an absolute URL so mail clients can fetch the image
+                if ($forceRemote) {
+                    return self::pathToUrl($localPath);
+                }
+
                 $mime = self::guessMime($localPath);
                 $data = @file_get_contents($localPath);
                 if ($data !== false && $data !== '') {
@@ -681,8 +686,12 @@ class EmailHelper
         // Event Image for Background
         $bgImage = $forPdf ? $imgBase64 : self::pathToUrl($imgRaw);
 
-        /* ── Download button removed from email view as requested ── */
+        /* ── Download button HTML (for email) ── */
         $dlButtonHtml = '';
+        if (!$forPdf && !empty($downloadUrl)) {
+            // downloadUrl may be raw HTML (buttons) or a single URL; accept raw HTML
+            $dlButtonHtml = $downloadUrl;
+        }
 
         /* ─────────────────────────────────────────────────────────────────
          *  TWO RENDERING PATHS
@@ -728,6 +737,7 @@ class EmailHelper
     <td valign="top" style="padding:0;margin:0;border:none;">
       
       <div style="background: rgba(0,0,0,0.7); width:100%; min-height:360px;">
+        <div style="text-align:right;padding:10px 0;">{$dlButtonHtml}</div>
         
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:30px;">
           <tr>
@@ -1082,22 +1092,12 @@ PDF;
         );
         $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for " . ($ticketData['event_name'] ?? 'Event') . " — Eventra") . "?=";
 
-        /* ── 3. Download URL ─────────────────────────────────────── */
+        /* ── 3. Download URL base ─────────────────────────────────── */
         $appUrl = rtrim((string) ($_ENV['APP_URL'] ?? ''), '/');
-        $downloadUrl = '';
-        if ($appUrl !== '' && $barcode !== '') {
-            $candidate = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($barcode);
-            if (filter_var($candidate, FILTER_VALIDATE_URL)) {
-                $downloadUrl = $candidate;
-            }
-        }
 
-        /* ── 4. Build email HTML (optimised for email clients) ───── */
-        $body = self::buildTicketHtml($ticketData, $downloadUrl, false);
-
-        /* ── 5. Validate / regenerate PDF attachment ─────────────── */
-        $attachments = [];
+        /* ── 4. Validate / regenerate PDF files (prepare download links) ── */
         $rawPaths = is_array($pdfPath) ? $pdfPath : [$pdfPath];
+        $downloadLinks = [];
 
         foreach ($rawPaths as $path) {
             $path = trim((string) $path);
@@ -1120,18 +1120,54 @@ PDF;
                 if ($regenerated && file_exists($path) && filesize($path) > 0) {
                     error_log("[EmailHelper] PDF regenerated successfully: {$path}");
                 } else {
-                    error_log("[EmailHelper] PDF regeneration failed, skipping attachment: {$path}");
+                    error_log("[EmailHelper] PDF regeneration failed, skipping: {$path}");
                     continue;
                 }
             }
 
-            if (!in_array($path, $attachments, true)) {
-                $attachments[] = $path;
+            // If file exists, attempt to extract barcode from filename (ticket_<barcode>.pdf)
+            if (file_exists($path) && filesize($path) > 0) {
+                $base = basename($path);
+                if (preg_match('/ticket_(.+)\.pdf$/i', $base, $m)) {
+                    $b = $m[1];
+                    if ($appUrl !== '') {
+                        $downloadLinks[] = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($b);
+                    }
+                } else {
+                    // Fallback to use barcode in $ticketData if present
+                    if (!empty($ticketData['barcode']) && $appUrl !== '') {
+                        $downloadLinks[] = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($ticketData['barcode']);
+                    }
+                }
             }
         }
 
-        /* ── 6. Send ─────────────────────────────────────────────── */
-        return self::sendEmail($to, $subject, $body, $attachments);
+        /* ── 5. Build email HTML (optimised for email clients) with download links ── */
+        $downloadHtml = '';
+        if (!empty($downloadLinks)) {
+            $parts = [];
+            foreach (array_unique($downloadLinks) as $dl) {
+                $safe = htmlspecialchars($dl, ENT_QUOTES, 'UTF-8');
+                $parts[] = "<a href=\"{$safe}\" target=\"_blank\" style=\"display:inline-block;padding:10px 16px;background:#2ecc71;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;margin-right:8px;\">Download PDF</a>";
+            }
+            $downloadHtml = '<div style="text-align:right;margin-bottom:16px;">' . implode('', $parts) . '</div>';
+        } else {
+            // fallback single downloadUrl using ticket barcode
+            $downloadHtml = '';
+            if ($appUrl !== '' && $barcode !== '') {
+                $candidate = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($barcode);
+                if (filter_var($candidate, FILTER_VALIDATE_URL)) {
+                    $downloadHtml = '<div style="text-align:right;margin-bottom:16px;">'
+                        . '<a href="' . htmlspecialchars($candidate, ENT_QUOTES, 'UTF-8') . '" target="_blank" style="display:inline-block;padding:10px 16px;background:#2ecc71;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">Download PDF</a>'
+                        . '</div>';
+                }
+            }
+        }
+
+        $body = self::buildTicketHtml($ticketData, $downloadHtml, false);
+
+        /* ── 6. Send (no file attachments; users download via link) ───────── */
+        return self::sendEmail($to, $subject, $body, []);
     }
 
     /**
