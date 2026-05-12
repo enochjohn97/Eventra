@@ -130,38 +130,42 @@ async function startPolling(reference) {
                     // SUCCESS!
                     const cleanedName = (order.event_name || '').replace(/\s*#\d+$/, '');
                     
+                    // Hide any remaining loading indicators
+                    if (paymentLoading) paymentLoading.style.display = 'none';
+                    if (paymentForm) paymentForm.style.display = 'none';
+                    if (statusContainer) statusContainer.style.display = 'block';
+
                     // Build QR using the SAME validation URL as the ticket PDF
-                    // so the on-screen QR is identical to the one printed on the ticket
                     const firstBarcode  = order.barcode || (order.tickets && order.tickets[0]?.barcode);
                     const qrPayload     = firstBarcode
                         ? `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(firstBarcode)}`
                         : `${window.location.origin}/api/payments/get-order.php?reference=${reference}`;
                     
-                    const qrGenUrl = `../assets/qrcode.png`;
                     
                     icon.innerHTML = `<div id="qrcode-container" 
                                            oncontextmenu="return false;" 
                                            onmousedown="return false;"
-                                           style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem; pointer-events: none; user-select: none;">
-                                        <div id="qrcode" style="position: relative;"></div>
-                                        <img id="qrcodePlaceholder" src="${qrGenUrl}" alt="QR Code" style="display: none; width: 160px; height: 160px; border-radius: 1rem; box-shadow: 0 8px 16px rgba(0,0,0,0.12); border: 4px solid white;">
+                                           style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1.5rem; pointer-events: none; user-select: none;">
+                                        <div id="qrcode" style="position: relative; background: #fff; padding: 10px; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;"></div>
                                         <div style="position: absolute; width: 160px; height: 160px; background: transparent; z-index: 5;"></div>
                                       </div>
-                                      <div style="font-size:0.72rem;color:#6b7280;margin-top:-0.5rem;margin-bottom:0.5rem;user-select: none;">Scan to validate ticket</div>`;
+                                      <div style="font-size:0.75rem; font-weight: 600; color:#64748b; margin-top:-0.5rem; margin-bottom:0.75rem; user-select: none;">Scan to validate ticket</div>`;
                     
                     try {
                         new QRCode(document.getElementById("qrcode"), {
-                            text: qrPayload,
+                            text: String(qrPayload),
                             width: 160,
                             height: 160,
                             colorDark : "#000000",
                             colorLight : "#ffffff",
-                            correctLevel : QRCode.CorrectLevel.H
+                            correctLevel : QRCode.CorrectLevel.L
                         });
                     } catch (e) {
-                        console.error("QRCode generation failed, falling back to static image:", e);
-                        document.getElementById('qrcode').style.display = 'none';
-                        document.getElementById('qrcodePlaceholder').style.display = 'block';
+                        console.error("QRCode generation failed:", e);
+                        const qrContainer = document.getElementById('qrcode');
+                        if (qrContainer) {
+                            qrContainer.innerHTML = '<div style="font-size: 0.7rem; color: #ef4444; padding: 20px;">QR Generation Error</div>';
+                        }
                     }
                     
                     title.textContent = order.is_free ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
@@ -175,23 +179,10 @@ async function startPolling(reference) {
                         // Populate hidden ticket card for PDF generation
                         prepareTicketForDownload(order, firstBarcode);
                         
-                        // Setup client-side download button
+                        // FIX: Use robust server-side PDF generation instead of client-side html2pdf.js
                         downloadBtn.onclick = () => {
-                            const element = document.getElementById('ticket-card');
-                            const opt = {
-                                margin:       0,
-                                filename:     `eventra_ticket_${firstBarcode}.pdf`,
-                                image:        { type: 'jpeg', quality: 1.0 },
-                                html2canvas:  { 
-                                    scale: 3, 
-                                    useCORS: true, 
-                                    letterRendering: true,
-                                    allowTaint: false,
-                                    logging: false
-                                },
-                                jsPDF:        { unit: 'px', format: [800, 350], orientation: 'landscape', hotfixes: ["bold-italic-fonts"] }
-                            };
-                            html2pdf().set(opt).from(element).save();
+                            const downloadUrl = `/api/tickets/download-ticket.php?code=${encodeURIComponent(firstBarcode)}`;
+                            window.location.href = downloadUrl;
                         };
                         actions.style.display = 'flex';
                     }
@@ -418,15 +409,16 @@ function prepareTicketForDownload(order, barcode) {
     const qrContainer = document.getElementById('ticketQR');
     if (qrContainer) {
         qrContainer.innerHTML = ''; // Clear previous
-        const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
+        const safeBarcode = (typeof barcode === 'string') ? barcode : String(barcode || '');
+        const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(safeBarcode)}`;
         try {
             new QRCode(qrContainer, {
-                text: qrPayload,
+                text: String(qrPayload),
                 width: 130,
                 height: 130,
                 colorDark : "#000000",
                 colorLight : "#ffffff",
-                correctLevel : QRCode.ECC_M
+                correctLevel : QRCode.CorrectLevel.L
             });
         } catch (e) {
             console.error("Ticket QR generation failed:", e);

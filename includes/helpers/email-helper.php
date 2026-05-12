@@ -401,18 +401,9 @@ class EmailHelper
             }
         }
 
-        // Strategy C: Static fallback PNG
-        $staticPath = self::normalisePath(trim($staticPath));
-        if ($staticPath === '') {
-            $staticPath = self::normalisePath(__DIR__ . '/../../public/assets/qrcode.png');
-        }
-        if (file_exists($staticPath)) {
-            $data = @file_get_contents($staticPath);
-            if ($data !== false && $data !== '') {
-                error_log('[EmailHelper] QR: using static PNG fallback from: ' . $staticPath);
-                return 'data:image/png;base64,' . base64_encode($data);
-            }
-        }
+        // Strategy C: Google Charts (last resort)
+        error_log('[EmailHelper] QR: Falling back to Google Charts API.');
+        return 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=H|2&chl=' . urlencode($payload);
 
         // Strategy D: Google Charts (last resort — does NOT work in PDFs)
         error_log('[EmailHelper] QR: falling back to Google Charts API. Install a QR library for PDF-safe codes.');
@@ -522,10 +513,8 @@ class EmailHelper
         }
 
         if ($qrHtml === '') {
-            // Fallback to project-relative path
-            $qrSrc = self::normalisePath(__DIR__ . '/../../public/assets/qrcode.png');
-            $qrHtml = "<img id=\"qrcode\" src=\"{$qrSrc}\" alt=\"QR Code\" width=\"80\" height=\"80\""
-                . " style=\"width:80px;height:80px;display:block;\">";
+            // No physical fallback needed, buildHtml will handle it
+            $qrHtml = '<div style="width:100px;height:100px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;line-height:100px;font-size:9px;color:#94a3b8;font-weight:700;">QR ERROR</div>';
         }
 
         if ($qrHtml === '') {
