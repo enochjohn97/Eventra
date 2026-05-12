@@ -242,9 +242,19 @@ function generateTicketPDF(array $ticketData): string
         $price_display = null;
     }
     
-    // Encode images to Base64 to fix "blank PDF" issues
+    // Encode images to Base64 to fix "blank PDF" issues (Dompdf is picky about remote images)
     $qr_base64 = base64_encode_image($qrCodePath);
-    $event_img_base64 = $event_image_path ? base64_encode_image($event_image_path) : '';
+    if (empty($qr_base64)) {
+        error_log("[TicketHelper] QR code image encoding failed for barcode " . $ticket_id);
+    }
+    
+    $event_img_base64 = '';
+    if ($event_image_path) {
+        $event_img_base64 = base64_encode_image($event_image_path);
+        if (empty($event_img_base64)) {
+            error_log("[TicketHelper] Event image encoding failed for path: " . $event_image_path);
+        }
+    }
     
     // Map data for EmailHelper::buildTicketHtml
     $richTicketData = [
@@ -274,12 +284,19 @@ function generateTicketPDF(array $ticketData): string
         return '';
     }
 
-    $dompdf->loadHtml($html, 'UTF-8');
-    // Set paper size to 800px x 350px (converted to points: 1px = 0.75pt at 72dpi default)
-    // 800 * 0.75 = 600pt, 350 * 0.75 = 262.5pt
-    $dompdf->setPaper([0, 0, 600, 262.5], 'landscape');
-    $dompdf->render();
+    try {
+        $dompdf->loadHtml($html, 'UTF-8');
+        // Set paper size to 800px x 350px (converted to points: 1px = 0.75pt at 72dpi default)
+        // 800 * 0.75 = 600pt, 350 * 0.75 = 262.5pt
+        $dompdf->setPaper([0, 0, 600, 262.5], 'landscape');
+        $dompdf->render();
 
+        $pdfOutput = $dompdf->output();
+    } catch (\Throwable $e) {
+        error_log("[TicketHelper] Dompdf render FAILED for ticket " . $ticket_id . ": " . $e->getMessage());
+        return '';
+    }
+    
     $fileName = 'ticket_' . $ticketData['barcode'] . '.pdf';
     $dir = __DIR__ . '/../../public/assets/event_assets/tickets/';
     if (!is_dir($dir)) {
@@ -287,8 +304,7 @@ function generateTicketPDF(array $ticketData): string
     }
 
     $filePath = $dir . $fileName;
-    $pdfOutput = $dompdf->output();
-    
+
     // Validation gate: Ensure the PDF is not empty or abnormally small
     if (empty($pdfOutput) || strlen($pdfOutput) < 1000) {
         error_log("[TicketHelper] Dompdf output is too small or empty for ticket " . $ticket_id . " (" . strlen($pdfOutput) . " bytes)");

@@ -11,7 +11,7 @@ use PHPMailer\PHPMailer\Exception as MailerException;
 $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = null;
 
 if (!file_exists(__DIR__ . '/../../vendor/autoload.php')) {
-    $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = 'Composer autoloader missing — run "composer install".';
+    $GLOBALS['EVENTRA_AUTOLOADER_ERROR'];
     error_log('[EmailHelper] ' . $GLOBALS['EVENTRA_AUTOLOADER_ERROR']);
 }
 
@@ -73,16 +73,18 @@ class EmailHelper
         string $to,
         string $subject,
         string $body,
-        array  $attachments = [],
-        string $altBody     = ''
+        array $attachments = [],
+        string $altBody = ''
     ): array {
         if (empty(SMTP_HOST) || empty(SMTP_USER) || empty(SMTP_PASS)) {
             error_log('[EmailHelper] SMTP credentials not configured.');
             return ['success' => false, 'message' => 'SMTP credentials not configured.'];
         }
 
-        if (!class_exists('PHPMailer\PHPMailer\PHPMailer') ||
-            !method_exists('PHPMailer\PHPMailer\PHPMailer', 'isSMTP')) {
+        if (
+            !class_exists('PHPMailer\PHPMailer\PHPMailer') ||
+            !method_exists('PHPMailer\PHPMailer\PHPMailer', 'isSMTP')
+        ) {
             $msg = 'Email service unavailable (PHPMailer load failed)';
             if (!empty($GLOBALS['EVENTRA_AUTOLOADER_ERROR'])) {
                 $msg .= ': ' . $GLOBALS['EVENTRA_AUTOLOADER_ERROR'];
@@ -95,13 +97,13 @@ class EmailHelper
 
         try {
             $mail->isSMTP();
-            $mail->Host       = SMTP_HOST;
-            $mail->SMTPAuth   = true;
-            $mail->Username   = SMTP_USER;
-            $mail->Password   = SMTP_PASS;
+            $mail->Host = SMTP_HOST;
+            $mail->SMTPAuth = true;
+            $mail->Username = SMTP_USER;
+            $mail->Password = SMTP_PASS;
             $mail->SMTPSecure = SMTP_SECURE;
-            $mail->Port       = (int) SMTP_PORT;
-            $mail->SMTPDebug  = 0;
+            $mail->Port = (int) SMTP_PORT;
+            $mail->SMTPDebug = 0;
             $mail->Debugoutput = null;
 
             $mail->setFrom(EMAIL_FROM, EMAIL_FROM_NAME);
@@ -126,7 +128,7 @@ class EmailHelper
 
             $mail->isHTML(true);
             $mail->Subject = $subject;
-            $mail->Body    = $body;
+            $mail->Body = $body;
             $mail->AltBody = $altBody ?: strip_tags($body);
 
             $sent = @$mail->send();
@@ -158,10 +160,10 @@ class EmailHelper
         string $pdfPath = ''
     ): array {
         $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for {$eventName} — Eventra") . "?=";
-        $safeUser   = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
-        $safeEvent  = htmlspecialchars($eventName, ENT_QUOTES, 'UTF-8');
-        $safeBarcode = htmlspecialchars($barcode,  ENT_QUOTES, 'UTF-8');
-        $year        = date('Y');
+        $safeUser = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
+        $safeEvent = htmlspecialchars($eventName, ENT_QUOTES, 'UTF-8');
+        $safeBarcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
+        $year = date('Y');
 
         $body = <<<HTML
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;">
@@ -213,7 +215,7 @@ class EmailHelper
 
         // Remote URL
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            $ctx  = stream_context_create(['http' => ['timeout' => 3]]);
+            $ctx = stream_context_create(['http' => ['timeout' => 3]]);
             $data = @file_get_contents($path, false, $ctx);
             if ($data !== false && $data !== '') {
                 if (strlen($data) > $maxBytes) {
@@ -281,8 +283,8 @@ class EmailHelper
             $origH = imagesy($src);
 
             $ratio = min($maxW / $origW, $maxH / $origH, 1.0);
-            $newW  = (int) round($origW * $ratio);
-            $newH  = (int) round($origH * $ratio);
+            $newW = (int) round($origW * $ratio);
+            $newH = (int) round($origH * $ratio);
 
             $dst = imagecreatetruecolor($newW, $newH);
             imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
@@ -305,10 +307,10 @@ class EmailHelper
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         return match ($ext) {
             'jpg', 'jpeg' => 'image/jpeg',
-            'gif'         => 'image/gif',
-            'webp'        => 'image/webp',
-            'svg'         => 'image/svg+xml',
-            default       => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            default => 'image/png',
         };
     }
 
@@ -324,7 +326,7 @@ class EmailHelper
 
         $path = self::normalisePath($path);
         $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
-        
+
         // Remove project root prefix if present
         if (strpos($path, $projectRoot) === 0) {
             $path = substr($path, strlen($projectRoot));
@@ -337,9 +339,9 @@ class EmailHelper
     /**
      * Generate QR code as a base64 data-URI.
      */
-    private static function generateQrDataUri(array $ticketData, string $staticPath = ''): string
+    private static function generateQrDataUri(array $ticketData, string $staticPath = '', bool $forceRemote = false): string
     {
-        if (!empty($ticketData['qr_base64'])) {
+        if (!$forceRemote && !empty($ticketData['qr_base64'])) {
             $b64 = $ticketData['qr_base64'];
             if (!str_starts_with($b64, 'data:')) {
                 $b64 = 'data:image/png;base64,' . $b64;
@@ -349,17 +351,22 @@ class EmailHelper
 
         $payload = self::buildQrPayload($ticketData);
 
+        // For emails, remote URL (Google Charts) is often more reliable than base64
+        if ($forceRemote) {
+            return 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=H|2&chl=' . urlencode($payload);
+        }
+
         // Strategy A: chillerlan/php-qrcode (v5+)
         if (class_exists('chillerlan\QRCode\QRCode')) {
             try {
                 $options = new \chillerlan\QRCode\QROptions([
-                    'outputType'       => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
-                    'eccLevel'         => \chillerlan\QRCode\Common\EccLevel::H,
-                    'imageBase64'      => true,
-                    'scale'            => 6,
+                    'outputType' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+                    'eccLevel' => \chillerlan\QRCode\Common\EccLevel::H,
+                    'imageBase64' => true,
+                    'scale' => 6,
                     'imageTransparent' => false,
                 ]);
-                $qr     = new \chillerlan\QRCode\QRCode($options);
+                $qr = new \chillerlan\QRCode\QRCode($options);
                 return $qr->render($payload);
             } catch (\Throwable $e) {
                 error_log('[EmailHelper] chillerlan/php-qrcode failed: ' . $e->getMessage());
@@ -369,7 +376,6 @@ class EmailHelper
         // Strategy B: endroid/qr-code (v4+)
         if (class_exists('Endroid\QrCode\QrCode')) {
             try {
-                // Best practice for v4+ is to use the Builder
                 if (class_exists('Endroid\QrCode\Builder\Builder')) {
                     $result = \Endroid\QrCode\Builder\Builder::create()
                         ->writer(new \Endroid\QrCode\Writer\PngWriter())
@@ -384,7 +390,6 @@ class EmailHelper
                     return $result->getDataUri();
                 }
 
-                // Fallback for versions without Builder (v4.0+)
                 $qrCode = \Endroid\QrCode\QrCode::create($payload)
                     ->setEncoding(new \Endroid\QrCode\Encoding\Encoding('UTF-8'))
                     ->setErrorCorrectionLevel(new \Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh())
@@ -401,30 +406,25 @@ class EmailHelper
             }
         }
 
-        // Strategy C: Google Charts (last resort)
-        error_log('[EmailHelper] QR: Falling back to Google Charts API.');
-        return 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=H|2&chl=' . urlencode($payload);
-
-        // Strategy D: Google Charts (last resort — does NOT work in PDFs)
-        error_log('[EmailHelper] QR: falling back to Google Charts API. Install a QR library for PDF-safe codes.');
+        // Final fallback: Google Charts
         return 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=H|2&chl=' . urlencode($payload);
     }
 
     private static function buildQrPayload(array $d): string
     {
         $parts = [
-            'TICKET:'   . ($d['barcode']     ?? $d['ticket_id'] ?? ''),
-            'EVENT:'    . ($d['event_name']  ?? ''),
-            'DATE:'     . ($d['event_date']  ?? ''),
-            'VENUE:'    . ($d['address']     ?? ''),
-            'HOLDER:'   . ($d['user_name']   ?? ''),
-            'USER_ID:'  . ($d['user_id']     ?? ''),
-            'EVENT_ID:' . ($d['event_id']    ?? ''),
-            'ORDER_ID:' . ($d['order_id']    ?? ''),
-            'TYPE:'     . ($d['ticket_type'] ?? ''),
-            'AMOUNT:'   . ($d['amount']      ?? '0'),
-            'STATUS:'   . (isset($d['amount']) && (float)$d['amount'] <= 0 ? 'FREE' : 'PAID'),
-            'VERIFY:'   . strtoupper(substr(sha1(($d['barcode'] ?? '') . ($d['user_id'] ?? '')), 0, 10)),
+            'TICKET:' . ($d['barcode'] ?? $d['ticket_id'] ?? ''),
+            'EVENT:' . ($d['event_name'] ?? ''),
+            'DATE:' . ($d['event_date'] ?? ''),
+            'VENUE:' . ($d['address'] ?? ''),
+            'HOLDER:' . ($d['user_name'] ?? ''),
+            'USER_ID:' . ($d['user_id'] ?? ''),
+            'EVENT_ID:' . ($d['event_id'] ?? ''),
+            'ORDER_ID:' . ($d['order_id'] ?? ''),
+            'TYPE:' . ($d['ticket_type'] ?? ''),
+            'AMOUNT:' . ($d['amount'] ?? '0'),
+            'STATUS:' . (isset($d['amount']) && (float) $d['amount'] <= 0 ? 'FREE' : 'PAID'),
+            'VERIFY:' . strtoupper(substr(sha1(($d['barcode'] ?? '') . ($d['user_id'] ?? '')), 0, 10)),
         ];
 
         return implode('|', array_filter($parts, static fn($p) => $p !== substr($p, 0, strpos($p, ':') + 1)));
@@ -454,22 +454,22 @@ class EmailHelper
      * $forPdf = false → richer layout for email (still keeps total size < ~90 KB)
      */
     public static function buildTicketHtml(
-        array  $ticketData,
+        array $ticketData,
         string $downloadUrl = '',
-        bool   $forPdf      = false
+        bool $forPdf = false
     ): string {
         /* ── Sanitise text fields ─────────────────────────── */
-        $barcode    = self::esc($ticketData['barcode']   ?? '');
-        $ticketId   = self::esc($ticketData['ticket_id'] ?? ($ticketData['barcode'] ?? ''));
+        $barcode = self::esc($ticketData['barcode'] ?? '');
+        $ticketId = self::esc($ticketData['ticket_id'] ?? ($ticketData['barcode'] ?? ''));
         $eventTitle = self::esc($ticketData['event_name'] ?? '');
-        $userName   = self::esc($ticketData['user_name'] ?? 'Attendee');
-        $venue      = self::esc($ticketData['address']   ?? '—');
-        $organizer  = self::esc($ticketData['organizer'] ?? '');
+        $userName = self::esc($ticketData['user_name'] ?? 'Attendee');
+        $venue = self::esc($ticketData['address'] ?? '—');
+        $organizer = self::esc($ticketData['organizer'] ?? '');
         $ticketType = self::esc($ticketData['ticket_type'] ?? '');
-        $year       = date('Y');
+        $year = date('Y');
 
         $tickDispRaw = $ticketData['ticket_type_display'] ?? ($ticketData['ticket_type'] ?? '');
-        if (isset($ticketData['amount']) && (float)$ticketData['amount'] <= 0) {
+        if (isset($ticketData['amount']) && (float) $ticketData['amount'] <= 0) {
             $tickDispRaw = 'Free';
         }
         $tickDisp = self::esc($tickDispRaw);
@@ -485,7 +485,7 @@ class EmailHelper
         /* ── Price ───────────────────────────────────────── */
         $amountDisplay = '';
         if (isset($ticketData['amount'])) {
-            $amountFloat   = (float) $ticketData['amount'];
+            $amountFloat = (float) $ticketData['amount'];
             $amountDisplay = $amountFloat > 0
                 ? '&#8358;' . number_format($amountFloat, 2)
                 : 'Free';
@@ -494,21 +494,23 @@ class EmailHelper
         /* ── QR code data-URI ────────────────────── */
         $qrHtml = '';
         $staticQrPath = self::normalisePath(
-            $ticketData['qr_path'] ?? (__DIR__ . '/../../public/assets/qrcode.png')
+            $ticketData['qr_path'] ?? ''
         );
-        $qrDataUri = self::generateQrDataUri($ticketData, $staticQrPath);
 
-        if ($forPdf && str_starts_with($qrDataUri, 'http')) {
-            $ctx  = stream_context_create(['http' => ['timeout' => 3]]);
-            $data = @file_get_contents($qrDataUri, false, $ctx);
-            $qrDataUri = ($data !== false && $data !== '')
+        // For emails (not forPdf), use remote URL for QR code as Gmail blocks base64
+        $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, !$forPdf);
+
+        if ($forPdf && str_starts_with($qrSrc, 'http')) {
+            $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+            $data = @file_get_contents($qrSrc, false, $ctx);
+            $qrSrc = ($data !== false && $data !== '')
                 ? 'data:image/png;base64,' . base64_encode($data)
                 : '';
         }
 
-        if ($qrDataUri !== '') {
-            $qrSrc  = htmlspecialchars($qrDataUri, ENT_QUOTES, 'UTF-8');
-            $qrHtml = "<img id=\"qrcode\" src=\"{$qrSrc}\" alt=\"QR Code\" width=\"80\" height=\"80\""
+        if ($qrSrc !== '') {
+            $safeQrSrc = htmlspecialchars($qrSrc, ENT_QUOTES, 'UTF-8');
+            $qrHtml = "<img id=\"qrcode\" src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"80\" height=\"80\""
                 . " style=\"width:80px;height:80px;display:block;\">";
         }
 
@@ -526,7 +528,7 @@ class EmailHelper
         /* ── Event banner image ──────────────────────────── */
         $imgRaw = trim((string) ($ticketData['event_image'] ?? ''));
         $imgBase64 = ''; // Initialize
-        
+
         if (!$forPdf) {
             // FOR EMAIL: Use absolute URL to keep HTML size small (<80KB)
             $safeImgSrc = htmlspecialchars(self::pathToUrl($imgRaw), ENT_QUOTES, 'UTF-8');
@@ -547,23 +549,33 @@ class EmailHelper
         }
 
         /* ── Ticket-type badge ───────────────────────────── */
-        $badgeBg = '#d4af37'; $badgeFg = '#111111';
+        $badgeBg = '#d4af37';
+        $badgeFg = '#111111';
         if ($tickDisp !== '') {
             $lower = strtolower($tickDispRaw);
-            if (str_contains($lower, 'vip'))     { $badgeBg = '#c0392b'; $badgeFg = '#ffffff'; }
-            if (str_contains($lower, 'premium')) { $badgeBg = '#9b59b6'; $badgeFg = '#ffffff'; }
-            if (str_contains($lower, 'free'))    { $badgeBg = '#27ae60'; $badgeFg = '#ffffff'; }
+            if (str_contains($lower, 'vip')) {
+                $badgeBg = '#c0392b';
+                $badgeFg = '#ffffff';
+            }
+            if (str_contains($lower, 'premium')) {
+                $badgeBg = '#9b59b6';
+                $badgeFg = '#ffffff';
+            }
+            if (str_contains($lower, 'free')) {
+                $badgeBg = '#27ae60';
+                $badgeFg = '#ffffff';
+            }
         }
         $badgeHtml = $tickDisp !== ''
             ? '<div style="margin-bottom:16px;">'
-              . "<span style=\"display:inline-block;background:{$badgeBg};color:{$badgeFg};"
-              . 'font-family:Arial,sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;'
-              . 'text-transform:uppercase;padding:4px 14px;border-radius:20px;">'
-              . $tickDisp . '</span></div>'
+            . "<span style=\"display:inline-block;background:{$badgeBg};color:{$badgeFg};"
+            . 'font-family:Arial,sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;'
+            . 'text-transform:uppercase;padding:4px 14px;border-radius:20px;">'
+            . $tickDisp . '</span></div>'
             : '<div style="margin-bottom:16px;"></div>';
 
         /* ── Detail columns ──────────────────────────────── */
-        $colA  = self::detailRow('Date', $eventDate);
+        $colA = self::detailRow('Date', $eventDate);
         $colA .= self::detailRow('Time', $eventTime);
 
         $locations = $ticketData['locations'] ?? null;
@@ -594,12 +606,12 @@ class EmailHelper
                 . 'font-weight:700;letter-spacing:2px;text-transform:uppercase;'
                 . 'color:#ffffff;margin-bottom:6px;">Venue &amp; Location</span>';
             foreach ($locations as $loc) {
-                $s = self::esc($loc['state']   ?? '');
+                $s = self::esc($loc['state'] ?? '');
                 $a = self::esc($loc['address'] ?? '');
-                
+
                 // Typography for Location blocks
                 $stateStyle = 'font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;line-height:1.3;display:block;';
-                $addrStyle  = 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
+                $addrStyle = 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
 
                 $colA .= '<div style="margin-bottom:12px;">'
                     . '<span style="' . $stateStyle . '">' . $s . '</span>'
@@ -608,7 +620,7 @@ class EmailHelper
             }
             $colA .= '</div>';
         } else {
-            $st = $ticketData['state']   ?? '';
+            $st = $ticketData['state'] ?? '';
             $ad = $ticketData['address'] ?? ($ticketData['location'] ?? '—');
             if (!empty($st) && strtolower($st) !== 'all states') {
                 $colA .= '<div style="margin-bottom:14px;word-break:break-word;">'
@@ -637,8 +649,8 @@ class EmailHelper
             $colB .= self::detailRow('Amount Paid', $amountDisplay, true);
         }
         // Quantity bought
-        $qtyBought = isset($ticketData['quantity']) ? (int)$ticketData['quantity'] : 1;
-        $colB .= self::detailRow('Qty', (string)$qtyBought);
+        $qtyBought = isset($ticketData['quantity']) ? (int) $ticketData['quantity'] : 1;
+        $colB .= self::detailRow('Qty', (string) $qtyBought);
         if ($organizer !== '') {
             $colB .= self::detailRow('Organizer', $organizer);
         }
@@ -657,9 +669,17 @@ class EmailHelper
 
         if ($forPdf) {
             return self::buildPdfHtml(
-                $eventTitle, $userName, $barcode, $ticketId,
-                $eventDate, $eventTime, $badgeHtml,
-                $colA, $colB, $imgBase64, $qrHtml,
+                $eventTitle,
+                $userName,
+                $barcode,
+                $ticketId,
+                $eventDate,
+                $eventTime,
+                $badgeHtml,
+                $colA,
+                $colB,
+                $imgBase64,
+                $qrHtml,
                 $year
             );
         }
@@ -928,9 +948,9 @@ PDF;
 
     public static function sendRegistrationOTP(string $to, string $name, string $otp): array
     {
-        $subject  = "=?UTF-8?B?" . base64_encode("Verify your Eventra account — OTP: {$otp}") . "?=";
+        $subject = "=?UTF-8?B?" . base64_encode("Verify your Eventra account — OTP: {$otp}") . "?=";
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
-        $year     = date('Y');
+        $year = date('Y');
 
         $body = <<<HTML
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:40px;
@@ -974,8 +994,8 @@ PDF;
      * on table backgrounds, no object-fit — so it renders correctly.
      */
     public static function sendTicketEmailFull(
-        string       $to,
-        array        $ticketData,
+        string $to,
+        array $ticketData,
         string|array $pdfPath = ''
     ): array {
         /* ── 1. DB sync ──────────────────────────────────────────── */
@@ -1034,12 +1054,13 @@ PDF;
         /* ── 2. Subject ──────────────────────────────────────────── */
         $eventName = htmlspecialchars(
             $ticketData['event_name'] ?? 'Your Event',
-            ENT_QUOTES, 'UTF-8'
+            ENT_QUOTES,
+            'UTF-8'
         );
         $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for " . ($ticketData['event_name'] ?? 'Event') . " — Eventra") . "?=";
 
         /* ── 3. Download URL ─────────────────────────────────────── */
-        $appUrl      = rtrim((string) ($_ENV['APP_URL'] ?? ''), '/');
+        $appUrl = rtrim((string) ($_ENV['APP_URL'] ?? ''), '/');
         $downloadUrl = '';
         if ($appUrl !== '' && $barcode !== '') {
             $candidate = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($barcode);
@@ -1053,7 +1074,7 @@ PDF;
 
         /* ── 5. Validate / regenerate PDF attachment ─────────────── */
         $attachments = [];
-        $rawPaths    = is_array($pdfPath) ? $pdfPath : [$pdfPath];
+        $rawPaths = is_array($pdfPath) ? $pdfPath : [$pdfPath];
 
         foreach ($rawPaths as $path) {
             $path = trim((string) $path);
@@ -1133,7 +1154,7 @@ PDF;
             try {
                 $mpdf = new \Mpdf\Mpdf([
                     'orientation' => 'L',
-                    'margin_top'  => 0,
+                    'margin_top' => 0,
                     'margin_bottom' => 0,
                     'margin_left' => 0,
                     'margin_right' => 0,

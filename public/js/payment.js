@@ -100,6 +100,10 @@ const maxPolls = 15; // ~45 seconds of polling
 const maxConsecutiveErrors = 3;
 
 async function startPolling(reference) {
+    const paymentLoading = document.getElementById('paymentLoading');
+    const paymentForm = document.getElementById('paymentForm');
+    const statusContainer = document.getElementById('paymentStatusContainer');
+    
     const icon = document.getElementById('statusIcon');
     const title = document.getElementById('statusTitle');
     const msg = document.getElementById('statusMessage');
@@ -180,11 +184,13 @@ async function startPolling(reference) {
                         prepareTicketForDownload(order, firstBarcode);
                         
                         // FIX: Use robust server-side PDF generation instead of client-side html2pdf.js
-                        downloadBtn.onclick = () => {
-                            const downloadUrl = `/api/tickets/download-ticket.php?code=${encodeURIComponent(firstBarcode)}`;
-                            window.location.href = downloadUrl;
-                        };
-                        actions.style.display = 'flex';
+                        if (downloadBtn) {
+                            downloadBtn.onclick = () => {
+                                const downloadUrl = `/api/tickets/download-ticket.php?code=${encodeURIComponent(firstBarcode)}`;
+                                window.location.href = downloadUrl;
+                            };
+                        }
+                        if (actions) actions.style.display = 'flex';
                     }
                     
                     sessionStorage.removeItem('pending_order');
