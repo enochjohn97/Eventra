@@ -377,6 +377,9 @@ function initUserIcon() {
     );
   };
 
+
+
+
   const setupUI = () => {
     const user = authController.user;
 

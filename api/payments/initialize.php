@@ -66,7 +66,7 @@ try {
     $user_email = $user['email'];
     $user_name = $user['name'];
 
-    // ── OTP Verification Check (Enforced for all events) ──────────────────────────
+    /* OTP Verification Check (Disabled as requested)
     $session_otp_ref = $_SESSION['otp_verified_ref'] ?? null;
     $otp_verified_at = $_SESSION['otp_verified_at']  ?? 0;
     
@@ -91,7 +91,7 @@ try {
         ]);
         exit;
     }
-    // ─────────────────────────────────────────────────────────────────────────
+    */
 
 
 
