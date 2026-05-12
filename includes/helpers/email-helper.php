@@ -349,6 +349,29 @@ class EmailHelper
             return $b64;
         }
 
+        // If qr_base64 is missing, attempt to use a provided local qr_path or staticPath
+        $qrPath = trim((string)($ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? $staticPath ?? ''));
+        if ($qrPath !== '') {
+            $localPath = $qrPath;
+            // Only treat as local file when not a remote URL
+            if (!str_starts_with($localPath, 'http://') && !str_starts_with($localPath, 'https://')) {
+                $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
+                // If path is not already absolute, prefix project root
+                if (!preg_match('/^[A-Za-z]:[\\\\\/]/', $localPath) && !str_starts_with($localPath, '/') && !str_starts_with($localPath, '\\')) {
+                    $localPath = $projectRoot . '/' . ltrim($localPath, '/\\');
+                }
+                $localPath = str_replace('/', DIRECTORY_SEPARATOR, $localPath);
+            }
+
+            if (file_exists($localPath) && filesize($localPath) > 0) {
+                $mime = self::guessMime($localPath);
+                $data = @file_get_contents($localPath);
+                if ($data !== false && $data !== '') {
+                    return 'data:' . $mime . ';base64,' . base64_encode($data);
+                }
+            }
+        }
+
         $payload = self::buildQrPayload($ticketData);
 
         // For emails, remote URL (Google Charts) is often more reliable than base64
@@ -494,7 +517,7 @@ class EmailHelper
         /* ── QR code data-URI ────────────────────── */
         $qrHtml = '';
         $staticQrPath = self::normalisePath(
-            $ticketData['qr_path'] ?? ''
+            $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? ''
         );
 
         // For emails (not forPdf), use remote URL for QR code as Gmail blocks base64
