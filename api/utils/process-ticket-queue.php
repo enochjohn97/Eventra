@@ -96,6 +96,22 @@ foreach ($files as $jobFile) {
                 // Only add to pdfPaths if BOTH QR and PDF succeeded
                 if ($pdfPath && file_exists($pdfPath)) {
                     $pdfPaths[] = $pdfPath;
+
+                    // Enrich per-ticket data so emails can render the QR correctly
+                    $sendData = $ticketDataForLoop;
+                    if (!empty($qrCodePath) && file_exists($qrCodePath)) {
+                        $sendData['qr_path'] = $qrCodePath;
+                        // Use ticket helper's base64 encoder
+                        if (function_exists('base64_encode_image')) {
+                            $b64 = base64_encode_image($qrCodePath);
+                            if ($b64 !== '') {
+                                $sendData['qr_base64'] = $b64;
+                            }
+                        }
+                    }
+
+                    // Track last enriched ticket data for final email render
+                    $lastEnrichedTicket = $sendData;
                 } else {
                     error_log("[process-ticket-queue.php] PDF missing after generation for barcode $barcode (ticket $ticket_id)");
                 }
@@ -113,9 +129,10 @@ foreach ($files as $jobFile) {
 
         // Send notifications after all PDFs are generated
         try {
-            // Send email with all ticket PDFs
+            // Send email with all ticket PDFs — prefer the last enriched ticket data if available
             if (!empty($pdfPaths)) {
-                EmailHelper::sendTicketEmailFull($user_email, $ticketData, $pdfPaths);
+                $emailTicketData = $lastEnrichedTicket ?? $ticketData;
+                EmailHelper::sendTicketEmailFull($user_email, $emailTicketData, $pdfPaths);
             }
 
             // Send SMS

@@ -366,7 +366,12 @@ class EmailHelper
             if (file_exists($localPath) && filesize($localPath) > 0) {
                 // If email rendering (forceRemote) is requested, return an absolute URL so mail clients can fetch the image
                 if ($forceRemote) {
-                    return self::pathToUrl($localPath);
+                    $url = self::pathToUrl($localPath);
+                    // Only return absolute HTTP(S) URLs — otherwise fallback to data-URI below
+                    if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                        return $url;
+                    }
+                    // Fall through to inline data URI when APP_URL is not configured
                 }
 
                 $mime = self::guessMime($localPath);
@@ -737,7 +742,6 @@ class EmailHelper
     <td valign="top" style="padding:0;margin:0;border:none;">
       
       <div style="background: rgba(0,0,0,0.7); width:100%; min-height:360px;">
-        <div style="text-align:right;padding:10px 0;">{$dlButtonHtml}</div>
         
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:30px;">
           <tr>
@@ -788,6 +792,8 @@ class EmailHelper
     </td>
   </tr>
   </table>
+
+  <div style="max-width:700px;margin:18px auto 0;text-align:right;">{$dlButtonHtml}</div>
 
 </td></tr>
 </table>

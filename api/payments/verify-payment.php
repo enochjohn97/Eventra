@@ -259,6 +259,17 @@ try {
                         $pdfPaths[] = $pdfPath;
                         $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
                             ->execute([str_replace(__DIR__ . '/../../', '', $qrCodePath), $ticket_id]);
+
+                        // Enrich ticket data for email delivery
+                        if (!empty($qrCodePath) && file_exists($qrCodePath)) {
+                            $ticketData['qr_path'] = $qrCodePath;
+                            if (function_exists('base64_encode_image')) {
+                                $b64 = base64_encode_image($qrCodePath);
+                                if ($b64 !== '') {
+                                    $ticketData['qr_base64'] = $b64;
+                                }
+                            }
+                        }
                     }
                 } catch (\Throwable $genError) {
                     error_log("[verify-payment.php] Ticket generation FAILED | barcode=$barcode error=" . $genError->getMessage());
@@ -270,21 +281,9 @@ try {
 
             // ── Send notifications (outside transaction) ──────────────────────────
             if (!empty($pdfPaths)) {
-                EmailHelper::sendTicketEmailFull($order['user_email'], [
-                    'barcode'    => $barcode,
-                    'event_name' => $order['event_name'],
-                    'event_date' => $order['event_date'],
-                    'event_time' => $order['event_time'],
-                    'location'   => $order['location'] ?? 'Nigeria',
-                    'address'    => $order['address'],
-                    'event_image'=> $order['image_path'],
-                    'user_name'  => $order['user_name'],
-                    'order_id'   => $order['id'],
-                    'amount'     => $order['amount'],
-                    'ticket_type'=> $ticket_type,
-                    'quantity'   => $quantity,
-                    'selected_locs' => $selected_locs
-                ], $pdfPaths);
+                // Use the enriched ticketData (from the last generated ticket) so QR is included
+                $emailTicket = $ticketData;
+                EmailHelper::sendTicketEmailFull($order['user_email'], $emailTicket, $pdfPaths);
             }
 
             // SMS

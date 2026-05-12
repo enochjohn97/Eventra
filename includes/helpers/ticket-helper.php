@@ -162,34 +162,53 @@ function generateTicketQRCode(array $ticketData): string
         // Build secure signed payload instead of raw barcode
         $secureToken = buildSecureQRPayload($ticketData);
 
-        $options = new QROptions([
-            'version' => QRCode::VERSION_AUTO,
-            'outputType' => QRCode::OUTPUT_IMAGE_PNG,
-            'eccLevel' => QRCode::ECC_M,
-            'scale' => 5, // Increase scale for better resolution
-            'imageTransparent' => false,
+        // Prefer chillerlan/php-qrcode v5+ options consistent with EmailHelper
+        $options = new \chillerlan\QRCode\QROptions([
+            'outputType'      => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+            'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::H,
+            'scale'           => 6,
+            'imageBase64'     => true,
+            'imageTransparent'=> false,
         ]);
 
-        $qrcode = new QRCode($options);
-        // Encode a public verification URL instead of raw barcode
-        $verificationUrl = APP_URL . '/api/tickets/validate-ticket.php?barcode=' . $ticketData['barcode'];
-        $qrData = $qrcode->render($verificationUrl);
+        $qrcode = new \chillerlan\QRCode\QRCode($options);
 
-        $fileName = 'qr_' . $ticketData['barcode'] . '.png';
+        // Encode a public verification URL (keeps compatibility with existing validation flow)
+        $verificationUrl = (defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/')) . '/api/tickets/validate-ticket.php?barcode=' . urlencode($ticketData['barcode'] ?? '');
 
+        // Render returns a data URI when imageBase64=true
+        $rendered = $qrcode->render($verificationUrl);
+
+        // Normalize output to raw PNG bytes
+        if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
+            $parts = explode(',', $rendered, 2);
+            $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
+        } else {
+            // May already be raw image bytes
+            $bin = is_string($rendered) ? $rendered : '';
+        }
+
+        if (empty($bin)) {
+            error_log('[TicketHelper] QR generator produced empty output for ' . ($ticketData['barcode'] ?? 'unknown'));
+            return '';
+        }
+
+        $fileName = 'qr_' . ($ticketData['barcode'] ?? uniqid('qr_')) . '.png';
         $root = realpath(__DIR__ . '/../../');
         $dir = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . 'qrcodes' . DIRECTORY_SEPARATOR;
-        
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         $filePath = $dir . $fileName;
-        file_put_contents($filePath, $qrData);
+        $written = @file_put_contents($filePath, $bin);
+        if ($written === false || $written === 0) {
+            error_log('[TicketHelper] Failed to write QR file to ' . $filePath);
+            return '';
+        }
 
         return $filePath;
     } catch (\Throwable $e) {
-        // QR generation failed — log and return empty string so ticket still issues
         error_log('[Eventra] QR code generation failed for ticket ' . ($ticketData['barcode'] ?? 'unknown') . ': ' . $e->getMessage());
         return '';
     }
