@@ -1,3 +1,4 @@
+// Eventra Checkout Logic v1.0.1 (Resolving ReferenceError)
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Initial State & URL Parsing
     const urlParams = new URLSearchParams(window.location.search);
