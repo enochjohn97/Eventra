@@ -37,16 +37,20 @@ try {
             t.id,
             t.custom_id,
             t.barcode,
+            t.qr_code_path AS qr_path,
+            t.qr_code_data AS qr_data,
             t.ticket_type,
             t.used,
             t.status,
             t.created_at AS purchase_date,
             e.event_name,
             e.image_path AS event_image,
-            e.category,
+            e.category AS event_category,
             e.price AS event_price,
+            e.ticket_type AS event_ticket_type,
             u.name AS buyer_name,
             p.amount,
+            p.ticket_type AS payment_ticket_type,
             p.status AS payment_status,
             p.reference,
             c.business_name AS organiser_name
@@ -61,13 +65,29 @@ try {
     $stmt->execute([$real_client_id]);
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Normalise price display: 0 or NULL → "Free" flag
+    // Normalise price display, ticket type and event category
     foreach ($tickets as &$ticket) {
-        $ticket['price_display'] = (empty($ticket['event_price']) || (float)$ticket['event_price'] === 0.0)
-            ? 'Free'
-            : number_format((float)$ticket['event_price'], 2);
-        $ticket['event_price'] = (float)$ticket['event_price'];
-        $ticket['amount']      = (float)$ticket['amount'];
+        // Ensure numeric values
+        $ticket['event_price'] = isset($ticket['event_price']) ? (float)$ticket['event_price'] : 0.0;
+        $ticket['amount'] = isset($ticket['amount']) ? (float)$ticket['amount'] : 0.0;
+
+        // Determine ticket_type precedence: ticket row -> payment -> event -> default
+        $ticket['ticket_type'] = !empty($ticket['ticket_type'])
+            ? $ticket['ticket_type']
+            : (!empty($ticket['payment_ticket_type']) ? $ticket['payment_ticket_type'] : (!empty($ticket['event_ticket_type']) ? $ticket['event_ticket_type'] : 'regular'));
+        $ticket['ticket_type'] = strtolower($ticket['ticket_type']);
+
+        // Normalize event category
+        $ticket['event_category'] = !empty($ticket['event_category']) ? $ticket['event_category'] : 'General';
+
+        // Price display: prefer paid amount when payment is paid, otherwise event price, else Free
+        if (!empty($ticket['payment_status']) && strtolower($ticket['payment_status']) === 'paid' && $ticket['amount'] > 0) {
+            $ticket['price_display'] = number_format($ticket['amount'], 2);
+        } elseif (!empty($ticket['event_price']) && $ticket['event_price'] > 0) {
+            $ticket['price_display'] = number_format($ticket['event_price'], 2);
+        } else {
+            $ticket['price_display'] = 'Free';
+        }
     }
     unset($ticket);
 

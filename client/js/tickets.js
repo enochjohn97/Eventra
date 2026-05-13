@@ -142,7 +142,7 @@ async function loadTickets(clientId) {
     } catch (error) {
         const tbody = document.getElementById('ticketsTableBody');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #ef4444;">Error loading tickets. Please try again later.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #ef4444;">Error loading tickets. Please try again later.</td></tr>';
         }
     }
 }
@@ -165,15 +165,17 @@ function updateTicketsTable(tickets) {
     if (!tbody) return;
 
     if (tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--client-text-muted);">No tickets sold yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: var(--client-text-muted);">No tickets sold yet.</td></tr>';
         return;
     }
 
     tbody.innerHTML = tickets.map(ticket => {
-        // Price: use server-computed display value ("Free" or formatted ₦)
-        const priceDisplay = ticket.price_display === 'Free'
-            ? '<span style="color:#722f37;font-weight:700;">Free</span>'
-            : `<strong>₦${parseFloat(ticket.event_price || ticket.amount || 0).toLocaleString()}</strong>`;
+        // Price: prefer payment amount for paid tickets, otherwise event price, otherwise Free
+        const priceDisplay = (ticket.payment_status && String(ticket.payment_status).toLowerCase() === 'paid' && ticket.amount > 0)
+            ? `<strong>₦${Number(ticket.amount).toLocaleString()}</strong>`
+            : ((ticket.event_price && Number(ticket.event_price) > 0)
+                ? `<strong>₦${Number(ticket.event_price).toLocaleString()}</strong>`
+                : '<span style="color:#722f37;font-weight:700;">Free</span>');
 
         const statusColor = (ticket.status === 'valid' || ticket.payment_status === 'paid')
             ? '#722f37' : (ticket.status === 'cancelled' ? '#ef4444' : '#f59e0b');
@@ -181,6 +183,9 @@ function updateTicketsTable(tickets) {
         const customId = ticket.custom_id
             ? `<div style="font-size:.7rem;color:#94a3b8;font-family:monospace;">${ticket.custom_id}</div>`
             : '';
+
+        const ticketTypeDisplay = ticket.ticket_type ? String(ticket.ticket_type).toLowerCase() : 'regular';
+        const eventCategoryDisplay = ticket.event_category || ticket.category || 'General';
 
         return `
         <tr style="cursor: pointer;" onclick='showTicketPreviewModal(${JSON.stringify(ticket).replace(/'/g, "&#39;")})'>
@@ -191,7 +196,8 @@ function updateTicketsTable(tickets) {
             <td>${(ticket.event_name || 'N/A').replace(/\s*#\d+$/, '')}</td>
             <td>${ticket.buyer_name || ticket.user_name || 'N/A'}</td>
             <td>${priceDisplay}</td>
-            <td><span style="font-size: 0.85rem; color: #64748b; text-transform: capitalize;">${ticket.ticket_type || ticket.category || 'General'}</span></td>
+            <td><span style="font-size: 0.85rem; color: #0f172a; font-weight:700; text-transform: capitalize;">${ticketTypeDisplay}</span></td>
+            <td><span style="font-size: 0.85rem; color: #64748b; text-transform: capitalize;">${eventCategoryDisplay}</span></td>
             <td>${ticket.purchase_date || ticket.created_at || 'N/A'}</td>
             <td><span class="status-badge ${ticket.status === 'valid' ? 'status-paid' : ticket.status === 'used' ? 'status-refunded' : 'status-failed'}">${(ticket.status || 'N/A').toUpperCase()}</span></td>
         </tr>`;

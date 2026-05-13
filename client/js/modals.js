@@ -1534,6 +1534,8 @@ function showTicketPreviewModal(ticket) {
                     <div style="font-size: .7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; letter-spacing: 0.05em;">Ticket Barcode</div>
                     <svg id="ticketBarcode" style="margin: 0 auto; min-width: 200px; height: 60px;"></svg>
                     <div style="font-family: 'Courier New', monospace; font-size: .85rem; color: #1e293b; margin-top: 0.75rem; font-weight: 700; background: white; padding: 4px 12px; border-radius: 4px; display: inline-block;">${escapeHTML(ticket.custom_id || ticket.barcode || 'TKT-' + (ticket.id || Math.random().toString(36).substr(2, 9).toUpperCase()))}</div>
+
+                    <div id="ticketQrContainer" style="margin-top:12px;"></div>
                 </div>
                 <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
                     <button onclick="closeTicketPreviewModal()" style="flex:1;padding:.75rem;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>
@@ -1567,6 +1569,38 @@ function showTicketPreviewModal(ticket) {
         } catch (e) {
         }
     }
+
+    // Render QR code image if available (server-generated) or fallback to client-side generation
+    (function renderTicketQr() {
+        const qrContainer = document.getElementById('ticketQrContainer');
+        if (!qrContainer) return;
+
+        try {
+            if (ticket.qr_data && String(ticket.qr_data).trim() !== '') {
+                // Already a data URI or base64 payload
+                qrContainer.innerHTML = `<img src="${ticket.qr_data}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
+                return;
+            }
+
+            if (ticket.qr_path && String(ticket.qr_path).trim() !== '') {
+                const src = (String(ticket.qr_path).startsWith('http') ? ticket.qr_path : getImageUrl(ticket.qr_path));
+                qrContainer.innerHTML = `<img src="${src}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
+                return;
+            }
+
+            // Fallback: try to generate client-side if QR lib is loaded and barcode/custom_id exists
+            const payload = ticket.barcode || ticket.custom_id || (ticket.id ? 'TKT-' + ticket.id : null);
+            if (payload && typeof QRCode !== 'undefined') {
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.justifyContent = 'center';
+                qrContainer.appendChild(div);
+                try { new QRCode(div, { text: payload, width: 120, height: 120 }); } catch (e) { console.error('QR generation failed', e); }
+            }
+        } catch (e) {
+            console.error('Failed to render ticket QR:', e);
+        }
+    })();
 }
 
 function closeTicketPreviewModal() {

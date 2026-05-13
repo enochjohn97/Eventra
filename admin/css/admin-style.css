@@ -11,7 +11,7 @@
     --admin-text-white: #ffffff;
     --admin-border: rgba(226, 232, 240, 0.6);
     --admin-header-height: 70px;
-    --admin-sidebar-width: 240px;
+    --admin-sidebar-width: 210px;
     --admin-sidebar-collapsed-width: 68px;
     --admin-radius: 12px;
     --admin-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.05);
@@ -232,7 +232,7 @@ body {
 }
 
 .header-search {
-    flex: 0 0 500px;
+    flex: 0 0 420px;
     position: relative;
 }
 
