@@ -105,6 +105,10 @@ try {
         } else {
             $ticket['price_display'] = 'Free';
         }
+
+        $ticket['ticket_type_display'] = ($ticket['amount'] <= 0 && $ticket['event_price'] <= 0)
+            ? 'Free'
+            : ucfirst($ticket['ticket_type']);
     }
     unset($ticket);
 

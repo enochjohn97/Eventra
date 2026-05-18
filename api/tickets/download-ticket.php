@@ -76,7 +76,7 @@ try {
 
     // Build file path
     $pdfPath = __DIR__ . '/../../public/assets/event_assets/tickets/ticket_' . $barcode . '.pdf';
-    $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < 1000;
+    $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < 8000;
 
     if ($needsRegeneration) {
         if (file_exists($pdfPath)) {
@@ -97,7 +97,7 @@ try {
             ]);
             generateTicketPDF($ticket);
 
-            if (!file_exists($pdfPath) || filesize($pdfPath) < 1000) {
+            if (!file_exists($pdfPath) || filesize($pdfPath) < 8000) {
                 throw new Exception('PDF generation failed to create a valid file.');
             }
         } catch (Exception $e) {

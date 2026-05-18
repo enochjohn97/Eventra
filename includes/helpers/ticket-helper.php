@@ -272,16 +272,27 @@ function generateTicketPDF(array $ticketData): string
     
     // Additional fields for improved design
     $event_image_path = $ticketData['event_image'] ?? $ticketData['image_path'] ?? null;
-    $ticket_type = strtoupper($ticketData['ticket_type'] ?? 'REGULAR');
-    $event_type_label = $ticket_type;
-    
-    // Price information
+
     $price_value = $ticketData['price'] ?? $ticketData['amount'] ?? null;
     $payment_status = $ticketData['payment_status'] ?? 'paid';
-    if ($payment_status === 'free' || $price_value === 0 || $price_value === '0' || strtolower((string)$price_value) === 'free') {
+    $amountFloat = is_numeric($price_value) ? (float) $price_value : 0.0;
+    $isFreeTicket = $payment_status === 'free'
+        || $amountFloat <= 0
+        || $price_value === '0'
+        || strtolower((string) $price_value) === 'free';
+
+    if ($isFreeTicket) {
+        $ticket_type = 'FREE';
+        $event_type_label = 'Free';
+    } else {
+        $ticket_type = strtoupper($ticketData['ticket_type'] ?? 'REGULAR');
+        $event_type_label = $ticket_type;
+    }
+
+    if ($isFreeTicket) {
         $price_display = 'FREE';
     } elseif ($price_value) {
-        $price_display = '₦' . number_format((float)$price_value, 2);
+        $price_display = '₦' . number_format((float) $price_value, 2);
     } else {
         $price_display = null;
     }
@@ -330,9 +341,7 @@ function generateTicketPDF(array $ticketData): string
 
     try {
         $dompdf->loadHtml($html, 'UTF-8');
-        // Set paper size to 800px x 350px (converted to points: 1px = 0.75pt at 72dpi default)
-        // 800 * 0.75 = 600pt, 350 * 0.75 = 262.5pt
-        $dompdf->setPaper([0, 0, 600, 262.5], 'landscape');
+        $dompdf->setPaper([0, 0, 800, 380]);
         $dompdf->render();
 
         $pdfOutput = $dompdf->output();

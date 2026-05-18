@@ -337,41 +337,76 @@ class EmailHelper
     }
 
     /**
-     * Generate QR code as a base64 data-URI.
+     * Build the public ticket validation URL (same payload as payment.html QRCode.js).
+     */
+    private static function buildVerificationUrl(array $ticketData): string
+    {
+        $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? ''));
+        $appUrl = rtrim(defined('APP_URL') ? APP_URL : ($_ENV['APP_URL'] ?? ''), '/');
+        return $appUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($barcode);
+    }
+
+    /**
+     * Wrap a QR image src in the same styled container used on payment.html.
+     */
+    private static function buildStyledQrHtml(string $qrSrc, int $size = 160): string
+    {
+        if ($qrSrc === '') {
+            return '';
+        }
+
+        $safeQrSrc = htmlspecialchars($qrSrc, ENT_QUOTES, 'UTF-8');
+
+        return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;user-select:none;">'
+            . '<div style="position:relative;background:#fff;padding:10px;border-radius:1rem;'
+            . 'box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;">'
+            . "<img id=\"qrcode\" src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
+            . " style=\"width:{$size}px;height:{$size}px;display:block;\">"
+            . '</div></div>';
+    }
+
+    /**
+     * Resolve a stored QR path to an absolute filesystem path.
+     */
+    private static function resolveLocalQrPath(string $qrPath): string
+    {
+        $localPath = trim($qrPath);
+        if ($localPath === '' || str_starts_with($localPath, 'http://') || str_starts_with($localPath, 'https://')) {
+            return $localPath;
+        }
+
+        $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
+        if (!preg_match('/^[A-Za-z]:[\\\\\/]/', $localPath) && !str_starts_with($localPath, '/') && !str_starts_with($localPath, '\\')) {
+            $localPath = $projectRoot . '/' . ltrim($localPath, '/\\');
+        }
+        return str_replace('/', DIRECTORY_SEPARATOR, $localPath);
+    }
+
+    /**
+     * Generate QR code as a base64 data-URI or absolute URL for email clients.
      */
     private static function generateQrDataUri(array $ticketData, string $staticPath = '', bool $forceRemote = false): string
     {
-        if (!$forceRemote && !empty($ticketData['qr_base64'])) {
+        if (!empty($ticketData['qr_base64'])) {
             $b64 = $ticketData['qr_base64'];
             if (!str_starts_with($b64, 'data:')) {
                 $b64 = 'data:image/png;base64,' . $b64;
             }
-            return $b64;
+            if (!$forceRemote) {
+                return $b64;
+            }
         }
 
-        // If qr_base64 is missing, attempt to use a provided local qr_path or staticPath
         $qrPath = trim((string) ($ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? $staticPath ?? ''));
         if ($qrPath !== '') {
-            $localPath = $qrPath;
-            // Only treat as local file when not a remote URL
-            if (!str_starts_with($localPath, 'http://') && !str_starts_with($localPath, 'https://')) {
-                $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
-                // If path is not already absolute, prefix project root
-                if (!preg_match('/^[A-Za-z]:[\\\\\/]/', $localPath) && !str_starts_with($localPath, '/') && !str_starts_with($localPath, '\\')) {
-                    $localPath = $projectRoot . '/' . ltrim($localPath, '/\\');
-                }
-                $localPath = str_replace('/', DIRECTORY_SEPARATOR, $localPath);
-            }
+            $localPath = self::resolveLocalQrPath($qrPath);
 
             if (file_exists($localPath) && filesize($localPath) > 0) {
-                // If email rendering (forceRemote) is requested, return an absolute URL so mail clients can fetch the image
                 if ($forceRemote) {
                     $url = self::pathToUrl($localPath);
-                    // Only return absolute HTTP(S) URLs — otherwise fallback to data-URI below
                     if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                         return $url;
                     }
-                    // Fall through to inline data URI when APP_URL is not configured
                 }
 
                 $mime = self::guessMime($localPath);
@@ -382,14 +417,8 @@ class EmailHelper
             }
         }
 
-        $payload = self::buildQrPayload($ticketData);
+        $verificationUrl = self::buildVerificationUrl($ticketData);
 
-        // For emails, remote URL (Google Charts) is often more reliable than base64
-        if ($forceRemote) {
-            return 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=H|2&chl=' . urlencode($payload);
-        }
-
-        // Strategy A: chillerlan/php-qrcode (v5+)
         if (class_exists('chillerlan\QRCode\QRCode')) {
             try {
                 $options = new \chillerlan\QRCode\QROptions([
@@ -400,47 +429,38 @@ class EmailHelper
                     'imageTransparent' => false,
                 ]);
                 $qr = new \chillerlan\QRCode\QRCode($options);
-                return $qr->render($payload);
+                $rendered = $qr->render($verificationUrl);
+
+                if ($forceRemote && is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
+                    $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? ''));
+                    if ($barcode !== '') {
+                        $parts = explode(',', $rendered, 2);
+                        $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
+                        if ($bin !== false && $bin !== '') {
+                            $root = realpath(__DIR__ . '/../../');
+                            $dir = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets'
+                                . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . 'qrcodes' . DIRECTORY_SEPARATOR;
+                            if (!is_dir($dir)) {
+                                mkdir($dir, 0755, true);
+                            }
+                            $filePath = $dir . 'qr_' . $barcode . '.png';
+                            if (@file_put_contents($filePath, $bin) !== false) {
+                                $url = self::pathToUrl($filePath);
+                                if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                                    return $url;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return is_string($rendered) ? $rendered : '';
             } catch (\Throwable $e) {
                 error_log('[EmailHelper] chillerlan/php-qrcode failed: ' . $e->getMessage());
             }
         }
 
-        // Strategy B: endroid/qr-code (v4+)
-        if (class_exists('Endroid\QrCode\QrCode')) {
-            try {
-                if (class_exists('Endroid\QrCode\Builder\Builder')) {
-                    $result = \Endroid\QrCode\Builder\Builder::create()
-                        ->writer(new \Endroid\QrCode\Writer\PngWriter())
-                        ->data($payload)
-                        ->encoding(new \Endroid\QrCode\Encoding\Encoding('UTF-8'))
-                        ->errorCorrectionLevel(new \Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh())
-                        ->size(300)
-                        ->margin(10)
-                        ->foregroundColor(new \Endroid\QrCode\Color\Color(0, 0, 0))
-                        ->backgroundColor(new \Endroid\QrCode\Color\Color(255, 255, 255))
-                        ->build();
-                    return $result->getDataUri();
-                }
-
-                $qrCode = \Endroid\QrCode\QrCode::create($payload)
-                    ->setEncoding(new \Endroid\QrCode\Encoding\Encoding('UTF-8'))
-                    ->setErrorCorrectionLevel(new \Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh())
-                    ->setSize(300)
-                    ->setMargin(10)
-                    ->setForegroundColor(new \Endroid\QrCode\Color\Color(0, 0, 0))
-                    ->setBackgroundColor(new \Endroid\QrCode\Color\Color(255, 255, 255));
-
-                $writer = new \Endroid\QrCode\Writer\PngWriter();
-                $result = $writer->write($qrCode);
-                return $result->getDataUri();
-            } catch (\Throwable $e) {
-                error_log('[EmailHelper] endroid/qr-code failed: ' . $e->getMessage());
-            }
-        }
-
-        // Final fallback: Google Charts
-        return 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=H|2&chl=' . urlencode($payload);
+        return '';
     }
 
     private static function buildQrPayload(array $d): string
@@ -541,21 +561,13 @@ class EmailHelper
                 : '';
         }
 
+        $qrSize = $forPdf ? 120 : 160;
         if ($qrSrc !== '') {
-            $safeQrSrc = htmlspecialchars($qrSrc, ENT_QUOTES, 'UTF-8');
-            $qrHtml = "<img id=\"qrcode\" src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"80\" height=\"80\""
-                . " style=\"width:80px;height:80px;display:block;\">";
+            $qrHtml = self::buildStyledQrHtml($qrSrc, $qrSize);
         }
 
         if ($qrHtml === '') {
-            // No physical fallback needed, buildHtml will handle it
-            $qrHtml = '<div style="width:100px;height:100px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;line-height:100px;font-size:9px;color:#94a3b8;font-weight:700;">QR ERROR</div>';
-        }
-
-        if ($qrHtml === '') {
-            $qrHtml = '<div style="width:150px;height:150px;background:#333;'
-                . 'text-align:center;line-height:150px;font-size:10px;color:#888;">'
-                . 'NO QR</div>';
+            $qrHtml = '<div style="width:160px;height:160px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:1rem;text-align:center;line-height:160px;font-size:9px;color:#94a3b8;font-weight:700;">QR ERROR</div>';
         }
 
         /* ── Event banner image ──────────────────────────── */
@@ -764,10 +776,8 @@ class EmailHelper
               </table>
             </td>
             <td valign="bottom" align="right" style="padding-top:20px;">
-              <table cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:10px;padding:8px;margin-bottom:8px;">
-                <tr><td align="center" valign="middle">{$qrHtml}</td></tr>
-              </table>
-              <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;">{$barcode}</div>
+              {$qrHtml}
+              <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;margin-top:8px;">{$barcode}</div>
             </td>
           </tr>
           <tr>
@@ -823,7 +833,9 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        $bgStyle = $bgImage ? "background-image: url('{$bgImage}');" : "background-color: #111;";
+        $bgAttr = $bgImage
+            ? 'background-image:url(' . htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8') . ');'
+            : 'background-color:#111111;';
 
         return <<<PDF
 <!DOCTYPE html>
@@ -833,151 +845,120 @@ HTML;
 <title>Ticket — {$eventTitle}</title>
 <style>
   @page { size: 800px 380px; margin: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    width: 800px; height: 380px;
-    font-family: 'Helvetica', 'Arial', sans-serif;
-    background: #000;
-    color: #fff;
-    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    font-family: Helvetica, Arial, sans-serif;
+    color: #ffffff;
   }
-  .ticket {
-    width: 800px; height: 380px;
-    position: relative;
-    overflow: hidden;
-    {$bgStyle}
+  table { border-collapse: collapse; }
+  .ticket-wrap {
+    width: 800px;
+    height: 380px;
+    {$bgAttr}
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
   }
-  .overlay {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
+  .overlay-cell {
     background: rgba(0,0,0,0.7);
-  }
-  .content {
-    position: relative;
-    z-index: 10;
-    padding: 35px 45px;
-    height: 100%;
-  }
-  .header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
+    padding: 30px 40px;
+    vertical-align: top;
   }
   .event-title {
-    font-size: 38px;
+    font-size: 32px;
     font-weight: 900;
     text-transform: uppercase;
     line-height: 1.1;
-    margin-bottom: 10px;
-    color: #fff;
-    max-width: 550px;
+    color: #ffffff;
   }
   .brand {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 900;
-    color: #fff;
-    letter-spacing: -1px;
-  }
-  .details-container {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-  }
-  .details-columns {
-    width: 550px;
+    color: #ffffff;
+    text-align: right;
   }
   .label {
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 2px;
     color: rgba(255,255,255,0.7);
-    margin-bottom: 4px;
     font-weight: 700;
-  }
-  .value {
-    font-size: 15px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 12px;
-  }
-  .qr-section {
-    text-align: right;
-  }
-  .qr-code {
-    background: #fff;
-    padding: 8px;
-    border-radius: 8px;
-    display: inline-block;
-    margin-bottom: 8px;
-  }
-  .qr-code img {
-    width: 80px;
-    height: 80px;
-  }
-  .footer-row {
-    position: absolute;
-    bottom: 35px;
-    left: 45px;
-    right: 45px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255,255,255,0.2);
   }
   .holder-name {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
-    color: #fff;
+    color: #ffffff;
+  }
+  .ticket-id {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .barcode-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 10px;
+    color: #ffffff;
+    text-align: center;
+    margin-top: 6px;
   }
 </style>
 </head>
 <body>
-<div class="ticket">
-  <div class="overlay"></div>
-  
-  <div class="content">
-    <div class="header-row">
-      <div>
-        <div style="margin-bottom: 15px;">{$badgeHtml}</div>
+<table class="ticket-wrap" width="800" height="380" cellpadding="0" cellspacing="0">
+<tr>
+<td class="overlay-cell">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="top" width="70%">
+        {$badgeHtml}
         <div class="event-title">{$eventTitle}</div>
-      </div>
-      <div class="brand">EVENTRA</div>
-    </div>
-    
-    <div class="details-container">
-      <div class="details-columns">
-        <table width="100%">
+      </td>
+      <td valign="top" width="30%" class="brand">EVENTRA</td>
+    </tr>
+    <tr><td colspan="2" height="16"></td></tr>
+    <tr>
+      <td valign="top" colspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td width="50%" valign="top">{$colA}</td>
-            <td width="50%" valign="top">{$colB}</td>
+            <td width="55%" valign="top">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="50%" valign="top">{$colA}</td>
+                  <td width="50%" valign="top">{$colB}</td>
+                </tr>
+              </table>
+            </td>
+            <td width="45%" valign="top" align="right">
+              {$qrHtml}
+              <div class="barcode-text">{$barcode}</div>
+            </td>
           </tr>
         </table>
-      </div>
-      <div class="qr-section">
-        <div class="qr-code">
-          {$qrHtml}
-        </div>
-        <div style="font-family:monospace; font-size:10px;">{$barcode}</div>
-      </div>
-    </div>
-
-    <div class="footer-row">
-      <div>
-        <div class="label">Ticket Holder</div>
-        <div class="holder-name">{$userName}</div>
-      </div>
-      <div style="text-align: right;">
-        <div class="label">Ticket ID</div>
-        <div class="value" style="font-family:monospace;">{$ticketId}</div>
-      </div>
-    </div>
-  </div>
-</div>
+      </td>
+    </tr>
+    <tr><td colspan="2" height="20"></td></tr>
+    <tr>
+      <td colspan="2" style="border-top:1px solid rgba(255,255,255,0.2);padding-top:16px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td valign="bottom" width="50%">
+              <div class="label">Ticket Holder</div>
+              <div class="holder-name">{$userName}</div>
+            </td>
+            <td valign="bottom" width="50%" align="right">
+              <div class="label">Ticket ID</div>
+              <div class="ticket-id">{$ticketId}</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
 </body>
 </html>
 PDF;
@@ -1198,7 +1179,7 @@ PDF;
 
                 $dompdf = new \Dompdf\Dompdf($options);
                 $dompdf->loadHtml($html, 'UTF-8');
-                $dompdf->setPaper('A4', 'landscape');
+                $dompdf->setPaper([0, 0, 800, 380]);
                 $dompdf->render();
 
                 $output = $dompdf->output();

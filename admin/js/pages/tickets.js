@@ -193,23 +193,56 @@ function updateStats(data) {
     }
 }
 
+function renderAdminStyledTicketQr(container, barcode) {
+    if (!container || !barcode) return;
+    const payload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
+
+    if (typeof QRCode !== 'undefined') {
+        container.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;pointer-events:none;user-select:none;">
+                <div id="adminTicketPreviewQrInner" style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;"></div>
+            </div>`;
+        try {
+            new QRCode(document.getElementById('adminTicketPreviewQrInner'), {
+                text: String(payload),
+                width: 160,
+                height: 160,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.L
+            });
+        } catch (e) {
+            console.error('Admin QR generation failed', e);
+        }
+    }
+}
+
 function openAdminTicketModal(ticket) {
     const existing = document.getElementById('adminTicketModal');
     if (existing) existing.remove();
 
     const imgSrc = ticket.event_image ? getImageUrl(ticket.event_image) : null;
-    const heroBg = imgSrc ? `url("${imgSrc.replace(/"/g, '%22')}")` : 'linear-gradient(135deg, #6366f1 0%, #2ecc71 100%)';
-    const price = parseFloat(ticket.total_price) === 0 ? 'Free' : `₦${parseFloat(ticket.total_price).toLocaleString()}`;
+    const heroFallback = 'linear-gradient(135deg, #6366f1 0%, #2ecc71 100%)';
+    const paidAmount = parseFloat(ticket.amount ?? ticket.total_price ?? ticket.event_price ?? 0);
+    const eventPrice = parseFloat(ticket.event_price ?? 0);
+    const isFree = paidAmount <= 0 && eventPrice <= 0;
+    const price = isFree ? 'Free' : `₦${paidAmount.toLocaleString()}`;
+    const typeLabel = isFree ? 'Free' : (ticket.ticket_type_display || ticket.ticket_type || 'regular');
     const statusClass = ticket.status === 'valid' ? 'tkt-active' : ticket.status === 'used' ? 'tkt-used' : 'tkt-cancelled';
     const statusLabel = { valid: '✓ Valid', used: '👁 Used', cancelled: '✕ Cancelled' }[ticket.status] || ticket.status;
+
+    const heroImageHtml = imgSrc
+        ? `<img src="${imgSrc.replace(/"/g, '&quot;')}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';">`
+        : '';
 
     const html = `
     <div id="adminTicketModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9100;backdrop-filter:blur(6px);padding:1rem;">
         <div style="background:white;border-radius:20px;overflow:hidden;max-width:520px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,.25);animation:slideUp .3s ease-out;">
             <!-- Event Image Hero -->
-            <div style="height:160px;background:${heroBg};background-size:cover;background-position:center;position:relative;">
-                <button onclick="document.getElementById('adminTicketModal').remove()" style="position:absolute;top:1rem;right:1rem;background:rgba(0,0,0,.4);border:none;color:white;width:34px;height:34px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&times;</button>
-                <div style="position:absolute;bottom:1rem;left:1.5rem;">
+            <div style="height:160px;background:${heroFallback};background-size:cover;background-position:center;position:relative;overflow:hidden;">
+                ${heroImageHtml}
+                <button onclick="document.getElementById('adminTicketModal').remove()" style="position:absolute;top:1rem;right:1rem;background:rgba(0,0,0,.4);border:none;color:white;width:34px;height:34px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">&times;</button>
+                <div style="position:absolute;bottom:1rem;left:1.5rem;z-index:2;">
                     <div style="font-size:.7rem;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px;">Event</div>
                     <div style="font-size:1.25rem;font-weight:800;color:white;text-shadow:0 2px 8px rgba(0,0,0,.4);">${escapeHtml(ticket.event_name || '—')}</div>
                 </div>
@@ -224,7 +257,7 @@ function openAdminTicketModal(ticket) {
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Price</div><div style="font-weight:700;">${price}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Category</div><div style="font-weight:600;">${escapeHtml(ticket.category || 'General')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Date Purchased</div><div style="font-weight:600;">${ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '—'}</div></div>
-                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div><div style="font-weight:600;text-transform:capitalize;color:#6366f1;">${escapeHtml(ticket.ticket_type || 'regular')}</div></div>
+                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div><div style="font-weight:600;text-transform:capitalize;color:#6366f1;">${escapeHtml(typeLabel)}</div></div>
                 </div>
                 <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1.25rem 0;text-align:center;">
                     <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Barcode</div>
@@ -261,25 +294,9 @@ function openAdminTicketModal(ticket) {
 
     const qrContainer = document.getElementById('adminTicketQrContainer');
     if (qrContainer) {
-        if (ticket.qr_data && String(ticket.qr_data).trim() !== '') {
-            let qrSrc = String(ticket.qr_data).trim();
-            if (!qrSrc.startsWith('data:') && !qrSrc.startsWith('http')) {
-                qrSrc = 'data:image/png;base64,' + qrSrc;
-            }
-            qrContainer.innerHTML = `<img src="${qrSrc}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
-        } else if (ticket.qr_path && String(ticket.qr_path).trim() !== '') {
-            const src = String(ticket.qr_path).startsWith('http') ? ticket.qr_path : getImageUrl(ticket.qr_path);
-            qrContainer.innerHTML = `<img src="${src}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
-        } else if (ticket.barcode && typeof QRCode !== 'undefined') {
-            const div = document.createElement('div');
-            div.style.display = 'flex';
-            div.style.justifyContent = 'center';
-            qrContainer.appendChild(div);
-            try {
-                new QRCode(div, { text: ticket.barcode, width: 120, height: 120 });
-            } catch (e) {
-                console.error('Admin QR generation failed', e);
-            }
+        const barcode = ticket.barcode || ticket.custom_id || (ticket.id ? ticket.id.toString() : null);
+        if (barcode) {
+            renderAdminStyledTicketQr(qrContainer, barcode);
         }
     }
     

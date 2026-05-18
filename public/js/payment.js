@@ -324,6 +324,7 @@ function renderSummary(event, qty, ticketType = 'regular') {
     else if (ticketType === 'regular' && event.regular_price) priceNum = parseFloat(event.regular_price);
 
     const total = priceNum * qty;
+    const typeLabel = priceNum === 0 ? 'Free' : ticketType;
     const container = document.getElementById('summaryContent');
     if (!container) return;
     
@@ -347,7 +348,7 @@ function renderSummary(event, qty, ticketType = 'regular') {
                 <h4 style="font-weight: 700; color: #1e293b;">${escapeHTML(cleanEventName)}</h4>
                 <p style="font-size: 0.8rem; color: #64748b;">${escapeHTML(locationStr)}</p>
                 <p style="font-size: 0.75rem; color: #722f37; font-weight: 600; margin-top: 4px; text-transform: uppercase;">
-                    ${escapeHTML(ticketType)} Ticket
+                    ${escapeHTML(typeLabel)} Ticket
                 </p>
             </div>
         </div>
@@ -371,7 +372,8 @@ function renderSummary(event, qty, ticketType = 'regular') {
  */
 function prepareTicketForDownload(order, barcode) {
     const cleanName = (order.event_name || '').replace(/\s*#\d+$/, '');
-    const ticketType = (order.ticket_type || 'regular').toUpperCase();
+    const orderAmount = parseFloat(order.amount ?? order.price ?? 0);
+    const ticketType = orderAmount <= 0 ? 'FREE' : (order.ticket_type || 'regular').toUpperCase();
     const attendee = order.user_name || (order.contactInfo ? `${order.contactInfo.firstName} ${order.contactInfo.lastName}` : 'Guest');
     const date = formatDate(order.event_date) || 'TBA';
     const time = order.event_time || 'TBA';

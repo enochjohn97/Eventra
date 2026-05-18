@@ -289,7 +289,7 @@ function openDrawer(drawerType) {
     const overlay = document.getElementById('drawerOverlay');
 
     if (drawer && overlay) {
-        drawer.classList.add('open');
+        drawer.classList.add('open', 'active');
         overlay.classList.add('active');
     }
 }
@@ -299,7 +299,7 @@ function closeDrawer(drawerId) {
     const overlay = document.getElementById('drawerOverlay');
 
     if (drawer) {
-        drawer.classList.remove('open');
+        drawer.classList.remove('open', 'active');
     }
     if (overlay) {
         overlay.classList.remove('active');
@@ -308,7 +308,7 @@ function closeDrawer(drawerId) {
 
 function closeAllDrawers() {
     document.querySelectorAll('.side-drawer').forEach(drawer => {
-        drawer.classList.remove('open');
+        drawer.classList.remove('open', 'active');
     });
     const overlay = document.getElementById('drawerOverlay');
     if (overlay) {

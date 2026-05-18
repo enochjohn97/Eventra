@@ -184,7 +184,8 @@ function updateTicketsTable(tickets) {
             ? `<div style="font-size:.7rem;color:#94a3b8;font-family:monospace;">${ticket.custom_id}</div>`
             : '';
 
-        const ticketTypeDisplay = ticket.ticket_type ? String(ticket.ticket_type).toLowerCase() : 'regular';
+        const ticketTypeDisplay = ticket.ticket_type_display
+            || ((ticket.amount <= 0 && ticket.event_price <= 0) ? 'Free' : (ticket.ticket_type ? String(ticket.ticket_type).toLowerCase() : 'regular'));
         const eventCategoryDisplay = ticket.event_category || ticket.category || 'General';
 
         return `

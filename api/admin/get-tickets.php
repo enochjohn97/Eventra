@@ -97,6 +97,10 @@ try {
         // For legacy template compat
         $t['total_price'] = $t['event_price'];
 
+        $t['ticket_type_display'] = ($t['amount'] <= 0 && $t['event_price'] <= 0)
+            ? 'Free'
+            : ucfirst(strtolower((string) ($t['ticket_type'] ?? 'regular')));
+
         if (!empty($t['qr_path'])) {
             $qr = str_replace('\\', '/', $t['qr_path']);
             if (preg_match('#(public/assets/.+)$#i', $qr, $m)) {
