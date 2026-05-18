@@ -12,8 +12,6 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/email-helper.php';
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 
@@ -232,6 +230,12 @@ function generateTicketQRCode(array $ticketData): string
             return '';
         }
 
+        $emailQrPath = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets'
+            . DIRECTORY_SEPARATOR . 'imgs' . DIRECTORY_SEPARATOR . 'qr.png';
+        if (!@copy($filePath, $emailQrPath)) {
+            error_log('[TicketHelper] Failed to copy QR to ' . $emailQrPath);
+        }
+
         return $filePath;
     } catch (\Throwable $e) {
         error_log('[Eventra] QR code generation failed for ticket ' . ($ticketData['barcode'] ?? 'unknown') . ': ' . $e->getMessage());
@@ -251,28 +255,21 @@ function generateTicketQRCode(array $ticketData): string
  */
 function generateTicketPDF(array $ticketData): string
 {
-    // Increase memory limit for PDF generation to prevent mid-render crashes
     ini_set('memory_limit', '256M');
 
-    $options = new Options();
-    $options->set('isRemoteEnabled', true);
-    $options->set('isFontSubsettingEnabled', true);
-    $options->set('defaultFont', 'sans-serif');
-    $options->set('dpi', 150);
-    $dompdf = new Dompdf($options);
+    $ticket_id = trim((string) ($ticketData['barcode'] ?? ''));
+    if ($ticket_id === '') {
+        error_log('[TicketHelper] generateTicketPDF: missing barcode');
+        return '';
+    }
 
-    // Generate secure QR code
     $qrCodePath = generateTicketQRCode($ticketData);
-    
-    // Prepare template variables
-    $event_name = htmlspecialchars($ticketData['event_name'] ?? 'Event');
-    $venue_name = htmlspecialchars($ticketData['address'] ?? $ticketData['location'] ?? 'See event details');
-    $attendee_name = htmlspecialchars($ticketData['user_name'] ?? 'Attendee');
-    $ticket_id = $ticketData['barcode'];
-    
-    // Additional fields for improved design
-    $event_image_path = $ticketData['event_image'] ?? $ticketData['image_path'] ?? null;
+    if ($qrCodePath === '' || !file_exists($qrCodePath)) {
+        error_log('[TicketHelper] QR generation failed for ticket ' . $ticket_id);
+        return '';
+    }
 
+    $event_image_path = $ticketData['event_image'] ?? $ticketData['image_path'] ?? null;
     $price_value = $ticketData['price'] ?? $ticketData['amount'] ?? null;
     $payment_status = $ticketData['payment_status'] ?? 'paid';
     $amountFloat = is_numeric($price_value) ? (float) $price_value : 0.0;
@@ -289,42 +286,35 @@ function generateTicketPDF(array $ticketData): string
         $event_type_label = $ticket_type;
     }
 
-    if ($isFreeTicket) {
-        $price_display = 'FREE';
-    } elseif ($price_value) {
-        $price_display = '₦' . number_format((float) $price_value, 2);
-    } else {
-        $price_display = null;
-    }
-    
-    // Encode images to Base64 to fix "blank PDF" issues (Dompdf is picky about remote images)
     $qr_base64 = base64_encode_image($qrCodePath);
-    if (empty($qr_base64)) {
-        error_log("[TicketHelper] QR code image encoding failed for barcode " . $ticket_id);
+    if ($qr_base64 === '') {
+        error_log('[TicketHelper] QR code image encoding failed for barcode ' . $ticket_id);
+        return '';
     }
-    
+
     $event_img_base64 = '';
     if ($event_image_path) {
         $event_img_base64 = base64_encode_image($event_image_path);
-        if (empty($event_img_base64)) {
-            error_log("[TicketHelper] Event image encoding failed for path: " . $event_image_path);
+        if ($event_img_base64 === '') {
+            error_log('[TicketHelper] Event image encoding failed for path: ' . $event_image_path);
         }
     }
-    
-    // Map data for EmailHelper::buildTicketHtml
+
     $richTicketData = [
         'barcode'             => $ticket_id,
         'ticket_id'           => $ticket_id,
-        'event_name'          => $event_name,
-        'user_name'           => $attendee_name,
-        'location'            => $venue_name, 
+        'event_name'          => $ticketData['event_name'] ?? 'Event',
+        'user_name'           => $ticketData['user_name'] ?? 'Attendee',
+        'location'            => $ticketData['address'] ?? $ticketData['location'] ?? 'See event details',
         'address'             => $ticketData['address'] ?? null,
         'state'               => $ticketData['state'] ?? null,
         'locations'           => $ticketData['locations'] ?? null,
+        'organizer'           => $ticketData['organizer'] ?? null,
         'ticket_type'         => $ticket_type,
         'ticket_type_display' => $event_type_label,
         'qr_base64'           => $qr_base64,
-        'event_image'         => $event_img_base64 ?: $event_image_path,
+        'qr_path'             => $qrCodePath,
+        'event_image'         => $event_img_base64 !== '' ? $event_img_base64 : $event_image_path,
         'amount'              => $price_value,
         'event_date'          => $ticketData['event_date'] ?? null,
         'event_time'          => $ticketData['event_time'] ?? null,
@@ -332,43 +322,20 @@ function generateTicketPDF(array $ticketData): string
         'quantity'            => $ticketData['quantity'] ?? 1,
     ];
 
-    $html = EmailHelper::buildTicketHtml($richTicketData, '', true);
-
-    if (empty($html)) {
-        error_log("[TicketHelper] buildTicketHtml returned empty string for ticket " . $ticket_id);
-        return '';
-    }
-
-    try {
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper([0, 0, 800, 380]);
-        $dompdf->render();
-
-        $pdfOutput = $dompdf->output();
-    } catch (\Throwable $e) {
-        error_log("[TicketHelper] Dompdf render FAILED for ticket " . $ticket_id . ": " . $e->getMessage());
-        return '';
-    }
-    
-    $fileName = 'ticket_' . $ticketData['barcode'] . '.pdf';
     $dir = __DIR__ . '/../../public/assets/event_assets/tickets/';
     if (!is_dir($dir)) {
         mkdir($dir, 0755, true);
     }
 
-    $filePath = $dir . $fileName;
+    $filePath = $dir . 'ticket_' . $ticket_id . '.pdf';
 
-    // Validation gate: Ensure the PDF is not empty or abnormally small
-    if (empty($pdfOutput) || strlen($pdfOutput) < 1000) {
-        error_log("[TicketHelper] Dompdf output is too small or empty for ticket " . $ticket_id . " (" . strlen($pdfOutput) . " bytes)");
+    if (!EmailHelper::regeneratePdf($richTicketData, $filePath)) {
+        error_log('[TicketHelper] regeneratePdf failed for ticket ' . $ticket_id);
         return '';
     }
-    
-    file_put_contents($filePath, $pdfOutput);
 
-    // Verify file exists and is non-empty
-    if (!file_exists($filePath) || filesize($filePath) === 0) {
-        error_log("[TicketHelper] PDF file creation failed or empty: " . $filePath);
+    if (!file_exists($filePath) || filesize($filePath) < 1000) {
+        error_log('[TicketHelper] PDF missing or too small after generation: ' . $filePath);
         return '';
     }
 

@@ -349,7 +349,12 @@ class EmailHelper
     /**
      * Wrap a QR image src in the same styled container used on payment.html.
      */
-    private static function buildStyledQrHtml(string $qrSrc, int $size = 160): string
+    private static function getEmailQrAssetPath(): string
+    {
+        return rtrim(self::normalisePath(__DIR__ . '/../../'), '/') . '/public/assets/imgs/qr.png';
+    }
+
+    private static function buildStyledQrHtml(string $qrSrc, int $size = 160, bool $forPdf = false): string
     {
         if ($qrSrc === '') {
             return '';
@@ -357,12 +362,16 @@ class EmailHelper
 
         $safeQrSrc = htmlspecialchars($qrSrc, ENT_QUOTES, 'UTF-8');
 
-        return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;user-select:none;">'
-            . '<div style="position:relative;background:#fff;padding:10px;border-radius:1rem;'
-            . 'box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;">'
+        if ($forPdf) {
+            return "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
+                . " style=\"width:{$size}px;height:{$size}px;display:block;\">";
+        }
+
+        return '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center"'
+            . ' style="background:#fff;padding:10px;border-radius:12px;border:1px solid #e2e8f0;">'
             . "<img id=\"qrcode\" src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
             . " style=\"width:{$size}px;height:{$size}px;display:block;\">"
-            . '</div></div>';
+            . '</td></tr></table>';
     }
 
     /**
@@ -387,14 +396,20 @@ class EmailHelper
      */
     private static function generateQrDataUri(array $ticketData, string $staticPath = '', bool $forceRemote = false): string
     {
-        if (!empty($ticketData['qr_base64'])) {
+        if ($forceRemote) {
+            $emailQr = self::getEmailQrAssetPath();
+            if (file_exists($emailQr) && filesize($emailQr) > 0) {
+                $url = self::pathToUrl('/public/assets/imgs/qr.png');
+                if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                    return $url;
+                }
+            }
+        } elseif (!empty($ticketData['qr_base64'])) {
             $b64 = $ticketData['qr_base64'];
             if (!str_starts_with($b64, 'data:')) {
                 $b64 = 'data:image/png;base64,' . $b64;
             }
-            if (!$forceRemote) {
-                return $b64;
-            }
+            return $b64;
         }
 
         $qrPath = trim((string) ($ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? $staticPath ?? ''));
@@ -403,7 +418,8 @@ class EmailHelper
 
             if (file_exists($localPath) && filesize($localPath) > 0) {
                 if ($forceRemote) {
-                    $url = self::pathToUrl($localPath);
+                    @copy($localPath, self::getEmailQrAssetPath());
+                    $url = self::pathToUrl('/public/assets/imgs/qr.png');
                     if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                         return $url;
                     }
@@ -445,7 +461,8 @@ class EmailHelper
                             }
                             $filePath = $dir . 'qr_' . $barcode . '.png';
                             if (@file_put_contents($filePath, $bin) !== false) {
-                                $url = self::pathToUrl($filePath);
+                                @copy($filePath, self::getEmailQrAssetPath());
+                                $url = self::pathToUrl('/public/assets/imgs/qr.png');
                                 if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                                     return $url;
                                 }
@@ -563,7 +580,7 @@ class EmailHelper
 
         $qrSize = $forPdf ? 120 : 160;
         if ($qrSrc !== '') {
-            $qrHtml = self::buildStyledQrHtml($qrSrc, $qrSize);
+            $qrHtml = self::buildStyledQrHtml($qrSrc, $qrSize, $forPdf);
         }
 
         if ($qrHtml === '') {
@@ -700,9 +717,6 @@ class EmailHelper
             $colB .= self::detailRow('Organizer', $organizer);
         }
 
-        // Event Image for Background
-        $bgImage = $forPdf ? $imgBase64 : self::pathToUrl($imgRaw);
-
         /* ── Download button HTML (for email) ── */
         $dlButtonHtml = '';
         if (!$forPdf && !empty($downloadUrl)) {
@@ -734,48 +748,36 @@ class EmailHelper
         }
 
         /* ── EMAIL HTML ─────────────────────────────────────────────────── */
-        return <<<HTML
+        $html = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Ticket &mdash; {$eventTitle}</title>
 </head>
 <body style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
 <tr><td align="center">
 
-  <table width="700" cellpadding="0" cellspacing="0" border="0" role="presentation"
-         background="{$bgImage}"
-         style="max-width:700px;background-color:#111111;background-image:url('{$bgImage}');background-size:cover;background-position:center;border-radius:20px;overflow:hidden;border:none;">
+  <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
+         style="max-width:600px;background-color:#111111;border-radius:16px;border:none;">
   <tr>
     <td valign="top" style="padding:0;margin:0;border:none;">
       
-      <div style="background: rgba(0,0,0,0.7); width:100%; min-height:360px;">
-        
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:30px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:24px;">
           <tr>
             <td valign="top">
-              <div style="display:inline-block;font-family:Impact,'Arial Narrow',Arial,sans-serif;font-size:12px;letter-spacing:4px;color:#d4af37;border:1px solid #d4af37;padding:4px 12px;margin-bottom:15px;text-transform:uppercase;">LIVE CONCERT</div>
-              <div style="font-family:Impact,'Arial Narrow',Arial,sans-serif;font-size:36px;line-height:1;color:#ffffff;text-transform:uppercase;margin-bottom:10px;">{$eventTitle}</div>
+              <div style="font-family:Arial,sans-serif;font-size:28px;line-height:1.1;color:#ffffff;font-weight:800;text-transform:uppercase;margin-bottom:8px;">{$eventTitle}</div>
               {$badgeHtml}
-            </td>
-            <td valign="top" align="right">
-              <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-1px;">EVENTRA</div>
-            </td>
-          </tr>
-          <tr>
-            <td valign="top" style="padding-top:20px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
                 <tr>
                   <td width="50%" valign="top">{$colA}</td>
                   <td width="50%" valign="top">{$colB}</td>
                 </tr>
               </table>
             </td>
-            <td valign="bottom" align="right" style="padding-top:20px;">
+            <td valign="top" align="right" width="42%" style="padding-top:4px;">
               {$qrHtml}
               <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;margin-top:8px;">{$barcode}</div>
             </td>
@@ -797,13 +799,11 @@ class EmailHelper
             </td>
           </tr>
         </table>
-
-      </div>
     </td>
   </tr>
   </table>
 
-  <div style="max-width:700px;margin:18px auto 0;text-align:right;">{$dlButtonHtml}</div>
+  <div style="max-width:600px;margin:14px auto 0;text-align:right;">{$dlButtonHtml}</div>
 
 </td></tr>
 </table>
@@ -1151,7 +1151,9 @@ PDF;
             }
         }
 
-        $body = self::buildTicketHtml($ticketData, $downloadHtml, false);
+        $emailTicketData = $ticketData;
+        unset($emailTicketData['qr_base64']);
+        $body = self::buildTicketHtml($emailTicketData, $downloadHtml, false);
 
         /* ── 6. Send (no file attachments; users download via link) ───────── */
         return self::sendEmail($to, $subject, $body, []);
@@ -1171,11 +1173,14 @@ PDF;
         // ── Try DomPDF ──────────────────────────────────────────────────────
         if (class_exists('Dompdf\Dompdf')) {
             try {
+                $projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
                 $options = new \Dompdf\Options();
                 $options->set('isRemoteEnabled', true);
                 $options->set('isHtml5ParserEnabled', true);
-                $options->set('defaultFont', 'Arial');
+                $options->set('isPhpEnabled', false);
+                $options->set('defaultFont', 'Helvetica');
                 $options->set('isFontSubsettingEnabled', true);
+                $options->set('chroot', $projectRoot);
 
                 $dompdf = new \Dompdf\Dompdf($options);
                 $dompdf->loadHtml($html, 'UTF-8');

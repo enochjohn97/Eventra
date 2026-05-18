@@ -9,6 +9,7 @@
 
 require_once '../../config/database.php';
 require_once '../../includes/helpers/ticket-helper.php';
+require_once '../../includes/helpers/email-helper.php';
 
 $barcode = trim($_GET['code'] ?? '');
 if (empty($barcode)) {
@@ -76,7 +77,8 @@ try {
 
     // Build file path
     $pdfPath = __DIR__ . '/../../public/assets/event_assets/tickets/ticket_' . $barcode . '.pdf';
-    $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < 8000;
+    $minPdfBytes = 1000;
+    $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes;
 
     if ($needsRegeneration) {
         if (file_exists($pdfPath)) {
@@ -95,9 +97,18 @@ try {
                 'selected_locs'  => $selectedLocs,
                 'payment_status' => $paymentStatus !== '' ? $paymentStatus : 'paid',
             ]);
-            generateTicketPDF($ticket);
 
-            if (!file_exists($pdfPath) || filesize($pdfPath) < 8000) {
+            $generated = generateTicketPDF($ticket);
+            if ($generated === '' || !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {
+                $qrPath = generateTicketQRCode($ticket);
+                if ($qrPath !== '' && file_exists($qrPath)) {
+                    $ticket['qr_path'] = $qrPath;
+                    $ticket['qr_base64'] = base64_encode_image($qrPath);
+                }
+                EmailHelper::regeneratePdf($ticket, $pdfPath);
+            }
+
+            if (!file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {
                 throw new Exception('PDF generation failed to create a valid file.');
             }
         } catch (Exception $e) {
