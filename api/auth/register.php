@@ -111,25 +111,25 @@ if (!preg_match('/^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/', $
     sendJsonResponse(false, 'Password must be at least 8 characters with uppercase, number, and special character.', 400);
 }
 
-// Generate a unique username from email prefix
-$baseUsername = explode('@', $email)[0];
-$username = $baseUsername;
-$counter = 1;
-while (true) {
-    $stmt = $pdo->prepare("SELECT id FROM auth_accounts WHERE username = ?");
-    $stmt->execute([$username]);
-    if (!$stmt->fetch())
-        break;
-    $username = $baseUsername . $counter;
-    $counter++;
-}
-
 try {
     // Check if email already exists
     $stmt = $pdo->prepare("SELECT id FROM auth_accounts WHERE email = ?");
     $stmt->execute([$email]);
     if ($stmt->fetch()) {
         sendJsonResponse(false, 'Email already registered.', 409);
+    }
+
+    // Generate a unique username from email prefix
+    $baseUsername = explode('@', $email)[0];
+    $username = $baseUsername;
+    $counter = 1;
+    while (true) {
+        $stmt = $pdo->prepare("SELECT id FROM auth_accounts WHERE username = ?");
+        $stmt->execute([$username]);
+        if (!$stmt->fetch())
+            break;
+        $username = $baseUsername . $counter;
+        $counter++;
     }
 
     if ($role === 'client' && !empty($business_name)) {
@@ -184,8 +184,8 @@ try {
         'user_id' => $authId,
         'email' => $email
     ]);
-
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     if ($pdo->inTransaction())
         $pdo->rollBack();
     regLog('CRITICAL', 'PDO Error: ' . $e->getMessage() . ' | Code: ' . $e->getCode());
