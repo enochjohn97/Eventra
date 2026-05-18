@@ -215,12 +215,17 @@ try {
                     'selected_locs' => $selected_locs
                 ];
                 $qrPath = generateTicketQRCode($ticketData);
-                $pdfPath = generateTicketPDF($ticketData);
-                $pdfPaths[] = $pdfPath;
-                $lastTicketData = $ticketData;
+                if ($qrPath && file_exists($qrPath)) {
+                    $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
+                        ->execute([toPublicRelativePath($qrPath), $ticket_id]);
+                    $ticketData['qr_path'] = $qrPath;
+                }
 
-                $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
-                    ->execute([str_replace(__DIR__ . '/../../', '', $qrPath), $ticket_id]);
+                $pdfPath = generateTicketPDF($ticketData);
+                if ($pdfPath && file_exists($pdfPath)) {
+                    $pdfPaths[] = $pdfPath;
+                }
+                $lastTicketData = $ticketData;
 
                 $tickets[] = ['barcode' => $barcode, 'id' => $ticket_id];
             }
@@ -232,9 +237,18 @@ try {
             $pdo->commit();
 
             // 5. Notifications & Email
-            EmailHelper::sendTicketEmailFull($user_email, $lastTicketData, $pdfPaths);
+            if (!empty($pdfPaths)) {
+                EmailHelper::sendTicketEmailFull($user_email, $lastTicketData, $pdfPaths);
+            }
             createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
             createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);
+
+            $orgStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
+            $orgStmt->execute([$event['organizer_id']]);
+            $organizer_auth_id = $orgStmt->fetchColumn();
+            if ($organizer_auth_id) {
+                createNewSaleNotification($organizer_auth_id, $user_name, $event['event_name'], 0, $auth_id);
+            }
 
             $callbackUrl = SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference);
 

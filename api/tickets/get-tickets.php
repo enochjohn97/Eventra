@@ -80,6 +80,23 @@ try {
         // Normalize event category
         $ticket['event_category'] = !empty($ticket['event_category']) ? $ticket['event_category'] : 'General';
 
+        if (!empty($ticket['qr_path'])) {
+            $qr = str_replace('\\', '/', $ticket['qr_path']);
+            if (preg_match('#(public/assets/.+)$#i', $qr, $m)) {
+                $ticket['qr_path'] = $m[1];
+            } else {
+                $ticket['qr_path'] = ltrim($qr, '/');
+            }
+        }
+        if (!empty($ticket['event_image'])) {
+            $img = str_replace('\\', '/', $ticket['event_image']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $ticket['event_image'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $ticket['event_image'] = '/' . $m[1];
+            }
+        }
+
         // Price display: prefer paid amount when payment is paid, otherwise event price, else Free
         if (!empty($ticket['payment_status']) && strtolower($ticket['payment_status']) === 'paid' && $ticket['amount'] > 0) {
             $ticket['price_display'] = number_format($ticket['amount'], 2);

@@ -247,23 +247,21 @@ try {
 
         try {
             $qrCodePath = generateTicketQRCode($ticketData);
-            $pdfPath    = generateTicketPDF($ticketData);
-            
-            if ($pdfPath && file_exists($pdfPath)) {
-                $pdfPaths[] = $pdfPath;
+            if ($qrCodePath && file_exists($qrCodePath)) {
                 $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE barcode = ?")
-                    ->execute([str_replace(__DIR__ . '/../../', '', $qrCodePath), $barcode]);
-
-                // Enrich ticketData with generated QR so emails display it
-                if (!empty($qrCodePath) && file_exists($qrCodePath)) {
-                    $ticketData['qr_path'] = $qrCodePath;
-                    if (function_exists('base64_encode_image')) {
-                        $b64 = base64_encode_image($qrCodePath);
-                        if ($b64 !== '') {
-                            $ticketData['qr_base64'] = $b64;
-                        }
+                    ->execute([toPublicRelativePath($qrCodePath), $barcode]);
+                $ticketData['qr_path'] = $qrCodePath;
+                if (function_exists('base64_encode_image')) {
+                    $b64 = base64_encode_image($qrCodePath);
+                    if ($b64 !== '') {
+                        $ticketData['qr_base64'] = $b64;
                     }
                 }
+            }
+
+            $pdfPath = generateTicketPDF($ticketData);
+            if ($pdfPath && file_exists($pdfPath)) {
+                $pdfPaths[] = $pdfPath;
             }
             $lastTicketData = $ticketData;
         } catch (\Throwable $genError) {

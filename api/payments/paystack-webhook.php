@@ -167,12 +167,15 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
 
                 try {
                     $qrCodePath = generateTicketQRCode($ticketData);
-                    $pdfPath    = generateTicketPDF($ticketData);
-                    // Only add to pdfPaths if BOTH QR and PDF succeeded
+                    if ($qrCodePath && file_exists($qrCodePath)) {
+                        $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
+                            ->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
+                        $ticketData['qr_path'] = $qrCodePath;
+                    }
+
+                    $pdfPath = generateTicketPDF($ticketData);
                     if ($pdfPath && file_exists($pdfPath)) {
                         $pdfPaths[] = $pdfPath;
-                        $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
-                            ->execute([str_replace(__DIR__ . '/../../', '', $qrCodePath), $ticket_id]);
                     } else {
                         error_log("[Webhook] PDF missing after generation for barcode $barcode (ticket $ticket_id)");
                     }

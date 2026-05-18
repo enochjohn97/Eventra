@@ -269,18 +269,39 @@ async function downloadTicketPDF(ticketCode) {
         btn.innerHTML = '<span style="display:flex;align-items:center;gap:.5rem;"><i class="spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;"></i> Downloading...</span>';
         btn.disabled = true;
 
-        // Fetch PDF from server
-        const response = await apiFetch(`/api/tickets/download-ticket.php?code=${encodeURIComponent(ticketCode)}`);
-        
+        const token = window.storage ? window.storage.getToken() : null;
+        const headers = {
+            'Accept': 'application/pdf',
+            'X-Eventra-Portal': 'client'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            headers['X-Access-Token'] = token;
+        }
+
+        const response = await fetch(`/api/tickets/download-ticket.php?code=${encodeURIComponent(ticketCode)}`, {
+            credentials: 'include',
+            headers
+        });
+
         if (!response.ok) {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const err = await response.json();
+                throw new Error(err.message || `HTTP error! status: ${response.status}`);
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Get the PDF blob
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/pdf')) {
+            throw new Error('Server did not return a valid PDF file.');
+        }
+
         const blob = await response.blob();
-        
-        if (blob.size === 0) {
-            throw new Error('Downloaded file is empty');
+
+        if (blob.size < 1000) {
+            throw new Error('Downloaded file is empty or invalid');
         }
 
         // Create download link

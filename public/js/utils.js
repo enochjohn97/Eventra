@@ -242,24 +242,28 @@ function getImageUrl(path) {
     return '';
   }
 
-  // Handle external URLs
-  if (path.startsWith('http')) {
+  // Handle external URLs and data URIs
+  if (path.startsWith('http') || path.startsWith('data:')) {
     return path;
   }
 
-  let finalPath = path;
-  
-  // Normalize path
+  let finalPath = String(path).replace(/\\/g, '/');
+
+  // Extract web path from absolute filesystem paths (Windows or Unix)
+  const publicIdx = finalPath.toLowerCase().indexOf('/public/');
+  if (publicIdx >= 0) {
+    finalPath = finalPath.substring(publicIdx);
+  }
+
+  // Normalize relative paths
   if (finalPath.startsWith('../../')) {
-    finalPath = finalPath.replace('../../', '/');
+    finalPath = finalPath.replace(/^\.\.\/\.\.\//, '/');
   } else if (!finalPath.startsWith('/')) {
     finalPath = '/' + finalPath;
   }
 
-  // Ensure double slashes are removed
   finalPath = finalPath.replace(/\/\//g, '/');
 
-  // Return absolute URL
   return window.location.origin + finalPath;
 }
 

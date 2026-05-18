@@ -89,10 +89,11 @@ class NotificationManager {
                     if (diffMs < 0) diffMs = 0;
                     
                     const isVeryRecent = diffMs < 30000;
-                    const isLoginType = latestNotif.type === 'login';
+                    const toastTypes = ['login', 'ticket_purchase', 'ticket_issued', 'payment_success', 'folder_created', 'media_uploaded', 'media_deleted', 'scheduled_event_due'];
+                    const shouldToast = toastTypes.includes(latestNotif.type);
                     
-                    if ((latestId > this.lastNotificationId && this.lastNotificationId !== 0) || 
-                        (this.lastNotificationId === 0 && isVeryRecent && isLoginType)) {
+                    if ((latestId > this.lastNotificationId && this.lastNotificationId !== 0 && shouldToast) || 
+                        (this.lastNotificationId === 0 && isVeryRecent && latestNotif.type === 'login')) {
                         // New or recent login notification received
                         this.showNewNotificationToast(latestNotif);
                     }

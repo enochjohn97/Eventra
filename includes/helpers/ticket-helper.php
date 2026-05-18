@@ -18,6 +18,31 @@ use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 
 /**
+ * Convert an absolute filesystem path to a web-relative path (forward slashes).
+ * e.g. C:\...\public\assets\event_assets\qrcodes\qr_x.png → public/assets/event_assets/qrcodes/qr_x.png
+ */
+function toPublicRelativePath(string $absolutePath): string
+{
+    if ($absolutePath === '') {
+        return '';
+    }
+
+    $normalized = str_replace('\\', '/', $absolutePath);
+    $root = realpath(__DIR__ . '/../../');
+    $normalizedRoot = $root ? str_replace('\\', '/', $root) : '';
+
+    if ($normalizedRoot !== '' && str_starts_with($normalized, $normalizedRoot)) {
+        return ltrim(substr($normalized, strlen($normalizedRoot)), '/');
+    }
+
+    if (preg_match('#(public/assets/.+)$#i', $normalized, $matches)) {
+        return $matches[1];
+    }
+
+    return ltrim($normalized, '/');
+}
+
+/**
  * Helper to encode an image file to Base64 for Dompdf compatibility.
  */
 function base64_encode_image($path) {

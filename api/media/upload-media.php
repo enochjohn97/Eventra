@@ -225,7 +225,10 @@ try {
             $msg_filename .= " and " . (count($uploadedFiles) - 1) . " others";
         }
         // The notification-helper.php is already required at the top of the file.
-        createMediaUploadedNotification($client_id, $msg_filename, $folder_name);
+        $client_auth_id = getAuthId();
+        if ($client_auth_id) {
+            createMediaUploadedNotification($client_auth_id, $msg_filename, $folder_name);
+        }
     }
 
     $pdo->commit();

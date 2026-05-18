@@ -87,7 +87,7 @@ foreach ($files as $jobFile) {
                     // Update ticket with QR code path
                     if ($ticket_id) {
                         $stmt = $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?");
-                        $stmt->execute([str_replace(__DIR__ . '/../../', '', $qrCodePath), $ticket_id]);
+                        $stmt->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
                     }
                 }
 

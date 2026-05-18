@@ -7,7 +7,6 @@
  * GET ?code=BARCODE
  */
 
-ob_start();
 require_once '../../config/database.php';
 require_once '../../includes/helpers/ticket-helper.php';
 
@@ -63,7 +62,12 @@ try {
         exit;
     }
 
-    if ($ticket['payment_status'] !== 'paid' && $ticket['payment_status'] !== 'success') {
+    $paymentStatus = strtolower((string)($ticket['payment_status'] ?? ''));
+    $amount = (float)($ticket['amount'] ?? 0);
+    $paymentConfirmed = in_array($paymentStatus, ['paid', 'success'], true)
+        || ($paymentStatus === '' && $ticket['status'] === 'valid' && $amount === 0.0);
+
+    if (!$paymentConfirmed) {
         http_response_code(403);
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Payment for this ticket has not been confirmed.']);
@@ -72,10 +76,14 @@ try {
 
     // Build file path
     $pdfPath = __DIR__ . '/../../public/assets/event_assets/tickets/ticket_' . $barcode . '.pdf';
+    $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < 1000;
 
-    if (!file_exists($pdfPath)) {
+    if ($needsRegeneration) {
+        if (file_exists($pdfPath)) {
+            @unlink($pdfPath);
+        }
+
         try {
-            // Ensure event_image is available for ticket generation
             if (empty($ticket['event_image']) && !empty($ticket['image_path'])) {
                 $ticket['event_image'] = $ticket['image_path'];
             }
@@ -85,11 +93,12 @@ try {
                 'amount'         => $ticket['amount'] ?? 0,
                 'quantity'       => $ticket['quantity'] ?? 1,
                 'selected_locs'  => $selectedLocs,
+                'payment_status' => $paymentStatus !== '' ? $paymentStatus : 'paid',
             ]);
             generateTicketPDF($ticket);
-            
-            if (!file_exists($pdfPath)) {
-                throw new Exception("PDF generation failed to create file.");
+
+            if (!file_exists($pdfPath) || filesize($pdfPath) < 1000) {
+                throw new Exception('PDF generation failed to create a valid file.');
             }
         } catch (Exception $e) {
             error_log('[download-ticket.php] Generation error: ' . $e->getMessage());
@@ -100,8 +109,10 @@ try {
         }
     }
 
-    // Stream file to client
-    if (ob_get_length()) ob_clean();
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
     header('Content-Type: application/pdf');
     header('Content-Disposition: attachment; filename="eventra_ticket_' . $barcode . '.pdf"');
     header('Content-Length: ' . filesize($pdfPath));

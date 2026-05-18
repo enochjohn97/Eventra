@@ -1577,8 +1577,11 @@ function showTicketPreviewModal(ticket) {
 
         try {
             if (ticket.qr_data && String(ticket.qr_data).trim() !== '') {
-                // Already a data URI or base64 payload
-                qrContainer.innerHTML = `<img src="${ticket.qr_data}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
+                let qrSrc = String(ticket.qr_data).trim();
+                if (!qrSrc.startsWith('data:') && !qrSrc.startsWith('http')) {
+                    qrSrc = 'data:image/png;base64,' + qrSrc;
+                }
+                qrContainer.innerHTML = `<img src="${qrSrc}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
                 return;
             }
 

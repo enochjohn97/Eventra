@@ -197,9 +197,7 @@ function openAdminTicketModal(ticket) {
     const existing = document.getElementById('adminTicketModal');
     if (existing) existing.remove();
 
-    const imgSrc = ticket.event_image
-        ? (ticket.event_image.startsWith('http') ? ticket.event_image : '../../' + ticket.event_image)
-        : null;
+    const imgSrc = ticket.event_image ? getImageUrl(ticket.event_image) : null;
     const heroBg = imgSrc ? `url("${imgSrc.replace(/"/g, '%22')}")` : 'linear-gradient(135deg, #6366f1 0%, #2ecc71 100%)';
     const price = parseFloat(ticket.total_price) === 0 ? 'Free' : `₦${parseFloat(ticket.total_price).toLocaleString()}`;
     const statusClass = ticket.status === 'valid' ? 'tkt-active' : ticket.status === 'used' ? 'tkt-used' : 'tkt-cancelled';
@@ -232,6 +230,7 @@ function openAdminTicketModal(ticket) {
                     <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Barcode</div>
                     <svg id="ticketBarcode" style="margin:0 auto;height:60px;"></svg>
                     <div style="font-family:monospace;font-size:.75rem;color:#475569;margin-top:0.75rem;word-break:break-all;">${escapeHtml(ticket.barcode || '—')}</div>
+                    <div id="adminTicketQrContainer" style="margin-top:12px;"></div>
                 </div>
                 <button onclick="document.getElementById('adminTicketModal').remove()" style="margin-top:1.5rem;width:100%;padding:.75rem;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>
             </div>
@@ -257,6 +256,30 @@ function openAdminTicketModal(ticket) {
                 lineColor: "#1e293b"
             });
         } catch (e) {
+        }
+    }
+
+    const qrContainer = document.getElementById('adminTicketQrContainer');
+    if (qrContainer) {
+        if (ticket.qr_data && String(ticket.qr_data).trim() !== '') {
+            let qrSrc = String(ticket.qr_data).trim();
+            if (!qrSrc.startsWith('data:') && !qrSrc.startsWith('http')) {
+                qrSrc = 'data:image/png;base64,' + qrSrc;
+            }
+            qrContainer.innerHTML = `<img src="${qrSrc}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
+        } else if (ticket.qr_path && String(ticket.qr_path).trim() !== '') {
+            const src = String(ticket.qr_path).startsWith('http') ? ticket.qr_path : getImageUrl(ticket.qr_path);
+            qrContainer.innerHTML = `<img src="${src}" alt="QR Code" style="width:120px;height:120px;border-radius:8px;display:block;margin:0 auto;">`;
+        } else if (ticket.barcode && typeof QRCode !== 'undefined') {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.justifyContent = 'center';
+            qrContainer.appendChild(div);
+            try {
+                new QRCode(div, { text: ticket.barcode, width: 120, height: 120 });
+            } catch (e) {
+                console.error('Admin QR generation failed', e);
+            }
         }
     }
     
@@ -311,7 +334,7 @@ function createTicketRow(t) {
     const tdEvent = document.createElement('td');
     if (t.event_image) {
         const img = document.createElement('img');
-        img.src = t.event_image.startsWith('http') ? t.event_image : '../../' + t.event_image;
+        img.src = getImageUrl(t.event_image);
         img.className = 'tkt-event-img';
         img.onerror = () => img.style.display = 'none';
         tdEvent.appendChild(img);

@@ -57,6 +57,9 @@ try {
             t.custom_id,
             t.ticket_code,
             t.barcode,
+            t.ticket_type,
+            t.qr_code_path AS qr_path,
+            t.qr_code_data AS qr_data,
             t.status,
             t.used,
             t.created_at,
@@ -93,6 +96,23 @@ try {
             : '₦' . number_format($t['event_price'], 2);
         // For legacy template compat
         $t['total_price'] = $t['event_price'];
+
+        if (!empty($t['qr_path'])) {
+            $qr = str_replace('\\', '/', $t['qr_path']);
+            if (preg_match('#(public/assets/.+)$#i', $qr, $m)) {
+                $t['qr_path'] = $m[1];
+            } else {
+                $t['qr_path'] = ltrim($qr, '/');
+            }
+        }
+        if (!empty($t['event_image'])) {
+            $img = str_replace('\\', '/', $t['event_image']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $t['event_image'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $t['event_image'] = '/' . $m[1];
+            }
+        }
     }
     unset($t);
 

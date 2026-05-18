@@ -33,8 +33,11 @@ try {
     $stmt->execute([$client_id, $folder_name]);
     $folder_id = $pdo->lastInsertId();
 
-    // Trigger notification
-    createFolderCreatedNotification($client_id, $folder_name);
+    // Trigger notification (recipient must be auth_accounts.id, not clients.id)
+    $client_auth_id = getAuthId();
+    if ($client_auth_id) {
+        createFolderCreatedNotification($client_auth_id, $folder_name);
+    }
 
     echo json_encode([
         'success' => true,
