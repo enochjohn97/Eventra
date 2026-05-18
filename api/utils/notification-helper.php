@@ -8,6 +8,52 @@
 require_once __DIR__ . '/../../config/database.php';
 
 /**
+ * Ensure recipient/sender IDs are auth_accounts.id (not clients.id profile IDs).
+ */
+function normalizeAuthAccountId(int $id, string $role = 'client'): int
+{
+    if ($id <= 0) {
+        return $id;
+    }
+
+    global $pdo;
+    if (!isset($pdo)) {
+        $pdo = getPDO();
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM auth_accounts WHERE id = ? AND role = ? LIMIT 1');
+    $stmt->execute([$id, $role]);
+    if ($stmt->fetchColumn()) {
+        return $id;
+    }
+
+    if ($role === 'client') {
+        $stmt = $pdo->prepare('SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $authId = $stmt->fetchColumn();
+        if ($authId) {
+            return (int) $authId;
+        }
+    } elseif ($role === 'admin') {
+        $stmt = $pdo->prepare('SELECT admin_auth_id FROM admins WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $authId = $stmt->fetchColumn();
+        if ($authId) {
+            return (int) $authId;
+        }
+    } elseif ($role === 'user') {
+        $stmt = $pdo->prepare('SELECT user_auth_id FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $authId = $stmt->fetchColumn();
+        if ($authId) {
+            return (int) $authId;
+        }
+    }
+
+    return $id;
+}
+
+/**
  * Create a notification
  *
  * @param int $recipient_id User ID who will receive the notification
@@ -31,9 +77,9 @@ function createNotification($recipient_id, $message, $type = 'info', $sender_id 
     global $pdo;
 
     try {
-        // Ensure IDs are numeric
-        $recipient_id = (int)$recipient_id;
-        $sender_id = $sender_id ? (int)$sender_id : null;
+        // Ensure IDs are numeric and stored as auth_accounts.id
+        $recipient_id = normalizeAuthAccountId((int) $recipient_id, $recipient_role);
+        $sender_id = $sender_id ? normalizeAuthAccountId((int) $sender_id, $sender_role ?? $recipient_role) : null;
 
         $metadataJson = $metadata ? json_encode($metadata) : null;
         $stmt = $pdo->prepare("
@@ -98,10 +144,10 @@ function sendNotificationWithRetry($recipient_id, $message, $type = 'info', $sen
 /**
  * Create a login notification
  */
-function createLoginNotification($user_id, $user_name, $user_email)
+function createLoginNotification($user_id, $user_name, $user_email, $role = 'user')
 {
     $message = "Welcome back, {$user_name}! You logged in with {$user_email}";
-    return createNotification($user_id, $message, 'login', $user_id);
+    return createNotification($user_id, $message, 'login', $user_id, $role, $role);
 }
 
 /**

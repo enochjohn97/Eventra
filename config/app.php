@@ -11,17 +11,13 @@ if (empty($qr_secret)) {
 }
 define('QR_SECRET', $qr_secret);
 
-// Application base URL (Dynamic detection if not set)
-if (!isset($_ENV['APP_URL']) || empty($_ENV['APP_URL']) || strpos($_ENV['APP_URL'], 'localhost') !== false) {
-    if (defined('SITE_URL')) {
+// Application base URL (resolved in env-loader for local vs production)
+if (!defined('APP_URL')) {
+    if (function_exists('resolveAppUrl')) {
+        define('APP_URL', resolveAppUrl());
+    } elseif (defined('SITE_URL')) {
         define('APP_URL', SITE_URL);
     } else {
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
-                     (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-                     (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        define('APP_URL', $protocol . $host);
+        define('APP_URL', rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000', '/'));
     }
-} else {
-    define('APP_URL', $_ENV['APP_URL']);
 }

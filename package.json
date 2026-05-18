@@ -4,5 +4,9 @@
   "description": "Comprehensive event management system with admin, client, and user portals",
   "author": "",
   "license": "MIT",
+  "scripts": {
+    "start": "php -S localhost:8000 index.php",
+    "start:composer": "composer install --no-interaction && php -S localhost:8000 index.php"
+  },
   "dependencies": {}
 }

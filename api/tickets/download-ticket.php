@@ -101,9 +101,18 @@ try {
             $generated = generateTicketPDF($ticket);
             if ($generated === '' || !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {
                 $qrPath = generateTicketQRCode($ticket);
+                if ($qrPath === '' || !file_exists($qrPath)) {
+                    $fallbackQr = __DIR__ . '/../../public/assets/imgs/qr.png';
+                    if (file_exists($fallbackQr)) {
+                        $qrPath = $fallbackQr;
+                    }
+                }
                 if ($qrPath !== '' && file_exists($qrPath)) {
                     $ticket['qr_path'] = $qrPath;
                     $ticket['qr_base64'] = base64_encode_image($qrPath);
+                }
+                if (empty($ticket['qr_base64'])) {
+                    error_log('[download-ticket.php] QR image could not be encoded for barcode ' . $barcode);
                 }
                 EmailHelper::regeneratePdf($ticket, $pdfPath);
             }

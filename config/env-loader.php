@@ -81,17 +81,52 @@ foreach ($envKeys as $key) {
 // Auto-load when this file is included
 loadEnv();
 
-// Dynamic APP_URL fallback for local/production consistency
-if (!isset($_ENV['APP_URL']) || empty($_ENV['APP_URL']) || strpos($_ENV['APP_URL'], 'localhost') !== false) {
-    if (isset($_SERVER['HTTP_HOST'])) {
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
-                     (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-                     (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'];
-        $_ENV['APP_URL'] = $protocol . $host;
-        $_SERVER['APP_URL'] = $_ENV['APP_URL'];
-        putenv("APP_URL=" . $_ENV['APP_URL']);
+/**
+ * Detect local dev server (localhost / 127.0.0.1, any port).
+ */
+function isLocalHost(): bool
+{
+    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+    return (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+}
+
+/**
+ * Resolve APP_URL: localhost always uses the current request host;
+ * production uses APP_URL from .env when set.
+ */
+function resolveAppUrl(): string
+{
+    $detectProtocol = static function (): string {
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+        return $https ? 'https://' : 'http://';
+    };
+
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host !== '' && isLocalHost()) {
+        return rtrim($detectProtocol() . $host, '/');
     }
+
+    $fromEnv = trim((string) ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: ''));
+    if ($fromEnv !== '' && !preg_match('/localhost|127\.0\.0\.1/i', $fromEnv)) {
+        return rtrim($fromEnv, '/');
+    }
+
+    if ($host !== '') {
+        return rtrim($detectProtocol() . $host, '/');
+    }
+
+    return rtrim($fromEnv !== '' ? $fromEnv : 'http://localhost:8000', '/');
+}
+
+$_ENV['APP_URL'] = resolveAppUrl();
+$_SERVER['APP_URL'] = $_ENV['APP_URL'];
+putenv('APP_URL=' . $_ENV['APP_URL']);
+
+if (!isset($_ENV['APP_ENV']) || $_ENV['APP_ENV'] === '') {
+    $_ENV['APP_ENV'] = isLocalHost() ? 'local' : 'production';
+    putenv('APP_ENV=' . $_ENV['APP_ENV']);
 }
 
 

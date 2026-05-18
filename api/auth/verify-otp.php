@@ -123,12 +123,13 @@ if ($intent === 'client_login_otp') {
         // 9. Log success
         logSecurityEvent($user['id'], $user['email'], 'otp_verified', 'otp', 'Client login OTP verified');
 
-        // 10. Notify admin (optional)
+        // 10. Notify admin and client
         require_once __DIR__ . '/../utils/notification-helper.php';
         $admin_id = getAdminUserId();
         if ($admin_id) {
             createClientLoginNotification($admin_id, $user['id'], $user['name'], $user['email']);
         }
+        createLoginNotification($user['id'], $user['name'] ?? 'Client', $user['email'], 'client');
 
         echo json_encode([
             'success' => true,

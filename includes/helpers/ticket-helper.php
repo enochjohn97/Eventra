@@ -86,7 +86,9 @@ function base64_encode_image($path) {
         $tryPaths = [
             $root . DIRECTORY_SEPARATOR . $cleanPath,
             $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . $cleanPath,
-            $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . basename($path)
+            $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . basename($path),
+            $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'imgs' . DIRECTORY_SEPARATOR . 'qr.png',
+            $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . 'qrcodes' . DIRECTORY_SEPARATOR . basename($path),
         ];
 
         foreach ($tryPaths as $tp) {

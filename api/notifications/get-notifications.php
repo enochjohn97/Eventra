@@ -58,9 +58,20 @@ try {
         $cleanup_stmt->execute();
     }
 
-    // Build query
-    $where_clauses = ["recipient_auth_id = ?", "recipient_role = ?"];
-    $params = [$auth_id, $role];
+    // Build query — match auth_id and legacy rows stored with profile id (clients.id, etc.)
+    $recipientIds = [(int) $auth_id];
+    if ($role === 'client' && !empty($_SESSION['client_id'])) {
+        $recipientIds[] = (int) $_SESSION['client_id'];
+    } elseif ($role === 'admin' && !empty($_SESSION['admin_id'])) {
+        $recipientIds[] = (int) $_SESSION['admin_id'];
+    } elseif ($role === 'user' && !empty($_SESSION['user_id'])) {
+        $recipientIds[] = (int) $_SESSION['user_id'];
+    }
+    $recipientIds = array_values(array_unique(array_filter($recipientIds)));
+
+    $idPlaceholders = implode(', ', array_fill(0, count($recipientIds), '?'));
+    $where_clauses = ["recipient_auth_id IN ($idPlaceholders)", "recipient_role = ?"];
+    $params = array_merge($recipientIds, [$role]);
 
     if ($is_read !== null) {
         $where_clauses[] = "is_read = ?";
@@ -106,8 +117,8 @@ try {
     $notifications = $stmt->fetchAll();
 
     // Get unread count
-    $count_stmt = $pdo->prepare("SELECT COUNT(*) as unread FROM notifications WHERE recipient_auth_id = ? AND recipient_role = ? AND is_read = 0");
-    $count_stmt->execute([$auth_id, $role]);
+    $count_stmt = $pdo->prepare("SELECT COUNT(*) as unread FROM notifications WHERE recipient_auth_id IN ($idPlaceholders) AND recipient_role = ? AND is_read = 0");
+    $count_stmt->execute(array_merge($recipientIds, [$role]));
     $unread_count = $count_stmt->fetch()['unread'];
 
     ob_clean();

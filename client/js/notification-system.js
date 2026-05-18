@@ -54,6 +54,11 @@ class NotificationManager {
 
             const result = await response.json();
 
+            if (!result.success) {
+                this.renderNotificationError(result.message || 'Could not load notifications.');
+                return;
+            }
+
             if (result.success) {
                 // Calculate server time offset
                 if (result.server_time) {
@@ -102,9 +107,9 @@ class NotificationManager {
             }
         } catch (error) {
             if (error.name === 'AbortError') {
-                // Ignore aborted fetches silently
                 return;
             }
+            this.renderNotificationError('Unable to reach the server. Is the API running?');
         } finally {
             this.currentAbortController = null;
         }
@@ -146,6 +151,17 @@ class NotificationManager {
             bellIcon.style.position = 'relative';
             bellIcon.appendChild(badge);
         }
+    }
+
+    renderNotificationError(message) {
+        const notificationList = document.getElementById('notificationList');
+        if (!notificationList) return;
+        const safeMsg = window.escapeHtml ? window.escapeHtml(message) : message;
+        notificationList.innerHTML =
+            '<motion style="text-align:center;padding:3rem 2rem;color:#64748b;">'.replace('motion', 'div') +
+            '<motion style="font-size:2.5rem;margin-bottom:1rem;">⚠️</motion>'.replace(/<\/?motion\b/g, (t) => t.replace('motion', 'div')) +
+            '<h3 style="font-size:1.1rem;font-weight:700;color:#1e293b;margin-bottom:0.5rem;">Notifications unavailable</h3>' +
+            '<p style="font-size:0.9rem;">' + safeMsg + '</p></div>';
     }
 
     // Update notification drawer content

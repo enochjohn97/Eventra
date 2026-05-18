@@ -578,6 +578,16 @@ class EmailHelper
                 : '';
         }
 
+        if ($qrSrc === '' && $forPdf) {
+            $emailQr = self::getEmailQrAssetPath();
+            if (file_exists($emailQr) && filesize($emailQr) > 0) {
+                $data = @file_get_contents($emailQr);
+                if ($data !== false && $data !== '') {
+                    $qrSrc = 'data:image/png;base64,' . base64_encode($data);
+                }
+            }
+        }
+
         $qrSize = $forPdf ? 120 : 160;
         if ($qrSrc !== '') {
             $qrHtml = self::buildStyledQrHtml($qrSrc, $qrSize, $forPdf);
