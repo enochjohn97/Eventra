@@ -20,7 +20,11 @@ $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
 $base_url = $protocol . $host;
 
 
-if ($host !== 'localhost' && $host !== '127.0.0.1') {
+$isLocalHost = function_exists('isLocalHost')
+    ? isLocalHost()
+    : (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+
+if (!$isLocalHost && session_status() !== PHP_SESSION_ACTIVE) {
     ini_set('session.cookie_path',     '/');
     ini_set('session.cookie_domain',   $host);
     ini_set('session.cookie_secure',   ($protocol === "https://") ? 1 : 0);

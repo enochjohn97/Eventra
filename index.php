@@ -82,7 +82,13 @@ if (strpos($uri, '/api/') === 0) {
     $fullPath = __DIR__ . '/api/' . $targetFile;
 
     if (file_exists($fullPath) && is_file($fullPath)) {
+        // API scripts use paths relative to their own directory (e.g. ../../config/).
+        $prevCwd = getcwd();
+        chdir(dirname($fullPath));
         require_once $fullPath;
+        if ($prevCwd !== false) {
+            chdir($prevCwd);
+        }
         exit;
     }
 

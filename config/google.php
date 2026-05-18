@@ -4,13 +4,15 @@ require_once __DIR__ . '/env-loader.php';
 
 $redirect_uri = $_ENV['GOOGLE_REDIRECT_URI'] ?? '';
 
-// Dynamically override localhost or empty redirect URI if we are on a live domain
-if (empty($redirect_uri) || strpos($redirect_uri, 'localhost') !== false) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
-                 (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-                 (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $redirect_uri = $protocol . $host . '/api/auth/google-signin.php';
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+    || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)) ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+// Use request host when unset, or when running locally (keeps production .env URI on live server)
+$isLocal = function_exists('isLocalHost') ? isLocalHost() : (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+if (empty($redirect_uri) || $isLocal) {
+    $redirect_uri = $protocol . $host . '/api/auth/google-handler.php';
 }
 
 return [

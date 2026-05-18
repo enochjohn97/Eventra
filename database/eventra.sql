@@ -521,3 +521,13 @@ ALTER TABLE auth_logs
 -- RE-ENABLE FOREIGN KEY CHECKS
 -- =============================================================================
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =============================================================================
+-- LOCAL MYSQL USER PRIVILEGES (run this block as MySQL root)
+-- Fixes: "SELECT command denied to user 'eventra'@'localhost'"
+-- =============================================================================
+-- CREATE USER IF NOT EXISTS 'eventra'@'localhost' IDENTIFIED BY 'your_password';
+-- CREATE USER IF NOT EXISTS 'eventra'@'127.0.0.1' IDENTIFIED BY 'your_password';
+-- GRANT ALL PRIVILEGES ON eventra_db.* TO 'eventra'@'localhost';
+-- GRANT ALL PRIVILEGES ON eventra_db.* TO 'eventra'@'127.0.0.1';
+-- FLUSH PRIVILEGES;

@@ -19,15 +19,27 @@ function regLog($level, $message, $context = [])
     error_log($entry);
 }
 
-header('Access-Control-Allow-Origin: https://eventra-website.liveblog365.com');
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Eventra-Portal, DNT');
+// CORS + PDO (must load before session; cors-config is included by database.php)
+$db_path = __DIR__ . '/../../config/database.php';
+if (!file_exists($db_path)) {
+    regLog('CRITICAL', 'database.php missing');
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Service configuration error.']);
+    exit;
+}
+require_once $db_path;
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
+}
+
+$config_path = __DIR__ . '/../../config.php';
+if (file_exists($config_path)) {
+    require_once $config_path;
 }
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -41,26 +53,16 @@ function sendJsonResponse($success, $message, $httpCode = 200, $extra = [])
 {
     global $sessionId;
     regLog($success ? 'SUCCESS' : 'ERROR', $message, ['http_code' => $httpCode, 'extra' => $extra]);
-    if (ob_get_length())
+    if (ob_get_length()) {
         ob_clean();
+    }
     http_response_code($httpCode);
-    header('Content-Type: application/json');
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
+    }
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
     exit;
 }
-
-// Load config
-$config_path = __DIR__ . '/../../config.php';
-if (file_exists($config_path))
-    require_once $config_path;
-
-// Load database
-$db_path = __DIR__ . '/../../config/database.php';
-if (!file_exists($db_path)) {
-    regLog('CRITICAL', 'database.php missing');
-    sendJsonResponse(false, 'Service configuration error.', 500);
-}
-require_once $db_path;
 
 try {
     $pdo = getPDO();
@@ -196,10 +198,11 @@ try {
             sendJsonResponse(false, 'Username already taken. Please try a different email.', 409);
         }
     }
-    sendJsonResponse(false, 'Database error. Please try again.', 500);
+    sendJsonResponse(false, formatDbErrorMessage($e), 500);
 } catch (Throwable $e) {
-    if (isset($pdo) && $pdo->inTransaction())
+    if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
+    }
     regLog('CRITICAL', 'Exception: ' . $e->getMessage());
     sendJsonResponse(false, 'Internal server error.', 500);
 }

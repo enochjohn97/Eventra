@@ -28,6 +28,23 @@ if (!function_exists('get_env_var')) {
     }
 }
 
+/**
+ * User-facing message for common MySQL permission errors (local setup).
+ */
+if (!function_exists('formatDbErrorMessage')) {
+    function formatDbErrorMessage(PDOException $e): string
+    {
+        $msg = $e->getMessage();
+        if (strpos($msg, '1142') !== false || strpos($msg, '1044') !== false || strpos($msg, '1045') !== false) {
+            return 'Database permission error. In MySQL Workbench (as root), run: '
+                . "GRANT ALL PRIVILEGES ON `" . DB_NAME . "`.* TO '" . DB_USER . "'@'localhost'; "
+                . "GRANT ALL PRIVILEGES ON `" . DB_NAME . "`.* TO '" . DB_USER . "'@'127.0.0.1'; "
+                . 'FLUSH PRIVILEGES;';
+        }
+        return 'Database error: ' . $msg;
+    }
+}
+
 // Database configuration constants
 if (!defined('DB_HOST')) define('DB_HOST', get_env_var('DB_HOST', '127.0.0.1'));
 if (!defined('DB_PORT')) define('DB_PORT', get_env_var('DB_PORT', '3306'));
