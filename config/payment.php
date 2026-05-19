@@ -28,6 +28,11 @@ function paystackRequest(string $method, string $path, array $payload = []): arr
         'Cache-Control: no-cache',
     ]);
 
+    if (($_ENV['APP_ENV'] ?? '') === 'local') {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    }
+
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));

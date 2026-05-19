@@ -49,6 +49,12 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer ' . PAYSTACK_SECRET_KEY,
     'Cache-Control: no-cache',
 ]);
+
+if (($_ENV['APP_ENV'] ?? '') === 'local') {
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+}
+
 $response  = curl_exec($ch);
 $curlError = curl_error($ch);
 

@@ -52,6 +52,11 @@ function sendSMS($phoneNumber, $message)
         'Accept: application/json'
     ]);
 
+    if (($_ENV['APP_ENV'] ?? '') === 'local') {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    }
+
     $response = curl_exec($ch);
     $error = curl_error($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

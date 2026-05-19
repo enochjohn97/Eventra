@@ -400,9 +400,12 @@ class EmailHelper
             $emailQr = self::getEmailQrAssetPath();
             if (file_exists($emailQr) && filesize($emailQr) > 0) {
                 $url = self::pathToUrl('/public/assets/imgs/qr.png');
-                if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                // Return URL for any scheme (includes localhost http://) or fallback to relative path
+                if ($url !== '') {
                     return $url;
                 }
+                // Final fallback: direct relative path (works in browser on localhost)
+                return 'public/assets/imgs/qr.png';
             }
         } elseif (!empty($ticketData['qr_base64'])) {
             $b64 = $ticketData['qr_base64'];
@@ -843,9 +846,15 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        $bgAttr = $bgImage
-            ? 'background-image:url(' . htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8') . ');'
-            : 'background-color:#111111;';
+        // DomPDF doesn't support CSS background-image on tables.
+        // Use an absolutely-positioned <img> element for the event image background.
+        $bgImgHtml = '';
+        if ($bgImage !== '') {
+            $safeBg = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
+            $bgImgHtml = "<img src=\"{$safeBg}\" "
+                . 'style="position:absolute;top:0;left:0;width:900px;height:420px;" '
+                . 'alt="" />';
+        }
 
         return <<<PDF
 <!DOCTYPE html>
@@ -854,29 +863,41 @@ HTML;
 <meta charset="UTF-8">
 <title>Ticket — {$eventTitle}</title>
 <style>
-  @page { size: 800px 380px; margin: 0; }
+  @page { size: 900px 420px; margin: 0; }
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     padding: 0;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
+    background: #111111;
   }
   table { border-collapse: collapse; }
-  .ticket-wrap {
-    width: 800px;
-    height: 380px;
-    {$bgAttr}
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+  .ticket-outer {
+    position: relative;
+    width: 900px;
+    height: 420px;
+    background-color: #111111;
+    overflow: hidden;
   }
-  .overlay-cell {
-    background: rgba(0,0,0,0.7);
-    padding: 30px 40px;
-    vertical-align: top;
+  .ticket-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 900px;
+    height: 420px;
+    background: rgba(0,0,0,0.72);
+  }
+  .ticket-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 900px;
+    height: 420px;
+    padding: 32px 44px;
   }
   .event-title {
-    font-size: 32px;
+    font-size: 34px;
     font-weight: 900;
     text-transform: uppercase;
     line-height: 1.1;
@@ -896,7 +917,7 @@ HTML;
     font-weight: 700;
   }
   .holder-name {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 800;
     color: #ffffff;
   }
@@ -916,59 +937,59 @@ HTML;
 </style>
 </head>
 <body>
-<table class="ticket-wrap" width="800" height="380" cellpadding="0" cellspacing="0">
-<tr>
-<td class="overlay-cell">
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td valign="top" width="70%">
-        {$badgeHtml}
-        <div class="event-title">{$eventTitle}</div>
-      </td>
-      <td valign="top" width="30%" class="brand">EVENTRA</td>
-    </tr>
-    <tr><td colspan="2" height="16"></td></tr>
-    <tr>
-      <td valign="top" colspan="2">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td width="55%" valign="top">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="50%" valign="top">{$colA}</td>
-                  <td width="50%" valign="top">{$colB}</td>
-                </tr>
-              </table>
-            </td>
-            <td width="45%" valign="top" align="right">
-              {$qrHtml}
-              <div class="barcode-text">{$barcode}</div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-    <tr><td colspan="2" height="20"></td></tr>
-    <tr>
-      <td colspan="2" style="border-top:1px solid rgba(255,255,255,0.2);padding-top:16px;">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td valign="bottom" width="50%">
-              <div class="label">Ticket Holder</div>
-              <div class="holder-name">{$userName}</div>
-            </td>
-            <td valign="bottom" width="50%" align="right">
-              <div class="label">Ticket ID</div>
-              <div class="ticket-id">{$ticketId}</div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</td>
-</tr>
-</table>
+<div class="ticket-outer">
+  {$bgImgHtml}
+  <div class="ticket-overlay"></div>
+  <div class="ticket-content">
+    <table width="812" cellpadding="0" cellspacing="0">
+      <tr>
+        <td valign="top" width="70%">
+          {$badgeHtml}
+          <div class="event-title">{$eventTitle}</div>
+        </td>
+        <td valign="top" width="30%" class="brand">EVENTRA</td>
+      </tr>
+      <tr><td colspan="2" height="18"></td></tr>
+      <tr>
+        <td valign="top" colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="58%" valign="top">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td width="50%" valign="top">{$colA}</td>
+                    <td width="50%" valign="top">{$colB}</td>
+                  </tr>
+                </table>
+              </td>
+              <td width="42%" valign="top" align="right">
+                {$qrHtml}
+                <div class="barcode-text">{$barcode}</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr><td colspan="2" height="18"></td></tr>
+      <tr>
+        <td colspan="2" style="border-top:1px solid rgba(255,255,255,0.2);padding-top:14px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="bottom" width="50%">
+                <div class="label">Ticket Holder</div>
+                <div class="holder-name">{$userName}</div>
+              </td>
+              <td valign="bottom" width="50%" align="right">
+                <div class="label">Ticket ID</div>
+                <div class="ticket-id">{$ticketId}</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
 </body>
 </html>
 PDF;
@@ -1194,7 +1215,8 @@ PDF;
 
                 $dompdf = new \Dompdf\Dompdf($options);
                 $dompdf->loadHtml($html, 'UTF-8');
-                $dompdf->setPaper([0, 0, 800, 380]);
+                // 900px × 420px → points (96dpi → 72dpi): 900/96*72=675, 420/96*72=315
+                $dompdf->setPaper([0, 0, 675, 315]);
                 $dompdf->render();
 
                 $output = $dompdf->output();

@@ -49,12 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPassword = passwordInput.getAttribute('type') === 'password';
             const type = isPassword ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
-            
+
             // Update Icon
-            togglePassword.innerHTML = isPassword ? 
-                '<i data-lucide="eye-off" style="width: 18px; height: 18px;"></i>' : 
+            togglePassword.innerHTML = isPassword ?
+                '<i data-lucide="eye-off" style="width: 18px; height: 18px;"></i>' :
                 '<i data-lucide="eye" style="width: 18px; height: 18px;"></i>';
-            
+
             // Re-create icons for the new element
             if (window.lucide) {
                 window.lucide.createIcons();
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     successMessage.classList.add('show');
                     successMessage.textContent = 'Login successful! Redirecting...';
                 }
-                
+
                 setTimeout(() => {
                     const redirectUrl = result.redirect || '/admin/pages/adminDashboard.html';
                     window.location.href = redirectUrl;
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Clear any stale state on failure
                 if (window.authController) window.authController.clearLocalState();
-                
+
                 const errorElement = result.message?.toLowerCase().includes('username') ? 'usernameError' : 'passwordError';
                 showError(errorElement, result.message || 'Invalid username or password');
                 loginButton.disabled = false;
@@ -192,10 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const showFallback = () => {
             sliderContainer.innerHTML = `
-                <img src="${basePath}public/assets/images/admin-login-bg.jpg" 
-                     alt="Eventra Admin" 
-                     class="slider-img active" 
-                     onerror="this.src='https://images.unsplash.com/photo-1540575861501-7cf05a4b125a?auto=format&fit=crop&q=80&w=1920'">
+                <img src="" 
+                     alt="Eventra Admin"
+                     class="slider-img active">
             `;
         };
 
@@ -205,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.success && data.events && data.events.length > 0) {
                 const eventsWithImages = data.events.filter(e => e.image_path);
-                
+
                 if (eventsWithImages.length === 0) {
                     showFallback();
                     return;
@@ -220,9 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (cleanPath.startsWith('assets/') && !cleanPath.includes('public/')) {
                         webPath = 'public/' + cleanPath;
                     }
-                    
+
                     const imgUrl = event.image_path.startsWith('http') ? event.image_path : basePath + webPath;
-                    
+
                     return `
                         <img src="${imgUrl}" 
                              alt="${escapeHTML(event.event_name)}" 
@@ -234,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let currentIndex = 0;
                 const images = sliderContainer.querySelectorAll('.slider-img');
-                
+
                 if (images.length === 0) {
                     showFallback();
                     return;
@@ -243,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const updateSlider = () => {
                     const currentImages = sliderContainer.querySelectorAll('.slider-img');
                     if (currentImages.length <= 1) return;
-                    
+
                     currentImages[currentIndex].classList.remove('active');
                     currentIndex = (currentIndex + 1) % currentImages.length;
                     currentImages[currentIndex].classList.add('active');
@@ -337,9 +336,9 @@ async function handleForgotPassword() {
                 Swal.showLoading();
                 const resetRes = await apiFetch('/api/auth/reset-password.php', {
                     method: 'POST',
-                    body: JSON.stringify({ 
-                        reset_token: verifyResult.reset_token, 
-                        new_password: password 
+                    body: JSON.stringify({
+                        reset_token: verifyResult.reset_token,
+                        new_password: password
                     })
                 });
                 const resetResult = await resetRes.json();

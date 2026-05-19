@@ -112,11 +112,16 @@ body {
     padding: 1rem;
 }
 
-.sidebar.sidebar-collapsed .menu-item a i {
+.sidebar.sidebar-collapsed .menu-item a i,
+.sidebar.sidebar-collapsed .menu-item a svg {
     margin: 0;
     font-size: 1.25rem;
     width: 20px;
     height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    flex-shrink: 0;
+    display: block;
 }
 
 .sidebar-logo {

@@ -141,6 +141,12 @@ try {
             "Authorization: Bearer " . PAYSTACK_SECRET_KEY,
             "Cache-Control: no-cache",
         ]);
+
+        if (($_ENV['APP_ENV'] ?? '') === 'local') {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        }
+
         $gatewayResponse = curl_exec($ch);
         // curl_close($ch); is deprecated in PHP 8.4+ and no longer needed.
 
