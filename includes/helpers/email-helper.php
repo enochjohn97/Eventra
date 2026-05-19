@@ -74,7 +74,8 @@ class EmailHelper
         string $subject,
         string $body,
         array $attachments = [],
-        string $altBody = ''
+        string $altBody = '',
+        array $embeddedImages = []
     ): array {
         if (empty(SMTP_HOST) || empty(SMTP_USER) || empty(SMTP_PASS)) {
             error_log('[EmailHelper] SMTP credentials not configured.');
@@ -124,6 +125,17 @@ class EmailHelper
                     continue;
                 }
                 $mail->addAttachment($filePath);
+            }
+
+            if (is_array($embeddedImages)) {
+                foreach ($embeddedImages as $img) {
+                    $path = $img['path'] ?? '';
+                    $cid = $img['cid'] ?? '';
+                    $name = $img['name'] ?? '';
+                    if ($path !== '' && file_exists($path)) {
+                        $mail->addEmbeddedImage($path, $cid, $name);
+                    }
+                }
             }
 
             $mail->isHTML(true);
@@ -231,29 +243,40 @@ class EmailHelper
         // Local path
         $localPath = self::normalisePath($path);
 
-        if (!file_exists($localPath)) {
-            if (!preg_match('/^[a-zA-Z]:/', $localPath)) {
-                $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
-                // Guard: check if path already starts with projectRoot
-                if (strpos($localPath, $projectRoot) !== 0) {
-                    $localPath = $projectRoot . '/' . ltrim($localPath, '/');
-                }
+        // 🔥 FIX: Resolve relative and web-relative paths properly
+        $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
+        $pathsToCheck = [];
+
+        // If path isn't a true absolute path with drive letter, resolve relative to project root / public
+        if (!preg_match('/^[a-zA-Z]:/', $localPath)) {
+            $cleanedPath = ltrim($localPath, '/\\');
+            $pathsToCheck[] = $projectRoot . '/' . $cleanedPath;
+            $pathsToCheck[] = $projectRoot . '/public/' . $cleanedPath;
+        } else {
+            $pathsToCheck[] = $localPath;
+        }
+
+        $foundPath = null;
+        foreach ($pathsToCheck as $candidate) {
+            if (file_exists($candidate) && filesize($candidate) > 0) {
+                $foundPath = $candidate;
+                break;
             }
         }
 
-        if (!file_exists($localPath)) {
-            error_log("[EmailHelper] imageToDataUri: file not found: {$path}");
+        if ($foundPath === null) {
+            error_log("[EmailHelper] imageToDataUri: file not found in checked paths for: {$path}");
             return '';
         }
 
-        $data = @file_get_contents($localPath);
+        $data = @file_get_contents($foundPath);
         if ($data === false || $data === '') {
             return '';
         }
 
         if (strlen($data) > $maxBytes) {
             // Try to resize/compress using GD if available
-            $resized = self::resizeImageData($data, $localPath, 800, 400);
+            $resized = self::resizeImageData($data, $foundPath, 800, 400);
             if ($resized !== '') {
                 $data = $resized;
             } else {
@@ -262,7 +285,7 @@ class EmailHelper
             }
         }
 
-        $mime = self::guessMime($localPath);
+        $mime = self::guessMime($foundPath);
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 
@@ -385,8 +408,24 @@ class EmailHelper
         }
 
         $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
-        if (!preg_match('/^[A-Za-z]:[\\\\\/]/', $localPath) && !str_starts_with($localPath, '/') && !str_starts_with($localPath, '\\')) {
-            $localPath = $projectRoot . '/' . ltrim($localPath, '/\\');
+        $localPath = self::normalisePath($localPath);
+
+        if (!preg_match('/^[A-Za-z]:/', $localPath)) {
+            $cleaned = ltrim($localPath, '/\\');
+            // Try standard project root first
+            $try1 = $projectRoot . '/' . $cleaned;
+            if (file_exists($try1)) {
+                $localPath = $try1;
+            } else {
+                // Try prepending public/
+                $try2 = $projectRoot . '/public/' . $cleaned;
+                if (file_exists($try2)) {
+                    $localPath = $try2;
+                } else {
+                    // Fallback to try1
+                    $localPath = $try1;
+                }
+            }
         }
         return str_replace('/', DIRECTORY_SEPARATOR, $localPath);
     }
@@ -397,28 +436,7 @@ class EmailHelper
      */
     private static function generateQrDataUri(array $ticketData, string $staticPath = '', bool $forceRemote = false): string
     {
-        // --- 1. Use the static QR file if it exists and is not empty ---
-        $staticQrPath = self::getEmailQrAssetPath();
-        if (file_exists($staticQrPath) && filesize($staticQrPath) > 0) {
-            if ($forceRemote) {
-                // Return absolute URL for email (works when APP_URL is set)
-                $url = self::pathToUrl('/public/assets/imgs/qr.png');
-                if ($url !== '') {
-                    return $url;
-                }
-                // Fallback to relative path (works in browser on localhost)
-                return 'public/assets/imgs/qr.png';
-            } else {
-                // For PDF, return base64 data URI
-                $data = @file_get_contents($staticQrPath);
-                if ($data !== false && $data !== '') {
-                    $mime = self::guessMime($staticQrPath);
-                    return 'data:' . $mime . ';base64,' . base64_encode($data);
-                }
-            }
-        }
-
-        // --- 2. Fallback to existing logic (data from ticket or generated QR) ---
+        // 1. Priority: Use existing base64 data if available
         if (!$forceRemote && !empty($ticketData['qr_base64'])) {
             $b64 = $ticketData['qr_base64'];
             if (!str_starts_with($b64, 'data:')) {
@@ -427,20 +445,11 @@ class EmailHelper
             return $b64;
         }
 
+        // 2. Priority: Use the actual ticket's QR code file
         $qrPath = trim((string) ($ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? $staticPath ?? ''));
         if ($qrPath !== '') {
             $localPath = self::resolveLocalQrPath($qrPath);
-
             if (file_exists($localPath) && filesize($localPath) > 0) {
-                if ($forceRemote) {
-                    // Copy to static asset for email URL
-                    @copy($localPath, $staticQrPath);
-                    $url = self::pathToUrl('/public/assets/imgs/qr.png');
-                    if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-                        return $url;
-                    }
-                }
-
                 $mime = self::guessMime($localPath);
                 $data = @file_get_contents($localPath);
                 if ($data !== false && $data !== '') {
@@ -449,9 +458,8 @@ class EmailHelper
             }
         }
 
-        // --- 3. Generate QR code via chillerlan/php-qrcode if available ---
+        // 3. Priority: Generate QR code dynamically via chillerlan/php-qrcode if available
         $verificationUrl = self::buildVerificationUrl($ticketData);
-
         if (class_exists('chillerlan\QRCode\QRCode')) {
             try {
                 $options = new \chillerlan\QRCode\QROptions([
@@ -463,27 +471,21 @@ class EmailHelper
                 ]);
                 $qr = new \chillerlan\QRCode\QRCode($options);
                 $rendered = $qr->render($verificationUrl);
-
-                if ($forceRemote && is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
-                    $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? ''));
-                    if ($barcode !== '') {
-                        $parts = explode(',', $rendered, 2);
-                        $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
-                        if ($bin !== false && $bin !== '') {
-                            // Save to static path
-                            if (@file_put_contents($staticQrPath, $bin) !== false) {
-                                $url = self::pathToUrl('/public/assets/imgs/qr.png');
-                                if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-                                    return $url;
-                                }
-                            }
-                        }
-                    }
+                if (is_string($rendered) && $rendered !== '') {
+                    return $rendered;
                 }
-
-                return is_string($rendered) ? $rendered : '';
             } catch (\Throwable $e) {
                 error_log('[EmailHelper] chillerlan/php-qrcode failed: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Priority: Fallback to the static placeholder QR file
+        $staticQrPath = self::getEmailQrAssetPath();
+        if (file_exists($staticQrPath) && filesize($staticQrPath) > 0) {
+            $data = @file_get_contents($staticQrPath);
+            if ($data !== false && $data !== '') {
+                $mime = self::guessMime($staticQrPath);
+                return 'data:' . $mime . ';base64,' . base64_encode($data);
             }
         }
 
@@ -557,23 +559,20 @@ class EmailHelper
             $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? ''
         );
 
-        // For emails (not forPdf), use remote URL for QR code as Gmail blocks base64
-        $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, !$forPdf);
+        if (!$forPdf && !empty($ticketData['qr_cid'])) {
+            $qrSrc = 'cid:' . $ticketData['qr_cid'];
+        } else {
+            // 🔥 FIX: Use self::generateQrDataUri (which now always returns base64 or empty)
+            $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, false);
 
-        if ($forPdf && str_starts_with($qrSrc, 'http')) {
-            $ctx = stream_context_create(['http' => ['timeout' => 3]]);
-            $data = @file_get_contents($qrSrc, false, $ctx);
-            $qrSrc = ($data !== false && $data !== '')
-                ? 'data:image/png;base64,' . base64_encode($data)
-                : '';
-        }
-
-        if ($qrSrc === '' && $forPdf) {
-            $emailQr = self::getEmailQrAssetPath();
-            if (file_exists($emailQr) && filesize($emailQr) > 0) {
-                $data = @file_get_contents($emailQr);
-                if ($data !== false && $data !== '') {
-                    $qrSrc = 'data:image/png;base64,' . base64_encode($data);
+            // 🛡️ Additional fallback for PDF edge cases
+            if ($qrSrc === '' && $forPdf) {
+                $emailQr = self::getEmailQrAssetPath();
+                if (file_exists($emailQr) && filesize($emailQr) > 0) {
+                    $data = @file_get_contents($emailQr);
+                    if ($data !== false && $data !== '') {
+                        $qrSrc = 'data:image/png;base64,' . base64_encode($data);
+                    }
                 }
             }
         }
@@ -591,23 +590,21 @@ class EmailHelper
         $imgRaw = trim((string) ($ticketData['event_image'] ?? ''));
         $imgBase64 = ''; // Initialize
 
-        if (!$forPdf) {
-            // FOR EMAIL: Use absolute URL to keep HTML size small (<80KB)
-            $safeImgSrc = htmlspecialchars(self::pathToUrl($imgRaw), ENT_QUOTES, 'UTF-8');
-            $eventImgHtml = "<img src=\"{$safeImgSrc}\" alt=\"Event\" "
-                . "style=\"width:100%;height:180px;object-fit:cover;display:block;\">";
+        if (!$forPdf && !empty($ticketData['event_image_cid'])) {
+            $imgBase64 = 'cid:' . $ticketData['event_image_cid'];
         } else {
-            // FOR PDF: Use base64 for reliable local rendering
+            // 🔥 FIX: Convert event image to base64 and use it reliably for both email and PDF
             $imgBase64 = self::imageToDataUri($imgRaw, 500000);
-            if ($imgBase64 !== '') {
-                $safeImgSrc = htmlspecialchars($imgBase64, ENT_QUOTES, 'UTF-8');
-                $eventImgHtml = "<img src=\"{$safeImgSrc}\" alt=\"Event\" "
-                    . "style=\"width:100%;height:180px;object-fit:cover;display:block;\">";
-            } else {
-                $eventImgHtml = '<div style="width:100%;height:180px;background:#0f3460;text-align:center;line-height:180px;">'
-                    . '<span style="font-size:11px;letter-spacing:3px;color:rgba(212,175,55,0.6);text-transform:uppercase;">EVENT</span>'
-                    . '</div>';
-            }
+        }
+
+        if ($imgBase64 !== '') {
+            $safeImgSrc = htmlspecialchars($imgBase64, ENT_QUOTES, 'UTF-8');
+            $eventImgHtml = "<img src=\"{$safeImgSrc}\" alt=\"Event\" "
+                . "style=\"width:100%;height:180px;object-fit:cover;display:block;border-top-left-radius:16px;border-top-right-radius:16px;\">";
+        } else {
+            $eventImgHtml = '<div style="width:100%;height:180px;background:#0f3460;text-align:center;line-height:180px;border-top-left-radius:16px;border-top-right-radius:16px;">'
+                . '<span style="font-size:11px;letter-spacing:3px;color:rgba(212,175,55,0.6);text-transform:uppercase;">EVENT</span>'
+                . '</div>';
         }
 
         /* ── Ticket-type badge ───────────────────────────── */
@@ -748,6 +745,13 @@ class EmailHelper
         }
 
         /* ── EMAIL HTML ─────────────────────────────────────────────────── */
+        $bgStyle = '';
+        if ($imgBase64 !== '') {
+            $bgStyle = "background-image: url('{$imgBase64}'); background-size: cover; background-position: center;";
+        } else {
+            $bgStyle = 'background-color: #111111;';
+        }
+
         $html = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -761,38 +765,51 @@ class EmailHelper
 <tr><td align="center">
 
   <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
-         style="max-width:600px;background-color:#111111;border-radius:16px;border:none;">
+         style="max-width:600px;background-color:#111111;{$bgStyle}border-radius:16px;overflow:hidden;border:none;">
   <tr>
-    <td valign="top" style="padding:0;margin:0;border:none;">
+    <td valign="top" style="padding:0;margin:0;border:none;background-color:#111111;background-color:rgba(17,17,17,0.85);border-radius:16px;">
       
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:24px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:0;border-collapse:collapse;">
+          <!-- Event Image Banner Row -->
           <tr>
-            <td valign="top">
-              <div style="font-family:Arial,sans-serif;font-size:28px;line-height:1.1;color:#ffffff;font-weight:800;text-transform:uppercase;margin-bottom:8px;">{$eventTitle}</div>
-              {$badgeHtml}
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
-                <tr>
-                  <td width="50%" valign="top">{$colA}</td>
-                  <td width="50%" valign="top">{$colB}</td>
-                </tr>
-              </table>
-            </td>
-            <td valign="top" align="right" width="42%" style="padding-top:4px;">
-              {$qrHtml}
-              <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;margin-top:8px;">{$barcode}</div>
+            <td colspan="2" style="padding:0;margin:0;border:none;">
+              {$eventImgHtml}
             </td>
           </tr>
+          <!-- Ticket Details Row -->
           <tr>
-            <td colspan="2" style="padding-top:25px;border-top:1px solid rgba(255,255,255,0.15);">
+            <td colspan="2" style="padding:24px;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td>
-                    <div style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:4px;">Ticket Holder</div>
-                    <div style="font-family:Arial,sans-serif;font-size:18px;font-weight:800;color:#ffffff;">{$userName}</div>
+                  <td valign="top">
+                    <div style="font-family:Arial,sans-serif;font-size:28px;line-height:1.1;color:#ffffff;font-weight:800;text-transform:uppercase;margin-bottom:8px;">{$eventTitle}</div>
+                    {$badgeHtml}
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
+                      <tr>
+                        <td width="50%" valign="top">{$colA}</td>
+                        <td width="50%" valign="top">{$colB}</td>
+                      </tr>
+                    </table>
                   </td>
-                  <td align="right">
-                    <div style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:4px;">Ticket ID</div>
-                    <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;color:#ffffff;">{$ticketId}</div>
+                  <td valign="top" align="right" width="42%" style="padding-top:4px;">
+                    {$qrHtml}
+                    <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;margin-top:8px;">{$barcode}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding-top:25px;border-top:1px solid rgba(255,255,255,0.15);">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td>
+                          <div style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:4px;">Ticket Holder</div>
+                          <div style="font-family:Arial,sans-serif;font-size:18px;font-weight:800;color:#ffffff;">{$userName}</div>
+                        </td>
+                        <td align="right">
+                          <div style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:4px;">Ticket ID</div>
+                          <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;color:#ffffff;">{$ticketId}</div>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
@@ -1020,6 +1037,36 @@ PDF;
         return self::sendEmail($to, $subject, $body);
     }
 
+    // ── resolveLocalPath ───────────────────────────────────────────────────────
+
+    private static function resolveLocalPath(string $path): string
+    {
+        $path = trim($path);
+        if ($path === '' || str_starts_with($path, 'data:image/') || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return '';
+        }
+
+        $localPath = self::normalisePath($path);
+        $projectRoot = rtrim(self::normalisePath(__DIR__ . '/../../'), '/');
+        $pathsToCheck = [];
+
+        // If path isn't a true absolute path with drive letter, resolve relative to project root / public
+        if (!preg_match('/^[a-zA-Z]:/', $localPath)) {
+            $cleanedPath = ltrim($localPath, '/\\');
+            $pathsToCheck[] = $projectRoot . '/' . $cleanedPath;
+            $pathsToCheck[] = $projectRoot . '/public/' . $cleanedPath;
+        } else {
+            $pathsToCheck[] = $localPath;
+        }
+
+        foreach ($pathsToCheck as $candidate) {
+            if (file_exists($candidate) && filesize($candidate) > 0) {
+                return $candidate;
+            }
+        }
+        return '';
+    }
+
     // ── sendTicketEmailFull ────────────────────────────────────────────────────
 
     /**
@@ -1049,6 +1096,7 @@ PDF;
                             SELECT
                                 t.barcode,
                                 t.barcode        AS ticket_id,
+                                t.qr_code_path   AS qr_path,
                                 t.status,
                                 t.ticket_type,
                                 t.user_id,
@@ -1167,12 +1215,36 @@ PDF;
             }
         }
 
+        $embeddedImages = [];
+
+        $qrPathRaw = $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? '';
+        $resolvedQrPath = self::resolveLocalPath($qrPathRaw);
+        if ($resolvedQrPath !== '') {
+            $embeddedImages[] = [
+                'path' => $resolvedQrPath,
+                'cid'  => 'qr_code',
+                'name' => 'qr_code.png'
+            ];
+            $ticketData['qr_cid'] = 'qr_code';
+        }
+
+        $eventImgRaw = $ticketData['event_image'] ?? '';
+        $resolvedEventImgPath = self::resolveLocalPath($eventImgRaw);
+        if ($resolvedEventImgPath !== '') {
+            $embeddedImages[] = [
+                'path' => $resolvedEventImgPath,
+                'cid'  => 'event_image',
+                'name' => 'event_image.png'
+            ];
+            $ticketData['event_image_cid'] = 'event_image';
+        }
+
         $emailTicketData = $ticketData;
-        unset($emailTicketData['qr_base64']);
+        // Keep qr_base64 if available to ensure the unique QR code displays correctly
         $body = self::buildTicketHtml($emailTicketData, $downloadHtml, false);
 
         /* ── 6. Send (no file attachments; users download via link) ───────── */
-        return self::sendEmail($to, $subject, $body, []);
+        return self::sendEmail($to, $subject, $body, [], '', $embeddedImages);
     }
 
     /**
