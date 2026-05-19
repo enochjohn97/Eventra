@@ -122,7 +122,16 @@
                 .tkt-used     { background:#e0f2fe; color:#0369a1; }
                 .tkt-cancelled{ background:#fee2e2; color:#dc2626; }
 
-
+                /* Prevent browser/extension hover icons on QR codes by showing canvas and hiding img */
+                #adminTicketPreviewQrInner img {
+                  display: none !important;
+                }
+                #adminTicketPreviewQrInner canvas {
+                  width: 160px !important;
+                  height: 160px !important;
+                  display: block !important;
+                  margin: 0 auto;
+                }
             </style>
 
             <div class="page-header">

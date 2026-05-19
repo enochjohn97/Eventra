@@ -223,3 +223,14 @@
     font-size: 1.5rem;
     color: var(--client-emerald);
 }
+
+/* Prevent browser/extension hover icons on QR codes by showing canvas and hiding img */
+#ticketPreviewQrInner img {
+    display: none !important;
+}
+#ticketPreviewQrInner canvas {
+    width: 160px !important;
+    height: 160px !important;
+    display: block !important;
+    margin: 0 auto;
+}

@@ -213,6 +213,23 @@
         outline: none;
       }
 
+      /* Prevent browser/extension hover icons on QR codes by showing canvas and hiding img */
+      #qrcode img, #ticketQR img {
+        display: none !important;
+      }
+      #qrcode canvas {
+        width: 160px !important;
+        height: 160px !important;
+        display: block !important;
+        margin: 0 auto;
+      }
+      #ticketQR canvas {
+        width: 130px !important;
+        height: 130px !important;
+        display: block !important;
+        margin: 0 auto;
+      }
+
       /* Responsive */
       @media (max-width: 850px) {
         .container {
