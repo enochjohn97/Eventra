@@ -3,16 +3,32 @@
 -- Cleaned – No duplicates, no triggers that require special privileges
 -- =============================================================================
 
+-- 1. Create the database safely
 CREATE DATABASE IF NOT EXISTS eventra_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE eventra_db;
+-- 2. Clear out any pre-existing or broken instances of this user
+DROP USER IF EXISTS 'eventra'@'localhost';
+DROP USER IF EXISTS 'eventra'@'127.0.0.1';
 
+-- 3. Re-create the user accounts with your empty password choice
+CREATE USER 'eventra'@'localhost' IDENTIFIED BY '';
+CREATE USER 'eventra'@'127.0.0.1' IDENTIFIED BY '';
+
+-- 4. Corrected Grant Syntax: notice the ".*" added to target all tables inside the DB
+GRANT ALL PRIVILEGES ON eventra_db.* TO 'eventra'@'localhost';
+GRANT ALL PRIVILEGES ON eventra_db.* TO 'eventra'@'127.0.0.1';
+
+-- 5. Reload internal tables to apply immediately
+FLUSH PRIVILEGES;
+
+
+USE eventra_db;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- =============================================================================
 -- AUTH ACCOUNTS (MASTER AUTH TABLE - SINGLE SOURCE OF TRUTH)
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS auth_accounts (
+CREATE TABLE  auth_accounts (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     email VARCHAR(191) NOT NULL,
     username VARCHAR(200) NOT NULL,
@@ -44,30 +60,26 @@ CREATE TABLE IF NOT EXISTS auth_accounts (
 -- =============================================================================
 -- AUTH TOKENS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS auth_tokens (
+CREATE TABLE  auth_tokens (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     auth_id BIGINT UNSIGNED NOT NULL,
     token VARCHAR(255) NOT NULL,
-    type ENUM(
-        'access',
-        'refresh',
-        'reset_password',
-        'email_verification',
-        'otp'
-    ) NOT NULL,
+    type ENUM('access', 'refresh', 'reset_password', 'email_verification', 'otp') NOT NULL,
     expires_at DATETIME NOT NULL,
     revoked TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_token (token),
     KEY idx_token_auth (auth_id),
-    CONSTRAINT fk_token_auth FOREIGN KEY (auth_id) REFERENCES auth_accounts (id) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = INNODB DEFAULT CHARSET = UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
+    CONSTRAINT fk_token_auth FOREIGN KEY (auth_id)
+        REFERENCES auth_accounts (id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 -- =============================================================================
 -- AUTH LOGS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS auth_logs (
+CREATE TABLE  auth_logs (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     auth_id BIGINT UNSIGNED DEFAULT NULL,
     email VARCHAR(191) DEFAULT NULL,
@@ -86,7 +98,7 @@ CREATE TABLE IF NOT EXISTS auth_logs (
 -- =============================================================================
 -- ADMINS PROFILE
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS admins (
+CREATE TABLE  admins (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     admin_auth_id BIGINT UNSIGNED NOT NULL,
     name VARCHAR(150) NOT NULL,
@@ -103,7 +115,7 @@ CREATE TABLE IF NOT EXISTS admins (
 -- =============================================================================
 -- CLIENTS PROFILE
 -- =============================================================================
- CREATE TABLE IF NOT EXISTS clients (
+ CREATE TABLE  clients (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     custom_id VARCHAR(20) DEFAULT NULL,
     client_auth_id BIGINT UNSIGNED NOT NULL,
@@ -146,7 +158,7 @@ CREATE TABLE IF NOT EXISTS admins (
 -- =============================================================================
 -- USERS PROFILE
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE  users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     custom_id VARCHAR(20) DEFAULT NULL,
     user_auth_id BIGINT UNSIGNED NOT NULL,
@@ -173,7 +185,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- =============================================================================
 -- EVENTS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE  events (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     custom_id VARCHAR(30) DEFAULT NULL,
     client_id BIGINT UNSIGNED NOT NULL,
@@ -220,29 +232,35 @@ CREATE TABLE IF NOT EXISTS events (
 -- All extra event columns added once (no duplicates)
 -- -----------------------------------------------------------------
 ALTER TABLE events 
-    ADD COLUMN IF NOT EXISTS locations JSON DEFAULT NULL COMMENT 'Per-state address map',
-    ADD COLUMN IF NOT EXISTS sales_count INT UNSIGNED NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS view_count INT UNSIGNED NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS is_boosted TINYINT(1) NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS ticket_count INT UNSIGNED DEFAULT NULL COMMENT 'Atomic available ticket stock',
-    ADD COLUMN IF NOT EXISTS total_tickets INT UNSIGNED DEFAULT NULL COMMENT 'Original capacity for sold-out % calc',
-    ADD COLUMN IF NOT EXISTS admin_status ENUM('pending','approved','banished','archived') NOT NULL DEFAULT 'pending' COMMENT 'Moderation status';
+    ADD COLUMN  locations JSON DEFAULT NULL COMMENT 'Per-state address map',
+    ADD COLUMN  sales_count INT UNSIGNED NOT NULL DEFAULT 0,
+    ADD COLUMN  view_count INT UNSIGNED NOT NULL DEFAULT 0,
+    ADD COLUMN  is_boosted TINYINT(1) NOT NULL DEFAULT 0,
+    ADD COLUMN  ticket_count INT UNSIGNED DEFAULT NULL COMMENT 'Atomic available ticket stock',
+    ADD COLUMN  total_tickets INT UNSIGNED DEFAULT NULL COMMENT 'Original capacity for sold-out % calc',
+    ADD COLUMN  admin_status ENUM('pending','approved','banished','archived') NOT NULL DEFAULT 'pending' COMMENT 'Moderation status';
 
--- Backfill ticket_count / total_tickets from existing max_capacity
-UPDATE events
-    SET total_tickets = max_capacity,
-        ticket_count  = GREATEST(0, IFNULL(max_capacity, 0) - IFNULL(attendee_count, 0))
-    WHERE max_capacity IS NOT NULL AND total_tickets IS NULL;
+-- Backfill ticket_count / total_tickets from existing max_capacity (safe update mode disabled temporarily)
+SET SQL_SAFE_UPDATES = 0;
+UPDATE events 
+SET 
+    total_tickets = max_capacity,
+    ticket_count = GREATEST(0,
+            IFNULL(max_capacity, 0) - IFNULL(attendee_count, 0))
+WHERE
+    max_capacity IS NOT NULL
+        AND total_tickets IS NULL;
+SET SQL_SAFE_UPDATES = 1;
 
 -- Performance indexes
 ALTER TABLE events
-    ADD KEY IF NOT EXISTS idx_event_ranking (admin_status, event_date, ticket_count),
-    ADD KEY IF NOT EXISTS idx_event_lat_lng (latitude, longitude);
+    ADD KEY  idx_event_ranking (admin_status, event_date, ticket_count),
+    ADD KEY  idx_event_lat_lng (latitude, longitude);
 
 -- =============================================================================
 -- ORDERS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS orders (
+CREATE TABLE  orders (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id BIGINT UNSIGNED NOT NULL,
     event_id BIGINT UNSIGNED NOT NULL,
@@ -271,7 +289,7 @@ CREATE TABLE IF NOT EXISTS orders (
 -- =============================================================================
 -- PAYMENTS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE  payments (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     custom_id VARCHAR(30) DEFAULT NULL,
     event_id BIGINT UNSIGNED NOT NULL,
@@ -295,13 +313,13 @@ CREATE TABLE IF NOT EXISTS payments (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 ALTER TABLE payments 
-    ADD COLUMN IF NOT EXISTS quantity INT UNSIGNED NOT NULL DEFAULT 1,
-    ADD COLUMN IF NOT EXISTS ticket_type VARCHAR(50) DEFAULT 'regular';
+    ADD COLUMN  quantity INT UNSIGNED NOT NULL DEFAULT 1,
+    ADD COLUMN  ticket_type VARCHAR(50) DEFAULT 'regular';
 
 -- =============================================================================
 -- TICKETS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS tickets (
+CREATE TABLE  tickets (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     custom_id VARCHAR(30) DEFAULT NULL,
     user_id BIGINT UNSIGNED NOT NULL,
@@ -323,35 +341,47 @@ CREATE TABLE IF NOT EXISTS tickets (
     UNIQUE KEY uq_ticket_custom_id (custom_id),
     KEY idx_tickets_user (user_id),
     KEY idx_tickets_event (event_id),
-    KEY idx_ticket_event_status_used (event_id, status, used),
-    KEY idx_ticket_user_event (user_id, event_id),
-    CONSTRAINT fk_ticket_payment FOREIGN KEY (payment_id) REFERENCES payments (id) ON DELETE CASCADE,
-    CONSTRAINT fk_ticket_event FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE,
-    CONSTRAINT fk_ticket_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_ticket_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE SET NULL
-) ENGINE = INNODB DEFAULT CHARSET = UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
+    KEY idx_ticket_event_status_used (event_id , status , used),
+    KEY idx_ticket_user_event (user_id , event_id),
+    CONSTRAINT fk_ticket_payment FOREIGN KEY (payment_id)
+        REFERENCES payments (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_ticket_event FOREIGN KEY (event_id)
+        REFERENCES events (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_ticket_user FOREIGN KEY (user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_ticket_order FOREIGN KEY (order_id)
+        REFERENCES orders (id)
+        ON DELETE SET NULL
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 ALTER TABLE tickets 
-    ADD COLUMN IF NOT EXISTS ticket_type VARCHAR(50) DEFAULT 'regular';
+    ADD COLUMN  ticket_type VARCHAR(50) DEFAULT 'regular';
 
 -- =============================================================================
 -- FAVORITES
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS favorites (
+CREATE TABLE  favorites (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id BIGINT UNSIGNED NOT NULL,
     event_id BIGINT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_user_event (user_id, event_id),
-    CONSTRAINT fk_fav_user FOREIGN KEY (user_id) REFERENCES auth_accounts (id) ON DELETE CASCADE,
-    CONSTRAINT fk_fav_event FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE
-) ENGINE = INNODB DEFAULT CHARSET = UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
+    UNIQUE KEY uq_user_event (user_id , event_id),
+    CONSTRAINT fk_fav_user FOREIGN KEY (user_id)
+        REFERENCES auth_accounts (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_fav_event FOREIGN KEY (event_id)
+        REFERENCES events (id)
+        ON DELETE CASCADE
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 -- =============================================================================
 -- NOTIFICATIONS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS notifications (
+CREATE TABLE  notifications (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     recipient_auth_id BIGINT UNSIGNED NOT NULL,
     sender_auth_id BIGINT UNSIGNED DEFAULT NULL,
@@ -372,7 +402,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- =============================================================================
 -- MEDIA FOLDERS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS media_folders (
+CREATE TABLE  media_folders (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     client_id BIGINT UNSIGNED NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -382,13 +412,15 @@ CREATE TABLE IF NOT EXISTS media_folders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_folder_client (client_id),
-    CONSTRAINT fk_folder_client FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
-) ENGINE = INNODB DEFAULT CHARSET = UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
+    CONSTRAINT fk_folder_client FOREIGN KEY (client_id)
+        REFERENCES clients (id)
+        ON DELETE CASCADE
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 -- =============================================================================
 -- MEDIA
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS media (
+CREATE TABLE  media (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     client_id BIGINT UNSIGNED NOT NULL,
     folder_id BIGINT UNSIGNED DEFAULT NULL,
@@ -405,17 +437,21 @@ CREATE TABLE IF NOT EXISTS media (
     PRIMARY KEY (id),
     KEY idx_media_client (client_id),
     KEY idx_media_folder (folder_id),
-    CONSTRAINT fk_media_client FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
-    CONSTRAINT fk_media_folder FOREIGN KEY (folder_id) REFERENCES media_folders (id) ON DELETE SET NULL
-) ENGINE = INNODB DEFAULT CHARSET = UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
+    CONSTRAINT fk_media_client FOREIGN KEY (client_id)
+        REFERENCES clients (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_media_folder FOREIGN KEY (folder_id)
+        REFERENCES media_folders (id)
+        ON DELETE SET NULL
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 ALTER TABLE media 
-    ADD COLUMN IF NOT EXISTS deleted_at DATETIME NULL DEFAULT NULL;
+    ADD COLUMN  deleted_at DATETIME NULL DEFAULT NULL;
 
 -- =============================================================================
 -- SMS LOGS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS sms_logs (
+CREATE TABLE  sms_logs (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     auth_id BIGINT UNSIGNED DEFAULT NULL,
     user_id BIGINT UNSIGNED DEFAULT NULL,
@@ -448,7 +484,7 @@ CREATE TABLE IF NOT EXISTS sms_logs (
 -- =============================================================================
 -- REFUND REQUESTS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS refund_requests (
+CREATE TABLE  refund_requests (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     order_id BIGINT UNSIGNED NOT NULL,
     user_id BIGINT UNSIGNED NOT NULL,
@@ -460,14 +496,18 @@ CREATE TABLE IF NOT EXISTS refund_requests (
     PRIMARY KEY (id),
     KEY idx_refund_order (order_id),
     KEY idx_refund_user (user_id),
-    CONSTRAINT fk_refund_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
-    CONSTRAINT fk_refund_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+    CONSTRAINT fk_refund_order FOREIGN KEY (order_id)
+        REFERENCES orders (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_refund_user FOREIGN KEY (user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 -- =============================================================================
 -- PAYMENT OTPS
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS payment_otps (
+CREATE TABLE  payment_otps (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     payment_reference VARCHAR(100) NOT NULL,
@@ -479,17 +519,19 @@ CREATE TABLE IF NOT EXISTS payment_otps (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX (user_id),
     INDEX (payment_reference),
-    CONSTRAINT fk_payment_otps_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+    CONSTRAINT fk_payment_otps_user FOREIGN KEY (user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 -- =============================================================================
 -- TICKET DAILY SEQUENCE
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS ticket_daily_sequence (
+CREATE TABLE  ticket_daily_sequence (
     seq_date DATE NOT NULL,
     seq_value INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (seq_date)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_UNICODE_CI;
 
 -- =============================================================================
 -- SEED DEFAULT SYSTEM ADMIN
@@ -512,22 +554,11 @@ INSERT IGNORE INTO admins (
 -- FOREIGN KEY FIX FOR AUTH LOGS (CASCADE DELETE)
 -- =============================================================================
 ALTER TABLE auth_logs 
-    DROP FOREIGN KEY IF EXISTS fk_auth_logs_auth,
     ADD CONSTRAINT fk_auth_logs_auth 
-        FOREIGN KEY (auth_id) REFERENCES auth_accounts (id) 
-        ON DELETE CASCADE ON UPDATE CASCADE;
-
+    FOREIGN KEY (auth_id) REFERENCES auth_accounts (id) 
+    ON DELETE CASCADE ON UPDATE CASCADE;
+    
 -- =============================================================================
 -- RE-ENABLE FOREIGN KEY CHECKS
 -- =============================================================================
 SET FOREIGN_KEY_CHECKS = 1;
-
--- =============================================================================
--- LOCAL MYSQL USER PRIVILEGES (run this block as MySQL root)
--- Fixes: "SELECT command denied to user 'eventra'@'localhost'"
--- =============================================================================
--- CREATE USER IF NOT EXISTS 'eventra'@'localhost' IDENTIFIED BY 'your_password';
--- CREATE USER IF NOT EXISTS 'eventra'@'127.0.0.1' IDENTIFIED BY 'your_password';
--- GRANT ALL PRIVILEGES ON eventra_db.* TO 'eventra'@'localhost';
--- GRANT ALL PRIVILEGES ON eventra_db.* TO 'eventra'@'127.0.0.1';
--- FLUSH PRIVILEGES;
