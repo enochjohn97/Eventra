@@ -109,7 +109,7 @@ class NotificationManager {
             if (error.name === 'AbortError') {
                 return;
             }
-            this.renderNotificationError('Unable to reach the server. Is the API running?');
+            console.error('Failed to fetch notifications:', error);
         } finally {
             this.currentAbortController = null;
         }

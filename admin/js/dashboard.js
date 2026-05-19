@@ -391,6 +391,3 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function timeAgo(dateString) {
-    return window.timeAgo(dateString);
-}
