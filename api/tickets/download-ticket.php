@@ -33,9 +33,9 @@ try {
         JOIN events e ON t.event_id = e.id
         JOIN users u ON t.user_id = u.id
         LEFT JOIN payments p ON t.payment_id = p.id
-        WHERE t.barcode = ?
+        WHERE t.barcode = ? OR t.ticket_code = ? OR t.custom_id = ? OR CAST(t.id AS CHAR) = ?
     ");
-    $tStmt->execute([$barcode]);
+    $tStmt->execute([$barcode, $barcode, $barcode, $barcode]);
     $ticket = $tStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$ticket) {

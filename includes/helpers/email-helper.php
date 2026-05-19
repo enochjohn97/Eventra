@@ -745,12 +745,7 @@ class EmailHelper
         }
 
         /* ── EMAIL HTML ─────────────────────────────────────────────────── */
-        $bgStyle = '';
-        if ($imgBase64 !== '') {
-            $bgStyle = "background-image: url('{$imgBase64}'); background-size: cover; background-position: center;";
-        } else {
-            $bgStyle = 'background-color: #111111;';
-        }
+        $bgStyle = 'background-color: #111111;';
 
         $html = <<<HTML
 <!DOCTYPE html>
@@ -764,8 +759,8 @@ class EmailHelper
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
 <tr><td align="center">
 
-  <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
-         style="max-width:600px;background-color:#111111;{$bgStyle}border-radius:16px;overflow:hidden;border:none;">
+  <table width="700" cellpadding="0" cellspacing="0" border="0" role="presentation"
+         style="max-width:700px;background-color:#111111;{$bgStyle}border-radius:16px;overflow:hidden;border:none;">
   <tr>
     <td valign="top" style="padding:0;margin:0;border:none;background-color:#111111;background-color:rgba(17,17,17,0.85);border-radius:16px;">
       
@@ -820,7 +815,7 @@ class EmailHelper
   </tr>
   </table>
 
-  <div style="max-width:600px;margin:14px auto 0;text-align:right;">{$dlButtonHtml}</div>
+  <div style="max-width:700px;margin:14px auto 0;text-align:right;">{$dlButtonHtml}</div>
 
 </td></tr>
 </table>
@@ -850,14 +845,8 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        // DomPDF-friendly layout: background image on outer container + overlay
-        $bgStyle = '';
-        if ($bgImage !== '') {
-            // Use base64 data URI for background image
-            $bgStyle = "background-image: url('{$bgImage}'); background-size: cover; background-position: center;";
-        } else {
-            $bgStyle = 'background-color: #111111;';
-        }
+        // DomPDF-friendly layout: solid background
+        $bgStyle = 'background-color: #111111;';
 
         return <<<PDF
 <!DOCTYPE html>
