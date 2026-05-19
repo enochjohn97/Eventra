@@ -214,7 +214,7 @@ try {
             ]);
             $payment_id = $pdo->lastInsertId();
 
-            // 3. Generate QR codes and PDFs synchronously for immediate delivery
+            // 3. Queue background job for QR/PDF generation and notifications
             $pdfPaths = [];
             $barcodes = [];
             $ticket_ids = [];
@@ -237,70 +237,79 @@ try {
                 $ticket_id = $pdo->lastInsertId();
                 $ticket_ids[] = $ticket_id;
                 $barcodes[] = $barcode;
-
-                $ticketData = [
-                    'barcode'        => $barcode,
-                    'event_id'       => $order['event_id'],
-                    'user_id'        => $order['user_id'],
-                    'order_id'       => $order['id'],
-                    'event_name'     => $order['event_name'],
-                    'event_date'     => $order['event_date'],
-                    'event_time'     => $order['event_time'],
-                    'location'       => $order['location'] ?? $order['address'],
-                    'address'        => $order['address'],
-                    'user_name'      => $order['user_name'],
-                    'payment_status' => 'paid',
-                    'event_image'    => $order['image_path'] ?? null,
-                    'amount'         => $order['amount'],
-                    'ticket_type'    => $ticket_type,
-                    'quantity'       => $quantity,
-                    'selected_locs'  => $selected_locs
-                ];
-
-                try {
-                    $qrCodePath = generateTicketQRCode($ticketData);
-                    if ($qrCodePath && file_exists($qrCodePath)) {
-                        $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
-                            ->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
-                        $ticketData['qr_path'] = $qrCodePath;
-                        if (function_exists('base64_encode_image')) {
-                            $b64 = base64_encode_image($qrCodePath);
-                            if ($b64 !== '') {
-                                $ticketData['qr_base64'] = $b64;
-                            }
-                        }
-                    }
-
-                    $pdfPath = generateTicketPDF($ticketData);
-                    if ($pdfPath && file_exists($pdfPath)) {
-                        $pdfPaths[] = $pdfPath;
-                    }
-                } catch (\Throwable $genError) {
-                    error_log("[verify-payment.php] Ticket generation FAILED | barcode=$barcode error=" . $genError->getMessage());
-                }
             }
+
+            $ticketData = [
+                'event_id'       => $order['event_id'],
+                'user_id'        => $order['user_id'],
+                'order_id'       => $order['id'],
+                'event_name'     => $order['event_name'],
+                'event_date'     => $order['event_date'],
+                'event_time'     => $order['event_time'],
+                'location'       => $order['location'] ?? $order['address'],
+                'address'        => $order['address'],
+                'user_name'      => $order['user_name'],
+                'payment_status' => 'paid',
+                'event_image'    => $order['image_path'] ?? null,
+                'amount'         => $order['amount'],
+                'ticket_type'    => $ticket_type,
+                'quantity'       => $quantity,
+                'selected_locs'  => $selected_locs
+            ];
             
             $barcode = $barcodes[0]; 
             $pdo->commit();
 
-            // ── Send notifications (outside transaction) ──────────────────────────
-            if (!empty($pdfPaths)) {
-                // Use the enriched ticketData (from the last generated ticket) so QR is included
-                $emailTicket = $ticketData;
-                EmailHelper::sendTicketEmailFull($order['user_email'], $emailTicket, $pdfPaths);
+            // Write job file
+            $jobDir = __DIR__ . '/../../jobs/';
+            if (!is_dir($jobDir)) {
+                @mkdir($jobDir, 0777, true);
             }
 
-            // SMS
-            if (!empty($order['user_phone'])) {
-                sendSMS($order['user_phone'], "Hi {$order['user_name']}, your ticket for {$order['event_name']} is confirmed! Check your email for the PDF.");
+            $jobData = [
+                'type' => 'generate_tickets_and_notify',
+                'reference' => $reference,
+                'payment_id' => $payment_id,
+                'order_id' => $order['id'],
+                'barcodes' => $barcodes,
+                'ticket_ids' => $ticket_ids,
+                'ticket_data' => $ticketData,
+                'user_email' => $order['user_email'],
+                'user_phone' => $order['user_phone'],
+                'user_auth_accounts_id' => $user_auth_accounts_id,
+                'organizer_auth_id' => $order['organizer_auth_id'] ?? null,
+                'quantity' => $quantity
+            ];
+
+            $jobFile = $jobDir . 'ticket_' . $reference . '.json';
+            file_put_contents($jobFile, json_encode($jobData));
+
+            // Spawning background process
+            $processorPath = __DIR__ . '/../utils/process-ticket-queue.php';
+            $asyncSuccess = false;
+
+            if (function_exists('shell_exec') && !in_array('shell_exec', array_map('trim', explode(',', ini_get('disable_functions'))))) {
+                try {
+                    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                        $p = popen("start /B php " . escapeshellarg($processorPath) . " > nul 2>&1", "r");
+                        if ($p !== false) {
+                            pclose($p);
+                            $asyncSuccess = true;
+                        }
+                    } else {
+                        shell_exec("php " . escapeshellarg($processorPath) . " > /dev/null 2>&1 &");
+                        $asyncSuccess = true;
+                    }
+                } catch (\Throwable $t) {
+                    error_log("[verify-payment.php] Background execution failed: " . $t->getMessage());
+                }
             }
 
-            // In-app notifications
-            createPaymentSuccessNotification($user_auth_accounts_id, $order['event_name'], $order['amount']);
-            createTicketIssuedNotification($user_auth_accounts_id, $order['event_name'], $barcode);
-            
-            if (!empty($order['organizer_auth_id'])) {
-                createNewSaleNotification($order['organizer_auth_id'], $order['user_name'], $order['event_name'], $order['amount'], $user_auth_accounts_id);
+            // Robust inline fallback
+            if (!$asyncSuccess) {
+                error_log("[verify-payment.php] Background trigger unavailable. Running inline synchronously.");
+                define('RUNNING_INLINE', true);
+                include_once $processorPath;
             }
         } else {
             $pdo->commit();

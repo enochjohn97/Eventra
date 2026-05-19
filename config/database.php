@@ -60,6 +60,9 @@ if (!defined('DB_PASS')) define('DB_PASS', get_env_var('DB_PASSWORD', ''));
  * Or update your my.cnf / my.ini: [mysqld] max_connections = 500
  */
 function getPDO() {
+    if (defined('BYPASS_DB_CONN') && BYPASS_DB_CONN) {
+        return null;
+    }
     static $instance = null;
     
     if ($instance !== null) {

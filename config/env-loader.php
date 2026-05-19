@@ -129,4 +129,23 @@ if (!isset($_ENV['APP_ENV']) || $_ENV['APP_ENV'] === '') {
     putenv('APP_ENV=' . $_ENV['APP_ENV']);
 }
 
+// Dynamic Live DB swap when running in production/live host
+if (!isLocalHost()) {
+    $liveHost = $_ENV['LIVE_DB_HOST'] ?? getenv('LIVE_DB_HOST') ?: '';
+    if ($liveHost !== '') {
+        $_ENV['DB_CONNECTION'] = $_ENV['LIVE_DB_CONNECTION'] ?? getenv('LIVE_DB_CONNECTION') ?: 'mysql';
+        $_ENV['DB_HOST'] = $liveHost;
+        $_ENV['DB_PORT'] = $_ENV['LIVE_DB_PORT'] ?? getenv('LIVE_DB_PORT') ?: '3306';
+        $_ENV['DB_DATABASE'] = $_ENV['LIVE_DB_DATABASE'] ?? getenv('LIVE_DB_DATABASE') ?: '';
+        $_ENV['DB_USERNAME'] = $_ENV['LIVE_DB_USERNAME'] ?? getenv('LIVE_DB_USERNAME') ?: '';
+        $_ENV['DB_PASSWORD'] = $_ENV['LIVE_DB_PASSWORD'] ?? getenv('LIVE_DB_PASSWORD') ?: '';
+
+        foreach (['CONNECTION', 'HOST', 'PORT', 'DATABASE', 'USERNAME', 'PASSWORD'] as $key) {
+            $fullKey = 'DB_' . $key;
+            $_SERVER[$fullKey] = $_ENV[$fullKey];
+            putenv($fullKey . '=' . $_ENV[$fullKey]);
+        }
+    }
+}
+
 

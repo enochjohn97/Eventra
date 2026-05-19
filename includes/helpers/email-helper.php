@@ -11,7 +11,7 @@ use PHPMailer\PHPMailer\Exception as MailerException;
 $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = null;
 
 if (!file_exists(__DIR__ . '/../../vendor/autoload.php')) {
-    $GLOBALS['EVENTRA_AUTOLOADER_ERROR'];
+    $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = 'Composer autoload not found.';
     error_log('[EmailHelper] ' . $GLOBALS['EVENTRA_AUTOLOADER_ERROR']);
 }
 
@@ -199,9 +199,9 @@ class EmailHelper
     /**
      * Resolve an image path/URL to an inline base64 data-URI.
      * Returns empty string if the image cannot be read.
-     * Cap the image at 200 KB after encoding to keep email under Gmail's 102 KB clip limit.
+     * Cap the image at 500 KB after encoding to keep email under size limits.
      */
-    private static function imageToDataUri(string $path, int $maxBytes = 200000): string
+    private static function imageToDataUri(string $path, int $maxBytes = 500000): string
     {
         $path = trim($path);
         if ($path === '') {
@@ -253,7 +253,7 @@ class EmailHelper
 
         if (strlen($data) > $maxBytes) {
             // Try to resize/compress using GD if available
-            $resized = self::resizeImageData($data, $localPath, 600, 300);
+            $resized = self::resizeImageData($data, $localPath, 800, 400);
             if ($resized !== '') {
                 $data = $resized;
             } else {
@@ -291,7 +291,7 @@ class EmailHelper
             imagedestroy($src);
 
             ob_start();
-            imagejpeg($dst, null, 82);
+            imagejpeg($dst, null, 85);
             $out = ob_get_clean();
             imagedestroy($dst);
 
@@ -347,7 +347,7 @@ class EmailHelper
     }
 
     /**
-     * Wrap a QR image src in the same styled container used on payment.html.
+     * Get the static QR asset path (public/assets/imgs/qr.png)
      */
     private static function getEmailQrAssetPath(): string
     {
@@ -393,21 +393,33 @@ class EmailHelper
 
     /**
      * Generate QR code as a base64 data-URI or absolute URL for email clients.
+     * PRIORITY: Use public/assets/imgs/qr.png if it exists.
      */
     private static function generateQrDataUri(array $ticketData, string $staticPath = '', bool $forceRemote = false): string
     {
-        if ($forceRemote) {
-            $emailQr = self::getEmailQrAssetPath();
-            if (file_exists($emailQr) && filesize($emailQr) > 0) {
+        // --- 1. Use the static QR file if it exists and is not empty ---
+        $staticQrPath = self::getEmailQrAssetPath();
+        if (file_exists($staticQrPath) && filesize($staticQrPath) > 0) {
+            if ($forceRemote) {
+                // Return absolute URL for email (works when APP_URL is set)
                 $url = self::pathToUrl('/public/assets/imgs/qr.png');
-                // Return URL for any scheme (includes localhost http://) or fallback to relative path
                 if ($url !== '') {
                     return $url;
                 }
-                // Final fallback: direct relative path (works in browser on localhost)
+                // Fallback to relative path (works in browser on localhost)
                 return 'public/assets/imgs/qr.png';
+            } else {
+                // For PDF, return base64 data URI
+                $data = @file_get_contents($staticQrPath);
+                if ($data !== false && $data !== '') {
+                    $mime = self::guessMime($staticQrPath);
+                    return 'data:' . $mime . ';base64,' . base64_encode($data);
+                }
             }
-        } elseif (!empty($ticketData['qr_base64'])) {
+        }
+
+        // --- 2. Fallback to existing logic (data from ticket or generated QR) ---
+        if (!$forceRemote && !empty($ticketData['qr_base64'])) {
             $b64 = $ticketData['qr_base64'];
             if (!str_starts_with($b64, 'data:')) {
                 $b64 = 'data:image/png;base64,' . $b64;
@@ -421,7 +433,8 @@ class EmailHelper
 
             if (file_exists($localPath) && filesize($localPath) > 0) {
                 if ($forceRemote) {
-                    @copy($localPath, self::getEmailQrAssetPath());
+                    // Copy to static asset for email URL
+                    @copy($localPath, $staticQrPath);
                     $url = self::pathToUrl('/public/assets/imgs/qr.png');
                     if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                         return $url;
@@ -436,6 +449,7 @@ class EmailHelper
             }
         }
 
+        // --- 3. Generate QR code via chillerlan/php-qrcode if available ---
         $verificationUrl = self::buildVerificationUrl($ticketData);
 
         if (class_exists('chillerlan\QRCode\QRCode')) {
@@ -456,15 +470,8 @@ class EmailHelper
                         $parts = explode(',', $rendered, 2);
                         $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
                         if ($bin !== false && $bin !== '') {
-                            $root = realpath(__DIR__ . '/../../');
-                            $dir = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets'
-                                . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . 'qrcodes' . DIRECTORY_SEPARATOR;
-                            if (!is_dir($dir)) {
-                                mkdir($dir, 0755, true);
-                            }
-                            $filePath = $dir . 'qr_' . $barcode . '.png';
-                            if (@file_put_contents($filePath, $bin) !== false) {
-                                @copy($filePath, self::getEmailQrAssetPath());
+                            // Save to static path
+                            if (@file_put_contents($staticQrPath, $bin) !== false) {
                                 $url = self::pathToUrl('/public/assets/imgs/qr.png');
                                 if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
                                     return $url;
@@ -481,26 +488,6 @@ class EmailHelper
         }
 
         return '';
-    }
-
-    private static function buildQrPayload(array $d): string
-    {
-        $parts = [
-            'TICKET:' . ($d['barcode'] ?? $d['ticket_id'] ?? ''),
-            'EVENT:' . ($d['event_name'] ?? ''),
-            'DATE:' . ($d['event_date'] ?? ''),
-            'VENUE:' . ($d['address'] ?? ''),
-            'HOLDER:' . ($d['user_name'] ?? ''),
-            'USER_ID:' . ($d['user_id'] ?? ''),
-            'EVENT_ID:' . ($d['event_id'] ?? ''),
-            'ORDER_ID:' . ($d['order_id'] ?? ''),
-            'TYPE:' . ($d['ticket_type'] ?? ''),
-            'AMOUNT:' . ($d['amount'] ?? '0'),
-            'STATUS:' . (isset($d['amount']) && (float) $d['amount'] <= 0 ? 'FREE' : 'PAID'),
-            'VERIFY:' . strtoupper(substr(sha1(($d['barcode'] ?? '') . ($d['user_id'] ?? '')), 0, 10)),
-        ];
-
-        return implode('|', array_filter($parts, static fn($p) => $p !== substr($p, 0, strpos($p, ':') + 1)));
     }
 
     private static function detailRow(string $label, string $value, bool $priceStyle = false): string
@@ -846,14 +833,13 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        // DomPDF doesn't support CSS background-image on tables.
-        // Use an absolutely-positioned <img> element for the event image background.
-        $bgImgHtml = '';
+        // DomPDF-friendly layout: background image on outer container + overlay
+        $bgStyle = '';
         if ($bgImage !== '') {
-            $safeBg = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
-            $bgImgHtml = "<img src=\"{$safeBg}\" "
-                . 'style="position:absolute;top:0;left:0;width:900px;height:420px;" '
-                . 'alt="" />';
+            // Use base64 data URI for background image
+            $bgStyle = "background-image: url('{$bgImage}'); background-size: cover; background-position: center;";
+        } else {
+            $bgStyle = 'background-color: #111111;';
         }
 
         return <<<PDF
@@ -877,8 +863,8 @@ HTML;
     position: relative;
     width: 900px;
     height: 420px;
-    background-color: #111111;
     overflow: hidden;
+    {$bgStyle}
   }
   .ticket-overlay {
     position: absolute;
@@ -938,7 +924,6 @@ HTML;
 </head>
 <body>
 <div class="ticket-outer">
-  {$bgImgHtml}
   <div class="ticket-overlay"></div>
   <div class="ticket-content">
     <table width="812" cellpadding="0" cellspacing="0">
@@ -1253,6 +1238,24 @@ PDF;
             }
         }
 
+        // ── Try TCPDF ────────────────────────────────────────────────────────
+        if (class_exists('TCPDF')) {
+            try {
+                $pdf = new \TCPDF('L', 'pt', [675, 315], true, 'UTF-8', false);
+                $pdf->SetMargins(0, 0, 0);
+                $pdf->SetAutoPageBreak(false, 0);
+                $pdf->AddPage();
+                $pdf->writeHTML($html, true, false, true, false, '');
+                $pdf->Output($outputPath, 'F');
+
+                if (file_exists($outputPath) && filesize($outputPath) > 0) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                error_log('[EmailHelper] TCPDF failed: ' . $e->getMessage());
+            }
+        }
+
         // ── Try wkhtmltopdf via shell ────────────────────────────────────────
         $wkPath = trim((string) shell_exec('which wkhtmltopdf 2>/dev/null'));
         if ($wkPath !== '' && is_executable($wkPath)) {
@@ -1276,7 +1279,7 @@ PDF;
             }
         }
 
-        error_log('[EmailHelper] regeneratePdf: no PDF library available (DomPDF / mPDF / wkhtmltopdf).');
+        error_log('[EmailHelper] regeneratePdf: no PDF library available (DomPDF / mPDF / TCPDF / wkhtmltopdf).');
         return false;
     }
 }

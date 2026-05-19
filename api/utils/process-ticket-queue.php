@@ -21,13 +21,13 @@ $maxJobsPerRun = 5;
 $jobCount = 0;
 
 if (!is_dir($jobDir)) {
-    exit(0);
+    if (defined('RUNNING_INLINE')) { return; } else { exit(0); }
 }
 
 // Find and process pending jobs
 $files = glob($jobDir . 'ticket_*.json');
 if (empty($files)) {
-    exit(0);
+    if (defined('RUNNING_INLINE')) { return; } else { exit(0); }
 }
 
 sort($files); // Process oldest first
@@ -165,4 +165,4 @@ foreach ($files as $jobFile) {
     }
 }
 
-exit(0);
+if (defined('RUNNING_INLINE')) { return; } else { exit(0); }

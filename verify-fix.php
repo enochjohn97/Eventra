@@ -8,6 +8,8 @@
  * Usage: php verify-fix.php
  */
 
+define('BYPASS_DB_CONN', true);
+
 echo "═══════════════════════════════════════════════════════════════\n";
 echo "Payment Verification Fix Verification Script\n";
 echo "═══════════════════════════════════════════════════════════════\n\n";
