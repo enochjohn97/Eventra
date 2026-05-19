@@ -1497,7 +1497,10 @@ function renderStyledTicketQr(container, barcode) {
     if (typeof QRCode !== 'undefined') {
         container.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;pointer-events:none;user-select:none;">
-                <div id="ticketPreviewQrInner" style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;"></div>
+                <div style="position:relative;">
+                    <div id="ticketPreviewQrInner" style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;"></div>
+                    <div style="position:absolute;inset:0;z-index:5;background:transparent;"></div>
+                </div>
             </div>`;
         try {
             new QRCode(document.getElementById('ticketPreviewQrInner'), {
@@ -1519,7 +1522,8 @@ function renderStyledTicketQr(container, barcode) {
         container.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;pointer-events:none;user-select:none;">
                 <div style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;">
-                    <img src="${apiUrl}" alt="QR Code" width="160" height="160" style="width:160px;height:160px;display:block;">
+                    <img src="${apiUrl}" alt="QR Code" width="160" height="160" style="width:160px;height:160px;display:block;pointer-events:none;user-select:none;">
+                    <div style="position:absolute;inset:0;z-index:5;background:transparent;"></div>
                 </div>
             </div>`;
     }
@@ -1539,7 +1543,7 @@ function showTicketPreviewModal(ticket) {
     const statusLabel = { valid: '✓ Valid', used: '👁 Used', cancelled: '✕ Cancelled' }[ticket.status] || (ticket.status ? ticket.status.toUpperCase() : 'N/A');
 
     const heroImageHtml = imgSrc
-        ? `<img src="${imgSrc.replace(/"/g, '&quot;')}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';">`
+        ? `<img src="${imgSrc.replace(/"/g, '&quot;')}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;" onerror="this.style.display='none';"><div style="position:absolute;inset:0;z-index:5;background:transparent;"></div>`
         : '';
 
     const modalHTML = `

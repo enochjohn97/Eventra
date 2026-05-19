@@ -386,14 +386,20 @@ class EmailHelper
         $safeQrSrc = htmlspecialchars($qrSrc, ENT_QUOTES, 'UTF-8');
 
         if ($forPdf) {
-            return "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
-                . " style=\"width:{$size}px;height:{$size}px;display:block;\">";
+            return "<div style=\"position:relative;width:{$size}px;height:{$size}px;display:block;\">"
+                . "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
+                . " style=\"width:{$size}px;height:{$size}px;display:block;pointer-events:none;user-select:none;\">"
+                . "<div style=\"position:absolute;inset:0;z-index:5;background:transparent;\"></div>"
+                . "</div>";
         }
 
         return '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center"'
             . ' style="background:#fff;padding:10px;border-radius:12px;border:1px solid #e2e8f0;">'
+            . "<div style=\"position:relative;width:{$size}px;height:{$size}px;\">"
             . "<img id=\"qrcode\" src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
-            . " style=\"width:{$size}px;height:{$size}px;display:block;\">"
+            . " style=\"width:{$size}px;height:{$size}px;display:block;pointer-events:none;user-select:none;\">"
+            . "<div style=\"position:absolute;inset:0;z-index:5;background:transparent;\"></div>"
+            . "</div>"
             . '</td></tr></table>';
     }
 
@@ -599,8 +605,11 @@ class EmailHelper
 
         if ($imgBase64 !== '') {
             $safeImgSrc = htmlspecialchars($imgBase64, ENT_QUOTES, 'UTF-8');
-            $eventImgHtml = "<img src=\"{$safeImgSrc}\" alt=\"Event\" "
-                . "style=\"width:100%;height:180px;object-fit:cover;display:block;border-top-left-radius:16px;border-top-right-radius:16px;\">";
+            $eventImgHtml = "<div style=\"position:relative;width:100%;height:180px;\">"
+                . "<img src=\"{$safeImgSrc}\" alt=\"Event\" "
+                . "style=\"width:100%;height:100%;object-fit:cover;display:block;border-top-left-radius:16px;border-top-right-radius:16px;pointer-events:none;user-select:none;\">"
+                . "<div style=\"position:absolute;inset:0;z-index:5;background:transparent;\"></div>"
+                . "</div>";
         } else {
             $eventImgHtml = '<div style="width:100%;height:180px;background:#0f3460;text-align:center;line-height:180px;border-top-left-radius:16px;border-top-right-radius:16px;">'
                 . '<span style="font-size:11px;letter-spacing:3px;color:rgba(212,175,55,0.6);text-transform:uppercase;">EVENT</span>'
@@ -745,7 +754,7 @@ class EmailHelper
         }
 
         /* ── EMAIL HTML ─────────────────────────────────────────────────── */
-        $bgStyle = 'background-color: #111111;';
+        $bgStyle = 'background-color: transparent;';
 
         $html = <<<HTML
 <!DOCTYPE html>
@@ -760,9 +769,9 @@ class EmailHelper
 <tr><td align="center">
 
   <table width="700" cellpadding="0" cellspacing="0" border="0" role="presentation"
-         style="max-width:700px;background-color:#111111;{$bgStyle}border-radius:16px;overflow:hidden;border:none;">
+         style="max-width:700px;background-color:transparent;{$bgStyle}border-radius:16px;overflow:hidden;border:none;">
   <tr>
-    <td valign="top" style="padding:0;margin:0;border:none;background-color:#111111;background-color:rgba(17,17,17,0.85);border-radius:16px;">
+    <td valign="top" style="padding:0;margin:0;border:none;background-color:transparent;border-radius:16px;">
       
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:0;border-collapse:collapse;">
           <!-- Event Image Banner Row -->
@@ -846,7 +855,7 @@ HTML;
         string $year
     ): string {
         // DomPDF-friendly layout: solid background
-        $bgStyle = 'background-color: #111111;';
+        $bgStyle = 'background-color: transparent;';
 
         return <<<PDF
 <!DOCTYPE html>
@@ -862,7 +871,7 @@ HTML;
     padding: 0;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
-    background: #111111;
+    background: transparent;
   }
   table { border-collapse: collapse; }
   .ticket-outer {
@@ -878,7 +887,7 @@ HTML;
     left: 0;
     width: 900px;
     height: 420px;
-    background: rgba(0,0,0,0.72);
+    background: rgba(0, 0, 0, 0.05);
   }
   .ticket-content {
     position: absolute;

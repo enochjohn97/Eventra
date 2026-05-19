@@ -77,20 +77,36 @@ function showResult(result) {
         title.textContent = 'Access Granted';
         title.style.color = '#722f37';
 
-        // Add QR preview if available
         if (result.data.qr_code_path) {
+            const qrWrapper = document.createElement('div');
+            qrWrapper.className = 'qr-preview';
+            qrWrapper.style.position = 'relative';
+            qrWrapper.style.width = '136px';
+            qrWrapper.style.height = '136px';
+            qrWrapper.style.margin = '0 auto 1.5rem';
+            qrWrapper.style.display = 'block';
+            qrWrapper.style.borderRadius = '16px';
+            qrWrapper.style.padding = '8px';
+            qrWrapper.style.background = '#f8fafc';
+            qrWrapper.style.border = '1px solid #e2e8f0';
+
             const qrImg = document.createElement('img');
             qrImg.src = result.data.qr_code_path;
-            qrImg.className = 'qr-preview';
-            qrImg.style.width = '120px';
-            qrImg.style.height = '120px';
-            qrImg.style.margin = '0 auto 1.5rem';
+            qrImg.style.width = '100%';
+            qrImg.style.height = '100%';
             qrImg.style.display = 'block';
-            qrImg.style.borderRadius = '16px';
-            qrImg.style.padding = '8px';
-            qrImg.style.background = '#f8fafc';
-            qrImg.style.border = '1px solid #e2e8f0';
-            iconContainer.after(qrImg);
+            qrImg.style.pointerEvents = 'none';
+            qrImg.style.userSelect = 'none';
+            qrWrapper.appendChild(qrImg);
+
+            const overlay = document.createElement('div');
+            overlay.style.position = 'absolute';
+            overlay.style.inset = '0';
+            overlay.style.zIndex = '5';
+            overlay.style.background = 'transparent';
+            qrWrapper.appendChild(overlay);
+
+            iconContainer.after(qrWrapper);
         }
 
         document.getElementById('valAttendee').textContent = result.data.buyer_name;
