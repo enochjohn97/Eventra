@@ -223,11 +223,8 @@ function openAdminTicketModal(ticket) {
 
     const imgSrc = ticket.event_image ? getImageUrl(ticket.event_image) : null;
     const heroFallback = 'linear-gradient(135deg, #6366f1 0%, #2ecc71 100%)';
-    const paidAmount = parseFloat(ticket.amount ?? ticket.total_price ?? ticket.event_price ?? 0);
-    const eventPrice = parseFloat(ticket.event_price ?? 0);
-    const isFree = paidAmount <= 0 && eventPrice <= 0;
-    const price = isFree ? 'Free' : `₦${paidAmount.toLocaleString()}`;
-    const typeLabel = isFree ? 'Free' : (ticket.ticket_type_display || ticket.ticket_type || 'regular');
+    const price = ticket.price_display || 'Free';
+    const typeLabel = ticket.ticket_type_display || ticket.ticket_type || 'Regular';
     const statusClass = ticket.status === 'valid' ? 'tkt-active' : ticket.status === 'used' ? 'tkt-used' : 'tkt-cancelled';
     const statusLabel = { valid: '✓ Valid', used: '👁 Used', cancelled: '✕ Cancelled' }[ticket.status] || ticket.status;
 

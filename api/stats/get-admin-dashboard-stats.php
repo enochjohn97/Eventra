@@ -37,12 +37,14 @@ try {
         throw new Exception('Failed to fetch stats');
     }
     
-    // 2. Recent Activities
+    // 2. Recent Activities (Fetch up to 100 for the modal, filter out admins if specified or just get all)
     $activities_stmt = $pdo->prepare("
         SELECT al.event_type as type, al.details as message, al.created_at 
         FROM auth_logs al 
+        LEFT JOIN auth_accounts a ON al.auth_id = a.id
+        WHERE a.role IN ('user', 'client') OR al.auth_id IS NULL
         ORDER BY al.created_at DESC 
-        LIMIT 10
+        LIMIT 100
     ");
     $activities_stmt->execute();
     $recent_activities = $activities_stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -47,7 +47,7 @@ try {
             u.gender,
             u.profile_pic,
             aa.created_at,
-            u.status,
+            aa.is_online as status,
             COALESCE(COUNT(DISTINCT t.id), 0) as ticket_count,
             COALESCE(SUM(CASE WHEN p.status = 'paid' THEN 1 ELSE 0 END), 0) as paid_count
         FROM users u
@@ -69,7 +69,7 @@ try {
     
     // Active users = users who have logged in (is_online = 1)
     $active_users = count(array_filter($users, function($user) {
-        return $user['status'] === 'online';
+        return $user['status'] == 1;
     }));
     
     // Engaged users = users with paid tickets for this client's events

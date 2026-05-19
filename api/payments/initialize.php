@@ -277,11 +277,22 @@ try {
 
     $pdo->beginTransaction();
 
+    // Define metadata for the order
+    $order_metadata = [
+        'event_id'   => $event_id,
+        'event_name' => $event['event_name'],
+        'quantity'   => $quantity,
+        'ticket_type'=> $ticket_type,
+        'user_id'    => $user_id,
+        'user_name'  => $user_name,
+        'selected_locs' => $selected_locs
+    ];
+
     // ── Insert pending order ─────────────────────────────────────────────────
     $oStmt = $pdo->prepare("
         INSERT INTO orders
-            (user_id, event_id, organizer_id, subaccount_code, amount, transaction_reference, payment_status)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            (user_id, event_id, organizer_id, subaccount_code, amount, transaction_reference, payment_status, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
     ");
     $oStmt->execute([
         $user_id,
@@ -290,6 +301,7 @@ try {
         $event['subaccount_code'],
         $total,
         $reference,
+        json_encode($order_metadata)
     ]);
     $order_id = $pdo->lastInsertId();
 

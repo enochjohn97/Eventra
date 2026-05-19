@@ -70,13 +70,14 @@ try {
             e.event_date,
             u.name        AS user_name,
             p.amount,
+            p.quantity,
             p.status      AS payment_status,
             p.reference,
             p.custom_id   AS payment_custom_id,
             c.business_name AS organiser_name
         FROM tickets t
         JOIN events e   ON t.event_id  = e.id
-        JOIN payments p ON t.payment_id= p.id
+        LEFT JOIN payments p ON t.payment_id= p.id
         LEFT JOIN users u    ON t.user_id   = u.id
         LEFT JOIN clients c  ON e.client_id = c.id
         WHERE $where
@@ -90,16 +91,27 @@ try {
     // Normalise
     foreach ($tickets as &$t) {
         $t['event_price']   = (float)$t['event_price'];
-        $t['amount']        = (float)$t['amount'];
-        $t['price_display'] = ($t['event_price'] === 0.0)
-            ? 'Free'
-            : '₦' . number_format($t['event_price'], 2);
-        // For legacy template compat
-        $t['total_price'] = $t['event_price'];
+        $t['amount']        = isset($t['amount']) ? (float)$t['amount'] : 0.0;
+        $quantity           = (isset($t['quantity']) && (int)$t['quantity'] > 0) ? (int)$t['quantity'] : 1;
+        $paid_per_ticket    = $t['amount'] / $quantity;
+        
+        $price_to_use = max($paid_per_ticket, $t['event_price']);
 
-        $t['ticket_type_display'] = ($t['amount'] <= 0 && $t['event_price'] <= 0)
-            ? 'Free'
-            : ucfirst(strtolower((string) ($t['ticket_type'] ?? 'regular')));
+        $ticket_type_label = !empty($t['ticket_type']) ? ucfirst(strtolower((string)$t['ticket_type'])) : 'Regular';
+
+        if ($price_to_use <= 0) {
+            $t['price_display'] = 'Free';
+            $t['ticket_type_display'] = 'Free';
+        } else {
+            $t['price_display'] = '₦' . number_format($price_to_use, 2);
+            if ($ticket_type_label !== 'Regular' && $ticket_type_label !== 'Free') {
+                 $t['price_display'] .= ' (' . $ticket_type_label . ')';
+            }
+            $t['ticket_type_display'] = $ticket_type_label;
+        }
+
+        // For legacy template compat
+        $t['total_price'] = $price_to_use;
 
         if (!empty($t['qr_path'])) {
             $qr = str_replace('\\', '/', $t['qr_path']);
@@ -126,9 +138,9 @@ try {
             COUNT(*)                                                              AS total_tickets,
             SUM(CASE WHEN t.status = 'used'      THEN 1 ELSE 0 END)             AS used_tickets,
             SUM(CASE WHEN t.status = 'cancelled' THEN 1 ELSE 0 END)             AS cancelled_tickets,
-            COALESCE(SUM(CASE WHEN p.status='paid' THEN e.price ELSE 0 END), 0) AS total_revenue
+            COALESCE(SUM(CASE WHEN p.status='paid' AND p.quantity > 0 THEN (p.amount / p.quantity) ELSE 0 END), 0) AS total_revenue
         FROM tickets t
-        JOIN payments p ON t.payment_id = p.id
+        LEFT JOIN payments p ON t.payment_id = p.id
         JOIN events e   ON t.event_id   = e.id
     ";
     $sStmt = $pdo->query($statsSql);

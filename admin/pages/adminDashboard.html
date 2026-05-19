@@ -165,7 +165,7 @@
                 <div class="table-container activity-card" style="padding: 2rem;">
                     <div class="quick-card-header" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
                         <h3 style="font-size: 1.25rem; font-weight: 700;">Recent Activities</h3>
-                        <a href="users.html" style="font-size: 0.9rem; color: var(--admin-primary); text-decoration: none; font-weight: 600;">View all</a>
+                        <a href="#" id="viewAllActivitiesBtn" style="font-size: 0.9rem; color: var(--admin-primary); text-decoration: none; font-weight: 600;">View all</a>
                     </div>
                     <div class="activity-list" id="recentActivitiesList" style="max-height: 400px; overflow-y: auto;">
                         <p style="text-align: center; color: var(--admin-text-muted); padding: 2rem;">Loading activities...</p>
@@ -274,6 +274,21 @@
             <ul class="export-options" style="margin: 0;">
                 <li class="export-option" data-format="CSV"><i data-lucide="file-text" style="color: #4CAF50;"></i> Export as CSV</li>
             </ul>
+        </div>
+    </div>
+
+    <!-- Activities Modal -->
+    <div class="modal-backdrop" id="activitiesModal" style="display: none; align-items: center; justify-content: center; z-index: 1000; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);">
+        <div class="modal" style="padding: 2.5rem; border-radius: 20px; width: 600px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column; background: #fff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.5rem; font-weight: 800;">All Activities</h2>
+                <button id="closeActivitiesModalBtn" style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.5rem;">
+                    &times;
+                </button>
+            </div>
+            <div class="activity-list" id="allActivitiesListModal" style="flex: 1; overflow-y: auto;">
+                <p style="text-align: center; color: var(--admin-text-muted); padding: 2rem;">Loading activities...</p>
+            </div>
         </div>
     </div>
 

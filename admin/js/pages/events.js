@@ -22,6 +22,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (result.success) {
                 allEvents = result.events;
+                
+                // Populate dynamic categories
+                const categoryFilter = document.getElementById('categoryFilter');
+                if (categoryFilter) {
+                    const uniqueCategories = [...new Set(allEvents.map(e => e.event_type).filter(Boolean))].sort();
+                    const currentVal = categoryFilter.value;
+                    const optionsHTML = ['<option value="all">All Categories</option>'];
+                    uniqueCategories.forEach(cat => {
+                        optionsHTML.push(`<option value="${escapeHTML(cat)}">${escapeHTML(cat)}</option>`);
+                    });
+                    const newHTML = optionsHTML.join('');
+                    if (categoryFilter.innerHTML !== newHTML) {
+                        categoryFilter.innerHTML = newHTML;
+                        if (uniqueCategories.includes(currentVal) || currentVal === 'all') {
+                            categoryFilter.value = currentVal;
+                        }
+                    }
+                }
+
                 applyFilters(); // Apply current filters
                 updateStats(result.stats);
             } else {
@@ -43,9 +62,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             let displayStatus = event.status;
             let statusClass = event.status;
             
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDay = new Date((event.event_date || '') + "T00:00:00");
+            const isPassed = event.event_date ? eventDay < today : false;
+            
             if (event.deleted_at) {
                 displayStatus = 'deleted';
                 statusClass = 'cancelled'; // Mapping to existing CSS class
+            } else if (isPassed) {
+                displayStatus = 'passed';
+                statusClass = 'concluded';
             }
 
             const dateStr = window.formatDateLong ? formatDateLong(event.event_date) : new Date(event.event_date).toLocaleDateString();
@@ -77,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${escapeHTML(dateStr)}</td>
                     <td>${escapeHTML(event.event_time.substring(0, 5))}</td>
                     <td>${escapeHTML(event.event_type)}</td>
-                    <td>${escapeHTML(event.phone || 'N/A')}</td>
+                    <td>${escapeHTML(event.phone_contact_1 || event.phone || 'N/A')}</td>
                     <td>
                         ${(() => {
                             const basePrice = parseFloat(event.price) || 0;
@@ -102,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </td>
                     <td class="text-center">${parseInt(event.attendee_count) || 0}</td>
                     <td><span class="tag-badge">${escapeHTML(event.tag || 'None')}</span></td>
-                    <td><a href="${escapeHTML(event.link || '#')}" target="_blank" class="link-btn"><i data-lucide="external-link"></i></a></td>
+                    <td><a href="${escapeHTML(event.external_link || event.link || '#')}" target="_blank" class="link-btn" style="color: var(--admin-primary);"><i data-lucide="external-link"></i></a></td>
                     <td><span class="status-badge status-${escapeHTML(statusClass)}">${escapeHTML(displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1))}</span></td>
                 </tr>
             `;
@@ -127,6 +154,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.initPreviews();
         }
         
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+        
         updateSelectAllState();
     }
 
@@ -147,8 +178,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyFilters() {
         filteredEvents = allEvents.filter(event => {
             // Status Filter
-            const statusMatch = statusFilter.value === 'all' || 
-                              (statusFilter.value === 'cancelled' ? event.deleted_at : event.status === statusFilter.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDay = new Date((event.event_date || '') + "T00:00:00");
+            const isPassed = event.event_date ? eventDay < today : false;
+
+            let statusMatch = statusFilter.value === 'all';
+            if (!statusMatch) {
+                if (statusFilter.value === 'cancelled') {
+                    statusMatch = !!event.deleted_at;
+                } else if (statusFilter.value === 'passed') {
+                    statusMatch = isPassed && !event.deleted_at;
+                } else {
+                    statusMatch = event.status === statusFilter.value && !event.deleted_at;
+                }
+            }
             
             // Category Filter
             const categoryMatch = categoryFilter.value === 'all' || event.event_type === categoryFilter.value;
@@ -223,7 +267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        const targetList = filteredEvents.length > 0 || anyFilterActive() ? filteredEvents : allEvents;
+        const targetList = filteredEvents;
         const sortedEvents = [...targetList].sort((a, b) => {
             let valA = a[key];
             let valB = b[key];

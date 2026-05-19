@@ -112,12 +112,11 @@ try {
     }
     unset($ticket);
 
-    // Stats: revenue = SUM(e.price) per paid ticket
+    // Stats: revenue = SUM(p.amount / quantity) per paid, non-cancelled ticket
     $stats_stmt = $pdo->prepare("
         SELECT
             COUNT(t.id)                                                                            AS total_tickets,
-            COALESCE(SUM(CASE WHEN p.status = 'paid' THEN e.price ELSE 0 END), 0)                  AS total_revenue,
-            SUM(CASE WHEN p.status = 'pending' THEN 1 ELSE 0 END)                                  AS pending_tickets,
+            COALESCE(SUM(CASE WHEN p.status = 'paid' AND t.status != 'cancelled' THEN (p.amount / COALESCE(NULLIF(p.quantity, 0), 1)) ELSE 0 END), 0) AS total_revenue,
             SUM(CASE WHEN t.status = 'cancelled' OR p.status = 'refunded' THEN 1 ELSE 0 END)       AS cancelled_tickets
         FROM tickets t
         LEFT JOIN payments p ON t.payment_id = p.id
@@ -127,9 +126,19 @@ try {
     $stats_stmt->execute([$real_client_id]);
     $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
+    // Get pending tickets count from orders
+    $pending_stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(o.metadata, '$.quantity')) AS UNSIGNED), 1)), 0) AS pending_tickets
+        FROM orders o
+        JOIN events e ON o.event_id = e.id
+        WHERE e.client_id = ? AND o.payment_status = 'pending'
+    ");
+    $pending_stmt->execute([$real_client_id]);
+    $pending_tickets = (int)$pending_stmt->fetchColumn();
+
     $stats['total_tickets']    = (int)   ($stats['total_tickets']    ?? 0);
     $stats['total_revenue']    = (float) ($stats['total_revenue']    ?? 0.0);
-    $stats['pending_tickets']  = (int)   ($stats['pending_tickets']  ?? 0);
+    $stats['pending_tickets']  = $pending_tickets;
     $stats['cancelled_tickets'] = (int)   ($stats['cancelled_tickets'] ?? 0);
 
     echo json_encode([

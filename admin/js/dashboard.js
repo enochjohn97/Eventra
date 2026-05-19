@@ -194,19 +194,22 @@ function displayAdminEventBadges(upcomingEvents, pastEvents) {
 
 function loadRecentActivities(activities) {
     const container = document.getElementById('recentActivitiesList');
+    const modalContainer = document.getElementById('allActivitiesListModal');
     if (!container) return;
 
     if (activities.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No recent activities</p>';
+        const noActivitiesHtml = '<p style="text-align: center; color: #999; padding: 2rem;">No recent activities</p>';
+        container.innerHTML = noActivitiesHtml;
+        if (modalContainer) modalContainer.innerHTML = noActivitiesHtml;
         return;
     }
 
-    container.innerHTML = activities.map(activity => {
+    const generateHtml = (list) => list.map(activity => {
         const icon = getActivityIcon(activity.type);
         const color = getActivityColor(activity.type);
         
         // Summarize common messages for cleaner display
-        let displayMessage = activity.message;
+        let displayMessage = activity.message || '';
         if (displayMessage.length > 60) {
             displayMessage = displayMessage.substring(0, 57) + '...';
         }
@@ -215,13 +218,50 @@ function loadRecentActivities(activities) {
             <div class="activity-item" style="padding: 1rem 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: start; gap: 12px;">
                 <div class="activity-icon" style="background: ${color.bg}; color: ${color.text}; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">${icon}</div>
                 <div class="activity-content" style="flex: 1; min-width: 0;">
-                    <div class="activity-details" style="font-size: 0.9rem; font-weight: 500; color: #334155; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(activity.message)}">${escapeHTML(displayMessage)}</div>
-                    <div class="activity-time" style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;" data-timestamp="${activity.created_at}">${window.timeAgo(activity.created_at)}</div>
+                    <div class="activity-details" style="font-size: 0.9rem; font-weight: 500; color: #334155; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(activity.message || '')}">${escapeHTML(displayMessage)}</div>
+                    <div class="activity-time" style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;" data-timestamp="${activity.created_at}">${window.timeAgo ? window.timeAgo(activity.created_at) : formatDate(activity.created_at)}</div>
                 </div>
             </div>
         `;
     }).join('');
+
+    // Only show top 10 on the dashboard
+    container.innerHTML = generateHtml(activities.slice(0, 10));
+    
+    // Show all in the modal
+    if (modalContainer) {
+        modalContainer.innerHTML = generateHtml(activities);
+    }
 }
+
+// Set up modal listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const viewAllBtn = document.getElementById('viewAllActivitiesBtn');
+    const activitiesModal = document.getElementById('activitiesModal');
+    const closeActivitiesModalBtn = document.getElementById('closeActivitiesModalBtn');
+
+    if (viewAllBtn && activitiesModal) {
+        viewAllBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            activitiesModal.style.display = 'flex';
+        });
+    }
+
+    if (closeActivitiesModalBtn && activitiesModal) {
+        closeActivitiesModalBtn.addEventListener('click', () => {
+            activitiesModal.style.display = 'none';
+        });
+    }
+
+    // Close on backdrop click
+    if (activitiesModal) {
+        activitiesModal.addEventListener('click', (e) => {
+            if (e.target === activitiesModal) {
+                activitiesModal.style.display = 'none';
+            }
+        });
+    }
+});
 
 function loadTopUsers(users) {
     const container = document.getElementById('topUsersList');
