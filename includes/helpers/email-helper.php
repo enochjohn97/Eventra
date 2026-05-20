@@ -506,16 +506,24 @@ class EmailHelper
         return '';
     }
 
-    private static function detailRow(string $label, string $value, bool $priceStyle = false): string
+    private static function detailRow(string $label, string $value, bool $priceStyle = false, bool $forPdf = false): string
     {
-        $valueStyle = $priceStyle
-            ? 'font-family:Arial,sans-serif;font-size:17px;font-weight:800;color:#ffffff;line-height:1.2;display:block;'
-            : 'font-family:Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;line-height:1.2;display:block;';
+        if ($forPdf) {
+            $valueStyle = $priceStyle
+                ? 'font-family:Arial,sans-serif;font-size:13pt;font-weight:800;color:#ffffff;line-height:1.2;display:block;'
+                : 'font-family:Arial,sans-serif;font-size:11pt;font-weight:600;color:#ffffff;line-height:1.2;display:block;';
+            $labelStyle = 'display:block;font-family:Arial,sans-serif;font-size:7pt;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffffff;margin-bottom:2pt;';
+            $marginStyle = 'margin-bottom:10pt;word-break:break-word;';
+        } else {
+            $valueStyle = $priceStyle
+                ? 'font-family:Arial,sans-serif;font-size:17px;font-weight:800;color:#ffffff;line-height:1.2;display:block;'
+                : 'font-family:Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;line-height:1.2;display:block;';
+            $labelStyle = 'display:block;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:3px;';
+            $marginStyle = 'margin-bottom:14px;word-break:break-word;';
+        }
 
-        return '<div style="margin-bottom:14px;word-break:break-word;">'
-            . '<span style="display:block;font-family:Arial,sans-serif;'
-            . 'font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;'
-            . 'color:#ffffff;margin-bottom:3px;">'
+        return '<div style="' . $marginStyle . '">'
+            . '<span style="' . $labelStyle . '">'
             . self::esc($label)
             . '</span>'
             . '<span style="' . $valueStyle . '">' . $value . '</span>'
@@ -660,8 +668,8 @@ class EmailHelper
             : '<div style="margin-bottom:16px;"></div>';
 
         /* ── Detail columns ──────────────────────────────── */
-        $colA = self::detailRow('Date', $eventDate);
-        $colA .= self::detailRow('Time', $eventTime);
+        $colA = self::detailRow('Date', $eventDate, false, $forPdf);
+        $colA .= self::detailRow('Time', $eventTime, false, $forPdf);
 
         $locations = $ticketData['locations'] ?? null;
         if (is_string($locations)) {
@@ -686,19 +694,27 @@ class EmailHelper
                     $locations = $filtered;
                 }
             }
-            $colA .= '<div style="margin-bottom:14px;word-break:break-word;">'
-                . '<span style="display:block;font-family:Arial,sans-serif;font-size:9px;'
-                . 'font-weight:700;letter-spacing:2px;text-transform:uppercase;'
-                . 'color:#ffffff;margin-bottom:6px;">Venue &amp; Location</span>';
+            $labelStyle = $forPdf
+                ? 'display:block;font-family:Arial,sans-serif;font-size:7pt;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffffff;margin-bottom:4pt;'
+                : 'display:block;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:6px;';
+            $colA .= '<div style="margin-bottom:' . ($forPdf ? '10pt' : '14px') . ';word-break:break-word;">'
+                . '<span style="' . $labelStyle . '">Venue &amp; Location</span>';
             foreach ($locations as $loc) {
                 $s = self::esc($loc['state'] ?? '');
                 $a = self::esc($loc['address'] ?? '');
 
                 // Typography for Location blocks
-                $stateStyle = 'font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;line-height:1.3;display:block;';
-                $addrStyle = 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
+                if ($forPdf) {
+                    $stateStyle = 'font-family:Arial,sans-serif;font-size:12pt;font-weight:700;color:#ffffff;line-height:1.3;display:block;';
+                    $addrStyle = 'font-family:Arial,sans-serif;font-size:10pt;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
+                    $itemMargin = 'margin-bottom:9pt;';
+                } else {
+                    $stateStyle = 'font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;line-height:1.3;display:block;';
+                    $addrStyle = 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
+                    $itemMargin = 'margin-bottom:12px;';
+                }
 
-                $colA .= '<div style="margin-bottom:12px;">'
+                $colA .= '<div style="' . $itemMargin . '">'
                     . '<span style="' . $stateStyle . '">' . $s . '</span>'
                     . '<span style="' . $addrStyle . '">' . $a . '</span>'
                     . '</div>';
@@ -708,36 +724,41 @@ class EmailHelper
             $st = $ticketData['state'] ?? '';
             $ad = $ticketData['address'] ?? ($ticketData['location'] ?? '—');
             if (!empty($st) && strtolower($st) !== 'all states') {
-                $colA .= '<div style="margin-bottom:14px;word-break:break-word;">'
-                    . '<span style="display:block;font-family:Arial,sans-serif;font-size:9px;'
-                    . 'font-weight:700;letter-spacing:2px;text-transform:uppercase;'
-                    . 'color:#ffffff;margin-bottom:6px;">Venue &amp; Location</span>'
-                    . '<div style="margin-bottom:12px;">'
-                    . '<span style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;display:block;">'
-                    . self::esc($st) . '</span>'
-                    . '<span style="font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;display:block;">'
-                    . self::esc($ad) . '</span>'
+                $labelStyle = $forPdf
+                    ? 'display:block;font-family:Arial,sans-serif;font-size:7pt;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffffff;margin-bottom:4pt;'
+                    : 'display:block;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ffffff;margin-bottom:6px;';
+                $stateStyle = $forPdf
+                    ? 'font-family:Arial,sans-serif;font-size:12pt;font-weight:700;color:#ffffff;display:block;'
+                    : 'font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;display:block;';
+                $addrStyle = $forPdf
+                    ? 'font-family:Arial,sans-serif;font-size:10pt;font-weight:400;color:#ffffff;display:block;'
+                    : 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;display:block;';
+                $colA .= '<div style="margin-bottom:' . ($forPdf ? '10pt' : '14px') . ';word-break:break-word;">'
+                    . '<span style="' . $labelStyle . '">Venue &amp; Location</span>'
+                    . '<div style="margin-bottom:' . ($forPdf ? '9pt' : '12px') . ';">'
+                    . '<span style="' . $stateStyle . '">' . self::esc($st) . '</span>'
+                    . '<span style="' . $addrStyle . '">' . self::esc($ad) . '</span>'
                     . '</div></div>';
             } else {
-                $colA .= self::detailRow('Venue', self::esc($ad));
+                $colA .= self::detailRow('Venue', self::esc($ad), false, $forPdf);
                 if (!empty($st)) {
-                    $colA .= self::detailRow('Location', self::esc($st));
+                    $colA .= self::detailRow('Location', self::esc($st), false, $forPdf);
                 }
             }
         }
 
         $colB = '';
         if ($tickDisp !== '' || $ticketType !== '') {
-            $colB .= self::detailRow('Ticket Type', $tickDisp ?: $ticketType);
+            $colB .= self::detailRow('Ticket Type', $tickDisp ?: $ticketType, false, $forPdf);
         }
         if ($amountDisplay !== '') {
-            $colB .= self::detailRow('Amount Paid', $amountDisplay, true);
+            $colB .= self::detailRow('Amount Paid', $amountDisplay, true, $forPdf);
         }
         // Quantity bought
         $qtyBought = isset($ticketData['quantity']) ? (int) $ticketData['quantity'] : 1;
-        $colB .= self::detailRow('Qty', (string) $qtyBought);
+        $colB .= self::detailRow('Qty', (string) $qtyBought, false, $forPdf);
         if ($organizer !== '') {
-            $colB .= self::detailRow('Organizer', $organizer);
+            $colB .= self::detailRow('Organizer', $organizer, false, $forPdf);
         }
 
         /* ── Download button HTML (for email) ── */
@@ -885,11 +906,11 @@ HTML;
         // Build DomPDF-safe event image cell: no CSS background-image, use inline <img> instead
         if ($bgImage !== '') {
             $safeImgSrc = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
-            $imgCellContent = "<img src=\"{$safeImgSrc}\" alt=\"Event\" width=\"220\" height=\"420\""
-                . " style=\"width:220px;height:420px;display:block;\">";
+            $imgCellContent = "<img src=\"{$safeImgSrc}\" alt=\"Event\" width=\"165\" height=\"315\""
+                . " style=\"width:165pt;height:315pt;display:block;\">";
         } else {
-            $imgCellContent = '<div style="width:220px;height:420px;background:#1e3a5f;display:block;text-align:center;vertical-align:middle;">'
-                . '<span style="color:#d4af37;font-family:Arial,sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;">EVENTRA</span>'
+            $imgCellContent = '<div style="width:165pt;height:315pt;background:#1e3a5f;display:block;text-align:center;vertical-align:middle;">'
+                . '<span style="color:#d4af37;font-family:Arial,sans-serif;font-size:8pt;letter-spacing:3px;text-transform:uppercase;">EVENTRA</span>'
                 . '</div>';
         }
 
@@ -905,87 +926,85 @@ HTML;
   html, body {
     margin: 0;
     padding: 0;
-    width: 900px;
-    height: 420px;
     background-color: #0f172a;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
   }
   table { border-collapse: collapse; }
   .event-title {
-    font-size: 26px;
+    font-size: 20pt;
     font-weight: 900;
     text-transform: uppercase;
     line-height: 1.1;
     color: #ffffff;
   }
   .label {
-    font-size: 9px;
+    font-size: 7pt;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     color: #94a3b8;
     font-weight: 700;
   }
   .holder-name {
-    font-size: 20px;
+    font-size: 15pt;
     font-weight: 800;
     color: #ffffff;
   }
   .ticket-id {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 12px;
+    font-size: 9pt;
     font-weight: 700;
     color: #ffffff;
   }
   .barcode-text {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 10px;
+    font-size: 8pt;
     color: #ffffff;
     text-align: center;
-    margin-top: 6px;
+    margin-top: 5pt;
   }
 </style>
 </head>
 <body>
-<table width="900" height="420" cellpadding="0" cellspacing="0" border="0" style="width:900px;height:420px;background-color:#0f172a;border-collapse:collapse;margin:0;padding:0;">
+<table width="675" height="315" cellpadding="0" cellspacing="0" border="0" style="width:675pt;height:315pt;background-color:#0f172a;border-collapse:collapse;margin:0;padding:0;">
   <tr>
-    <!-- Event Image Panel (Left 220px) -->
-    <td width="220" valign="top" style="width:220px;height:420px;padding:0;background-color:#1e3a5f;overflow:hidden;">
+    <!-- Event Image Panel (Left 165pt) -->
+    <td width="165" valign="top" style="width:165pt;height:315pt;padding:0;background-color:#1e3a5f;overflow:hidden;">
       {$imgCellContent}
     </td>
 
-    <!-- Main Body Section (440px) -->
-    <td width="440" valign="top" style="padding:28px 28px;width:440px;background-color:#0f172a;">
+    <!-- Main Body Section (330pt) -->
+    <td width="330" valign="top" style="padding:21pt 21pt;width:330pt;background-color:#0f172a;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
         <tr>
           <td valign="top">
             {$badgeHtml}
-            <div class="event-title" style="margin-top:6px;font-size:26px;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
+            <div class="event-title" style="margin-top:5pt;font-size:20pt;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
           </td>
         </tr>
-        <tr><td height="12" style="font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td height="9" style="font-size:0;line-height:0;">&nbsp;</td></tr>
         <tr>
           <td valign="top">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
               <tr>
-                <td width="50%" valign="top" style="padding-right:16px;">{$colA}</td>
-                <td width="50%" valign="top" style="padding-left:16px;">{$colB}</td>
+                <td width="50%" valign="top" style="padding-right:12pt;">{$colA}</td>
+                <td width="50%" valign="top" style="padding-left:12pt;">{$colB}</td>
               </tr>
             </table>
           </td>
         </tr>
-        <tr><td height="14" style="font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td height="10" style="font-size:0;line-height:0;">&nbsp;</td></tr>
         <tr>
-          <td style="border-top:1px solid #334155;padding-top:14px;">
+          <td style="border-top:1px solid #334155;padding-top:10pt;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
               <tr>
                 <td valign="bottom" width="60%">
                   <div class="label">Ticket Holder</div>
-                  <div class="holder-name" style="margin-top:3px;">{$userName}</div>
+                  <div class="holder-name" style="margin-top:2pt;">{$userName}</div>
                 </td>
                 <td valign="bottom" width="40%" align="right">
                   <div class="label">Ticket ID</div>
-                  <div class="ticket-id" style="margin-top:3px;">{$ticketId}</div>
+                  <div class="ticket-id" style="margin-top:2pt;">{$ticketId}</div>
                 </td>
               </tr>
             </table>
@@ -995,17 +1014,17 @@ HTML;
     </td>
 
     <!-- Perforated Divider -->
-    <td width="2" style="width:2px;border-left:2px dashed #475569;font-size:0;line-height:0;background-color:#0f172a;">&nbsp;</td>
+    <td width="2" style="width:2pt;border-left:2pt dashed #475569;font-size:0;line-height:0;background-color:#0f172a;">&nbsp;</td>
 
-    <!-- Stub Section (238px) -->
-    <td width="238" valign="middle" align="center" style="padding:24px 16px;width:238px;background-color:#1e293b;">
-      <div style="margin-bottom:14px;text-align:center;">
-        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">EVENTRA STUB</span>
+    <!-- Stub Section (178pt) -->
+    <td width="178" valign="middle" align="center" style="padding:18pt 12pt;width:178pt;background-color:#1e293b;">
+      <div style="margin-bottom:10pt;text-align:center;">
+        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:9pt;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">EVENTRA STUB</span>
       </div>
-      <div style="display:inline-block;padding:8px;background:#ffffff;border-radius:10px;margin-bottom:10px;text-align:center;">
+      <div style="display:inline-block;padding:6pt;background:#ffffff;border-radius:8pt;margin-bottom:8pt;text-align:center;">
         {$qrHtml}
       </div>
-      <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 5px;text-align:center;width:100%;">
+      <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 4pt;text-align:center;width:100%;">
         {$barcode}
       </div>
     </td>
