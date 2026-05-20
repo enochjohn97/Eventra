@@ -554,29 +554,9 @@ async function apiFetch(url, options = {}) {
   });
 })();
 
-/**
- * Global Modal Click-Outside-to-Close
- * Closes any modal when clicking on the backdrop
- */
-document.addEventListener('click', (e) => {
-    if (e.target.classList && e.target.classList.contains('modal-backdrop')) {
-        const modalId = e.target.id;
-        if (!modalId) {
-            // Fallback for modals without specific IDs
-            e.target.classList.remove('active');
-            setTimeout(() => { if (e.target.parentNode) e.target.remove(); }, 300);
-            return;
-        }
-        
-        const closeFnName = 'close' + modalId.charAt(0).toUpperCase() + modalId.slice(1);
-        if (typeof window[closeFnName] === 'function') {
-            window[closeFnName]();
-        } else {
-            e.target.classList.remove('active');
-            setTimeout(() => { if (e.target.parentNode) e.target.remove(); }, 300);
-        }
-    }
-});
+// NOTE: Global modal-backdrop click-to-close removed intentionally.
+// Each modal has its own explicit close button (×). The global handler
+// was closing forms unexpectedly when users clicked near backdrop edges.
 
 /**
  * Save form state to localStorage
