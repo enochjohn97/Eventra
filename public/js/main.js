@@ -461,6 +461,9 @@ function initUserIcon() {
         if (loginModal) {
           loginModal.style.display = "flex";
           setTimeout(() => loginModal.classList.add("show"), 10);
+          if (window.authController && window.authController.googleInitialized) {
+            window.authController.renderGoogleButton('googleSignInContainer');
+          }
           // Manual button is already in HTML, logical handler added in initUserIcon
         }
       }
@@ -528,6 +531,9 @@ function initUserIcon() {
           if (loginModal) {
             loginModal.style.display = "flex";
             setTimeout(() => loginModal.classList.add("show"), 10);
+            if (window.authController && window.authController.googleInitialized) {
+              window.authController.renderGoogleButton('googleSignInContainer');
+            }
           }
         }
         return;
@@ -644,6 +650,9 @@ function initUserIcon() {
     if (loginModal && !isAuthenticated()) {
       loginModal.style.display = "flex";
       setTimeout(() => loginModal.classList.add("show"), 10);
+      if (window.authController && window.authController.googleInitialized) {
+        window.authController.renderGoogleButton('googleSignInContainer');
+      }
     }
   }
 }
@@ -687,7 +696,7 @@ async function initGoogleAuth() {
       });
 
       if (googleLoaded) {
-        // Initialize Google SDK but don't render standard button (we use our custom one)
+        // Initialize Google SDK but don't render standard button yet because modal is hidden
         authController.initGoogle(data.client_id, "none");
       } else {
         // If SDK fails to load, the manual button remains and can be tried again by clicking
