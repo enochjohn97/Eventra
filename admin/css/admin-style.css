@@ -10,7 +10,7 @@
     --admin-text-muted: #64748b;
     --admin-text-white: #ffffff;
     --admin-border: rgba(226, 232, 240, 0.6);
-    --admin-header-height: 70px;
+    --admin-header-height: 60px;
     --admin-sidebar-width: 210px;
     --admin-sidebar-collapsed-width: 68px;
     --admin-radius: 12px;
@@ -125,7 +125,7 @@ body {
 }
 
 .sidebar-logo {
-    padding: 3rem 2rem;
+    padding: 1.5rem 1.25rem;
     font-size: 1.75rem;
     font-weight: 900;
     letter-spacing: 2px;
@@ -371,7 +371,7 @@ body {
 
 /* Content Area */
 .content-area {
-    padding: 1.25rem 1.5rem;
+    padding: 1rem 1.25rem;
     width: 100%;
     max-height: calc(100vh - var(--admin-header-height));
     overflow-y: auto;
@@ -382,7 +382,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 .page-title h1 {
@@ -395,18 +395,18 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 /* Stats Cards (Neutral Design) */
 .stat-card {
     background: white;
-    padding: 1.25rem 1.5rem;
+    padding: 1rem;
     border-radius: var(--admin-radius);
     border: 1px solid var(--admin-border);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -469,7 +469,7 @@ table {
 
 th {
     text-align: left;
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1rem;
     background-color: #f1f5f9;
     color: var(--admin-text-muted);
     font-weight: 600;

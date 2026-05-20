@@ -311,11 +311,7 @@ class AuthController {
         }
         
         try {
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed()) {
-                    console.warn('Google prompt not displayed:', notification.getNotDisplayedReason());
-                }
-            });
+            google.accounts.id.prompt();
         } catch (e) {
             console.error('Google prompt error:', e);
         }

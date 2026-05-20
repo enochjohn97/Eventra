@@ -35,7 +35,7 @@
     /* Dimensions & Spacing */
     --client-sidebar-width: 220px;
     --client-sidebar-collapsed-width: 68px;
-    --client-header-height: 70px;
+    --client-header-height: 60px;
     --client-radius: 12px;
     --client-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --client-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
@@ -187,7 +187,7 @@ body {
 }
 
 .sidebar-logo {
-    padding: 3rem 2rem;
+    padding: 1.5rem 1.25rem;
     font-size: 1.75rem;
     font-weight: 900;
     letter-spacing: 2px;
@@ -381,15 +381,15 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 /* Stats Dashboard (Colored) */
 .client-stats-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    gap: 1rem;
+    margin-bottom: 1rem;
     color: var(--client-text-main);
 }
 
@@ -465,7 +465,7 @@ body {
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1.8fr 1.2fr;
-    gap: 2rem;
+    gap: 1rem;
     align-items: stretch; /* Ensure panels are same height */
 }
 
@@ -492,7 +492,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 .event-feed-list {
@@ -502,7 +502,7 @@ body {
     padding-right: 12px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.25rem;
+    gap: 1rem;
     align-content: start;
 }
 
@@ -536,8 +536,8 @@ body {
 .event-feed-item {
     display: flex;
     flex-direction: column; /* Card style instead of row */
-    gap: 1.25rem;
-    padding: 1.5rem;
+    gap: 0.75rem;
+    padding: 1rem;
     background: rgba(255, 255, 255, 0.5);
     border-radius: 16px;
     border: 1px solid var(--client-border);
@@ -579,8 +579,8 @@ body {
     width: 100%;
     border-collapse: collapse;
 }
-th { text-align: left; padding: 1.25rem 2rem; background: #f8fafc; font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); letter-spacing: 1px; font-weight: 700; }
-td { padding: 1.25rem 2rem; border-bottom: 1px solid var(--client-border); font-size: 0.95rem; color: var(--client-text-main); }
+th { text-align: left; padding: 0.75rem 1rem; background: #f8fafc; font-size: 0.75rem; text-transform: uppercase; color: var(--client-text-muted); letter-spacing: 1px; font-weight: 700; }
+td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--client-border); font-size: 0.95rem; color: var(--client-text-main); }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
 .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }

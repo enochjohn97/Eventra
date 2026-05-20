@@ -49,14 +49,16 @@ try {
         exit;
     }
 
-    // ── POST: Save Bank Details (Mock) ──────────────────────────────────────────
+    // ── POST: Save Bank Details ──────────────────────────────────────────
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_once '../../config/payment.php';
+
         $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         
         $bank_code      = trim($data['bank_code']      ?? '');
         $account_number = trim($data['account_number'] ?? '');
         $bank_name      = trim($data['bank_name']      ?? '');
-        $account_name   = trim($data['account_name']   ?? 'Test Account (mock)');
+        $account_name   = trim($data['account_name']   ?? 'Event Organizer Account');
 
         if (empty($bank_code) || empty($account_number)) {
             http_response_code(400);
@@ -71,6 +73,39 @@ try {
         }
 
         try {
+            $pdo->beginTransaction();
+
+            // Fetch client details needed for subaccount creation
+            $stmt = $pdo->prepare("SELECT business_name, email, subaccount_code FROM clients WHERE client_auth_id = ? FOR UPDATE");
+            $stmt->execute([$client_auth_id]);
+            $client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$client) {
+                $pdo->rollBack();
+                echo json_encode(['success' => false, 'message' => 'Client not found.']);
+                exit;
+            }
+
+            // Create/Update subaccount on Paystack
+            $subaccountRes = ensureSubaccount(
+                $pdo, 
+                $client_auth_id, 
+                $bank_code, 
+                $account_number, 
+                $client['business_name'] ?: 'Eventra Client', 
+                $client['email'] ?: 'client@eventra.com', 
+                $client['subaccount_code']
+            );
+
+            if (!$subaccountRes['success']) {
+                $pdo->rollBack();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $subaccountRes['message']]);
+                exit;
+            }
+
+            // ensureSubaccount already updates subaccount_code and subaccount_id
+            // Now update the rest of the bank details
             $stmt = $pdo->prepare("
                 UPDATE clients
                 SET bank_code = ?,
@@ -89,12 +124,17 @@ try {
                 $client_auth_id
             ]);
 
+            $pdo->commit();
+
             echo json_encode([
                 'success' => true,
-                'message' => 'Bank details saved successfully (test mode).',
+                'message' => 'Bank details saved and verified with Paystack.',
                 'account_name' => $account_name
             ]);
         } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Database error.']);
         }
