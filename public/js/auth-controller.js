@@ -189,7 +189,7 @@ class AuthController {
                 client_id: clientId,
                 callback: (res) => this.handleGoogleResponse(res),
                 auto_select: false,
-                use_fedcm_for_prompt: true,
+                use_fedcm_for_prompt: false,
                 prompt_parent_id: containerId !== 'none' ? containerId : null,
                 cancel_on_tap_outside: true,
                 itp_support: true
