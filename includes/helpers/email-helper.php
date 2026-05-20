@@ -386,11 +386,8 @@ class EmailHelper
         $safeQrSrc = htmlspecialchars($qrSrc, ENT_QUOTES, 'UTF-8');
 
         if ($forPdf) {
-            return "<div style=\"position:relative;width:{$size}px;height:{$size}px;display:block;\">"
-                . "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
-                . " style=\"width:{$size}px;height:{$size}px;display:block;pointer-events:none;user-select:none;\">"
-                . "<div style=\"position:absolute;inset:0;z-index:5;background:transparent;\"></div>"
-                . "</div>";
+            return "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
+                . " style=\"width:{$size}px;height:{$size}px;display:block;\">";
         }
 
         return '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center"'
@@ -599,8 +596,17 @@ class EmailHelper
         if (!$forPdf && !empty($ticketData['event_image_cid'])) {
             $imgBase64 = 'cid:' . $ticketData['event_image_cid'];
         } else {
-            // 🔥 FIX: Convert event image to base64 and use it reliably for both email and PDF
-            $imgBase64 = self::imageToDataUri($imgRaw, 500000);
+            if ($forPdf) {
+                // Try resolving to local absolute path first for Dompdf performance & stability
+                $resolvedLocal = self::resolveLocalPath($imgRaw);
+                if ($resolvedLocal !== '') {
+                    $imgBase64 = $resolvedLocal;
+                } else {
+                    $imgBase64 = self::imageToDataUri($imgRaw, 500000);
+                }
+            } else {
+                $imgBase64 = self::imageToDataUri($imgRaw, 500000);
+            }
         }
 
         if ($imgBase64 !== '') {
@@ -866,11 +872,14 @@ HTML;
         string $year
     ): string {
         $bgStyle = 'background-color: #0f172a;';
-        if ($bgImage !== '') {
+        if ($bgImage !== '' && !str_starts_with($bgImage, 'data:')) {
+            $safeImgSrc = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
+            $bgStyle = "background-image: url('{$safeImgSrc}'); background-repeat: no-repeat; background-size: cover; background-position: center;";
+        } elseif ($bgImage !== '') {
             $safeImgSrc = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
             $bgStyle = "background-image: url('{$safeImgSrc}'); background-repeat: no-repeat; background-size: cover; background-position: center;";
         } else {
-            $bgStyle = "background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);";
+            $bgStyle = "background-color: #1e293b;";
         }
 
         return <<<PDF
@@ -880,37 +889,24 @@ HTML;
 <meta charset="UTF-8">
 <title>Ticket — {$eventTitle}</title>
 <style>
-  @page { size: 900px 420px; margin: 0; }
+  @page { margin: 0; }
   * { box-sizing: border-box; }
-  body {
+  html, body {
     margin: 0;
     padding: 0;
+    width: 900px;
+    height: 420px;
+    background-color: #0f172a;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
-    background: transparent;
   }
   table { border-collapse: collapse; }
   .ticket-outer {
-    position: relative;
     width: 900px;
     height: 420px;
-    overflow: hidden;
+    background-color: #0f172a;
     {$bgStyle}
-  }
-  .ticket-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 900px;
-    height: 420px;
-    background: rgba(15, 23, 42, 0.88);
-  }
-  .ticket-content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 900px;
-    height: 420px;
+    margin: 0;
     padding: 0;
   }
   .event-title {
@@ -919,12 +915,6 @@ HTML;
     text-transform: uppercase;
     line-height: 1.1;
     color: #ffffff;
-  }
-  .brand {
-    font-size: 22px;
-    font-weight: 900;
-    color: #ffffff;
-    text-align: right;
   }
   .label {
     font-size: 9px;
@@ -955,68 +945,65 @@ HTML;
 </head>
 <body>
 <div class="ticket-outer">
-  <div class="ticket-overlay"></div>
-  <div class="ticket-content">
-    <table width="900" height="420" cellpadding="0" cellspacing="0" border="0" style="width:900px;height:420px;border-collapse:collapse;">
-      <tr>
-        <!-- Main Body Section (Left ~73% -> 660px) -->
-        <td width="660" valign="top" style="padding:36px 44px;width:660px;background-color:transparent;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-            <tr>
-              <td valign="top">
-                {$badgeHtml}
-                <div class="event-title" style="margin-top:8px;font-size:34px;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
-              </td>
-            </tr>
-            <tr><td height="16" style="font-size:0;line-height:0;">&nbsp;</td></tr>
-            <tr>
-              <td valign="top">
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-                  <tr>
-                    <td width="50%" valign="top" style="padding-right:20px;">{$colA}</td>
-                    <td width="50%" valign="top" style="padding-left:20px;">{$colB}</td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr><td height="24" style="font-size:0;line-height:0;">&nbsp;</td></tr>
-            <tr>
-              <td style="border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-                  <tr>
-                    <td valign="bottom" width="60%">
-                      <div class="label">Ticket Holder</div>
-                      <div class="holder-name" style="margin-top:4px;">{$userName}</div>
-                    </td>
-                    <td valign="bottom" width="40%" align="right">
-                      <div class="label">Ticket ID</div>
-                      <div class="ticket-id" style="margin-top:4px;">{$ticketId}</div>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </td>
-        
-        <!-- Perforated Divider (Dotted line between Body and Stub) -->
-        <td width="2" style="width:2px;border-left:2px dashed rgba(255,255,255,0.35);font-size:0;line-height:0;background-color:transparent;">&nbsp;</td>
-        
-        <!-- Stub Section (Right ~27% -> 238px) -->
-        <td width="238" valign="middle" align="center" style="padding:28px 20px;width:238px;background-color:rgba(15,23,42,0.4);">
-          <div style="margin-bottom:16px;text-align:center;">
-            <span style="display:inline-block;font-family:Arial,sans-serif;font-size:14px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">EVENTRA STUB</span>
-          </div>
-          <div style="display:inline-block;padding:10px;background:#ffffff;border-radius:12px;margin-bottom:12px;text-align:center;">
-            {$qrHtml}
-          </div>
-          <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 5px;text-align:center;width:100%;">
-            {$barcode}
-          </div>
-        </td>
-      </tr>
-    </table>
-  </div>
+  <table width="900" height="420" cellpadding="0" cellspacing="0" border="0" style="width:900px;height:420px;background-color: rgba(15, 23, 42, 0.88);border-collapse:collapse;margin:0;padding:0;">
+    <tr>
+      <!-- Main Body Section (Left ~73% -> 660px) -->
+      <td width="660" valign="top" style="padding:36px 44px;width:660px;background-color:transparent;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+          <tr>
+            <td valign="top">
+              {$badgeHtml}
+              <div class="event-title" style="margin-top:8px;font-size:34px;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
+            </td>
+          </tr>
+          <tr><td height="16" style="font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td valign="top">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td width="50%" valign="top" style="padding-right:20px;">{$colA}</td>
+                  <td width="50%" valign="top" style="padding-left:20px;">{$colB}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr><td height="24" style="font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td style="border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td valign="bottom" width="60%">
+                    <div class="label">Ticket Holder</div>
+                    <div class="holder-name" style="margin-top:4px;">{$userName}</div>
+                  </td>
+                  <td valign="bottom" width="40%" align="right">
+                    <div class="label">Ticket ID</div>
+                    <div class="ticket-id" style="margin-top:4px;">{$ticketId}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+      
+      <!-- Perforated Divider (Dotted line between Body and Stub) -->
+      <td width="2" style="width:2px;border-left:2px dashed rgba(255,255,255,0.35);font-size:0;line-height:0;background-color:transparent;">&nbsp;</td>
+      
+      <!-- Stub Section (Right ~27% -> 238px) -->
+      <td width="238" valign="middle" align="center" style="padding:28px 20px;width:238px;background-color:rgba(15,23,42,0.4);">
+        <div style="margin-bottom:16px;text-align:center;">
+          <span style="display:inline-block;font-family:Arial,sans-serif;font-size:14px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">EVENTRA STUB</span>
+        </div>
+        <div style="display:inline-block;padding:10px;background:#ffffff;border-radius:12px;margin-bottom:12px;text-align:center;">
+          {$qrHtml}
+        </div>
+        <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 5px;text-align:center;width:100%;">
+          {$barcode}
+        </div>
+      </td>
+    </tr>
+  </table>
 </div>
 </body>
 </html>
