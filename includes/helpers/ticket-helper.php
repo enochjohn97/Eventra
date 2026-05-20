@@ -198,8 +198,17 @@ function generateTicketQRCode(array $ticketData): string
 
         $qrcode = new \chillerlan\QRCode\QRCode($options);
 
-        // Encode a public verification URL (keeps compatibility with existing validation flow)
-        $verificationUrl = (defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/')) . '/api/tickets/validate-ticket.php?barcode=' . urlencode($ticketData['barcode'] ?? '');
+        // Encode a public verification URL — substitute LAN IP if running on localhost for mobile accessibility
+        $baseAppUrl = defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/');
+        $parsedHost = parse_url($baseAppUrl, PHP_URL_HOST) ?? '';
+        if (in_array($parsedHost, ['localhost', '127.0.0.1'], true)) {
+            $lanIp = gethostbyname(gethostname());
+            if ($lanIp !== gethostname() && $lanIp !== '127.0.0.1' && filter_var($lanIp, FILTER_VALIDATE_IP)) {
+                $baseAppUrl = str_replace($parsedHost, $lanIp, $baseAppUrl);
+            }
+        }
+        $verificationUrl = $baseAppUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($ticketData['barcode'] ?? '');
+
 
         // Render returns a data URI when imageBase64=true
         $rendered = $qrcode->render($verificationUrl);

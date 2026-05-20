@@ -7,7 +7,12 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/helpers/email-helper.php';
+require_once __DIR__ . '/../includes/helpers/sms-helper.php';
 require_once __DIR__ . '/../api/utils/notification-helper.php';
+
+// Set timezone to Africa/Lagos
+date_default_timezone_set('Africa/Lagos');
+
 
 // Set time limit to avoid timeout for large events
 set_time_limit(300);
@@ -44,7 +49,7 @@ try {
 
         // 2. Fetch all unique ticket holders for this event
         $ticketStmt = $pdo->prepare("
-            SELECT DISTINCT u.name, aa.email, aa.id as auth_id
+            SELECT DISTINCT u.name, u.phone, aa.email, aa.id as auth_id
             FROM tickets t
             JOIN users u ON t.user_id = u.id
             JOIN auth_accounts aa ON u.user_auth_id = aa.id
@@ -74,7 +79,15 @@ try {
 
             // Send Email
             $emailResult = EmailHelper::sendEmail($attendee['email'], $subject, $body);
-            
+
+            // Send SMS if phone number is available
+            if (!empty($attendee['phone'])) {
+                $smsMessage = "Reminder: {$eventName} starts in 1 hour! Time: "
+                    . date('g:i A', strtotime($event['event_time']))
+                    . " at {$event['address']}, {$event['state']}. Please have your ticket ready.";
+                sendSMS($attendee['phone'], $smsMessage);
+            }
+
             // Create In-app Notification
             createNotification(
                 $attendee['auth_id'],

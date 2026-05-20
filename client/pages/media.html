@@ -186,6 +186,7 @@
     <script src="../js/paystack-banks.js"></script>
     <script src="../js/modals.js"></script>
     <script src="../js/client-main.js"></script>
+    <script src="../../public/js/heartbeat.js"></script>
     <!-- HD Enhancement Filter -->
     <div id="hdFilterContainer"></div>
     <script>
@@ -198,6 +199,9 @@
             
         // Initialize Lucide icons
         lucide.createIcons();
+        // Auto-refresh every 60 seconds when tab is visible
+        setInterval(function() { if (document.visibilityState === 'visible') location.reload(); }, 60000);
     </script>
 </body>
 </html>
+

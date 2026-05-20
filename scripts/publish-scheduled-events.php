@@ -59,7 +59,7 @@ try {
         $eventId = $event['id'];
         $msg     = "Hi {$event['client_name']}, your event \"{$event['event_name']}\" starts in about 5-10 minutes!";
 
-        // In-app notification
+        // In-app notification only for clients (no email/SMS per platform policy)
         $pdo->prepare("
             INSERT INTO notifications (recipient_auth_id, message, type, metadata)
             VALUES (?, ?, 'pre_event_reminder', ?)
@@ -69,29 +69,12 @@ try {
             json_encode(['event_id' => $eventId])
         ]);
 
-        // Email notification (uses existing email helper)
-        if (!empty($event['client_email'])) {
-            try {
-                sendGenericEmail($event['client_email'], 'Event Starting Soon — ' . $event['event_name'], $msg);
-            } catch (Exception $ex) {
-                echo "[{$now}] Email failed for event {$eventId}: " . $ex->getMessage() . "\n";
-            }
-        }
-
-        // SMS notification
-        if (!empty($event['client_phone'])) {
-            try {
-                sendSMS($event['client_phone'], $msg);
-            } catch (Exception $ex) {
-                echo "[{$now}] SMS failed for event {$eventId}: " . $ex->getMessage() . "\n";
-            }
-        }
-
         // Mark as notified
         $pdo->prepare("UPDATE events SET notification_sent = 1 WHERE id = ?")
             ->execute([$eventId]);
 
         echo "[{$now}] Pre-event notification sent for event {$eventId} ({$event['event_name']}).\n";
+
     }
 
     // ─── 3. Reset stale is_online flags (safety net) ──────────────────────────

@@ -119,6 +119,25 @@ class Ticket
      */
     private static function resolveBarcode(string $input): string
     {
+        $input = trim($input);
+
+        // 1. Check if input is a URL or contains a barcode= query parameter (mobile QR scan)
+        if (str_contains($input, 'barcode=') || filter_var($input, FILTER_VALIDATE_URL)) {
+            $queryStr = '';
+            if (str_contains($input, '?')) {
+                $queryStr = parse_url($input, PHP_URL_QUERY) ?? '';
+            } else {
+                $queryStr = $input;
+            }
+            if ($queryStr !== '') {
+                parse_str($queryStr, $params);
+                if (!empty($params['barcode'])) {
+                    return trim((string) $params['barcode']);
+                }
+            }
+        }
+
+        // 2. Try to decode as a signed QR payload
         $decoded = base64_decode($input, true);
         if ($decoded) {
             $payload = json_decode($decoded, true);

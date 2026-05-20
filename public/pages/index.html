@@ -1096,5 +1096,10 @@
     <script src="../js/heartbeat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="../js/main.js"></script>
+    <script>
+        // Auto-refresh every 60 seconds when tab is visible
+        setInterval(function(){if(document.visibilityState==='visible')location.reload();},60000);
+    </script>
   </body>
 </html>
+

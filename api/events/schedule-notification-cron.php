@@ -10,9 +10,10 @@
 require_once '../../config/database.php';
 require_once '../utils/notification-helper.php';
 
-// Set timezone to UTC for database consistency
-date_default_timezone_set('UTC');
-$pdo->exec("SET time_zone = '+00:00'");
+// Set timezone to Africa/Lagos for database consistency
+date_default_timezone_set('Africa/Lagos');
+$pdo->exec("SET time_zone = '+01:00'");
+
 
 try {
     echo "[" . date('Y-m-d H:i:s') . "] Starting notification cron job...\n";

@@ -244,8 +244,12 @@
     <script src="../js/event-preview.js"></script>
     <script src="../js/admin-main.js"></script>
     <script src="../../public/js/pagination.js"></script>
+    <script src="../../public/js/heartbeat.js"></script>
     <script>
         lucide.createIcons();
+        setInterval(function(){if(document.visibilityState==='visible')location.reload();},60000);
     </script>
+
 </body>
 </html>
+

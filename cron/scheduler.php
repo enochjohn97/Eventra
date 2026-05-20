@@ -55,7 +55,34 @@ try {
         echo " - ERROR: Notification cron script not found at $notificationCron\n";
     }
 
+    // 5. Publish Scheduled Events (auto-publish when scheduled_publish_time has arrived)
+    $publishScript = __DIR__ . '/../scripts/publish-scheduled-events.php';
+    if (file_exists($publishScript)) {
+        echo " - Running Publish Scheduled Events...\n";
+        $phpPath = PHP_BINARY ?: 'php';
+        $output = shell_exec(escapeshellarg($phpPath) . ' ' . escapeshellarg($publishScript));
+        if ($output) {
+            echo "   " . str_replace("\n", "\n   ", trim($output)) . "\n";
+        }
+    } else {
+        echo " - WARNING: Publish script not found at $publishScript\n";
+    }
+
+    // 6. Pre-Event Attendee Reminders (email + SMS 1 hour before event start)
+    $preEventScript = __DIR__ . '/notify-pre-event.php';
+    if (file_exists($preEventScript)) {
+        echo " - Running Pre-Event Attendee Notifications...\n";
+        $phpPath = PHP_BINARY ?: 'php';
+        $output = shell_exec(escapeshellarg($phpPath) . ' ' . escapeshellarg($preEventScript));
+        if ($output) {
+            echo "   " . str_replace("\n", "\n   ", trim($output)) . "\n";
+        }
+    } else {
+        echo " - WARNING: Pre-event notification script not found at $preEventScript\n";
+    }
+
     echo "[" . date('Y-m-d H:i:s') . "] Scheduler finished successfully.\n";
+
 
 } catch (Exception $e) {
     echo "FATAL ERROR in Scheduler: " . $e->getMessage() . "\n";
