@@ -539,7 +539,6 @@ class EmailHelper
      */
     public static function buildTicketHtml(
         array $ticketData,
-        string $downloadUrl = '',
         bool $forPdf = false
     ): string {
         /* ── Sanitise text fields ─────────────────────────── */
@@ -761,12 +760,6 @@ class EmailHelper
             $colB .= self::detailRow('Organizer', $organizer, false, $forPdf);
         }
 
-        /* ── Download button HTML (for email) ── */
-        $dlButtonHtml = '';
-        if (!$forPdf && !empty($downloadUrl)) {
-            // downloadUrl may be raw HTML (buttons) or a single URL; accept raw HTML
-            $dlButtonHtml = $downloadUrl;
-        }
 
         /* ─────────────────────────────────────────────────────────────────
          *  TWO RENDERING PATHS
@@ -872,8 +865,6 @@ class EmailHelper
     </td>
   </tr>
   </table>
-
-  <div style="max-width:750px;width:750px;margin:14px auto 0;text-align:right;">{$dlButtonHtml}</div>
 
 </td></tr>
 </table>
@@ -1182,12 +1173,9 @@ PDF;
         );
         $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for " . ($ticketData['event_name'] ?? 'Event') . " — Eventra") . "?=";
 
-        /* ── 3. Download URL base ─────────────────────────────────── */
-        $appUrl = rtrim((string) ($_ENV['APP_URL'] ?? ''), '/');
-
-        /* ── 4. Validate / regenerate PDF files (prepare download links) ── */
+        /* ── 3. Validate / regenerate PDF files ── */
         $rawPaths = is_array($pdfPath) ? $pdfPath : [$pdfPath];
-        $downloadLinks = [];
+        $validPdfPaths = [];
 
         foreach ($rawPaths as $path) {
             $path = trim((string) $path);
@@ -1215,42 +1203,8 @@ PDF;
                 }
             }
 
-            // If file exists, attempt to extract barcode from filename (ticket_<barcode>.pdf)
             if (file_exists($path) && filesize($path) > 0) {
-                $base = basename($path);
-                if (preg_match('/ticket_(.+)\.pdf$/i', $base, $m)) {
-                    $b = $m[1];
-                    if ($appUrl !== '') {
-                        $downloadLinks[] = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($b);
-                    }
-                } else {
-                    // Fallback to use barcode in $ticketData if present
-                    if (!empty($ticketData['barcode']) && $appUrl !== '') {
-                        $downloadLinks[] = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($ticketData['barcode']);
-                    }
-                }
-            }
-        }
-
-        /* ── 5. Build email HTML (optimised for email clients) with download links ── */
-        $downloadHtml = '';
-        if (!empty($downloadLinks)) {
-            $parts = [];
-            foreach (array_unique($downloadLinks) as $dl) {
-                $safe = htmlspecialchars($dl, ENT_QUOTES, 'UTF-8');
-                $parts[] = "<a href=\"{$safe}\" target=\"_blank\" style=\"display:inline-block;padding:10px 16px;background:#2ecc71;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;margin-right:8px;\">Download PDF</a>";
-            }
-            $downloadHtml = '<div style="text-align:right;margin-bottom:16px;">' . implode('', $parts) . '</div>';
-        } else {
-            // fallback single downloadUrl using ticket barcode
-            $downloadHtml = '';
-            if ($appUrl !== '' && $barcode !== '') {
-                $candidate = $appUrl . '/api/tickets/download-ticket.php?code=' . urlencode($barcode);
-                if (filter_var($candidate, FILTER_VALIDATE_URL)) {
-                    $downloadHtml = '<div style="text-align:right;margin-bottom:16px;">'
-                        . '<a href="' . htmlspecialchars($candidate, ENT_QUOTES, 'UTF-8') . '" target="_blank" style="display:inline-block;padding:10px 16px;background:#2ecc71;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">Download PDF</a>'
-                        . '</div>';
-                }
+                $validPdfPaths[] = $path;
             }
         }
 
@@ -1280,10 +1234,10 @@ PDF;
 
         $emailTicketData = $ticketData;
         // Keep qr_base64 if available to ensure the unique QR code displays correctly
-        $body = self::buildTicketHtml($emailTicketData, $downloadHtml, false);
+        $body = self::buildTicketHtml($emailTicketData, false);
 
-        /* ── 6. Send (no file attachments; users download via link) ───────── */
-        return self::sendEmail($to, $subject, $body, [], '', $embeddedImages);
+        /* ── 4. Send with file attachments ───────── */
+        return self::sendEmail($to, $subject, $body, $validPdfPaths, '', $embeddedImages);
     }
 
     /**
@@ -1295,7 +1249,7 @@ PDF;
     public static function regeneratePdf(array $ticketData, string $outputPath): bool
     {
         // Build PDF-safe HTML
-        $html = self::buildTicketHtml($ticketData, '', true);
+        $html = self::buildTicketHtml($ticketData, true);
 
         // ── Try DomPDF ──────────────────────────────────────────────────────
         if (class_exists('Dompdf\Dompdf')) {
