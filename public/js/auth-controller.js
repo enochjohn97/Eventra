@@ -311,9 +311,16 @@ class AuthController {
         }
         
         try {
-            google.accounts.id.prompt();
+            // Programmatic prompt (One Tap) is no longer supported reliably without FedCM.
+            // The user must click the rendered Google iframe button.
+            const container = document.getElementById('googleSignInContainer');
+            if (container && container.querySelector('iframe')) {
+                showNotification('Please click the official "Sign in with Google" button above.', 'info');
+            } else {
+                showNotification('Google Sign-In is unavailable. Please try again later.', 'error');
+            }
         } catch (e) {
-            console.error('Google prompt error:', e);
+            console.error('Google manual login error:', e);
         }
     }
 
