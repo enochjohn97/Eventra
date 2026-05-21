@@ -210,7 +210,7 @@ body {
 }
 
 .sidebar-footer {
-    padding: 2rem 1.25rem;
+    padding: 1.5rem 1.25rem;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -218,9 +218,9 @@ body {
 .sidebar-toggle-btn {
     position: absolute !important;
     bottom: 1.5rem !important;
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%) !important;
+    right: 1.25rem !important;
+    left: auto !important;
+    transform: none !important;
     width: 36px !important;
     height: 36px !important;
     display: inline-flex !important;
@@ -252,8 +252,9 @@ body {
 
 .sidebar.sidebar-collapsed .sidebar-toggle-btn,
 .sidebar.collapsed .sidebar-toggle-btn {
-    left: 50%;
-    transform: translateX(-50%);
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
 }
 
 /* Main Layout */
@@ -396,13 +397,17 @@ body {
 }
 
 .logout-link {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     padding: 12px 16px;
     color: #ef4444;
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 600;
     transition: background 0.2s;
+    border-radius: 8px;
+    width: fit-content;
 }
 
 .logout-link:hover {

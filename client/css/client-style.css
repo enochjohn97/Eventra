@@ -176,6 +176,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 1rem;
+    padding-bottom: 5rem !important;
 }
 
 .sidebar.collapsed .sidebar-footer a:hover {
@@ -249,9 +250,9 @@ body {
 .sidebar-toggle-btn {
     position: absolute !important;
     bottom: 1.5rem !important;
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%) !important;
+    right: 1.25rem !important;
+    left: auto !important;
+    transform: none !important;
     width: 36px !important;
     height: 36px !important;
     display: inline-flex !important;
@@ -283,13 +284,13 @@ body {
 
 .sidebar.collapsed .sidebar-toggle-btn {
     left: 50% !important;
+    right: auto !important;
     transform: translateX(-50%) !important;
 }
 
 .sidebar-footer {
     padding: 1.5rem 1.25rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    padding-bottom: 5rem;
 }
 
 /* Main Layout */
