@@ -67,7 +67,7 @@ if (empty($type)) {
 
 try {
     // Fetch User Details (by auth_id → users table)
-    $stmt = $pdo->prepare("SELECT u.id, u.name, a.email FROM users u JOIN users a ON u.user_auth_id = a.id WHERE a.id = ?");
+    $stmt = $pdo->prepare("SELECT u.id, u.name, a.email FROM users u JOIN auth_accounts a ON u.user_auth_id = a.id WHERE a.id = ?");
     $stmt->execute([$user_auth_id]);
     $user = $stmt->fetch();
 
@@ -130,7 +130,7 @@ try {
                 JOIN payments p ON t.payment_id = p.id
                 JOIN events e ON p.event_id = e.id
                 JOIN users u ON p.user_id = u.id
-                JOIN users a ON u.user_auth_id = a.id
+                JOIN auth_accounts a ON u.user_auth_id = a.id
                 WHERE p.reference = ?
             ");
             $stmt->execute([$payment_ref]);

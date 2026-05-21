@@ -232,6 +232,47 @@ try {
         $scheduled_publish_time = null;
     }
 
+    // ── Parse per-state locations JSON early ─────────────────────────────────
+    $new_locations_json = $event['locations'] ?? null; // preserve existing by default
+    $raw_locations = $_POST['locations_json'] ?? null;
+    if ($raw_locations) {
+        $decoded = json_decode($raw_locations, true);
+        if (is_array($decoded) && count($decoded) > 0) {
+            $clean_locations = [];
+            foreach ($decoded as $loc) {
+                $s = trim($loc['state'] ?? '');
+                $a = trim($loc['address'] ?? '');
+                $d = trim($loc['date'] ?? '');
+                $t = trim($loc['time'] ?? '');
+                if ($s !== '') {
+                    $entry = ['state' => $s, 'address' => $a];
+                    if ($d !== '') $entry['date'] = $d;
+                    if ($t !== '') $entry['time'] = $t;
+                    $clean_locations[] = $entry;
+                }
+            }
+            if (!empty($clean_locations)) {
+                $new_locations_json = json_encode($clean_locations);
+                // Overwrite event_date and event_time with the earliest location date/time if customized
+                $custom_schedules = array_filter($clean_locations, function($l) {
+                    return !empty($l['date']);
+                });
+                if (!empty($custom_schedules)) {
+                    usort($custom_schedules, function($a, $b) {
+                        $ta = strtotime($a['date'] . ' ' . ($a['time'] ?? '00:00'));
+                        $tb = strtotime($b['date'] . ' ' . ($b['time'] ?? '00:00'));
+                        return $ta - $tb;
+                    });
+                    $_POST['event_date'] = $custom_schedules[0]['date'];
+                    if (!empty($custom_schedules[0]['time'])) {
+                        $_POST['event_time'] = $custom_schedules[0]['time'];
+                    }
+                }
+            }
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Validation
     $required_fields = ['event_name', 'event_type', 'event_date', 'event_time', 'status', 'phone_contact_1'];
     
@@ -330,26 +371,7 @@ try {
     ]);
     $metadata_json = json_encode($new_metadata);
 
-    // ── Parse per-state locations JSON ───────────────────────────────────────
-    $new_locations_json = $event['locations'] ?? null; // preserve existing by default
-    $raw_locations = $_POST['locations_json'] ?? null;
-    if ($raw_locations) {
-        $decoded = json_decode($raw_locations, true);
-        if (is_array($decoded) && count($decoded) > 0) {
-            $clean_locations = [];
-            foreach ($decoded as $loc) {
-                $s = trim($loc['state'] ?? '');
-                $a = trim($loc['address'] ?? '');
-                if ($s !== '') {
-                    $clean_locations[] = ['state' => $s, 'address' => $a];
-                }
-            }
-            if (!empty($clean_locations)) {
-                $new_locations_json = json_encode($clean_locations);
-            }
-        }
-    }
-    // ─────────────────────────────────────────────────────────────────────────
+    // locations_json already parsed early as $new_locations_json
 
     // Begin transaction — all DB writes below must succeed together
     $pdo->beginTransaction();

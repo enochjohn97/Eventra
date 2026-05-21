@@ -626,6 +626,7 @@ function displayEventPreview(event) {
                                             <div style="margin-bottom:0.6rem;padding-bottom:0.6rem;border-bottom:1px dashed #e5e7eb;">
                                                 <div style="font-weight:700;color:#111827;font-size:0.9rem;margin-bottom:0.2rem;">${escapeHTML(loc.state)}</div>
                                                 ${loc.address ? `<div style="color:#6b7280;font-size:0.82rem;">${escapeHTML(loc.address)}</div>` : ''}
+                                                ${loc.date ? `<div style="color:#4f46e5;font-size:0.78rem;margin-top:0.2rem;">📅 ${new Date(loc.date + 'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}${loc.time ? ' &nbsp;🕒 ' + loc.time.substring(0,5) : ''}</div>` : ''}
                                             </div>
                                         `).join('');
                                     }
@@ -1228,17 +1229,34 @@ function showEditEventModal(event) {
         try {
             const locs = typeof event.locations === 'string' ? JSON.parse(event.locations) : event.locations;
             if (Array.isArray(locs) && locs.length > 0) {
-                // We need to render the fields first, then fill them
-                const selectedStates = event.state ? event.state.split(',') : [];
+                // Render fields first, then fill values
+                const selectedStates = event.state ? event.state.split(',').map(s => s.trim()) : [];
                 renderPerStateEditAddressFields(selectedStates);
-                
+
                 const container = document.getElementById('perStateEditAddressContainer');
+                // Check if any location has custom date/time
+                const hasCustomDates = locs.some(l => l.date || l.time);
+
                 locs.forEach(loc => {
                     const ta = container.querySelector(`textarea[data-state="${loc.state}"]`);
-                    if (ta) ta.value = loc.address;
+                    if (ta) ta.value = loc.address || '';
+                    if (loc.date) {
+                        const dateInp = container.querySelector(`input[data-date-state="${loc.state}"]`);
+                        if (dateInp) dateInp.value = loc.date;
+                    }
+                    if (loc.time) {
+                        const timeInp = container.querySelector(`input[data-time-state="${loc.state}"]`);
+                        if (timeInp) timeInp.value = loc.time;
+                    }
                 });
-                
-                // Update hidden input
+
+                // If custom dates exist, check the checkbox and show the fields
+                if (hasCustomDates) {
+                    const cb = container.querySelector('#editCustomizeDatesPerStateCheckbox');
+                    if (cb) { cb.checked = true; toggleEditPerStateDateTimeFields(); }
+                }
+
+                // Update hidden input with full location data
                 const hiddenLocations = document.getElementById('editLocationsJsonInput');
                 if (hiddenLocations) hiddenLocations.value = JSON.stringify(locs);
             }
@@ -1339,8 +1357,17 @@ function renderPerStateEditAddressFields(selectedStates) {
 
     // Save existing values to prevent data loss when re-rendering
     const existingValues = {};
+    const existingDates = {};
+    const existingTimes = {};
+    const customizeDatesWasChecked = container.querySelector('#editCustomizeDatesPerStateCheckbox')?.checked || false;
     container.querySelectorAll('textarea').forEach(ta => {
         existingValues[ta.dataset.state] = ta.value;
+    });
+    container.querySelectorAll('input[data-date-state]').forEach(inp => {
+        existingDates[inp.dataset.dateState] = inp.value;
+    });
+    container.querySelectorAll('input[data-time-state]').forEach(inp => {
+        existingTimes[inp.dataset.timeState] = inp.value;
     });
 
     if (selectedStates.length > 1) {
@@ -1348,22 +1375,43 @@ function renderPerStateEditAddressFields(selectedStates) {
         const mainAddressGroup = document.getElementById('editMainAddressGroup');
         if (mainAddressGroup) mainAddressGroup.style.display = 'none';
         if (helpText) helpText.style.display = 'block';
-        // ... rest of logic
 
-        container.innerHTML = selectedStates.map(state => `
-            <div style="margin-bottom: 0.75rem;">
-                <label style="display: block; font-size: 0.7rem; font-weight: 700; color: #475569; margin-bottom: 0.3rem;">Venue for ${state}</label>
-                <textarea 
-                    data-state="${state}"
-                    placeholder="Address for ${state}..." 
-                    style="width: 100%; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;"
-                    onfocus="this.style.borderColor='#0f172a';"
-                    onblur="this.style.borderColor='#e2e8f0';"
-                >${existingValues[state] || ''}</textarea>
-            </div>
-        `).join('');
+        container.innerHTML = `
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:0.75rem; cursor:pointer; padding:0.5rem 0.75rem; background:#fff7ed; border-radius:8px; border:1px solid #fed7aa;">
+                <input type="checkbox" id="editCustomizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="toggleEditPerStateDateTimeFields()" style="width:15px;height:15px;cursor:pointer;accent-color:#f97316;">
+                <span>📅 Use different dates &amp; times for each state</span>
+            </label>
+            ${selectedStates.map(state => `
+                <div style="margin-bottom:0.75rem; background:#fff; padding:0.75rem; border-radius:8px; border:1px solid #e2e8f0;">
+                    <label style="display:block; font-size:0.7rem; font-weight:700; color:#475569; margin-bottom:0.3rem;">📍 Venue for ${state}</label>
+                    <textarea
+                        data-state="${state}"
+                        placeholder="Address for ${state}..."
+                        style="width:100%; padding:0.6rem; border:1px solid #e2e8f0; border-radius:8px; font-size:0.85rem; margin-bottom:0.4rem;"
+                        onfocus="this.style.borderColor='#0f172a';"
+                        onblur="this.style.borderColor='#e2e8f0';"
+                    >${existingValues[state] || ''}</textarea>
+                    <div class="edit-per-state-datetime" style="display:${customizeDatesWasChecked ? 'flex' : 'none'}; gap:0.6rem; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:120px;">
+                            <label style="display:block; font-size:0.68rem; font-weight:600; color:#6b7280; margin-bottom:0.2rem; text-transform:uppercase;">Date</label>
+                            <input type="date"
+                                data-date-state="${state}"
+                                value="${existingDates[state] || ''}"
+                                style="width:100%; padding:0.45rem 0.6rem; border:1px solid #e2e8f0; border-radius:6px; font-size:0.82rem; box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1; min-width:100px;">
+                            <label style="display:block; font-size:0.68rem; font-weight:600; color:#6b7280; margin-bottom:0.2rem; text-transform:uppercase;">Time</label>
+                            <input type="time"
+                                data-time-state="${state}"
+                                value="${existingTimes[state] || ''}"
+                                style="width:100%; padding:0.45rem 0.6rem; border:1px solid #e2e8f0; border-radius:6px; font-size:0.82rem; box-sizing:border-box;">
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        `;
 
-        // Re-inject locations_json hidden input logic if needed
+        // Re-inject locations_json hidden input
         const hiddenLocations = document.createElement('input');
         hiddenLocations.type = 'hidden';
         hiddenLocations.name = 'locations_json';
@@ -1372,14 +1420,23 @@ function renderPerStateEditAddressFields(selectedStates) {
 
         const updateJson = () => {
             const locs = [];
-            container.querySelectorAll('textarea').forEach(ta => {
-                locs.push({ state: ta.dataset.state, address: ta.value });
+            const customDates = container.querySelector('#editCustomizeDatesPerStateCheckbox')?.checked || false;
+            container.querySelectorAll('textarea[data-state]').forEach(ta => {
+                const loc = { state: ta.dataset.state, address: ta.value };
+                if (customDates) {
+                    const dateInp = container.querySelector(`input[data-date-state="${ta.dataset.state}"]`);
+                    const timeInp = container.querySelector(`input[data-time-state="${ta.dataset.state}"]`);
+                    if (dateInp && dateInp.value) loc.date = dateInp.value;
+                    if (timeInp && timeInp.value) loc.time = timeInp.value;
+                }
+                locs.push(loc);
             });
             hiddenLocations.value = JSON.stringify(locs);
         };
 
-        container.querySelectorAll('textarea').forEach(ta => {
-            ta.addEventListener('input', updateJson);
+        container.querySelectorAll('textarea, input[type="date"], input[type="time"]').forEach(el => {
+            el.addEventListener('input', updateJson);
+            el.addEventListener('change', updateJson);
         });
         updateJson();
     } else {
@@ -1391,7 +1448,7 @@ function renderPerStateEditAddressFields(selectedStates) {
             mainAddress.placeholder = 'Full venue address...';
         }
         if (helpText) helpText.style.display = 'none';
-        
+
         // Remove locations_json input if it exists
         const locInput = document.getElementById('editLocationsJsonInput');
         if (locInput) locInput.remove();
@@ -1420,9 +1477,17 @@ function updateEditSelectedStates() {
     hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function toggleEditPerStateDateTimeFields() {
+    const checkbox = document.getElementById('editCustomizeDatesPerStateCheckbox');
+    const fields = document.querySelectorAll('#perStateEditAddressContainer .edit-per-state-datetime');
+    const show = checkbox ? checkbox.checked : false;
+    fields.forEach(f => { f.style.display = show ? 'flex' : 'none'; });
+}
+
 window.toggleEditStateSelect = toggleEditStateSelect;
 window.updateEditSelectedStates = updateEditSelectedStates;
 window.previewEditEventImage = previewEditEventImage;
+window.toggleEditPerStateDateTimeFields = toggleEditPerStateDateTimeFields;
 
 function closeEditEventModal() {
     const modal = document.getElementById('editEventModal');

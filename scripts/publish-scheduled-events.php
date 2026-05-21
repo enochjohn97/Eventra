@@ -22,16 +22,49 @@ echo "[{$now}] Scheduler running...\n";
 
 try {
     // ─── 1. Auto-publish scheduled events ─────────────────────────────────────
-    $publishStmt = $pdo->prepare("
-        UPDATE events
-        SET status = 'published', updated_at = NOW()
-        WHERE status = 'scheduled'
-          AND scheduled_publish_time <= NOW()
+    $selectStmt = $pdo->prepare("
+        SELECT e.id, e.event_name, e.client_id, c.client_auth_id
+        FROM events e
+        JOIN clients c ON e.client_id = c.id
+        WHERE e.status = 'scheduled'
+          AND e.scheduled_publish_time <= NOW()
     ");
-    $publishStmt->execute();
-    $published = $publishStmt->rowCount();
-    if ($published > 0) {
-        echo "[{$now}] Published {$published} event(s).\n";
+    $selectStmt->execute();
+    $eventsToPublish = $selectStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $published = 0;
+    if (!empty($eventsToPublish)) {
+        $publishStmt = $pdo->prepare("
+            UPDATE events
+            SET status = 'published', updated_at = NOW()
+            WHERE status = 'scheduled'
+              AND scheduled_publish_time <= NOW()
+        ");
+        $publishStmt->execute();
+        $published = $publishStmt->rowCount();
+
+        if ($published > 0) {
+            echo "[{$now}] Published {$published} event(s).\n";
+            
+            // Include notification helper
+            require_once EVENTRA_ROOT . '/api/utils/notification-helper.php';
+
+            foreach ($eventsToPublish as $evt) {
+                $clientAuthId = $evt['client_auth_id'];
+                $adminAuthId = getAdminUserId();
+                $msg = "Event '{$evt['event_name']}' has been published and is now live!";
+
+                // Notify Client
+                if ($clientAuthId) {
+                    createNotification($clientAuthId, $msg, 'event_published', null, 'client', 'system', ['event_id' => $evt['id']]);
+                }
+                // Notify Admin
+                if ($adminAuthId) {
+                    createNotification($adminAuthId, $msg, 'event_published', null, 'admin', 'system', ['event_id' => $evt['id']]);
+                }
+                echo "[{$now}] Sent publish notifications for event {$evt['id']} ({$evt['event_name']}).\n";
+            }
+        }
     }
 
     // ─── 2. Pre-event notifications (5–10 min before event start) ─────────────

@@ -79,7 +79,8 @@ async function previewEvent(eventId) {
                     date: data.event_date,
                     time: data.event_time,
                     priority: data.priority ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1) : 'Normal',
-                    phone: data.phone_contact_1 || 'N/A'
+                    phone: data.phone_contact_1 || 'N/A',
+                    locations: data.locations
                 };
         } else {
             throw new Error(result.message || 'Event not found');
@@ -207,12 +208,40 @@ async function previewEvent(eventId) {
                             <span style="width: 4px; height: 16px; background: var(--admin-primary); border-radius: 4px;"></span>
                             Venue Location
                         </h3>
-                        <div style="display: flex; align-items: flex-start; gap: 15px; background: #f1f5f9; padding: 1.5rem; border-radius: 20px;">
-                            <div style="font-size: 1.5rem;">📍</div>
-                            <div>
-                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.25rem;">${escapeHTML(state) || 'Location'}</div>
-                                <div style="color: #64748b; font-size: 0.875rem;">${escapeHTML(address) || 'No specific address available'}</div>
-                            </div>
+                        <div style="background: #f1f5f9; padding: 1.5rem; border-radius: 20px;">
+                            ${(() => {
+                                let locs = null;
+                                try {
+                                    locs = event.locations ? (typeof event.locations === 'string' ? JSON.parse(event.locations) : event.locations) : null;
+                                } catch(e) {}
+                                if (Array.isArray(locs) && locs.length > 0) {
+                                    return locs.map((loc, idx) => `
+                                        <div style="display: flex; align-items: flex-start; gap: 15px; ${idx > 0 ? 'margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed #cbd5e1;' : ''}">
+                                            <div style="font-size: 1.5rem;">📍</div>
+                                            <div style="flex: 1;">
+                                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.25rem;">${escapeHTML(loc.state)}</div>
+                                                ${loc.address ? `<div style="color: #475569; font-size: 0.875rem; margin-bottom: 0.25rem;">${escapeHTML(loc.address)}</div>` : ''}
+                                                ${loc.date ? `
+                                                    <div style="color: var(--admin-primary); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 0.4rem;">
+                                                        <span>📅</span>
+                                                        <span>${new Date(loc.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                        ${loc.time ? `<span>🕒 ${loc.time.substring(0, 5)}</span>` : ''}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    `).join('');
+                                }
+                                return `
+                                    <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                        <div style="font-size: 1.5rem;">📍</div>
+                                        <div>
+                                            <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.25rem;">${escapeHTML(state) || 'Location'}</div>
+                                            <div style="color: #64748b; font-size: 0.875rem;">${escapeHTML(address) || 'No specific address available'}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            })()}
                         </div>
                     </div>
 

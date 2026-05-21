@@ -644,17 +644,47 @@ async function handleEventCreation(e) {
     // ── Build structured locations JSON from per-state address fields ──────────
     const perStateTextareas = document.querySelectorAll('#perStateAddressContainer textarea[data-state]');
     if (perStateTextareas.length > 0) {
-        // Multi-state mode: collect each state → address pair
-        const locations = Array.from(perStateTextareas).map(ta => ({
-            state:   ta.dataset.state,
-            address: ta.value.trim()
-        })).filter(l => l.state);
+        // Multi-state mode: collect each state → address + optional date/time
+        const customizeDates = document.getElementById('customizeDatesPerStateCheckbox')?.checked || false;
+        const locations = Array.from(perStateTextareas).map(ta => {
+            const state = ta.dataset.state;
+            const loc = { state, address: ta.value.trim() };
+            if (customizeDates) {
+                const dateInput = document.querySelector(`#perStateAddressContainer input[data-date-state="${state}"]`);
+                const timeInput = document.querySelector(`#perStateAddressContainer input[data-time-state="${state}"]`);
+                if (dateInput && dateInput.value) loc.date = dateInput.value;
+                if (timeInput && timeInput.value) loc.time = timeInput.value;
+            }
+            return loc;
+        }).filter(l => l.state);
 
         // Validate all per-state addresses are filled
         const missing = locations.filter(l => !l.address);
         if (missing.length > 0) {
             showNotification(`Please enter the venue address for: ${missing.map(l => l.state).join(', ')}`, 'error');
             return;
+        }
+
+        // Validate per-state dates/times if customization is enabled
+        if (customizeDates) {
+            const missingDates = locations.filter(l => !l.date);
+            if (missingDates.length > 0) {
+                showNotification(`Please enter the date for: ${missingDates.map(l => l.state).join(', ')}`, 'error');
+                return;
+            }
+            const missingTimes = locations.filter(l => !l.time);
+            if (missingTimes.length > 0) {
+                showNotification(`Please enter the time for: ${missingTimes.map(l => l.state).join(', ')}`, 'error');
+                return;
+            }
+            // Compute earliest date/time → use as the main event_date / event_time
+            const sorted = [...locations].sort((a, b) => {
+                const da = new Date(`${a.date}T${a.time || '00:00'}`);
+                const db = new Date(`${b.date}T${b.time || '00:00'}`);
+                return da - db;
+            });
+            formData.set('event_date', sorted[0].date);
+            if (sorted[0].time) formData.set('event_time', sorted[0].time);
         }
 
         formData.set('locations_json', JSON.stringify(locations));
@@ -902,7 +932,6 @@ function renderPerStateAddressFields(states) {
     if (!container) return;
 
     if (!states || states.length <= 1) {
-        // Single state — no extra per-state fields needed (main address field is sufficient)
         container.innerHTML = '';
         container.style.display = 'none';
         return;
@@ -912,21 +941,34 @@ function renderPerStateAddressFields(states) {
 
     // Preserve existing values before re-render
     const existing = {};
+    const existingDate = {};
+    const existingTime = {};
+    const customizeDatesWasChecked = container.querySelector('#customizeDatesPerStateCheckbox')?.checked || false;
     container.querySelectorAll('textarea[data-state]').forEach(ta => {
         existing[ta.dataset.state] = ta.value;
+    });
+    container.querySelectorAll('input[data-date-state]').forEach(inp => {
+        existingDate[inp.dataset.dateState] = inp.value;
+    });
+    container.querySelectorAll('input[data-time-state]').forEach(inp => {
+        existingTime[inp.dataset.timeState] = inp.value;
     });
 
     container.innerHTML = `
         <div style="margin-bottom:0.5rem; font-size:0.85rem; font-weight:700; color:#722f37; text-transform:uppercase; letter-spacing:0.5px;">
-            📍 Per-State Venue Address
+            📍 Per-State Venue Address &amp; Schedule
         </div>
-        <p style="font-size:0.8rem; color:#6b7280; margin-bottom:1rem;">
+        <p style="font-size:0.8rem; color:#6b7280; margin-bottom:0.75rem;">
             Enter the specific venue address for each selected state.
         </p>
+        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; font-weight:600; color:#374151; margin-bottom:1rem; cursor:pointer; padding:0.6rem 0.75rem; background:#fff7ed; border-radius:8px; border:1px solid #fed7aa;">
+            <input type="checkbox" id="customizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="togglePerStateDateTimeFields()" style="width:16px;height:16px;cursor:pointer;accent-color:#f97316;">
+            <span>📅 Use different dates &amp; times for each state</span>
+        </label>
         ${states.map(state => `
-            <div style="margin-bottom:1rem;">
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:0.4rem;">
-                    ${state} <span style="color:#ef4444">*</span>
+            <div style="margin-bottom:1.25rem; background:#fff; padding:1rem; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <label style="display:block; font-size:0.82rem; font-weight:700; color:#374151; margin-bottom:0.5rem;">
+                    📍 ${state} <span style="color:#ef4444">*</span>
                 </label>
                 <textarea
                     name="state_address_${state.replace(/\s+/g, '_')}"
@@ -934,11 +976,34 @@ function renderPerStateAddressFields(states) {
                     placeholder="Full venue address in ${state}..."
                     rows="2"
                     required
-                    style="width:100%; padding:0.75rem 1rem; border:2px solid #e5e7eb; border-radius:10px; font-size:0.9rem; background:white; font-family:inherit; resize:vertical;"
+                    style="width:100%; padding:0.75rem 1rem; border:2px solid #e5e7eb; border-radius:10px; font-size:0.9rem; background:white; font-family:inherit; resize:vertical; margin-bottom:0.5rem;"
                 >${existing[state] || ''}</textarea>
+                <div class="per-state-datetime" style="display:${customizeDatesWasChecked ? 'flex' : 'none'}; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+                    <div style="flex:1; min-width:140px;">
+                        <label style="display:block; font-size:0.72rem; font-weight:600; color:#6b7280; margin-bottom:0.25rem; text-transform:uppercase; letter-spacing:0.4px;">📅 Date *</label>
+                        <input type="date"
+                            data-date-state="${state}"
+                            value="${existingDate[state] || ''}"
+                            style="width:100%; padding:0.6rem 0.75rem; border:2px solid #e5e7eb; border-radius:8px; font-size:0.85rem; background:white; font-family:inherit; box-sizing:border-box;">
+                    </div>
+                    <div style="flex:1; min-width:120px;">
+                        <label style="display:block; font-size:0.72rem; font-weight:600; color:#6b7280; margin-bottom:0.25rem; text-transform:uppercase; letter-spacing:0.4px;">🕒 Time *</label>
+                        <input type="time"
+                            data-time-state="${state}"
+                            value="${existingTime[state] || ''}"
+                            style="width:100%; padding:0.6rem 0.75rem; border:2px solid #e5e7eb; border-radius:8px; font-size:0.85rem; background:white; font-family:inherit; box-sizing:border-box;">
+                    </div>
+                </div>
             </div>
         `).join('')}
     `;
+}
+
+function togglePerStateDateTimeFields() {
+    const checkbox = document.getElementById('customizeDatesPerStateCheckbox');
+    const fields = document.querySelectorAll('#perStateAddressContainer .per-state-datetime');
+    const show = checkbox ? checkbox.checked : false;
+    fields.forEach(f => { f.style.display = show ? 'flex' : 'none'; });
 }
 
 // Expose per-state container placeholder in the form HTML (injected once the form opens)
@@ -954,3 +1019,4 @@ function injectPerStateContainer() {
 
 window.toggleStateSelect = toggleStateSelect;
 window.updateSelectedStates = updateSelectedStates;
+window.togglePerStateDateTimeFields = togglePerStateDateTimeFields;

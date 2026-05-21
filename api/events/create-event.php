@@ -196,8 +196,13 @@ try {
             foreach ($decoded as $loc) {
                 $s = trim($loc['state'] ?? '');
                 $a = trim($loc['address'] ?? '');
+                $d = trim($loc['date'] ?? '');
+                $t = trim($loc['time'] ?? '');
                 if ($s !== '') {
-                    $clean_locations[] = ['state' => $s, 'address' => $a];
+                    $entry = ['state' => $s, 'address' => $a];
+                    if ($d !== '') $entry['date'] = $d;
+                    if ($t !== '') $entry['time'] = $t;
+                    $clean_locations[] = $entry;
                 }
             }
             if (!empty($clean_locations)) {
@@ -209,6 +214,21 @@ try {
                 // Use first entry as canonical address fallback
                 if (empty($address) && !empty($clean_locations[0]['address'])) {
                     $address = $clean_locations[0]['address'];
+                }
+                // If customized dates/times are present, find the earliest one and set event_date / event_time
+                $custom_schedules = array_filter($clean_locations, function($l) {
+                    return !empty($l['date']);
+                });
+                if (!empty($custom_schedules)) {
+                    usort($custom_schedules, function($a, $b) {
+                        $ta = strtotime($a['date'] . ' ' . ($a['time'] ?? '00:00'));
+                        $tb = strtotime($b['date'] . ' ' . ($b['time'] ?? '00:00'));
+                        return $ta - $tb;
+                    });
+                    $event_date = $custom_schedules[0]['date'];
+                    if (!empty($custom_schedules[0]['time'])) {
+                        $event_time = $custom_schedules[0]['time'];
+                    }
                 }
             }
         }
