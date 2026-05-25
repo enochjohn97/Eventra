@@ -274,16 +274,70 @@ function displayStatsCards(stats) {
     if (mediaEl) mediaEl.textContent = stats.total_media !== undefined ? stats.total_media : 0;
 }
 
-async function loadUpcomingEvents(events) {
+let allDashboardEvents = [];
+let activeEventTab = 'upcoming';
+
+function initEventTabs() {
+    const tabUpcoming = document.getElementById('tabUpcoming');
+    const tabPast = document.getElementById('tabPast');
+    
+    if (tabUpcoming && !tabUpcoming.dataset.tabListenerAdded) {
+        tabUpcoming.dataset.tabListenerAdded = 'true';
+        tabUpcoming.addEventListener('click', () => {
+            activeEventTab = 'upcoming';
+            tabUpcoming.classList.add('active');
+            tabUpcoming.style.background = '#fff';
+            tabUpcoming.style.color = '#1e293b';
+            tabUpcoming.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+            if (tabPast) {
+                tabPast.classList.remove('active');
+                tabPast.style.background = 'transparent';
+                tabPast.style.color = '#64748b';
+                tabPast.style.boxShadow = 'none';
+            }
+            renderFilteredEvents();
+        });
+    }
+
+    if (tabPast && !tabPast.dataset.tabListenerAdded) {
+        tabPast.dataset.tabListenerAdded = 'true';
+        tabPast.addEventListener('click', () => {
+            activeEventTab = 'past';
+            tabPast.classList.add('active');
+            tabPast.style.background = '#fff';
+            tabPast.style.color = '#1e293b';
+            tabPast.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+            if (tabUpcoming) {
+                tabUpcoming.classList.remove('active');
+                tabUpcoming.style.background = 'transparent';
+                tabUpcoming.style.color = '#64748b';
+                tabUpcoming.style.boxShadow = 'none';
+            }
+            renderFilteredEvents();
+        });
+    }
+}
+
+function renderFilteredEvents() {
     const eventsList = document.getElementById('upcomingEventsList');
     if (!eventsList) return;
 
-    if (!events || events.length === 0) {
-        eventsList.innerHTML = '<p style="text-align: center; color: var(--client-text-muted); padding: 2rem;">No events found. Create your first event!</p>';
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const filtered = allDashboardEvents.filter(event => {
+        const eventDate = new Date(event.event_date);
+        eventDate.setHours(0, 0, 0, 0);
+        const isPast = eventDate < now;
+        return activeEventTab === 'past' ? isPast : !isPast;
+    });
+
+    if (filtered.length === 0) {
+        eventsList.innerHTML = `<p style="text-align: center; color: var(--client-text-muted); padding: 2.5rem; font-size: 0.9rem; font-weight: 500;">No ${activeEventTab} events found.</p>`;
         return;
     }
 
-    let html = events.map(event => `
+    let html = filtered.map(event => `
         <div class="event-feed-item summarized" style="cursor: pointer; display: flex; gap: 15px; align-items: center; padding: 1rem;" onclick="window.location.href='events.html?highlight=${event.id}'">
             <div style="width: 50px; height: 50px; border-radius: 8px; flex-shrink: 0; background: #f3f4f6; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #9ca3af;">
                 ${event.image_path ? `<img src="${event.image_path.startsWith('/') ? '../..' + event.image_path : '../../' + event.image_path}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.innerHTML='📷'">` : '📷'}
@@ -306,9 +360,13 @@ async function loadUpcomingEvents(events) {
         </div>
     `).join('');
 
-
-
     eventsList.innerHTML = html;
+}
+
+async function loadUpcomingEvents(events) {
+    allDashboardEvents = events || [];
+    initEventTabs();
+    renderFilteredEvents();
 }
 
 

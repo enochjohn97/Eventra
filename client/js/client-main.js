@@ -3,6 +3,36 @@
  * Common functionality across all client pages
  */
 
+// Track all active interval IDs to clear on logout
+(function() {
+    const activeIntervals = new Set();
+    const originalSetInterval = window.setInterval;
+    const originalClearInterval = window.clearInterval;
+
+    window.setInterval = function(func, delay, ...args) {
+        // Prevent annoying and disruptive page auto-reload intervals
+        const funcStr = String(func);
+        if (funcStr.includes('location.reload') && delay === 60000) {
+            console.log("Suppressed disruptive page auto-reload interval.");
+            return null; // Skip setting this interval
+        }
+        const id = originalSetInterval(func, delay, ...args);
+        activeIntervals.add(id);
+        return id;
+    };
+
+    window.clearInterval = function(id) {
+        activeIntervals.delete(id);
+        originalClearInterval(id);
+    };
+
+    window.clearAllIntervals = function() {
+        activeIntervals.forEach(id => originalClearInterval(id));
+        activeIntervals.clear();
+        console.log("All running background interval instances successfully cleared on logout.");
+    };
+})();
+
 // Initialize logout functionality
 document.addEventListener("DOMContentLoaded", () => {
   initLogout();
@@ -174,6 +204,11 @@ async function logout() {
 
     if (!result.isConfirmed) {
         return;
+    }
+
+    // Purge all active intervals
+    if (typeof window.clearAllIntervals === 'function') {
+        window.clearAllIntervals();
     }
 
     try {

@@ -144,8 +144,14 @@
             <div class="dashboard-grid">
                 <!-- Left: Upcoming Events Feed -->
                 <div class="dash-panel">
-                    <div class="events-feed-header">
-                        <h3 style="font-size: 1.25rem; font-weight: 700;">Events</h3>
+                    <div class="events-feed-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Events</h3>
+                            <div class="event-tabs" style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; border: 1px solid #e2e8f0;">
+                                <button type="button" id="tabUpcoming" class="event-tab-btn active" style="padding: 6px 12px; border: none; border-radius: 6px; background: #fff; color: #1e293b; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 700;">Upcoming</button>
+                                <button type="button" id="tabPast" class="event-tab-btn" style="padding: 6px 12px; border: none; border-radius: 6px; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; font-weight: 700;">Past</button>
+                            </div>
+                        </div>
                         <button class="btn btn-primary" id="dashboardCreateEventBtn">
                             <i data-lucide="plus"></i>
                             <span>Create Event</span>
@@ -225,16 +231,6 @@
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
-
-        // ── Auto-refresh every 60 seconds when tab is visible ──────────────────
-        (function() {
-            var _autoRefreshTimer = setInterval(function() {
-                if (document.visibilityState === 'visible') {
-                    location.reload();
-                }
-            }, 60000);
-        })();
     </script>
 </body>
 </html>
-

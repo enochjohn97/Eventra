@@ -1241,8 +1241,7 @@ PDF;
     }
 
     /**
-     * Attempt to (re)generate a PDF at $outputPath using available PDF libraries.
-     * Uses buildTicketHtml(..., forPdf: true) so rendering is always correct.
+     * Attempt to (re)generate a PDF at $outputPath using Node.js script.
      *
      * Returns true if the PDF was written successfully.
      */
@@ -1251,7 +1250,7 @@ PDF;
         // Build PDF-safe HTML
         $html = self::buildTicketHtml($ticketData, true);
 
-        // ── Try DomPDF ──────────────────────────────────────────────────────
+        // ── Use DomPDF ──────────────────────────────────────────────────────
         if (class_exists('Dompdf\Dompdf')) {
             try {
                 $projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
@@ -1281,70 +1280,6 @@ PDF;
                 error_log('[EmailHelper] DomPDF failed: ' . $e->getMessage());
             }
         }
-
-        // ── Try mPDF ────────────────────────────────────────────────────────
-        if (class_exists('Mpdf\Mpdf')) {
-            try {
-                $mpdf = new \Mpdf\Mpdf([
-                    'orientation' => 'L',
-                    'margin_top' => 0,
-                    'margin_bottom' => 0,
-                    'margin_left' => 0,
-                    'margin_right' => 0,
-                ]);
-                $mpdf->WriteHTML($html);
-                $mpdf->Output($outputPath, 'F');    
-
-                if (file_exists($outputPath) && filesize($outputPath) > 0) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                error_log('[EmailHelper] mPDF failed: ' . $e->getMessage());
-            }
-        }
-
-        // ── Try TCPDF ────────────────────────────────────────────────────────
-        if (class_exists('TCPDF')) {
-            try {
-                $pdf = new \TCPDF('L', 'pt', [675, 315], true, 'UTF-8', false);
-                $pdf->SetMargins(0, 0, 0);
-                $pdf->SetAutoPageBreak(false, 0);
-                $pdf->AddPage();
-                $pdf->writeHTML($html, true, false, true, false, '');
-                $pdf->Output($outputPath, 'F');
-
-                if (file_exists($outputPath) && filesize($outputPath) > 0) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                error_log('[EmailHelper] TCPDF failed: ' . $e->getMessage());
-            }
-        }
-
-        // ── Try wkhtmltopdf via shell ────────────────────────────────────────
-        $wkPath = trim((string) shell_exec('which wkhtmltopdf 2>/dev/null'));
-        if ($wkPath !== '' && is_executable($wkPath)) {
-            try {
-                $tmpHtml = sys_get_temp_dir() . '/eventra_ticket_' . uniqid() . '.html';
-                file_put_contents($tmpHtml, $html);
-                $cmd = escapeshellcmd($wkPath)
-                    . ' --orientation Landscape --page-size A4'
-                    . ' --no-background --quiet'
-                    . ' ' . escapeshellarg($tmpHtml)
-                    . ' ' . escapeshellarg($outputPath)
-                    . ' 2>/dev/null';
-                shell_exec($cmd);
-                @unlink($tmpHtml);
-
-                if (file_exists($outputPath) && filesize($outputPath) > 0) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                error_log('[EmailHelper] wkhtmltopdf failed: ' . $e->getMessage());
-            }
-        }
-
-        error_log('[EmailHelper] regeneratePdf: no PDF library available (DomPDF / mPDF / TCPDF / wkhtmltopdf).');
         return false;
     }
 }
