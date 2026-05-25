@@ -51,7 +51,9 @@ try {
 
     // Send SMS
     $message = "Eventra $purpose OTP: $otp. Valid for 5 minutes. Do not share.";
-    $smsResult = sendSMS($phone, $message);
+    // SMS disabled per requirement
+    // $smsResult = sendSMS($phone, $message);
+    $smsResult = ['success' => true, 'message' => ''];
 
     if ($smsResult['success']) {
         echo json_encode([

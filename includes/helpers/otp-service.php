@@ -72,7 +72,9 @@ class OTPService
             // Send OTP via SMS
             require_once __DIR__ . '/sms-helper.php';
             $message = "Your Eventra verification code is: $otp. Valid for " . self::OTP_EXPIRY_MINUTES . " minutes. Do not share this code.";
-            $smsResult = sendSMS($normalizedPhone, $message);
+            // SMS disabled per requirement
+            // $smsResult = sendSMS($normalizedPhone, $message);
+            $smsResult = ['success' => true, 'message' => ''];
 
             if (!$smsResult['success']) {
                 // Log the SMS failure but still return success (OTP is stored)

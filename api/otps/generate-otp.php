@@ -125,7 +125,9 @@ try {
             exit;
         }
         $message = "Your Eventra payment verification code is: {$otp}\nExpires at {$expires_human} (5 minutes).\nDo not share this code.";
-        $smsResult = sendSMS($user['phone'], $message);
+        // SMS disabled per requirement
+        // $smsResult = sendSMS($user['phone'], $message);
+        $smsResult = ['success' => true, 'message' => ''];
         $sent = $smsResult['success'];
         $error_msg = $smsResult['message'];
     }

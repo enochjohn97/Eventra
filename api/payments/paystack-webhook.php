@@ -242,10 +242,11 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
 
         // SMS to buyer
         if (!empty($order['user_phone'])) {
-            sendSMS(
+            // SMS disabled per requirement
+            /* sendSMS(
                 $order['user_phone'],
                 "Hi {$order['user_name']}, your ticket for {$order['event_name']} is confirmed! Check your email for the PDF ticket."
-            );
+            ); */
         }
 
         // In-app: buyer

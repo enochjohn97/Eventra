@@ -137,7 +137,8 @@ foreach ($files as $jobFile) {
 
             // Send SMS
             if (!empty($user_phone) && !empty($ticketData['user_name']) && !empty($ticketData['event_name'])) {
-                sendSMS($user_phone, "Hi {$ticketData['user_name']}, your ticket for {$ticketData['event_name']} is confirmed!");
+                // SMS disabled per requirement
+                // sendSMS($user_phone, "Hi {$ticketData['user_name']}, your ticket for {$ticketData['event_name']} is confirmed!");
             }
 
             // Create in-app notifications

@@ -1,25 +1,24 @@
 <?php
-// Termii Production Integration Config + Validation
+// Sendchamp Integration Config + Validation
 require_once __DIR__ . '/env-loader.php';
 
 // Validate required env vars
-if (empty($_ENV['TERMII_API_KEY']) || empty($_ENV['TERMII_SENDER_ID'])) {
-    error_log('[SMS Config] Termii credentials missing. Set TERMII_API_KEY, TERMII_SENDER_ID in .env');
-    define('TERMII_SMS_DISABLED', true);
+if (empty($_ENV['SENDCHAMP_SECRET_KEY']) || empty($_ENV['SENDCHAMP_SENDER_ID'])) {
+    error_log('[SMS Config] Sendchamp credentials missing. Set SENDCHAMP_SECRET_KEY, SENDCHAMP_SENDER_ID in .env');
+    define('SENDCHAMP_SMS_DISABLED', true);
 } else {
-    define('TERMII_SMS_DISABLED', false);
+    define('SENDCHAMP_SMS_DISABLED', false);
 }
 
-define('TERMII_API_KEY', $_ENV['TERMII_API_KEY'] ?? '');
-define('TERMII_SECRET_KEY', $_ENV['TERMII_SECRET_KEY'] ?? '');
-define('TERMII_SENDER_ID', $_ENV['TERMII_SENDER_ID'] ?? 'N-Alert');
+define('SENDCHAMP_SECRET_KEY', $_ENV['SENDCHAMP_SECRET_KEY'] ?? '');
+define('SENDCHAMP_SENDER_ID', $_ENV['SENDCHAMP_SENDER_ID'] ?? 'Eventra');
 
-// Termii API URL
-define('TERMII_SMS_URL', 'https://api.ng.termii.com/api/sms/send');
+// Sendchamp API URL
+define('SENDCHAMP_SMS_URL', 'https://api.sendchamp.com/api/v1/sms/send');
 
 // Usage check helper
 function isSmsEnabled()
 {
-    return !defined('TERMII_SMS_DISABLED') || !TERMII_SMS_DISABLED;
+    return !defined('SENDCHAMP_SMS_DISABLED') || !SENDCHAMP_SMS_DISABLED;
 }
 ?>

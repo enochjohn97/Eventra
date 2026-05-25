@@ -79,7 +79,7 @@ try {
     if ($phone) {
         require_once __DIR__ . '/../../includes/helpers/sms-helper.php';
         $message = "Your Eventra password reset code is: $otp. Valid for 15 minutes.";
-        @sendSMS($phone, $message);
+        // @sendSMS($phone, $message); // SMS disabled per requirement
     }
 
     echo json_encode([

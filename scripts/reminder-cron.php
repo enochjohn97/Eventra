@@ -35,7 +35,9 @@ try {
     foreach ($reminders as $rem) {
         $message = "Hi {$rem['name']}, reminder for {$rem['event_name']} tomorrow at {$rem['event_time']}. Have your barcode ready!";
 
-        $smsResult = sendSMS($rem['phone'], $message);
+        // SMS disabled per requirement to only send 20m pre-event reminders via Sendchamp
+        // $smsResult = sendSMS($rem['phone'], $message);
+        $smsResult = ['success' => true];
 
         if ($smsResult['success']) {
             $update = $pdo->prepare("UPDATE tickets SET reminder_sent = 1 WHERE id = ?");
