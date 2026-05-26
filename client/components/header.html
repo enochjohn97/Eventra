@@ -14,7 +14,9 @@
                 <div class="user-name-display" id="headerUserName" style="font-weight:700; font-size:0.9rem;">Loading...</div>
                 <div class="user-custom-id-display" id="headerCustomId" style="font-size:0.72rem; color:var(--client-text-muted); font-family:monospace; letter-spacing:0.5px;"></div>
             </div>
-            <span id="headerDropdownChevron" style="font-size:0.8rem; color:var(--client-text-muted); transition:transform 0.25s;">▼</span>
+            <span id="headerDropdownChevron" style="display:inline-flex; align-items:center; margin-left:5px; color:var(--client-text-muted); transition:transform 0.25s;">
+                <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
+            </span>
 
             <!-- ── Dropdown Menu ────────────────────────────────────── -->
             <div id="profileDropdown" style="
@@ -25,7 +27,7 @@
 
                 <!-- User info block -->
                 <div style="padding:14px 16px 10px; border-bottom:1px solid #f1f5f9;">
-                    <div id="dropdownUserName" style="font-weight:700; font-size:0.95rem; color:#111827;"></div>
+                    <div id="dropdownUserEmail" style="font-weight:700; font-size:0.95rem; color:#111827;"></div>
                     <div id="dropdownCustomId" style="font-size:0.75rem; color:#6b7280; font-family:monospace; margin-top:2px;"></div>
                 </div>
 
@@ -37,15 +39,7 @@
                     Profile
                 </a>
 
-                <!-- Support -->
-                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=testalive9@gmail.com" target="_blank" rel="noopener"
-                   style="display:flex; align-items:center; gap:10px; padding:11px 16px; color:#374151; text-decoration:none; font-size:0.88rem; font-weight:600; transition:background 0.15s;"
-                   onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    Support
-                </a>
-
-                <div style="border-top:1px solid #f1f5f9;"></div>
+                <div style="border-top:1px solid #f1f5f9; margin-top:5px;"></div>
 
                 <!-- Logout -->
                 <a href="#" onclick="logout();return false;" class="logout-link"
@@ -97,13 +91,14 @@
 
         const headerName = document.getElementById('headerUserName');
         const headerCid  = document.getElementById('headerCustomId');
-        const dropName   = document.getElementById('dropdownUserName');
+        const dropEmail   = document.getElementById('dropdownUserEmail');
         const dropCid    = document.getElementById('dropdownCustomId');
 
         if (headerName) headerName.textContent = name;
         if (headerCid)  headerCid.textContent  = cid;
-        if (dropName)   dropName.textContent   = name;
+        if (dropEmail)  dropEmail.textContent  = user.email || '';
         if (dropCid)    dropCid.textContent    = cid;
+        if (window.lucide) window.lucide.createIcons();
     }
 
     // Try storage immediately

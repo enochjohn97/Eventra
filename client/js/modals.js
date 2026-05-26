@@ -10,248 +10,294 @@ function showProfileEditModal() {
 
     const modalHTML = `
         <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
-            <div class="modal-content modal-content-animate" style="max-width: 800px;">
+            <div class="modal-content modal-content-animate" style="max-width: 800px; display: flex; flex-direction: column;">
                 <div class="modal-header">
                     <h2>Edit Profile</h2>
-                    <button class="modal-close" onclick="closeProfileEditModal()">×</button>
+                    <button type="button" class="modal-close" onclick="closeProfileEditModal()">&times;</button>
                 </div>
-                <div class="modal-body">
+                
+                <div class="wizard-tabs" style="display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow-x: auto;">
+                    <button type="button" class="wizard-tab active" onclick="window.switchWizardTab(1)" id="wizardTab1" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #722f37; border-bottom: 3px solid #722f37; cursor: pointer; min-width: 150px;">1. Personal Info</button>
+                    <button type="button" class="wizard-tab" onclick="window.switchWizardTab(2)" id="wizardTab2" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; min-width: 150px;">2. Payment Info</button>
+                    <button type="button" class="wizard-tab" onclick="window.switchWizardTab(3)" id="wizardTab3" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; min-width: 150px;">3. KYC Documents</button>
+                </div>
+
+                <div class="modal-body" style="overflow-y: auto; padding-top: 0;">
                     <form id="profileEditForm" enctype="multipart/form-data">
-                        <!-- Profile Picture -->
-                        <div class="profile-edit-avatar-container">
-                                <div class="avatar-wrapper">
-                                    <img id="profilePreview" class="profile-preview-img"
-                                         src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}">
-                                    ${getVerificationBadge(user.verification_status)}
-                                    
-                                    <label for="profilePicInput" class="avatar-upload-label">
-                                        📷
-                                    </label>
-                                </div>
-                                <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePic(event)">
-                        </div>
-
-                        <!-- Personal Information Section -->
-                        <h3 class="modal-form-section-title">Personal Information</h3>
                         
-                        <div class="modal-grid">
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Client ID</label>
-                                <input type="text" value="${escapeHTML(user.custom_id) || 'Generating...'}" readonly style="width: 100%; padding: 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; background: #f8fafc; color: #2ecc71; font-weight: 700; font-family: monospace; letter-spacing: 1px;">
-                            </div>
-
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Contact Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" value="${escapeHTML(user.name)}" required class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Business/Organization Name <span class="text-danger">*</span></label>
-                                <input type="text" name="business_name" value="${escapeHTML(user.business_name) || ''}" placeholder="Eventra Inc." class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Email <span style="color:#64748b; font-size:0.8rem;">(read-only)</span></label>
-                                <input type="email" value="${escapeHTML(user.email)}" disabled class="form-control disabled">
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Phone <span class="text-danger">*</span></label>
-                                <input type="tel" name="phone" value="${escapeHTML(user.phone) || ''}" placeholder="+234..." class="form-control" required>
-                            </div>
-                            
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                    <span>NIN (National Identity Number) <span class="text-danger">*</span></span>
-                                    <div id="ninStatus" class="verification-status-indicator"></div>
-                                </label>
-                                <input type="text" id="ninInput" name="nin" value="${escapeHTML(user.nin) || ''}" placeholder="11-digit NIN" class="form-control" onblur="validateAndVerifyField('nin')" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Date of Birth <span class="text-danger">*</span></label>
-                                <input type="date" name="dob" value="${escapeHTML(user.dob) || ''}" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Gender <span class="text-danger">*</span></label>
-                                <select name="gender" class="form-control" required>
-                                    <option value="">Select Gender</option>
-                                    <option value="male" ${user.gender === 'male' ? 'selected' : ''}>Male</option>
-                                    <option value="female" ${user.gender === 'female' ? 'selected' : ''}>Female</option>
-                                    <option value="other" ${user.gender === 'other' ? 'selected' : ''}>Other</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Address <span class="text-danger">*</span></label>
-                                <textarea name="address" rows="2" placeholder="Full address" class="form-control" required>${escapeHTML(user.address) || ''}</textarea>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Job Title <span class="text-danger">*</span></label>
-                                <input type="text" name="job_title" value="${escapeHTML(user.job_title) || ''}" placeholder="Event Organizer" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Company <span class="text-danger">*</span></label>
-                                <input type="text" name="company" value="${escapeHTML(user.company) || ''}" placeholder="Company Name" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">City <span class="text-danger">*</span></label>
-                                <input type="text" name="city" value="${escapeHTML(user.city) || ''}" placeholder="Lagos" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State <span class="text-danger">*</span></label>
-                                <select name="state" class="form-control" required>
-                                    <option value="">Select State</option>
-                                    ${getNigerianStates().map(state => 
-                                        `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
-                                    ).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Country <span class="text-danger">*</span></label>
-                                <input type="text" name="country" value="${escapeHTML(user.country) || ''}" placeholder="Nigeria" class="form-control" required>
-                            </div>
-                        </div>
-
-                        <!-- Payment Information Section -->
-                        <h3 class="modal-form-section-title">Payment Information</h3>
-                        
-                        <div class="modal-grid">
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Settlement Bank <span class="text-danger">*</span></label>
-                                <select id="bankSelect" name="bank_code" class="form-control" onchange="resolveAccount()" required>
-                                    <option value="">Select Bank</option>
-                                </select>
-                                <input type="hidden" name="bank_name" id="bankNameInput" value="${escapeHTML(user.bank_name) || ''}">
-                            </div>
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                    <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
-                                    <div id="accountStatus" class="verification-status-indicator">
-                                        ${user.subaccount_code 
-                                            ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>' 
-                                            : ''}
+                        <!-- STEP 1: Personal Information -->
+                        <div id="wizardStep1" class="wizard-step" style="display: block;">
+                            <div class="profile-edit-avatar-container">
+                                    <div class="avatar-wrapper">
+                                        <img id="profilePreview" class="profile-preview-img"
+                                             src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}">
+                                        ${getVerificationBadge(user.verification_status)}
+                                        
+                                        <label for="profilePicInput" class="avatar-upload-label">
+                                            📷
+                                        </label>
                                     </div>
-                                </label>
-                                <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
+                                    <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePic(event)">
                             </div>
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                    <span>BVN (11 Digits) <span class="text-danger">*</span></span>
-                                    <div id="bvnStatus" class="verification-status-indicator"></div>
-                                </label>
-                                <input type="text" id="bvnInput" name="bvn" value="${escapeHTML(user.bvn) || ''}" maxlength="11" placeholder="11-digit BVN" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="validateAndVerifyField('bvn')" required>
-                                <small style="display: block; margin-top: 5px; color: #64748b; font-size: 0.8rem; font-style: italic;">Note: Your BVN is for identity verification only.</small>
+
+                            <div class="modal-grid">
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Client ID</label>
+                                    <input type="text" value="${escapeHTML(user.custom_id) || 'Generating...'}" readonly style="width: 100%; padding: 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; background: #f8fafc; color: #2ecc71; font-weight: 700; font-family: monospace; letter-spacing: 1px;">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Contact Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" value="${escapeHTML(user.name)}" required class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Business/Organization Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="business_name" value="${escapeHTML(user.business_name) || ''}" placeholder="Eventra Inc." class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Email <span style="color:#64748b; font-size:0.8rem;">(read-only)</span></label>
+                                    <input type="email" value="${escapeHTML(user.email)}" disabled class="form-control disabled">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" name="phone" value="${escapeHTML(user.phone) || ''}" placeholder="+234..." class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Date of Birth <span class="text-danger">*</span></label>
+                                    <input type="date" name="dob" value="${escapeHTML(user.dob) || ''}" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Gender <span class="text-danger">*</span></label>
+                                    <select name="gender" class="form-control" required>
+                                        <option value="">Select Gender</option>
+                                        <option value="male" ${user.gender === 'male' ? 'selected' : ''}>Male</option>
+                                        <option value="female" ${user.gender === 'female' ? 'selected' : ''}>Female</option>
+                                        <option value="other" ${user.gender === 'other' ? 'selected' : ''}>Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Address <span class="text-danger">*</span></label>
+                                    <textarea name="address" rows="2" placeholder="Full address" class="form-control" required>${escapeHTML(user.address) || ''}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Job Title <span class="text-danger">*</span></label>
+                                    <input type="text" name="job_title" value="${escapeHTML(user.job_title) || ''}" placeholder="Event Organizer" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Company <span class="text-danger">*</span></label>
+                                    <input type="text" name="company" value="${escapeHTML(user.company) || ''}" placeholder="Company Name" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">City <span class="text-danger">*</span></label>
+                                    <input type="text" name="city" value="${escapeHTML(user.city) || ''}" placeholder="Lagos" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State <span class="text-danger">*</span></label>
+                                    <select name="state" class="form-control" required>
+                                        <option value="">Select State</option>
+                                        ${getNigerianStates().map(state => 
+                                            `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Country <span class="text-danger">*</span></label>
+                                    <input type="text" name="country" value="${escapeHTML(user.country) || ''}" placeholder="Nigeria" class="form-control" required>
+                                </div>
                             </div>
-                            <div class="form-group modal-grid-full">
-                                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Holder Name (Auto-resolved) <span class="text-danger">*</span></label>
-                                <input type="text" id="accountNameInput" name="account_name" value="${escapeHTML(user.account_name) || ''}" class="form-control" style="font-weight: 500;" required>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2)">Next: Payment Info &rarr;</button>
                             </div>
                         </div>
 
-                        <!-- KYC Verification Documents Section -->
-                        <h3 class="modal-form-section-title">KYC Verification Documents</h3>
-                        
-                        <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                            <!-- NIN File -->
-                            <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>NIN Document</span>
-                                    ${user.kyc_nin_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                </label>
-                                <input type="file" name="kyc_nin_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                ${user.kyc_nin_file ? `
-                                <div style="margin-top: 4px;">
-                                    <a href="/${user.kyc_nin_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                        📄 View Document
-                                    </a>
-                                </div>` : ''}
+                        <!-- STEP 2: Payment Information -->
+                        <div id="wizardStep2" class="wizard-step" style="display: none;">
+                            <div class="modal-grid">
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Settlement Bank <span class="text-danger">*</span></label>
+                                    <select id="bankSelect" name="bank_code" class="form-control" onchange="resolveAccount()" required>
+                                        <option value="">Select Bank</option>
+                                    </select>
+                                    <input type="hidden" name="bank_name" id="bankNameInput" value="${escapeHTML(user.bank_name) || ''}">
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                        <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
+                                        <div id="accountStatus" class="verification-status-indicator">
+                                            ${user.subaccount_code 
+                                                ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>' 
+                                                : ''}
+                                        </div>
+                                    </label>
+                                    <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Holder Name (Auto-resolved) <span class="text-danger">*</span></label>
+                                    <input type="text" id="accountNameInput" name="account_name" value="${escapeHTML(user.account_name) || ''}" class="form-control" style="font-weight: 500;" required>
+                                </div>
                             </div>
-
-                            <!-- BVN File -->
-                            <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>BVN Document</span>
-                                    ${user.kyc_bvn_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                </label>
-                                <input type="file" name="kyc_bvn_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                ${user.kyc_bvn_file ? `
-                                <div style="margin-top: 4px;">
-                                    <a href="/${user.kyc_bvn_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                        📄 View Document
-                                    </a>
-                                </div>` : ''}
-                            </div>
-
-                            <!-- Voter Card File -->
-                            <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>Voter's Card</span>
-                                    ${user.kyc_voter_card_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                </label>
-                                <input type="file" name="kyc_voter_card_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                ${user.kyc_voter_card_file ? `
-                                <div style="margin-top: 4px;">
-                                    <a href="/${user.kyc_voter_card_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                        📄 View Document
-                                    </a>
-                                </div>` : ''}
-                            </div>
-
-                            <!-- Driver License File -->
-                            <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>Driver's License</span>
-                                    ${user.kyc_driver_license_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                </label>
-                                <input type="file" name="kyc_driver_license_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                ${user.kyc_driver_license_file ? `
-                                <div style="margin-top: 4px;">
-                                    <a href="/${user.kyc_driver_license_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                        📄 View Document
-                                    </a>
-                                </div>` : ''}
-                            </div>
-
-                            <!-- CAC File -->
-                            <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>CAC Certificate</span>
-                                    ${user.kyc_cac_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                </label>
-                                <input type="file" name="kyc_cac_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                ${user.kyc_cac_file ? `
-                                <div style="margin-top: 4px;">
-                                    <a href="/${user.kyc_cac_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                        📄 View Document
-                                    </a>
-                                </div>` : ''}
-                            </div>
-
-                            <!-- Other File -->
-                            <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>Other Document</span>
-                                    ${user.kyc_other_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                </label>
-                                <input type="file" name="kyc_other_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                ${user.kyc_other_file ? `
-                                <div style="margin-top: 4px;">
-                                    <a href="/${user.kyc_other_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                        📄 View Document
-                                    </a>
-                                </div>` : ''}
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(1)" style="flex: 1;">&larr; Previous</button>
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(3)" style="flex: 1;">Next: KYC &rarr;</button>
                             </div>
                         </div>
 
-                        <!-- Submit Button -->
-                        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                            <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
-                            <button type="button" class="btn btn-secondary" onclick="closeProfileEditModal()" style="flex: 1;">Cancel</button>
+                        <!-- STEP 3: KYC Verification Documents -->
+                        <div id="wizardStep3" class="wizard-step" style="display: none;">
+                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <!-- NIN File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>NIN Document</span>
+                                        ${user.kyc_nin_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_nin_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_nin_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_nin_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- BVN File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>BVN Document</span>
+                                        ${user.kyc_bvn_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_bvn_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_bvn_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_bvn_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Voter Card File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Voter's Card</span>
+                                        ${user.kyc_voter_card_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_voter_card_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_voter_card_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_voter_card_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Driver License File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Driver's License</span>
+                                        ${user.kyc_driver_license_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_driver_license_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_driver_license_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_driver_license_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- CAC File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>CAC Certificate</span>
+                                        ${user.kyc_cac_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_cac_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_cac_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_cac_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Other File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Other Document</span>
+                                        ${user.kyc_other_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_other_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_other_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_other_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                            </div>
                         </div>
+
                     </form>
                 </div>
             </div>
         </div>
     `;
+
+    // Make switchWizardTab globally available
+    window.switchWizardTab = function(step) {
+        // Validate current step before advancing
+        if (step > 1) {
+            const form = document.getElementById('profileEditForm');
+            let currentStepValid = true;
+            let currentFields = [];
+            
+            if (step === 2) {
+                currentFields = form.querySelector('#wizardStep1').querySelectorAll('[required]');
+            } else if (step === 3) {
+                currentFields = form.querySelector('#wizardStep2').querySelectorAll('[required]');
+            }
+
+            for (const field of currentFields) {
+                if (!field.value.trim()) {
+                    field.style.borderColor = '#ef4444';
+                    field.addEventListener('input', () => { field.style.borderColor = ''; }, { once: true });
+                    currentStepValid = false;
+                }
+            }
+
+            if (!currentStepValid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Missing Info',
+                    text: 'Please fill in all required fields before proceeding.',
+                    confirmButtonColor: '#722f37'
+                });
+                return;
+            }
+        }
+
+        // Hide all steps
+        document.querySelectorAll('.wizard-step').forEach(el => el.style.display = 'none');
+        // Reset all tabs
+        document.querySelectorAll('.wizard-tab').forEach(el => {
+            el.style.color = '#64748b';
+            el.style.borderBottomColor = 'transparent';
+        });
+
+        // Show active step
+        const stepEl = document.getElementById('wizardStep' + step);
+        if (stepEl) stepEl.style.display = 'block';
+
+        // Update active tab
+        const tabEl = document.getElementById('wizardTab' + step);
+        if (tabEl) {
+            tabEl.style.color = '#722f37';
+            tabEl.style.borderBottomColor = '#722f37';
+        }
+    };
 
     // Remove existing modal if any
     const existing = document.getElementById('profileEditModal');
@@ -316,8 +362,6 @@ async function handleProfileUpdate(e) {
         { name: 'company',        label: 'Company' },
         { name: 'dob',            label: 'Date of Birth' },
         { name: 'gender',         label: 'Gender' },
-        { name: 'nin',            label: 'NIN' },
-        { name: 'bvn',            label: 'BVN' },
         { name: 'bank_code',      label: 'Settlement Bank' },
         { name: 'account_number', label: 'Account Number' },
         { name: 'account_name',   label: 'Account Holder Name' },
@@ -347,17 +391,7 @@ async function handleProfileUpdate(e) {
     }
 
     // ── Digit-specific validations ─────────────────────────────────────────
-    const nin = formData.get('nin');
-    if (nin && !/^\d{11}$/.test(nin.replace(/\D/g, ''))) {
-        Swal.fire('Error', 'NIN must be exactly 11 digits', 'error');
-        return;
-    }
 
-    const bvn = formData.get('bvn');
-    if (bvn && !/^\d{11}$/.test(bvn.replace(/\D/g, ''))) {
-        Swal.fire('Error', 'BVN must be exactly 11 digits', 'error');
-        return;
-    }
 
     const accountNumber = formData.get('account_number');
     if (accountNumber && !/^\d{10}$/.test(accountNumber.replace(/\D/g, ''))) {
@@ -969,271 +1003,295 @@ function showEditEventModal(event) {
     });
 
     const modalHTML = `
-        <link rel="stylesheet" href="../../public/css/time-picker.css">
-        <div id="editEventModal" class="modal-backdrop active" role="dialog" aria-modal="true" aria-hidden="false">
-            <div class="modal-content modal-content-animate" style="max-width: 1200px; padding: 0; border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); background: white;">
-                <div class="modal-header" style="background: white; padding: 1.5rem 2.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="color: #0f172a; margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;">Edit Event</h2>
-                    <button class="modal-close" onclick="closeEditEventModal()" style="background: #f8fafc; color: #64748b; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">×</button>
+        <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
+            <div class="modal-content modal-content-animate" style="max-width: 800px; display: flex; flex-direction: column;">
+                <div class="modal-header">
+                    <h2>Edit Profile</h2>
+                    <button type="button" class="modal-close" onclick="closeProfileEditModal()">&times;</button>
+                </div>
+                
+                <div class="wizard-tabs" style="display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow-x: auto;">
+                    <button type="button" class="wizard-tab active" onclick="window.switchWizardTab(1)" id="wizardTab1" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #722f37; border-bottom: 3px solid #722f37; cursor: pointer; min-width: 150px;">1. Personal Info</button>
+                    <button type="button" class="wizard-tab" onclick="window.switchWizardTab(2)" id="wizardTab2" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; min-width: 150px;">2. Payment Info</button>
+                    <button type="button" class="wizard-tab" onclick="window.switchWizardTab(3)" id="wizardTab3" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; min-width: 150px;">3. KYC Documents</button>
                 </div>
 
-                <style>
-                    @media (max-width: 900px) {
-                        #editEventModal .modal-content {
-                            width: 95% !important;
-                            margin: 10px !important;
-                        }
-                        #editEventModal form > div {
-                            grid-template-columns: 1fr !important;
-                        }
-                        #editEventModal .modal-body {
-                            max-height: 85vh !important;
-                        }
-                    }
-                </style>
-                
-                <div class="modal-body" style="padding: 0; max-height: 82vh; overflow-y: auto; scrollbar-width: thin;">
-                    <form id="editEventForm" enctype="multipart/form-data">
-                        <input type="hidden" name="event_id" value="${event.id}">
+                <div class="modal-body" style="overflow-y: auto; padding-top: 0;">
+                    <form id="profileEditForm" enctype="multipart/form-data">
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 0;">
-                            <!-- Left Column: Visuals -->
-                            <div style="padding: 2.5rem; background: #fafafa; border-right: 1px solid #f1f5f9;">
-                                <div style="margin-bottom: 2.5rem;">
-                                    <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">Event Cover Image</label>
-                                    <div style="position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-                                        <img id="editEventImagePreview" 
-                                             src="${event.image_path ? getImageUrl(event.image_path) : 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop'}" 
-                                             style="width: 100%; height: 320px; object-fit: cover; display: block; transition: transform 0.5s;">
-                                        <label for="editEventImageInput" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: all 0.3s; cursor: pointer; color: white;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
-                                            <span style="font-size: 2rem; margin-bottom: 0.5rem;">📷</span>
-                                            <span style="font-weight: 700; font-size: 0.9rem; text-transform: uppercase;">Change Photo</span>
+                        <!-- STEP 1: Personal Information -->
+                        <div id="wizardStep1" class="wizard-step" style="display: block;">
+                            <div class="profile-edit-avatar-container">
+                                    <div class="avatar-wrapper">
+                                        <img id="profilePreview" class="profile-preview-img"
+                                             src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}">
+                                        ${getVerificationBadge(user.verification_status)}
+                                        
+                                        <label for="profilePicInput" class="avatar-upload-label">
+                                            📷
                                         </label>
-                                        <input type="file" id="editEventImageInput" name="event_image" accept="image/*" style="display: none;" onchange="previewEditEventImage(event)">
                                     </div>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 2rem;">
-                                    <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">📍 Venue & State <span style="color: #ef4444">*</span></label>
-                                    <div id="editStateSelectContainer" class="state-select-container" style="margin-bottom: 1rem;">
-                                        <div class="state-select-display" id="editStateSelectDisplay" onclick="toggleEditStateSelect()" style="padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: white; min-width: 0;">
-                                            <span id="editSelectedStatesText" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${event.state ? event.state.split(',').join(', ') : 'Select State(s)'}</span>
-                                        </div>
-                                        <div id="editStateSelectDropdown" class="state-select-dropdown" style="max-height: 250px; overflow-y: auto;">
-                                            <div style="display: grid; gap: 4px;">
-                                                ${getNigerianStates(true).map(state => `
-                                                    <label class="state-option-label" style="display: flex; align-items: center; gap: 12px; padding: 10px 15px; cursor: pointer; transition: 0.2s;">
-                                                        <input type="checkbox" class="edit-state-checkbox state-checkbox-custom" value="${state}" onchange="updateEditSelectedStates()" ${event.state && event.state.split(',').includes(state) ? 'checked' : ''}>
-                                                        <span class="state-option-text" style="font-weight: 500;">${state}</span>
-                                                    </label>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                        <input type="hidden" name="state" id="editEventStateInput" value="${event.state || ''}" required>
-                                    </div>
-
-                                    <div class="form-group" id="editMainAddressGroup" style="display: ${event.state && event.state.split(',').length > 1 ? 'none' : 'block'};">
-                                        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.025em;">Venue Address</label>
-                                        <textarea name="address" id="editEventAddress" rows="3" placeholder="Full venue address..." style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; transition: all 0.2s;" onfocus="this.style.borderColor='#0f172a'; this.style.boxShadow='0 0 0 3px rgba(15, 23, 42, 0.1)';" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none';">${escapeHTML(event.address || '')}</textarea>
-                                    </div>
-                                    <div id="perStateEditAddressContainer" style="margin-bottom: 1rem; display: ${event.state && event.state.split(',').length > 1 ? 'block' : 'none'};"></div>
-                                    <p id="editAddressHelpText" style="font-size: 0.7rem; color: #64748b; margin-top: 0.4rem; display: ${event.state && event.state.split(',').length > 1 ? 'block' : 'none'};">Multiple states selected. Please provide specific addresses for each state above.</p>
-                                </div>
-
-                                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 1px solid #e2e8f0;">
-                                    <h4 style="margin: 0 0 1rem 0; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">📞 Contact Information</h4>
-                                    <div style="display: grid; gap: 1rem;">
-                                        <input type="tel" name="phone_contact_1" value="${event.phone_contact_1}" placeholder="Primary Phone Number" required style="width: 100%; padding: 0.875rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; font-weight: 600;">
-                                        <input type="tel" name="phone_contact_2" value="${event.phone_contact_2 || ''}" placeholder="Secondary (Optional)" style="width: 100%; padding: 0.875rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; font-weight: 600;">
-                                    </div>
-                                </div>
+                                    <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePic(event)">
                             </div>
 
-                            <!-- Right Column: Details -->
-                            <div style="padding: 2.5rem;">
-                                <div style="display: grid; gap: 1.75rem;">
-                                    <div class="form-group">
-                                        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Event Name <span style="color: #ef4444">*</span></label>
-                                        <input type="text" name="event_name" value="${escapeHTML(event.event_name)}" placeholder="Event Name" required style="width: 100%; padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-weight: 600; color: #0f172a;">
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Event Type/Category <span style="color: #ef4444">*</span></label>
-                                        <select name="event_type" required style="width: 100%; padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-weight: 600; background: white; cursor: pointer;">
-                                            <option value="">Select Category</option>
-                                            ${(window.EVENT_CATEGORIES || ['Conference', 'Workshop', 'Entertainment', 'Sports', 'Exhibition', 'Concert', 'Social', 'Other']).map(cat => `
-                                                <option value="${cat}" ${event.event_type === cat || event.category === cat ? 'selected' : ''}>${cat}</option>
-                                            `).join('')}
-                                        </select>
-                                    </div>
-
-                                    <!-- SYSTEM RANKING Section -->
-                                    <div class="form-group" style="background: #f0f9ff; padding: 1.5rem; border-radius: 16px; border: 1px solid #e0f2fe;">
-                                        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #0369a1; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px;">System Ranking</label>
-                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem;">
-                                            <div style="background: #0ea5e9; color: white; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
-                                                <span style="font-size: 1rem;">🕒</span> UPCOMING
-                                            </div>
-                                        </div>
-                                        <p style="margin: 0; font-size: 0.8rem; color: #0369a1; font-weight: 500; line-height: 1.5;">* Ranking is automatically assigned based on merit score and fresh proximity.</p>
-                                    </div>
-
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                                        <div class="form-group">
-                                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Event Date <span style="color: #ef4444">*</span></label>
-                                            <input type="date" name="event_date" value="${event.event_date}" required style="width: 100%; padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-weight: 600;">
-                                        </div>
-                                        <div class="form-group">
-                                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Event Time <span style="color: #ef4444">*</span></label>
-                                            <div id="editEventTimePickerContainer" class="time-picker-container">
-                                                <div class="time-picker-display" onclick="toggleTimePicker('editEventTimePickerDropdown')" style="padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: white;">
-                                                    <span id="editEventTimeDisplay">${event.event_time ? event.event_time.substring(0, 5) : 'Select Time'}</span>
-                                                    <span style="font-size: 0.8rem; opacity: 0.5;">🕒</span>
-                                                </div>
-                                                <div id="editEventTimePickerDropdown" class="time-picker-dropdown">
-                                                    <div class="time-picker-section">
-                                                        <label class="time-picker-label">Hours</label>
-                                                        <div class="time-picker-grid hours" id="editHourGrid">
-                                                            ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => `<button type="button" class="time-btn" onclick="selectHour('${h}', 'editEventTimePickerContainer')">${h}</button>`).join('')}
-                                                        </div>
-                                                    </div>
-                                                    <div class="time-picker-section">
-                                                        <label class="time-picker-label">Minutes</label>
-                                                        <div class="time-picker-grid minutes" id="editMinuteGrid">
-                                                            ${['00', '15', '30', '45'].map(m => `<button type="button" class="time-btn" onclick="selectMinute('${m}', 'editEventTimePickerContainer')">${m}</button>`).join('')}
-                                                        </div>
-                                                    </div>
-                                                    <div class="time-picker-section">
-                                                        <div class="time-picker-ampm">
-                                                            <button type="button" class="time-btn am" onclick="selectAmPm('am', 'editEventTimePickerContainer')">AM</button>
-                                                            <button type="button" class="time-btn pm" onclick="selectAmPm('pm', 'editEventTimePickerContainer')">PM</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <input type="hidden" name="event_time" id="editEventTimeInput" value="${event.event_time}" required>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Pricing Section -->
-                                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 20px; border: 1px solid #e2e8f0;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                                            <h3 style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 1px;">💰 Tickets</h3>
-                                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem 1rem; background: white; border-radius: 10px; font-weight: 700; font-size: 0.8rem; color: #64748b; border: 1px solid #e2e8f0;">
-                                                <input type="checkbox" id="editFreeEventCheckbox" name="is_free" value="1" ${parseFloat(event.price) === 0 && (!event.ticket_type_mode || event.ticket_type_mode === 'all') ? 'checked' : ''} class="state-checkbox-custom"> FREE
-                                            </label>
-                                        </div>
-
-                                        <div id="editTicketTypeConfigSection" style="${parseFloat(event.price) === 0 ? 'display: none;' : ''}">
-                                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.5rem;">
-                                                <label class="edit-ticket-type-label" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.8rem 0.2rem; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">Ticket Type</label>
-                                                    <input type="checkbox" name="ticket_type_mode[]" value="regular" ${event.ticket_type_mode && event.ticket_type_mode.includes('regular') ? 'checked' : ''} class="edit-ticket-type-checkbox" style="accent-color: #0f172a;">
-                                                    <span style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase;">Regular</span>
-                                                </label>
-                                                <label class="edit-ticket-type-label" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.8rem 0.2rem; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
-                                                    <input type="checkbox" name="ticket_type_mode[]" value="vip" ${event.ticket_type_mode && event.ticket_type_mode.includes('vip') ? 'checked' : ''} class="edit-ticket-type-checkbox" style="accent-color: #0f172a;">
-                                                    <span style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase;">VIP</span>
-                                                </label>
-                                                <label class="edit-ticket-type-label" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.8rem 0.2rem; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
-                                                    <input type="checkbox" name="ticket_type_mode[]" value="premium" ${event.ticket_type_mode && event.ticket_type_mode.includes('premium') ? 'checked' : ''} class="edit-ticket-type-checkbox" style="accent-color: #0f172a;">
-                                                    <span style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase;">Premium</span>
-                                                </label>
-                                                <label class="edit-ticket-type-label" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.8rem 0.2rem; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
-                                                    <input type="checkbox" name="ticket_type_mode[]" value="all" ${event.ticket_type_mode && event.ticket_type_mode.includes('all') ? 'checked' : ''} class="edit-ticket-type-checkbox" style="accent-color: #0f172a;">
-                                                    <span style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase;">All</span>
-                                                </label>
-                                            </div>
-
-                                            <div id="editRegularConfig" class="edit-ticket-price-section" style="display: none;">
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Price (₦)</label>
-                                                        <input type="number" name="regular_price" id="editRegularPriceInput" value="${event.regular_price || 0}" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Qty</label>
-                                                        <input type="number" name="regular_quantity" value="${event.regular_quantity || ''}" placeholder="∞" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div id="editVipConfig" class="edit-ticket-price-section" style="display: none;">
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Price (₦)</label>
-                                                        <input type="number" name="vip_price" id="editVipPriceInput" value="${event.vip_price || 0}" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Qty</label>
-                                                        <input type="number" name="vip_quantity" value="${event.vip_quantity || ''}" placeholder="∞" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div id="editPremiumConfig" class="edit-ticket-price-section" style="display: none;">
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Price (₦)</label>
-                                                        <input type="number" name="premium_price" id="editPremiumPriceInput" value="${event.premium_price || 0}" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Qty</label>
-                                                        <input type="number" name="premium_quantity" value="${event.premium_quantity || ''}" placeholder="∞" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div id="editAllConfig" class="edit-ticket-price-section" style="display: none;">
-                                                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem;">
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Universal Price (₦)</label>
-                                                        <input type="number" name="price" id="editAllPriceInput" value="${event.price || 0}" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #0f172a; border-radius: 10px; background: white; font-weight: 800; color: #0f172a;">
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">Total Capacity</label>
-                                                        <input type="number" name="total_tickets" value="${event.total_tickets || ''}" placeholder="∞" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 700; background: white;">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">About the Event <span style="color: #ef4444">*</span></label>
-                                        <textarea name="description" rows="5" placeholder="Share what makes this event special..." required style="width: 100%; padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 16px; font-size: 0.95rem; line-height: 1.6; transition: all 0.3s; background: white;">${event.description}</textarea>
-                                    </div>
-
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                                        <div class="form-group">
-                                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Status</label>
-                                            <select name="status" id="editEventStatusSelect" style="width: 100%; padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-weight: 600; background: white;">
-                                                <option value="draft" ${event.status === 'draft' ? 'selected' : ''}>Draft</option>
-                                                <option value="scheduled" ${event.status === 'scheduled' ? 'selected' : ''}>Scheduled</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group" id="editScheduledTimeGroup" style="display: ${event.status === 'scheduled' ? 'block' : 'none'};">
-                                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Publish At</label>
-                                            <input type="datetime-local" name="scheduled_publish_time" value="${event.scheduled_publish_time ? event.scheduled_publish_time.slice(0, 16) : ''}" style="width: 100%; padding: 1rem 1.25rem; border: 1px solid #fbbf24; border-radius: 12px; background: #fffbeb; font-weight: 600;">
-                                        </div>
-                                    </div>
+                            <div class="modal-grid">
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Client ID</label>
+                                    <input type="text" value="${escapeHTML(user.custom_id) || 'Generating...'}" readonly style="width: 100%; padding: 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; background: #f8fafc; color: #2ecc71; font-weight: 700; font-family: monospace; letter-spacing: 1px;">
                                 </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Contact Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" value="${escapeHTML(user.name)}" required class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Business/Organization Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="business_name" value="${escapeHTML(user.business_name) || ''}" placeholder="Eventra Inc." class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Email <span style="color:#64748b; font-size:0.8rem;">(read-only)</span></label>
+                                    <input type="email" value="${escapeHTML(user.email)}" disabled class="form-control disabled">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" name="phone" value="${escapeHTML(user.phone) || ''}" placeholder="+234..." class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Date of Birth <span class="text-danger">*</span></label>
+                                    <input type="date" name="dob" value="${escapeHTML(user.dob) || ''}" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Gender <span class="text-danger">*</span></label>
+                                    <select name="gender" class="form-control" required>
+                                        <option value="">Select Gender</option>
+                                        <option value="male" ${user.gender === 'male' ? 'selected' : ''}>Male</option>
+                                        <option value="female" ${user.gender === 'female' ? 'selected' : ''}>Female</option>
+                                        <option value="other" ${user.gender === 'other' ? 'selected' : ''}>Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Address <span class="text-danger">*</span></label>
+                                    <textarea name="address" rows="2" placeholder="Full address" class="form-control" required>${escapeHTML(user.address) || ''}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Job Title <span class="text-danger">*</span></label>
+                                    <input type="text" name="job_title" value="${escapeHTML(user.job_title) || ''}" placeholder="Event Organizer" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Company <span class="text-danger">*</span></label>
+                                    <input type="text" name="company" value="${escapeHTML(user.company) || ''}" placeholder="Company Name" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">City <span class="text-danger">*</span></label>
+                                    <input type="text" name="city" value="${escapeHTML(user.city) || ''}" placeholder="Lagos" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State <span class="text-danger">*</span></label>
+                                    <select name="state" class="form-control" required>
+                                        <option value="">Select State</option>
+                                        ${getNigerianStates().map(state => 
+                                            `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Country <span class="text-danger">*</span></label>
+                                    <input type="text" name="country" value="${escapeHTML(user.country) || ''}" placeholder="Nigeria" class="form-control" required>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2)">Next: Payment Info &rarr;</button>
                             </div>
                         </div>
 
-                        <!-- Footer Actions -->
-                        <div style="padding: 1.5rem 2.5rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 1rem; position: sticky; bottom: 0; z-index: 10;">
-                            <button type="button" class="btn btn-secondary" onclick="closeEditEventModal()" style="padding: 0.875rem 2rem; font-size: 0.95rem; font-weight: 700; background: white; border: 1px solid #e2e8f0; border-radius: 12px; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                                Cancel
-                            </button>
-                            <button type="submit" class="btn btn-primary" style="padding: 0.875rem 2.5rem; font-size: 0.95rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; background: #0f172a; border: none; border-radius: 12px; color: white; cursor: pointer; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.3); transition: all 0.2s;">
-                                Save Changes
-                            </button>
+                        <!-- STEP 2: Payment Information -->
+                        <div id="wizardStep2" class="wizard-step" style="display: none;">
+                            <div class="modal-grid">
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Settlement Bank <span class="text-danger">*</span></label>
+                                    <select id="bankSelect" name="bank_code" class="form-control" onchange="resolveAccount()" required>
+                                        <option value="">Select Bank</option>
+                                    </select>
+                                    <input type="hidden" name="bank_name" id="bankNameInput" value="${escapeHTML(user.bank_name) || ''}">
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                        <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
+                                        <div id="accountStatus" class="verification-status-indicator">
+                                            ${user.subaccount_code 
+                                                ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>' 
+                                                : ''}
+                                        </div>
+                                    </label>
+                                    <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
+                                </div>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Holder Name (Auto-resolved) <span class="text-danger">*</span></label>
+                                    <input type="text" id="accountNameInput" name="account_name" value="${escapeHTML(user.account_name) || ''}" class="form-control" style="font-weight: 500;" required>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(1)" style="flex: 1;">&larr; Previous</button>
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(3)" style="flex: 1;">Next: KYC &rarr;</button>
+                            </div>
                         </div>
+
+                        <!-- STEP 3: KYC Verification Documents -->
+                        <div id="wizardStep3" class="wizard-step" style="display: none;">
+                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <!-- NIN File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>NIN Document</span>
+                                        ${user.kyc_nin_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_nin_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_nin_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_nin_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- BVN File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>BVN Document</span>
+                                        ${user.kyc_bvn_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_bvn_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_bvn_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_bvn_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Voter Card File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Voter's Card</span>
+                                        ${user.kyc_voter_card_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_voter_card_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_voter_card_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_voter_card_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Driver License File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Driver's License</span>
+                                        ${user.kyc_driver_license_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_driver_license_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_driver_license_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_driver_license_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- CAC File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>CAC Certificate</span>
+                                        ${user.kyc_cac_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_cac_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_cac_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_cac_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Other File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Other Document</span>
+                                        ${user.kyc_other_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_other_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_other_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_other_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                            </div>
+                        </div>
+
                     </form>
                 </div>
             </div>
         </div>
     `;
+
+    // Make switchWizardTab globally available
+    window.switchWizardTab = function(step) {
+        // Validate current step before advancing
+        if (step > 1) {
+            const form = document.getElementById('profileEditForm');
+            let currentStepValid = true;
+            let currentFields = [];
+            
+            if (step === 2) {
+                currentFields = form.querySelector('#wizardStep1').querySelectorAll('[required]');
+            } else if (step === 3) {
+                currentFields = form.querySelector('#wizardStep2').querySelectorAll('[required]');
+            }
+
+            for (const field of currentFields) {
+                if (!field.value.trim()) {
+                    field.style.borderColor = '#ef4444';
+                    field.addEventListener('input', () => { field.style.borderColor = ''; }, { once: true });
+                    currentStepValid = false;
+                }
+            }
+
+            if (!currentStepValid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Missing Info',
+                    text: 'Please fill in all required fields before proceeding.',
+                    confirmButtonColor: '#722f37'
+                });
+                return;
+            }
+        }
+
+        // Hide all steps
+        document.querySelectorAll('.wizard-step').forEach(el => el.style.display = 'none');
+        // Reset all tabs
+        document.querySelectorAll('.wizard-tab').forEach(el => {
+            el.style.color = '#64748b';
+            el.style.borderBottomColor = 'transparent';
+        });
+
+        // Show active step
+        const stepEl = document.getElementById('wizardStep' + step);
+        if (stepEl) stepEl.style.display = 'block';
+
+        // Update active tab
+        const tabEl = document.getElementById('wizardTab' + step);
+        if (tabEl) {
+            tabEl.style.color = '#722f37';
+            tabEl.style.borderBottomColor = '#722f37';
+        }
+    };
 
     // Remove existing modal if any
     const existing = document.getElementById('editEventModal');

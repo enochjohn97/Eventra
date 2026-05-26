@@ -14,10 +14,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/helpers/sms-helper.php';
 
 try {
-    // 1. Fetch upcoming events within the next 24 hours that haven't had reminders sent
-    // We'll use a new table 'reminder_logs' or a flag in 'tickets' to track.
-    // For now, let's assume we send reminders to all paid ticket holders for events starting in 24h.
-
+    // 1. Fetch upcoming events within the next 20 minutes that haven't had reminders sent
     $stmt = $pdo->query("
         SELECT e.id as event_id, e.event_name, e.event_date, e.event_time, u.phone, u.name, a.email, t.id as ticket_id
         FROM events e
@@ -26,18 +23,17 @@ try {
         JOIN users u ON p.user_id = u.id
         JOIN auth_accounts a ON u.user_auth_id = a.id
         WHERE p.status = 'paid'
-        AND e.event_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        AND TIMESTAMP(e.event_date, e.event_time) BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 20 MINUTE)
         AND t.reminder_sent = 0
     ");
 
     $reminders = $stmt->fetchAll();
 
     foreach ($reminders as $rem) {
-        $message = "Hi {$rem['name']}, reminder for {$rem['event_name']} tomorrow at {$rem['event_time']}. Have your barcode ready!";
+        $message = "Hi {$rem['name']}, reminder for {$rem['event_name']} starting in 20 minutes. Have your barcode ready!";
 
-        // SMS disabled per requirement to only send 20m pre-event reminders via Sendchamp
-        // $smsResult = sendSMS($rem['phone'], $message);
-        $smsResult = ['success' => true];
+        // Send 20m pre-event reminder via Sendchamp
+        $smsResult = sendSMS($rem['phone'], $message);
 
         if ($smsResult['success']) {
             $update = $pdo->prepare("UPDATE tickets SET reminder_sent = 1 WHERE id = ?");
@@ -45,7 +41,7 @@ try {
         }
     }
 
-    echo "Sent " . count($reminders) . " reminders.";
+    echo "Sent " . count($reminders) . " Sendchamp reminders.";
 
 } catch (Exception $e) {
     error_log("Cron Error: " . $e->getMessage());

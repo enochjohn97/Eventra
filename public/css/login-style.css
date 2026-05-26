@@ -256,6 +256,12 @@ body {
   color: var(--login-primary);
 }
 
+/* Hide native browser password reveal icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
 /* Remember Me & Forgot Password */
 .form-options {
   display: flex;
