@@ -180,11 +180,17 @@ function updateGlobalAvatar(user) {
         if (parent && typeof getVerificationBadge === 'function') {
             const existingBadge = parent.querySelector('.verification-badge');
             if (existingBadge) existingBadge.remove();
-            parent.insertAdjacentHTML('beforeend', getVerificationBadge(user.verification_status));
+            parent.insertAdjacentHTML('afterbegin', getVerificationBadge(user.verification_status));
             // Re-init icons
             if (window.lucide) window.lucide.createIcons();
         }
     });
+
+    // Populate the inline dropdown (built by initProfileClick) with user data
+    const inlineEmail = document.getElementById('inlineDropEmail');
+    const inlineCid   = document.getElementById('inlineDropCid');
+    if (inlineEmail) inlineEmail.textContent = user.email || '';
+    if (inlineCid)   inlineCid.textContent   = user.custom_id ? '#' + user.custom_id : '';
 }
 
 /**
@@ -319,17 +325,89 @@ function initLogout() {
 
 
 function initProfileClick() {
-    // Make user avatar clickable to open profile modal
-    const userAvatar = document.querySelector('.user-avatar');
-    if (userAvatar) {
-        userAvatar.style.cursor = 'pointer';
-        userAvatar.title = 'Click to edit profile';
-        userAvatar.addEventListener('click', () => {
-            if (typeof showProfileEditModal === 'function') {
-                showProfileEditModal();
-            }
-        });
+    const userProfile = document.querySelector('.user-profile');
+    if (!userProfile) return;
+
+    // Ensure relative positioning so dropdown anchors correctly
+    userProfile.style.position   = 'relative';
+    userProfile.style.cursor     = 'pointer';
+    userProfile.style.userSelect = 'none';
+
+    // Wrap the avatar so we can slot the chevron directly beneath it
+    const avatarEl = userProfile.querySelector('.user-avatar');
+    if (avatarEl && !userProfile.querySelector('.avatar-trigger-wrap')) {
+        const wrap = document.createElement('div');
+        wrap.className = 'avatar-trigger-wrap';
+        // Inline-flex + column keeps chevron below avatar; inline style beats .avatar-wrapper class
+        wrap.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:1px;';
+        userProfile.insertBefore(wrap, avatarEl);
+        wrap.appendChild(avatarEl);
+
+        // Chevron arrow below the avatar
+        const chevron = document.createElement('span');
+        chevron.id = 'inlineDropdownChevron';
+        chevron.style.cssText = 'display:block;line-height:1;color:#9ca3af;transition:transform 0.2s;margin-top:1px;';
+        chevron.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+        wrap.appendChild(chevron);
     }
+
+    // Build dropdown once
+    if (!document.getElementById('inlineProfileDropdown')) {
+        const drop = document.createElement('div');
+        drop.id = 'inlineProfileDropdown';
+        drop.style.cssText = [
+            'display:none;position:absolute;top:calc(100% + 8px);right:0;',
+            'min-width:220px;background:#fff;border-radius:14px;',
+            'box-shadow:0 8px 32px rgba(0,0,0,0.14);border:1px solid #f1f5f9;',
+            'z-index:9999;overflow:hidden;'
+        ].join('');
+
+        drop.innerHTML = `
+            <div style="padding:14px 16px 10px;border-bottom:1px solid #f1f5f9;">
+                <div id="inlineDropEmail" style="font-weight:700;font-size:0.9rem;color:#111827;word-break:break-all;"></div>
+                <div id="inlineDropCid"   style="font-size:0.72rem;color:#6b7280;font-family:monospace;margin-top:2px;"></div>
+            </div>
+            <a href="#" onclick="if(typeof showProfileEditModal==='function')showProfileEditModal();document.getElementById('inlineProfileDropdown').style.display='none';return false;"
+               style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"
+               onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                Profile
+            </a>
+            <a href="mailto:testalive9@gmail.com"
+               style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"
+               onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Support
+            </a>
+            <div style="border-top:1px solid #f1f5f9;"></div>
+            <a href="#" onclick="logout();return false;"
+               style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#ef4444;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"
+               onmouseover="this.style.background='#fff1f2'" onmouseout="this.style.background='transparent'">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+            </a>`;
+        userProfile.appendChild(drop);
+    }
+
+    // Toggle open/close
+    userProfile.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const drop    = document.getElementById('inlineProfileDropdown');
+        const chevron = document.getElementById('inlineDropdownChevron');
+        const isOpen  = drop && drop.style.display === 'block';
+        if (drop)    drop.style.display    = isOpen ? 'none' : 'block';
+        if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+        if (!userProfile.contains(e.target)) {
+            const drop    = document.getElementById('inlineProfileDropdown');
+            const chevron = document.getElementById('inlineDropdownChevron');
+            if (drop)    drop.style.display    = 'none';
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        }
+    });
 }
 
 function debounce(func, wait) {

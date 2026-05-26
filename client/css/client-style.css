@@ -413,10 +413,10 @@ body {
 
 .verification-badge {
     position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 20px;
-    height: 20px;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
     background: white;
     border-radius: 50%;
     display: flex;
@@ -425,6 +425,7 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     z-index: 10;
     border: 2px solid white;
+    cursor: pointer;
 }
 
 .verification-badge svg, 
