@@ -190,7 +190,7 @@ function updateGlobalAvatar(user) {
     const inlineEmail = document.getElementById('inlineDropEmail');
     const inlineCid   = document.getElementById('inlineDropCid');
     if (inlineEmail) inlineEmail.textContent = user.email || '';
-    if (inlineCid)   inlineCid.textContent   = user.custom_id ? '#' + user.custom_id : '';
+    if (inlineCid)   inlineCid.textContent   = user.custom_id ? '' + user.custom_id : '';
 }
 
 /**
