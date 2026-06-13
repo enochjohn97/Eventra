@@ -1247,39 +1247,8 @@ PDF;
      */
     public static function regeneratePdf(array $ticketData, string $outputPath): bool
     {
-        // Build PDF-safe HTML
-        $html = self::buildTicketHtml($ticketData, true);
-
-        // ── Use DomPDF ──────────────────────────────────────────────────────
-        if (class_exists('Dompdf\Dompdf')) {
-            try {
-                $projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
-                $options = new \Dompdf\Options();
-                $options->set('isRemoteEnabled', true);
-                $options->set('isHtml5ParserEnabled', true);
-                $options->set('isPhpEnabled', false);
-                $options->set('defaultFont', 'Helvetica');
-                $options->set('isFontSubsettingEnabled', true);
-                $options->set('chroot', $projectRoot);
-
-                $dompdf = new \Dompdf\Dompdf($options);
-                $dompdf->loadHtml($html, 'UTF-8');
-                // 900px × 420px → points (96dpi → 72dpi): 900/96*72=675, 420/96*72=315
-                $dompdf->setPaper([0, 0, 675, 315]);
-                $dompdf->render();
-
-                $output = $dompdf->output();
-                if ($output !== null && strlen($output) > 1000) {
-                    $written = file_put_contents($outputPath, $output);
-                    if ($written !== false && $written > 0) {
-                        return true;
-                    }
-                }
-                error_log('[EmailHelper] DomPDF output was empty or write failed.');
-            } catch (\Throwable $e) {
-                error_log('[EmailHelper] DomPDF failed: ' . $e->getMessage());
-            }
-        }
+        // Dompdf has been removed in favor of client-side html2pdf generation.
+        // Return false to indicate no server-side generation is available.
         return false;
     }
 }

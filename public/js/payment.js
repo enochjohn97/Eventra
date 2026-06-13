@@ -183,11 +183,38 @@ async function startPolling(reference) {
                         // Populate hidden ticket card for PDF generation
                         prepareTicketForDownload(order, firstBarcode);
                         
-                        // FIX: Use robust server-side PDF generation instead of client-side html2pdf.js
+                        // Use html2pdf for ticket downloading
                         if (downloadBtn) {
                             downloadBtn.onclick = () => {
-                                const downloadUrl = `/api/tickets/download-ticket.php?code=${encodeURIComponent(firstBarcode)}`;
-                                window.location.href = downloadUrl;
+                                const originalText = downloadBtn.innerHTML;
+                                downloadBtn.innerHTML = '<span class="btn-spinner"></span> Generating PDF...';
+                                downloadBtn.disabled = true;
+
+                                const element = document.getElementById('ticket-card');
+
+                                const opt = {
+                                    margin:       0.5, // added margin to look nice on letter size
+                                    filename:     `eventra_ticket_${firstBarcode}.pdf`,
+                                    image:        { type: 'jpeg', quality: 0.98 },
+                                    html2canvas:  { scale: 2, useCORS: true },
+                                    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                                };
+
+                                const generatePdf = () => {
+                                    html2pdf().set(opt).from(element).save().then(() => {
+                                        downloadBtn.innerHTML = originalText;
+                                        downloadBtn.disabled = false;
+                                    });
+                                };
+
+                                if (typeof html2pdf === 'undefined') {
+                                    const script = document.createElement('script');
+                                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                                    script.onload = generatePdf;
+                                    document.head.appendChild(script);
+                                } else {
+                                    generatePdf();
+                                }
                             };
                         }
                         if (actions) actions.style.display = 'flex';

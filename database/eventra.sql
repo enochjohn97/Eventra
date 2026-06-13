@@ -568,3 +568,7 @@ ALTER TABLE auth_logs
 -- RE-ENABLE FOREIGN KEY CHECKS
 -- =============================================================================
 SET FOREIGN_KEY_CHECKS = 1;
+
+use eventra_db;
+select * from clients;
+delete from clients where id = 1;

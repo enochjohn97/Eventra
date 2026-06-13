@@ -1,7 +1,6 @@
 {
     "require": {
         "phpmailer/phpmailer": "^7.0",
-        "dompdf/dompdf": "^3.1",
         "chillerlan/php-qrcode": "^5.0",
         "thiagoalessio/tesseract_ocr": "^2.13",
         "yabacon/paystack-php": "^2.2"
