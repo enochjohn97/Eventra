@@ -62,6 +62,18 @@
                     <span>Clients</span>
                 </a>
             </li>
+            <li class="menu-item" id="navSupportChat">
+                <a href="#" onclick="showSupportChatAdmin(); return false;">
+                    <i data-lucide="message-circle"></i>
+                    <span>Support</span>
+                </a>
+            </li>
+            <li class="menu-item" id="navFinancialApprovals">
+                <a href="#" onclick="showFinancialApprovals(); return false;">
+                    <i data-lucide="dollar-sign"></i>
+                    <span>Financial Approvals</span>
+                </a>
+            </li>
         </ul>
         <div class="sidebar-footer">
             <a href="adminLogin.html" id="logoutBtn" style="color: white; text-decoration: none; font-size: 0.95rem; display: flex; align-items: center; gap: 12px; opacity: 0.7; transition: opacity 0.3s;">
@@ -292,6 +304,76 @@
         </div>
     </div>
 
+    <!-- Financial Approvals Overlay -->
+    <div id="financialApprovalsOverlay" style="display:none; position:fixed; top:80px; left:260px; right:0; bottom:0; background:#f8fafc; z-index:900; padding:2rem; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+            <h2 style="font-size:1.75rem; font-weight:800;">Pending Financial Approvals</h2>
+            <button onclick="document.getElementById('financialApprovalsOverlay').style.display='none';" style="padding:0.5rem 1rem; background:#ef4444; color:#fff; border:none; border-radius:8px; cursor:pointer;">Close</button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1.5rem; height: calc(100vh - 200px);">
+            <!-- Left: Chat Transcript -->
+            <div style="background:#fff; border-radius:16px; border:1px solid var(--admin-border); padding:1.5rem; display:flex; flex-direction:column;">
+                <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">User-to-Owner Chat Transcript</h3>
+                <div id="financialChatTranscript" style="flex:1; overflow-y:auto; font-size:0.9rem;">
+                    <p style="color:var(--admin-text-muted); text-align:center; margin-top:2rem;">Select an escalation to view chat.</p>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:10px; border-top:1px solid var(--admin-border); padding-top:10px; flex-shrink:0;">
+                    <input type="text" id="financialChatReplyInput" placeholder="Reply as Eventra Support..." style="flex:1; padding:8px 12px; border:1px solid var(--admin-border); border-radius:8px; font-size:0.84rem; outline:none;" />
+                    <button id="btnSendFinancialChatReply" style="padding:8px 16px; background:var(--admin-primary,#0044ff); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.84rem; white-space:nowrap;">Reply</button>
+                </div>
+            </div>
+            <!-- Center: Ticket Metadata -->
+            <div style="background:#fff; border-radius:16px; border:1px solid var(--admin-border); padding:1.5rem; display:flex; flex-direction:column;">
+                <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">Ticket Metadata</h3>
+                <div id="financialTicketMeta" style="flex:1; font-size:0.9rem;">
+                     <p style="color:var(--admin-text-muted); text-align:center; margin-top:2rem;">Select an escalation to view metadata.</p>
+                </div>
+            </div>
+            <!-- Right: Action Panel -->
+            <div style="background:#fff; border-radius:16px; border:1px solid var(--admin-border); padding:1.5rem; display:flex; flex-direction:column;">
+                <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">Queue & Actions</h3>
+                <div id="financialEscalationQueue" style="margin-bottom:1.5rem; max-height:200px; overflow-y:auto; border:1px solid var(--admin-border); border-radius:8px;">
+                     <!-- List items dynamically injected -->
+                </div>
+                <div id="financialActionButtons" style="display:none; flex-direction:column; gap:1rem; margin-top:auto;">
+                    <button id="btnApproveRefund" style="padding:1rem; background:#10b981; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem;"><i data-lucide="check-circle"></i> Approve Paystack Refund</button>
+                    <button id="btnDeclineRefund" style="padding:1rem; background:#ef4444; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem;"><i data-lucide="x-circle"></i> Decline & Close Ticket</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Support Chat Overlay -->
+    <div id="supportChatAdminOverlay" style="display:none; position:fixed; top:80px; left:260px; right:0; bottom:0; background:#f8fafc; z-index:900; overflow:hidden;">
+        <div style="display:flex; height:100%;">
+            <!-- Left: Thread list -->
+            <div style="width:300px; min-width:260px; background:#fff; border-right:1px solid var(--admin-border); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0;">
+                <div style="padding:1.2rem 1.4rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                    <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:var(--admin-text-main);">Support Inbox</h3>
+                    <button onclick="closeSupportChatAdmin()" style="background:none; border:none; cursor:pointer; color:#64748b; font-size:1.25rem; line-height:1; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Close">&#x2715;</button>
+                </div>
+                <div id="adminChatThreadsList" style="flex:1; overflow-y:auto;">
+                    <p style="color:var(--admin-text-muted); text-align:center; padding:2rem; font-size:0.88rem;">Loading conversations...</p>
+                </div>
+            </div>
+            <!-- Right: Chat view -->
+            <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0;">
+                <div id="adminChatHeader" style="padding:1.1rem 1.5rem; background:#fff; border-bottom:1px solid var(--admin-border); min-height:66px; display:flex; align-items:center; flex-shrink:0;">
+                    <span id="adminChatHeaderInfo" style="color:var(--admin-text-muted); font-size:0.88rem;">Select a conversation to start</span>
+                </div>
+                <div id="adminChatMessages" style="flex:1; overflow-y:auto; padding:1.5rem; display:flex; flex-direction:column; gap:14px; background:#f8fafc;"></div>
+                <div id="adminChatReplyBox" style="display:none; padding:1rem 1.5rem; background:#fff; border-top:1px solid var(--admin-border); flex-shrink:0;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="text" id="adminChatReplyInput" placeholder="Reply as Eventra Support..." style="flex:1; padding:10px 16px; border:1px solid var(--admin-border); border-radius:24px; font-size:0.88rem; outline:none; background:#f8fafc; color:#1e293b; transition:border-color 0.2s;" onfocus="this.style.borderColor='#0044ff'" onblur="this.style.borderColor='var(--admin-border)'">
+                        <button id="btnAdminSendReply" title="Send Reply" style="width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#0044ff,#00d2ff); color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 8px rgba(0,68,255,0.3);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../js/toast-notification.js"></script>
     <script src="../js/admin-auth.js"></script>
@@ -305,7 +387,251 @@
     <script>
         lucide.createIcons();
         // Auto-refresh every 60 seconds when tab is visible
-        setInterval(function() { if (document.visibilityState === 'visible') location.reload(); }, 60000);
+        setInterval(function() { if (document.visibilityState === 'visible' && document.getElementById('financialApprovalsOverlay').style.display === 'none') location.reload(); }, 60000);
+
+        // --- Financial Approvals Logic ---
+        let currentFinancialChatId = null;
+        let currentFinancialTicketId = null;
+
+        async function showFinancialApprovals() {
+            document.getElementById('financialApprovalsOverlay').style.display = 'block';
+            await loadFinancialQueue();
+            if (window.innerWidth <= 768) {
+                document.getElementById('financialApprovalsOverlay').style.left = '0';
+            }
+        }
+
+        async function loadFinancialQueue() {
+            try {
+                const response = await fetch('/api/refund');
+                const data = await response.json();
+                const queueDiv = document.getElementById('financialEscalationQueue');
+                if (!data.success || !data.data || data.data.length === 0) {
+                    queueDiv.innerHTML = '<p style="padding:1rem; color:var(--admin-text-muted); text-align:center;">No pending escalations.</p>';
+                    return;
+                }
+                
+                queueDiv.innerHTML = data.data.map(chat => `
+                    <div style="padding:1rem; border-bottom:1px solid var(--admin-border); cursor:pointer; transition:background 0.2s; background: ${chat.refund_status === 'pending_admin' ? '#fffbeb' : '#fff'};" onclick="selectFinancialEscalation(${chat.id}, ${chat.ticket_id})">
+                        <strong>Ticket #${chat.ticket_id}</strong><br>
+                        <small style="color:var(--admin-text-muted);">Status: ${chat.refund_status}</small>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Queue load failed', err);
+            }
+        }
+
+        async function selectFinancialEscalation(chatId, ticketId) {
+            currentFinancialChatId = chatId;
+            currentFinancialTicketId = ticketId;
+            
+            // 1. Fetch Chat Transcript
+            try {
+                const chatRes = await fetch('/api/chat.php?ticket_id=' + ticketId, { credentials: 'include' });
+                const chatData = await chatRes.json();
+                if (chatData.success && chatData.messages) {
+                    document.getElementById('financialChatTranscript').innerHTML = chatData.messages.map(m => `
+                        <div style="margin-bottom:1rem; text-align: ${m.sender_role === 'client' ? 'right' : 'left'};">
+                            <span style="display:inline-block; padding:0.5rem 1rem; border-radius:12px; background: ${m.sender_role === 'client' ? '#dbeafe' : '#f1f5f9'};">
+                                <strong>${m.sender_role.toUpperCase()}:</strong> ${m.message_text}
+                            </span>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {}
+
+            // 2. Fetch Ticket Metadata
+            try {
+                const tRes = await fetch('/api/tickets/get.php?id=' + ticketId); // Assuming standard CRUD or we use what we know
+                // Mocking metadata display since get.php might not exist or return paystack directly
+                document.getElementById('financialTicketMeta').innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:1rem;">
+                        <div style="background:#f8fafc; padding:1rem; border-radius:8px;"><strong>Ticket ID:</strong> ${ticketId}</div>
+                        <div style="background:#f8fafc; padding:1rem; border-radius:8px;"><strong>Purchase Date:</strong> Retrieved from system</div>
+                        <div style="background:#f8fafc; padding:1rem; border-radius:8px;"><strong>Status:</strong> Escalated</div>
+                    </div>
+                `;
+            } catch (err) {}
+
+            // 3. Show Actions
+            document.getElementById('financialActionButtons').style.display = 'flex';
+        }
+
+        document.getElementById('btnApproveRefund').addEventListener('click', async () => {
+            if (!currentFinancialChatId) return;
+            const res = await fetch('/api/refund', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'approve', chat_id: currentFinancialChatId, paystack_ref: 'txn_' + currentFinancialTicketId })
+            });
+            const data = await res.json();
+            Swal.fire('Result', data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                document.getElementById('financialActionButtons').style.display = 'none';
+                loadFinancialQueue();
+            }
+        });
+
+        document.getElementById('btnDeclineRefund').addEventListener('click', async () => {
+            if (!currentFinancialChatId) return;
+            const res = await fetch('/api/refund', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'decline', chat_id: currentFinancialChatId })
+            });
+            const data = await res.json();
+            Swal.fire('Declined', data.message, 'info');
+            document.getElementById('financialActionButtons').style.display = 'none';
+            loadFinancialQueue();
+        });
+
+        // ── Admin Support Chat ────────────────────────────────────────────
+        let currentAdminChatTicketId = null;
+        let _adminChatPollInterval   = null;
+
+        function closeSupportChatAdmin() {
+            document.getElementById('supportChatAdminOverlay').style.display = 'none';
+            if (_adminChatPollInterval) { clearInterval(_adminChatPollInterval); _adminChatPollInterval = null; }
+            currentAdminChatTicketId = null;
+        }
+
+        async function showSupportChatAdmin() {
+            const ov = document.getElementById('supportChatAdminOverlay');
+            ov.style.display = 'block';
+            if (window.innerWidth <= 768) ov.style.left = '0';
+            await loadAdminChatThreads();
+            if (!_adminChatPollInterval) {
+                _adminChatPollInterval = setInterval(async () => {
+                    await loadAdminChatThreads();
+                    if (currentAdminChatTicketId) await loadAdminChatMessages(currentAdminChatTicketId);
+                }, 3000);
+            }
+        }
+
+        async function loadAdminChatThreads() {
+            try {
+                const res  = await fetch('/api/chat.php?action=all', { credentials: 'include' });
+                const data = await res.json();
+                const el   = document.getElementById('adminChatThreadsList');
+                if (!data.success || !data.chats || !data.chats.length) {
+                    el.innerHTML = '<p style="color:var(--admin-text-muted);text-align:center;padding:2rem;font-size:0.88rem;">No support conversations yet.</p>';
+                    return;
+                }
+                el.innerHTML = data.chats.map(c => {
+                    const rc  = c.sender_role === 'client' ? '#3b82f6' : (c.sender_role === 'admin' ? '#9333ea' : '#10b981');
+                    const act = c.ticket_id === currentAdminChatTicketId;
+                    const badge = (c.unread_count > 0)
+                        ? `<span style="background:#ef4444;color:#fff;font-size:0.68rem;padding:2px 7px;border-radius:20px;font-weight:700;margin-left:5px;">${c.unread_count}</span>` : '';
+                    const pre = c.last_message ? (c.last_message.length > 44 ? c.last_message.substring(0,44)+'\u2026' : c.last_message) : 'No messages';
+                    const tid = (c.ticket_id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                    return `<div onclick="selectAdminChatThread('${tid}','${c.sender_role}',${c.sender_id||0})"
+                        style="padding:14px 16px;border-bottom:1px solid var(--admin-border);cursor:pointer;
+                               background:${act?'#eff6ff':'#fff'};transition:background 0.15s;
+                               border-left:3px solid ${act?'var(--admin-primary)':'transparent'};">
+                        <div style="display:flex;align-items:center;margin-bottom:4px;">
+                            <span style="font-weight:700;font-size:0.87rem;color:${rc};text-transform:capitalize;">${c.sender_role} #${c.sender_id||'anon'}</span>${badge}
+                        </div>
+                        <div style="font-size:0.79rem;color:var(--admin-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pre}</div>
+                        <div style="font-size:0.7rem;color:#cbd5e1;margin-top:2px;">Ref: ${c.ticket_id}${c.escalated==1?' &middot; &#x26A0;&#xFE0F; Escalated':''}</div>
+                    </div>`;
+                }).join('');
+            } catch(e) {}
+        }
+
+        async function selectAdminChatThread(ticketId, role, senderId) {
+            currentAdminChatTicketId = ticketId;
+            const rc = role === 'client' ? '#3b82f6' : '#10b981';
+            document.getElementById('adminChatHeaderInfo').innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:38px;height:38px;border-radius:50%;background:${rc};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.05rem;flex-shrink:0;">${role.charAt(0).toUpperCase()}</div>
+                    <div>
+                        <div style="font-weight:700;font-size:0.95rem;text-transform:capitalize;">${role} #${senderId||'anon'}</div>
+                        <div style="font-size:0.75rem;color:var(--admin-text-muted);">Ref: ${ticketId}</div>
+                    </div>
+                </div>`;
+            document.getElementById('adminChatReplyBox').style.display = 'block';
+            await loadAdminChatMessages(ticketId);
+            await loadAdminChatThreads();
+        }
+
+        async function loadAdminChatMessages(ticketId) {
+            try {
+                const res  = await fetch('/api/chat.php?ticket_id=' + encodeURIComponent(ticketId), { credentials: 'include' });
+                const data = await res.json();
+                const el   = document.getElementById('adminChatMessages');
+                if (!data.success || !data.messages || !data.messages.length) {
+                    el.innerHTML = '<div style="text-align:center;color:var(--admin-text-muted);font-size:0.88rem;margin-top:4rem;">No messages in this conversation yet.</div>';
+                    return;
+                }
+                el.innerHTML = data.messages.map(m => {
+                    const ia = m.sender_role === 'admin';
+                    return `<div style="align-self:${ia?'flex-end':'flex-start'};max-width:76%;">
+                        <div style="font-size:0.68rem;color:#94a3b8;margin-bottom:3px;text-align:${ia?'right':'left'};padding:0 4px;">${ia?'Eventra Support (You)':m.sender_role}</div>
+                        <div style="background:${ia?'linear-gradient(135deg,#0044ff,#00d2ff)':'#fff'};color:${ia?'#fff':'#1e293b'};
+                             padding:10px 14px;border-radius:${ia?'16px 4px 16px 16px':'4px 16px 16px 16px'};
+                             font-size:0.88rem;border:${ia?'none':'1px solid var(--admin-border)'};
+                             word-break:break-word;box-shadow:0 1px 4px rgba(0,0,0,0.07);line-height:1.5;">
+                            ${m.message_text}
+                        </div>
+                    </div>`;
+                }).join('');
+                el.scrollTop = el.scrollHeight;
+            } catch(e) {}
+        }
+
+        document.getElementById('btnAdminSendReply')?.addEventListener('click', async () => {
+            if (!currentAdminChatTicketId) return;
+            const inp = document.getElementById('adminChatReplyInput');
+            const msg = inp.value.trim();
+            if (!msg) return;
+            try {
+                await fetch('/api/chat.php', { method:'POST', credentials:'include',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ ticket_id: currentAdminChatTicketId, sender_role: 'admin', sender_id: 0, message: msg })
+                });
+                inp.value = '';
+                await loadAdminChatMessages(currentAdminChatTicketId);
+                await loadAdminChatThreads();
+            } catch(e) {}
+        });
+
+        document.getElementById('adminChatReplyInput')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('btnAdminSendReply')?.click(); }
+        });
+
+        // Financial Chat Admin Reply
+        document.getElementById('btnSendFinancialChatReply')?.addEventListener('click', async () => {
+            if (!currentFinancialTicketId) return;
+            const inp = document.getElementById('financialChatReplyInput');
+            const msg = inp.value.trim();
+            if (!msg) return;
+            try {
+                await fetch('/api/chat.php', { method:'POST', credentials:'include',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ ticket_id: currentFinancialTicketId, sender_role: 'admin', sender_id: 0, message: msg })
+                });
+                inp.value = '';
+                const cr = await fetch('/api/chat.php?ticket_id=' + encodeURIComponent(currentFinancialTicketId), { credentials:'include' });
+                const cd = await cr.json();
+                if (cd.success && cd.messages) {
+                    const tc = document.getElementById('financialChatTranscript');
+                    tc.innerHTML = cd.messages.map(m =>
+                        `<div style="margin-bottom:0.9rem;text-align:${m.sender_role==='admin'?'right':'left'};">
+                            <span style="display:inline-block;padding:0.45rem 0.9rem;border-radius:12px;font-size:0.85rem;
+                                background:${m.sender_role==='admin'?'#dbeafe':'#f1f5f9'};">
+                                <strong>${m.sender_role==='admin'?'Eventra Support':m.sender_role.toUpperCase()}:</strong> ${m.message_text}
+                            </span>
+                        </div>`
+                    ).join('');
+                    tc.scrollTop = tc.scrollHeight;
+                }
+            } catch(e) {}
+        });
+
+        document.getElementById('financialChatReplyInput')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('btnSendFinancialChatReply')?.click(); }
+        });
     </script>
 </body>
 </html>

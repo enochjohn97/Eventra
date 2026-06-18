@@ -45,7 +45,8 @@ async function onScanSuccess(decodedText, decodedResult) {
     document.getElementById('scannerOverlay').style.borderColor = '#722f37';
 
     try {
-        const response = await fetch('/api/tickets/scan-ticket.php', {
+        const baseUrl = window.location.protocol + '//' + window.location.host;
+        const response = await fetch(baseUrl + '/api/tickets/scan-ticket.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ qr_data: decodedText })

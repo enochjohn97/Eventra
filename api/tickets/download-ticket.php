@@ -138,6 +138,9 @@ try {
     header('Content-Length: ' . filesize($pdfPath));
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');
+    
+    ob_clean();
+    flush();
     readfile($pdfPath);
     exit;
 } catch (PDOException $e) {

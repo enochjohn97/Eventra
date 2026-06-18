@@ -813,6 +813,98 @@ window.initPreviews = function() {
                                             </div>
                                         </div>
 
+                                        <!-- Profile Info vs KYC -->
+                                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+                                            <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                                <i data-lucide="user-check" style="width: 18px; color: #6366f1;"></i> Profile Information
+                                                <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 500; margin-left: auto;">Cross-check with KYC documents below</span>
+                                            </div>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
+                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Full Name</div>
+                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.name) || 'N/A'}</div>
+                                                </div>
+                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Date of Birth</div>
+                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.dob) || 'N/A'}</div>
+                                                </div>
+                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Gender</div>
+                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b; text-transform: capitalize;">${escapeHTML(client.gender) || 'N/A'}</div>
+                                                </div>
+                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Phone</div>
+                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.phone) || 'N/A'}</div>
+                                                </div>
+                                                <div style="background: ${client.nin ? '#f0fdf4' : '#fff7ed'}; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid ${client.nin ? '#bbf7d0' : '#fed7aa'};">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">NIN Number</div>
+                                                    <div style="font-weight: 700; font-size: 0.82rem; font-family: monospace; letter-spacing: 1px; color: ${client.nin ? '#15803d' : '#c2410c'}; display: flex; align-items: center; gap: 6px;">
+                                                        ${escapeHTML(client.nin) || '⚠ Not Provided'}
+                                                        ${Number(client.nin_verified) === 1 ? '<span style="font-size:0.6rem;background:#10b981;color:white;padding:1px 5px;border-radius:10px;font-weight:800;">✓ Verified</span>' : ''}
+                                                    </div>
+                                                </div>
+                                                <div style="background: ${client.bvn ? '#f0fdf4' : '#fff7ed'}; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid ${client.bvn ? '#bbf7d0' : '#fed7aa'};">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">BVN Number</div>
+                                                    <div style="font-weight: 700; font-size: 0.82rem; font-family: monospace; letter-spacing: 1px; color: ${client.bvn ? '#15803d' : '#c2410c'}; display: flex; align-items: center; gap: 6px;">
+                                                        ${escapeHTML(client.bvn) || '⚠ Not Provided'}
+                                                        ${Number(client.bvn_verified) === 1 ? '<span style="font-size:0.6rem;background:#10b981;color:white;padding:1px 5px;border-radius:10px;font-weight:800;">✓ Verified</span>' : ''}
+                                                    </div>
+                                                </div>
+                                                <div style="grid-column: span 2; background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
+                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Address</div>
+                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${[escapeHTML(client.address), escapeHTML(client.city), escapeHTML(client.state), escapeHTML(client.country)].filter(Boolean).join(', ') || 'N/A'}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- KYC Documents Gallery -->
+                                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+                                            <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                                <i data-lucide="file-check-2" style="width: 18px; color: #10b981;"></i> KYC Documents
+                                                <span style="font-size: 0.68rem; background: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file, client.kyc_other_file].filter(Boolean).length > 0 ? '#dcfce7' : '#fee2e2'}; color: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file, client.kyc_other_file].filter(Boolean).length > 0 ? '#15803d' : '#b91c1c'}; padding: 2px 8px; border-radius: 20px; font-weight: 700; margin-left: 4px;">${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file, client.kyc_other_file].filter(Boolean).length}/6 uploaded</span>
+                                                <span style="font-size: 0.65rem; color: #94a3b8; margin-left: auto;">Click thumbnail to view</span>
+                                            </div>
+                                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem;">
+                                                ${[
+                                                    { key: 'kyc_nin_file', label: 'NIN Doc', icon: '🪪' },
+                                                    { key: 'kyc_bvn_file', label: 'BVN Doc', icon: '🏦' },
+                                                    { key: 'kyc_voter_card_file', label: "Voter's Card", icon: '🗳️' },
+                                                    { key: 'kyc_driver_license_file', label: "Driver's License", icon: '🚗' },
+                                                    { key: 'kyc_cac_file', label: 'CAC Certificate', icon: '🏢' }
+                                                ].map(doc => {
+                                                    const fp = client[doc.key];
+                                                    const url = fp ? '/' + fp : null;
+                                                    const isPdf = url && url.toLowerCase().endsWith('.pdf');
+                                                    if (url) {
+                                                        return `<div onclick="openKycDocument('${url}', ${!isPdf})" title="Click to view ${doc.label}" style="border: 1px solid #bbf7d0; border-radius: 10px; overflow: hidden; background: #f0fdf4; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,0.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+                                                            <div style="height: 76px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: ${isPdf ? '#fefce8' : '#eff6ff'};">
+                                                                ${isPdf
+                                                                    ? `<div style="text-align:center;"><span style="font-size:2rem;">📄</span><div style="font-size:0.55rem;font-weight:800;color:#b45309;margin-top:2px;">PDF</div></div>`
+                                                                    : `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem;">🖼️</div>`
+                                                                }
+                                                                <div style="position:absolute;top:4px;right:4px;background:#10b981;color:white;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,0.2);">✓</div>
+                                                            </div>
+                                                            <div style="padding: 5px 8px; border-top: 1px solid #bbf7d0;">
+                                                                <div style="font-size:0.66rem;font-weight:700;color:#15803d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.icon} ${doc.label}</div>
+                                                                <div style="font-size:0.58rem;color:#64748b;margin-top:1px;">${isPdf ? 'PDF Document' : 'Image'} · tap to view</div>
+                                                            </div>
+                                                        </div>`;
+                                                    } else {
+                                                        return `<div style="border: 1px dashed #e2e8f0; border-radius: 10px; overflow: hidden; background: #f8fafc;" title="${doc.label} not uploaded">
+                                                            <div style="height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f1f5f9; gap: 4px;">
+                                                                <span style="font-size:1.6rem;opacity:0.22;">${doc.icon}</span>
+                                                                <span style="font-size:0.55rem;color:#cbd5e1;font-weight:700;text-transform:uppercase;">Missing</span>
+                                                            </div>
+                                                            <div style="padding: 5px 8px; border-top: 1px solid #f1f5f9;">
+                                                                <div style="font-size:0.66rem;font-weight:700;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.label}</div>
+                                                                <div style="font-size:0.58rem;color:#cbd5e1;margin-top:1px;">Not uploaded</div>
+                                                            </div>
+                                                        </div>`;
+                                                    }
+                                                }).join('')}
+                                            </div>
+                                        </div>
+
                                         <!-- Verification Actions -->
                                         <div style="background: #f8fafc; border-radius: 16px; padding: 1.25rem;">
                                             <div style="font-weight: 700; color: #333; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
@@ -1251,6 +1343,57 @@ window.toggleVerification = async function(clientId, type, status) {
     } catch (e) {
         Swal.fire('Error', 'An unexpected error occurred.', 'error');
     }
+};
+
+/**
+ * Open a KYC document — images open in a lightbox, PDFs open in a new tab.
+ */
+window.openKycDocument = function(url, isImage) {
+    if (!url) return;
+    if (!isImage) {
+        window.open(url, '_blank');
+        return;
+    }
+    // Remove any existing lightbox
+    const existing = document.getElementById('kycLightbox');
+    if (existing) existing.remove();
+
+    const lb = document.createElement('div');
+    lb.id = 'kycLightbox';
+    lb.style.cssText = [
+        'position:fixed',
+        'inset:0',
+        'background:rgba(0,0,0,0.93)',
+        'z-index:999999',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'padding:1.5rem',
+        'animation:kycFadeIn 0.2s ease'
+    ].join(';');
+
+    lb.innerHTML = `
+        <style>
+            @keyframes kycFadeIn { from { opacity:0; } to { opacity:1; } }
+            @keyframes kycSlideUp { from { transform:scale(0.92) translateY(20px); opacity:0; } to { transform:scale(1) translateY(0); opacity:1; } }
+            #kycLightboxImg { animation: kycSlideUp 0.25s ease; }
+        </style>
+        <div style="position:relative; max-width:92vw; max-height:92vh; display:flex; flex-direction:column; align-items:center; gap:1rem;">
+            <img id="kycLightboxImg" src="${url}" style="max-width:90vw; max-height:80vh; object-fit:contain; border-radius:10px; box-shadow:0 30px 70px rgba(0,0,0,0.6); border:2px solid rgba(255,255,255,0.1);" alt="KYC Document">
+            <div style="display:flex; gap:1rem; align-items:center;">
+                <a href="${url}" target="_blank" style="color:white; font-size:0.82rem; font-weight:600; text-decoration:none; background:rgba(255,255,255,0.15); padding:6px 16px; border-radius:20px; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; gap:6px; transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.25)'" onmouseleave="this.style.background='rgba(255,255,255,0.15)'">↗ Open full size</a>
+                <button onclick="document.getElementById('kycLightbox').remove()" style="color:white; font-size:0.82rem; font-weight:600; background:rgba(239,68,68,0.8); border:none; padding:6px 16px; border-radius:20px; cursor:pointer; backdrop-filter:blur(6px); transition:background 0.2s;" onmouseenter="this.style.background='rgba(239,68,68,1)'" onmouseleave="this.style.background='rgba(239,68,68,0.8)'">✕ Close</button>
+            </div>
+        </div>
+    `;
+
+    // Close on backdrop click
+    lb.addEventListener('click', (e) => { if (e.target === lb) lb.remove(); });
+    // Close on Escape
+    const escHandler = (e) => { if (e.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
+
+    document.body.appendChild(lb);
 };
 
 function initSettings() {

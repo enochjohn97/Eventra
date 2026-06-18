@@ -849,3 +849,209 @@ window.selectMinute = selectMinute;
 window.selectAmPm = selectAmPm;
 window.updateTimeValue = updateTimeValue;
 window.setTimePickerValue = setTimePickerValue;
+
+// Add generic floating Support Chat Widget
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('floatingSupportChat')) return;
+
+    const chatHTML = `
+    <div id="floatingSupportChat" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 420px; max-width: 95vw; height: 570px; max-height: 82vh; background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); z-index: 9999; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; font-family: sans-serif;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #0044ff 0%, #00d2ff 100%); color: white; padding: 18px 20px; padding-bottom: 30px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="https://ui-avatars.com/api/?name=Eventra+Support&background=0044ff&color=fff" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35);">
+                    <div>
+                        <div style="font-size: 0.75rem; opacity: 0.85; letter-spacing: 0.5px;">Chat with</div>
+                        <div style="font-size: 1.05rem; font-weight: 700;">Eventra Support</div>
+                    </div>
+                </div>
+                <button onclick="window.toggleSupportChat()" title="Close" style="background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.35); color: white; cursor: pointer; font-size: 1rem; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.28)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">&#x2715;</button>
+            </div>
+            <div style="margin-top: 12px; font-size: 0.85rem; opacity: 0.9;">
+                We typically reply in few minutes.
+            </div>
+            <!-- Curve effect -->
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 20px; background: #fff; border-radius: 20px 20px 0 0;"></div>
+        </div>
+        
+        <!-- Messages Area -->
+        <div id="globalChatMessageList" style="flex: 1; overflow-y: auto; padding: 0 20px 20px; background: #fff; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Initial static messages -->
+            <div style="align-self: flex-start; max-width: 85%;">
+                <div style="background: #f1f5f9; color: #334155; padding: 12px 16px; border-radius: 16px 16px 16px 4px; font-size: 0.9rem;">
+                    Thank you for reaching out to our customer support 👋
+                </div>
+            </div>
+            <div style="align-self: flex-start; max-width: 85%;">
+                <div style="background: #f1f5f9; color: #334155; padding: 12px 16px; border-radius: 16px 16px 16px 4px; font-size: 0.9rem;">
+                    Your feedback is extremely valuable. Please, rate your conversation with our agent.
+                </div>
+            </div>
+            <!-- Ratings Pill -->
+            <div style="align-self: flex-start; margin-top: 4px; border: 1px solid #e2e8f0; border-radius: 24px; padding: 8px 16px; display: flex; gap: 12px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                <span style="font-size: 1.2rem; cursor: pointer;">😍</span>
+                <span style="font-size: 1.2rem; cursor: pointer;">🙂</span>
+                <span style="font-size: 1.2rem; cursor: pointer;">😐</span>
+                <span style="font-size: 1.2rem; cursor: pointer;">😕</span>
+                <span style="font-size: 1.2rem; cursor: pointer;">😡</span>
+            </div>
+            <!-- Dynamic Messages will be appended here -->
+        </div>
+
+        <!-- Input Area -->
+        <div style="padding: 15px 20px; background: white; border-top: 1px solid #f1f5f9;">
+            <div id="chatRefundStatusContainer" style="padding: 10px; margin-bottom: 10px; text-align: center; display: none; font-size: 0.85rem; border-radius: 8px;"></div>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem;">📎</button>
+                <button style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem;">💡</button>
+                <button style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem;">😊</button>
+                
+                <input type="text" id="globalChatInput" placeholder="Enter your message..." style="flex: 1; padding: 8px; border: none; outline: none; font-size: 0.9rem; color: #334155;">
+                
+                <button id="btnSendGlobalChat" style="width: 36px; height: 36px; border-radius: 50%; background: #0044ff; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,102,255,0.3); flex-shrink: 0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+            <div style="text-align: center; margin-top: 12px; font-size: 0.7rem; color: #94a3b8;">
+                Powered by <span style="font-weight: 700; color: #0044ff;">Eventra</span>
+            </div>
+            
+            <div id="chatTicketActions" style="display: flex; justify-content: space-between; display: none; margin-top: 10px;">
+                <button id="btnEscalateAdmin" style="background:none; border:none; color:#f59e0b; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Escalate</button>
+                <button id="btnRequestRefund" style="background:none; border:none; color:#ef4444; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v6h6"></path><path d="M21 12A9 9 0 0 0 6 5.3L3 8"></path><path d="M21 22v-6h-6"></path><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"></path></svg> Refund</button>
+            </div>
+        </div>
+    </div>
+    <!-- Floating toggle button -->
+    <button id="btnToggleFloatingChat" onclick="window.toggleSupportChat()" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #0044ff 0%, #00d2ff 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(0, 68, 255, 0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 9998; transition: transform 0.2s;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    </button>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', chatHTML);
+
+    // Chat functionality
+    let chatInterval = null;
+    let currentTicket = 'general';
+    let currentChatContextId = null;
+
+    window.toggleSupportChat = function(ticketId = 'general') {
+        const chat = document.getElementById('floatingSupportChat');
+        currentTicket = ticketId;
+        
+        // Show/hide ticket actions based on if it's a specific ticket
+        const actions = document.getElementById('chatTicketActions');
+        if (actions) {
+            actions.style.display = ticketId !== 'general' ? 'flex' : 'none';
+        }
+
+        if (chat.style.display === 'none' || chat.style.display === '') {
+            chat.style.display = 'flex';
+            document.getElementById('btnToggleFloatingChat').style.transform = 'scale(0)';
+            loadGlobalMessages();
+            if(chatInterval) clearInterval(chatInterval);
+            chatInterval = setInterval(loadGlobalMessages, 3000);
+        } else {
+            chat.style.display = 'none';
+            document.getElementById('btnToggleFloatingChat').style.transform = 'scale(1)';
+            if(chatInterval) clearInterval(chatInterval);
+        }
+    };
+
+    // Override the old openSupportChat if it exists so it uses the new widget
+    window.openSupportChat = window.toggleSupportChat;
+
+    async function loadGlobalMessages() {
+        try {
+            const res = await fetch('/api/chat.php?ticket_id=' + encodeURIComponent(currentTicket), { credentials: 'include' });
+            const data = await res.json();
+            if (data.success) {
+                if (data.chat) currentChatContextId = data.chat.id;
+                if (data.messages && data.messages.length > 0) {
+                    const list = document.getElementById('globalChatMessageList');
+                    list.innerHTML = data.messages.map(m => {
+                        const isOwn = m.sender_role !== 'admin';
+                        const label = isOwn ? 'You' : 'Eventra Support';
+                        const txt   = window.escapeHTML ? window.escapeHTML(m.message_text) : m.message_text;
+                        return `<div style="align-self:${isOwn ? 'flex-end' : 'flex-start'}; max-width:82%;">
+                            <div style="font-size:0.68rem; color:#94a3b8; margin-bottom:3px; text-align:${isOwn ? 'right' : 'left'}; padding:0 4px;">${label}</div>
+                            <div style="background:${isOwn ? 'linear-gradient(135deg,#1e3a8a,#2563eb)' : '#f1f5f9'}; color:${isOwn ? '#fff' : '#1e293b'}; padding:10px 14px; border-radius:${isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px'}; font-size:0.88rem; word-break:break-word; line-height:1.5;">${txt}</div>
+                        </div>`;
+                    }).join('');
+                    list.scrollTop = list.scrollHeight;
+                }
+                
+                // Refund Status Banner
+                if (data.chat && data.chat.refund_status) {
+                    const statusContainer = document.getElementById('chatRefundStatusContainer');
+                    statusContainer.style.display = 'block';
+                    
+                    if (data.chat.refund_status === 'pending_admin') {
+                        statusContainer.innerHTML = `<div style="background:#fef08a; color:#854d0e; padding:10px; border-radius:8px; font-weight:600;">Refund request submitted to Admin.</div>`;
+                    } else if (data.chat.refund_status === 'approved') {
+                        statusContainer.innerHTML = `<div style="background:#dcfce3; color:#166534; padding:10px; border-radius:8px; font-weight:600;">Refund processed successfully.</div>`;
+                    } else if (data.chat.refund_status === 'declined') {
+                        statusContainer.innerHTML = `<div style="background:#fee2e2; color:#991b1b; padding:10px; border-radius:8px; font-weight:600;">Refund request declined.</div>`;
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
+    document.getElementById('btnSendGlobalChat')?.addEventListener('click', async () => {
+        const input = document.getElementById('globalChatInput');
+        const msg = input.value.trim();
+        if (!msg) return;
+        
+        let user;
+        if (window.storage) user = window.storage.getUser();
+        
+        try {
+            await fetch('/api/chat.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticket_id: currentTicket,
+                    sender_role: user?.role || 'user',
+                    sender_id: user?.id || 0,
+                    message: msg,
+                    event_owner_id: user?.id || 0
+                })
+            });
+            input.value = '';
+            loadGlobalMessages();
+        } catch (e) {}
+    });
+
+    // Enter key sends message
+    document.getElementById('globalChatInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('btnSendGlobalChat')?.click();
+        }
+    });
+
+    document.getElementById('btnEscalateAdmin')?.addEventListener('click', async () => {
+        if (!currentTicket || currentTicket === 'general') return;
+        await fetch('/api/chat.php', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'escalate', ticket_id: currentTicket })
+        });
+        if (window.Swal) Swal.fire('Escalated', 'Admin has been notified.', 'success');
+    });
+
+    document.getElementById('btnRequestRefund')?.addEventListener('click', async () => {
+        if (!currentChatContextId) return;
+        await fetch('/api/refund.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'request', chat_id: currentChatContextId })
+        });
+        loadGlobalMessages();
+    });
+});

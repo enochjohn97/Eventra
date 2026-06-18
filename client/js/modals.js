@@ -143,96 +143,37 @@ function showProfileEditModal() {
 
                         <!-- STEP 3: KYC Verification Documents -->
                         <div id="wizardStep3" class="wizard-step" style="display: none;">
-                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                                <!-- NIN File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>NIN Document</span>
-                                        ${user.kyc_nin_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_nin_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_nin_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_nin_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
-
-                                <!-- BVN File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>BVN Document</span>
-                                        ${user.kyc_bvn_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_bvn_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_bvn_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_bvn_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
-
-                                <!-- Voter Card File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>Voter's Card</span>
-                                        ${user.kyc_voter_card_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_voter_card_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_voter_card_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_voter_card_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
-
-                                <!-- Driver License File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>Driver's License</span>
-                                        ${user.kyc_driver_license_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_driver_license_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_driver_license_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_driver_license_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
-
-                                <!-- CAC File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>CAC Certificate</span>
-                                        ${user.kyc_cac_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_cac_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_cac_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_cac_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
-
-                                <!-- Other File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>Other Document</span>
-                                        ${user.kyc_other_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_other_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_other_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_other_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
+                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                                ${[
+                                    { name: 'kyc_nin_file', label: 'NIN Document' },
+                                    { name: 'kyc_bvn_file', label: 'BVN Document' },
+                                    { name: 'kyc_voter_card_file', label: "Voter's Card" },
+                                    { name: 'kyc_driver_license_file', label: "Driver's License" },
+                                    { name: 'kyc_cac_file', label: 'CAC Certificate' }
+                                ].map(field => {
+                                    const fileUrl = user[field.name];
+                                    const hasFile = !!fileUrl;
+                                    const isImage = fileUrl && fileUrl.match(/\.(jpeg|jpg|gif|png)$/i);
+                                    const displayImage = isImage ? `/${fileUrl}` : '';
+                                    const filename = fileUrl ? fileUrl.split('/').pop() : 'Not selected file';
+                                    return `
+                                    <div class="kyc-upload-card" style="border: 2px dashed #93c5fd; border-radius: 8px; background: #eff6ff; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 180px; text-align: center; cursor: pointer; transition: border-color 0.3s;" onclick="document.getElementById('${field.name}_input').click()">
+                                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative;">
+                                            <div id="${field.name}_preview_container" style="display: ${hasFile ? 'flex' : 'none'}; width: 100%; height: 100%; align-items: center; justify-content: center;">
+                                                ${isImage ? `<img id="${field.name}_preview_img" src="${displayImage}" style="max-width: 100%; max-height: 120px; border-radius: 4px; object-fit: contain;">` : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`}
+                                            </div>
+                                            <div id="${field.name}_upload_prompt" style="display: ${hasFile ? 'none' : 'flex'}; flex-direction: column; align-items: center; gap: 8px;">
+                                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+                                                <span style="font-size: 0.9rem; color: #1e3a8a; font-weight: 600;">Browse file to upload</span>
+                                            </div>
+                                            <input type="file" id="${field.name}_input" name="${field.name}" accept=".pdf,image/*" style="display: none;" onchange="window.handleKycPreview(this, '${field.name}')">
+                                        </div>
+                                        <div id="${field.name}_filename_banner" style="background: #bfdbfe; color: #1e3a8a; padding: 8px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #93c5fd;">
+                                            ${filename}
+                                        </div>
+                                        <div style="position: absolute; top: 0; left: 0; background: rgba(30, 58, 138, 0.8); color: white; padding: 4px 10px; font-size: 0.75rem; border-bottom-right-radius: 8px; font-weight: 600;">${field.label}</div>
+                                    </div>`;
+                                }).join('')}
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>
@@ -298,6 +239,36 @@ function showProfileEditModal() {
             tabEl.style.borderBottomColor = '#722f37';
         }
     };
+
+    // Add window.handleKycPreview function
+    if (!window.handleKycPreview) {
+        window.handleKycPreview = function(input, fieldName) {
+            const file = input.files[0];
+            const previewContainer = document.getElementById(`${fieldName}_preview_container`);
+            const promptContainer = document.getElementById(`${fieldName}_upload_prompt`);
+            const filenameBanner = document.getElementById(`${fieldName}_filename_banner`);
+            
+            if (file) {
+                filenameBanner.textContent = file.name;
+                promptContainer.style.display = 'none';
+                previewContainer.style.display = 'flex';
+                
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewContainer.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 120px; border-radius: 4px; object-fit: contain;">`;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    previewContainer.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+                }
+            } else {
+                filenameBanner.textContent = 'Not selected file';
+                promptContainer.style.display = 'flex';
+                previewContainer.style.display = 'none';
+            }
+        };
+    }
 
     // Remove existing modal if any
     const existing = document.getElementById('profileEditModal');
@@ -1213,20 +1184,7 @@ function showEditEventModal(event) {
                                     </div>` : ''}
                                 </div>
 
-                                <!-- Other File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>Other Document</span>
-                                        ${user.kyc_other_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_other_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${user.kyc_other_file ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_other_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>` : ''}
-                                </div>
+
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>

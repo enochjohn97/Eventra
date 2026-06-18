@@ -207,6 +207,114 @@
         </div>
     </div>
 
+    <!-- Smile ID KYC Verification Modal -->
+    <div class="modal-backdrop" id="smileKycModal" style="display:none; align-items:center; justify-content:center; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:9999;">
+        <div class="modal-content" style="background:#fff; padding:2rem; border-radius:16px; width:450px; max-width:90%;">
+            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:1rem;">Identity Verification</h2>
+            <p style="color:var(--client-text-muted); margin-bottom:1.5rem;">Upload your corporate document or ID vector for instant verification via Smile ID.</p>
+            
+            <div id="kycUploadContainer" style="border:2px dashed var(--client-border); border-radius:12px; padding:2rem; text-align:center; cursor:pointer; position:relative; background:#f8fafc; transition:border-color 0.3s;">
+                <input type="file" id="kycFileInput" accept="image/*,application/pdf" style="opacity:0; position:absolute; inset:0; cursor:pointer; width:100%; height:100%;">
+                <i data-lucide="upload-cloud" style="width:40px; height:40px; color:var(--client-primary); margin-bottom:10px;"></i>
+                <div style="font-weight:600; color:var(--client-text-main);">Click to upload document</div>
+                <div style="font-size:0.8rem; color:var(--client-text-muted); margin-top:5px;">JPG, PNG or PDF (Max 5MB)</div>
+            </div>
+            
+            <!-- Dynamic Thumbnail Viewport -->
+            <div id="kycPreviewContainer" style="display:none; margin-top:1.5rem; text-align:center;">
+                <img id="kycThumbnailViewport" style="max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--client-border); display:block; margin:0 auto;" />
+                <div id="kycFilenameText" style="margin-top:10px; font-weight:600; color:var(--client-text-main); word-break:break-all;"></div>
+                <div id="kycFileTypeSuffix" style="font-size:0.8rem; color:var(--client-text-muted);"></div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem;">
+                <button onclick="document.getElementById('smileKycModal').style.display='none';" class="btn" style="background:#f1f5f9; color:#475569;">Cancel</button>
+                <button id="btnSubmitKyc" class="btn btn-primary" disabled style="opacity:0.5; cursor:not-allowed;">Verify with Smile ID</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Eventra Notification Asset Scripts -->
+    <script>
+        // --- Smile ID Implementation ---
+        const kycFileInput = document.getElementById('kycFileInput');
+        let currentKycPayload = null;
+
+        if (kycFileInput) {
+            kycFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const dataUrl = event.target.result;
+                    currentKycPayload = dataUrl;
+                    
+                    document.getElementById('kycPreviewContainer').style.display = 'block';
+                    document.getElementById('kycUploadContainer').style.display = 'none';
+                    
+                    const viewport = document.getElementById('kycThumbnailViewport');
+                    if (file.type.startsWith('image/')) {
+                        viewport.src = dataUrl;
+                        viewport.style.display = 'block';
+                    } else {
+                        viewport.style.display = 'none'; // hide image if PDF
+                    }
+                    
+                    document.getElementById('kycFilenameText').textContent = file.name;
+                    document.getElementById('kycFileTypeSuffix').textContent = `Type: ${file.type} | Size: ${(file.size/1024/1024).toFixed(2)} MB`;
+                    
+                    const btnSubmit = document.getElementById('btnSubmitKyc');
+                    btnSubmit.disabled = false;
+                    btnSubmit.style.opacity = '1';
+                    btnSubmit.style.cursor = 'pointer';
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        document.getElementById('btnSubmitKyc')?.addEventListener('click', async () => {
+            const user = storage.getUser();
+            if (!user) return;
+            
+            const btn = document.getElementById('btnSubmitKyc');
+            btn.textContent = 'Verifying...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/verify_kyc.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        document_name: document.getElementById('kycFilenameText').textContent,
+                        image: currentKycPayload
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    Swal.fire('Verified', data.message, 'success').then(() => {
+                        document.getElementById('smileKycModal').style.display = 'none';
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Verification Failed', data.message, 'error');
+                    btn.textContent = 'Verify with Smile ID';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Network request failed', 'error');
+                btn.textContent = 'Verify with Smile ID';
+                btn.disabled = false;
+            }
+        });
+
+
+    </script>
+
     <script src="../js/state-manager.js"></script>
     <script src="../js/drawer-system.js"></script>
     <script src="../js/export-manager.js"></script>

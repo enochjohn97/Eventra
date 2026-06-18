@@ -21,67 +21,61 @@ if (!$client_auth_id) {
     echo json_encode(['success' => false, 'message' => 'Client profile not found']);
     exit;
 }
-
-// ── All fields optional — no required_fields loop ─────────────────────────
-$name           = trim($_POST['name']           ?? '');
-$business_name  = trim($_POST['business_name']  ?? '');
-$phone          = trim($_POST['phone']          ?? '');
-$address        = trim($_POST['address']        ?? '');
-$city           = trim($_POST['city']           ?? '');
-$state          = trim($_POST['state']          ?? '');
-$country        = trim($_POST['country']        ?? '');
-$job_title      = trim($_POST['job_title']      ?? '');
-$company        = trim($_POST['company']        ?? '');
-$dob            = trim($_POST['dob']            ?? '');
-$gender         = trim($_POST['gender']         ?? '');
-$nin            = trim($_POST['nin']            ?? '');
-$bvn            = trim($_POST['bvn']            ?? '');
-$account_number = trim($_POST['account_number'] ?? '');
-$bank_code      = trim($_POST['bank_code']      ?? '');
-$bank_name      = trim($_POST['bank_name']      ?? '');
-$account_name   = trim($_POST['account_name']   ?? '');
-
-// ── Conditional strict-length validations (only when non-empty) ───────────
-if ($nin !== '' && (strlen($nin) !== 11 || !ctype_digit($nin))) {
-    echo json_encode(['success' => false, 'message' => 'NIN must be exactly 11 digits']);
-    exit;
-}
-if ($bvn !== '' && (strlen($bvn) !== 11 || !ctype_digit($bvn))) {
-    echo json_encode(['success' => false, 'message' => 'BVN must be exactly 11 digits']);
-    exit;
-}
-if ($account_number !== '' && (strlen($account_number) !== 10 || !ctype_digit($account_number))) {
-    echo json_encode(['success' => false, 'message' => 'Account Number must be exactly 10 digits']);
-    exit;
-}
-
-try {
-    $pdo->beginTransaction();
-
-    // Fetch existing data
+    // Fetch ALL existing data to handle partial updates properly
     $stmt_existing = $pdo->prepare("
-        SELECT c.business_name, c.custom_id, a.email, c.nin, c.bvn, c.nin_verified, c.bvn_verified,
-               c.subaccount_code, c.account_number, c.bank_code, c.verification_status, c.account_name
+        SELECT c.*, a.email
         FROM clients c
         JOIN auth_accounts a ON c.client_auth_id = a.id
         WHERE c.client_auth_id = ?
     ");
     $stmt_existing->execute([$client_auth_id]);
-    $existing = $stmt_existing->fetch();
+    $existing = $stmt_existing->fetch() ?: [];
 
-    if (empty($business_name) && $existing) {
-        $business_name = $existing['business_name'];
+    // ── Fields fallback to existing if empty (fixes data wipe on partial update) ──
+    $name           = isset($_POST['name']) && trim($_POST['name']) !== '' ? trim($_POST['name']) : ($existing['name'] ?? '');
+    $business_name  = isset($_POST['business_name']) && trim($_POST['business_name']) !== '' ? trim($_POST['business_name']) : ($existing['business_name'] ?? '');
+    $phone          = isset($_POST['phone']) && trim($_POST['phone']) !== '' ? trim($_POST['phone']) : ($existing['phone'] ?? '');
+    $address        = isset($_POST['address']) && trim($_POST['address']) !== '' ? trim($_POST['address']) : ($existing['address'] ?? '');
+    $city           = isset($_POST['city']) && trim($_POST['city']) !== '' ? trim($_POST['city']) : ($existing['city'] ?? '');
+    $state          = isset($_POST['state']) && trim($_POST['state']) !== '' ? trim($_POST['state']) : ($existing['state'] ?? '');
+    $country        = isset($_POST['country']) && trim($_POST['country']) !== '' ? trim($_POST['country']) : ($existing['country'] ?? '');
+    $job_title      = isset($_POST['job_title']) && trim($_POST['job_title']) !== '' ? trim($_POST['job_title']) : ($existing['job_title'] ?? '');
+    $company        = isset($_POST['company']) && trim($_POST['company']) !== '' ? trim($_POST['company']) : ($existing['company'] ?? '');
+    $dob            = isset($_POST['dob']) && trim($_POST['dob']) !== '' ? trim($_POST['dob']) : ($existing['dob'] ?? '');
+    $gender         = isset($_POST['gender']) && trim($_POST['gender']) !== '' ? trim($_POST['gender']) : ($existing['gender'] ?? '');
+    $nin            = isset($_POST['nin']) && trim($_POST['nin']) !== '' ? trim($_POST['nin']) : ($existing['nin'] ?? '');
+    $bvn            = isset($_POST['bvn']) && trim($_POST['bvn']) !== '' ? trim($_POST['bvn']) : ($existing['bvn'] ?? '');
+    $account_number = isset($_POST['account_number']) && trim($_POST['account_number']) !== '' ? trim($_POST['account_number']) : ($existing['account_number'] ?? '');
+    $bank_code      = isset($_POST['bank_code']) && trim($_POST['bank_code']) !== '' ? trim($_POST['bank_code']) : ($existing['bank_code'] ?? '');
+    $bank_name      = isset($_POST['bank_name']) && trim($_POST['bank_name']) !== '' ? trim($_POST['bank_name']) : ($existing['bank_name'] ?? '');
+    $account_name   = isset($_POST['account_name']) && trim($_POST['account_name']) !== '' ? trim($_POST['account_name']) : ($existing['account_name'] ?? '');
+
+    // ── Conditional strict-length validations (only when non-empty) ───────────
+    if ($nin !== '' && (strlen($nin) !== 11 || !ctype_digit($nin))) {
+        echo json_encode(['success' => false, 'message' => 'NIN must be exactly 11 digits']);
+        exit;
+    }
+    if ($bvn !== '' && (strlen($bvn) !== 11 || !ctype_digit($bvn))) {
+        echo json_encode(['success' => false, 'message' => 'BVN must be exactly 11 digits']);
+        exit;
+    }
+    if ($account_number !== '' && (strlen($account_number) !== 10 || !ctype_digit($account_number))) {
+        echo json_encode(['success' => false, 'message' => 'Account Number must be exactly 10 digits']);
+        exit;
     }
 
-    if (!empty($business_name) && $existing && $business_name !== $existing['business_name']) {
-        $stmt = $pdo->prepare("SELECT id FROM clients WHERE business_name = ? AND client_auth_id != ? AND deleted_at IS NULL");
-        $stmt->execute([$business_name, $client_auth_id]);
-        if ($stmt->fetch()) {
-            $pdo->rollBack();
-            echo json_encode(['success' => false, 'message' => 'Business name already in use']);
-            exit;
+    try {
+        $pdo->beginTransaction();
+
+        if (!empty($business_name) && isset($existing['business_name']) && $business_name !== $existing['business_name']) {
+            $stmt = $pdo->prepare("SELECT id FROM clients WHERE business_name = ? AND client_auth_id != ? AND deleted_at IS NULL");
+            $stmt->execute([$business_name, $client_auth_id]);
+            if ($stmt->fetch()) {
+                $pdo->rollBack();
+                echo json_encode(['success' => false, 'message' => 'Business name already in use']);
+                exit;
+            }
         }
-    }
 
     // ── Profile Picture Upload ───────────────────────────────────────────
     $profile_pic = null;

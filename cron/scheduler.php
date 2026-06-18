@@ -40,6 +40,56 @@ try {
         echo " - Archived $archivedCount past events.\n";
     }
 
+    // 3.5 Dual-Layer Event Scheduling & Auto-Publish Engine
+    // a. 24-Hour Reminder for Scheduled Events
+    $reminderStmt = $pdo->prepare("
+        SELECT id, client_id, event_name 
+        FROM events 
+        WHERE status = 'scheduled' 
+          AND CONCAT(event_date, ' ', IFNULL(event_time, '00:00:00')) < DATE_ADD(NOW(), INTERVAL 24 HOUR)
+          AND CONCAT(event_date, ' ', IFNULL(event_time, '00:00:00')) > NOW()
+          AND scheduling_reminder_sent = 0
+    ");
+    $reminderStmt->execute();
+    $scheduledEvents = $reminderStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($scheduledEvents as $ev) {
+        // Find client auth_id to send notification
+        $clientStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ?");
+        $clientStmt->execute([$ev['client_id']]);
+        $client = $clientStmt->fetch(PDO::FETCH_ASSOC);
+        if ($client) {
+            $notifStmt = $pdo->prepare("
+                INSERT INTO notifications (recipient_auth_id, message, type)
+                VALUES (?, ?, 'warning')
+            ");
+            $notifStmt->execute([
+                $client['client_auth_id'], 
+                "Reminder: Your scheduled event '{$ev['event_name']}' starts in less than 24 hours. Ensure your settings are ready."
+            ]);
+            
+            $updateReminder = $pdo->prepare("UPDATE events SET scheduling_reminder_sent = 1 WHERE id = ?");
+            $updateReminder->execute([$ev['id']]);
+            echo " - Sent 24-hour scheduling reminder for event #{$ev['id']}.\n";
+        }
+    }
+
+    // b. Auto-Publish Fallback Engine
+    $autoPublishStmt = $pdo->prepare("
+        UPDATE events 
+        SET status = 'offline_published' 
+        WHERE status = 'scheduled' 
+          AND (
+               (scheduled_publish_time IS NOT NULL AND scheduled_publish_time <= NOW())
+               OR 
+               (CONCAT(event_date, ' ', IFNULL(event_time, '00:00:00')) <= NOW())
+          )
+    ");
+    $autoPublishStmt->execute();
+    $publishedCount = $autoPublishStmt->rowCount();
+    if ($publishedCount > 0) {
+        echo " - Auto-published $publishedCount unattended scheduled events.\n";
+    }
+
     // 4. Trigger Scheduled Notifications
     // We execute the existing notification cron using absolute path
     $notificationCron = __DIR__ . '/../api/events/schedule-notification-cron.php';

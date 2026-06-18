@@ -61,12 +61,12 @@ class OTPService
             ");
             $stmt->execute([$normalizedPhone, $purpose]);
 
-            // Store OTP in database
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+' . self::OTP_EXPIRY_MINUTES . ' minutes'));
             $stmt = $pdo->prepare("
                 INSERT INTO otp_requests (phone_number, otp_hash, purpose, auth_id, expires_at)
-                VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))
+                VALUES (?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$normalizedPhone, $otpHash, $purpose, $authId, self::OTP_EXPIRY_MINUTES]);
+            $stmt->execute([$normalizedPhone, $otpHash, $purpose, $authId, $expiresAt]);
             $otpId = $pdo->lastInsertId();
 
             // Send OTP via SMS

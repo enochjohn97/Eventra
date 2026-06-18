@@ -465,10 +465,10 @@ CREATE TABLE  sms_logs (
     phone_number VARCHAR(20) NOT NULL,
     message_type ENUM('otp', 'event_reminder', 'payment_confirmation', 'ticket_confirmation', 'admin_notification') NOT NULL,
     message_body TEXT NOT NULL,
-    twilio_sid VARCHAR(100) DEFAULT NULL,
-    twilio_status VARCHAR(50) DEFAULT NULL,
-    twilio_error_code VARCHAR(50) DEFAULT NULL,
-    twilio_error_message VARCHAR(255) DEFAULT NULL,
+    termii_sid VARCHAR(100) DEFAULT NULL,
+    termii_status VARCHAR(50) DEFAULT NULL,
+    termii_error_code VARCHAR(50) DEFAULT NULL,
+    termii_error_message VARCHAR(255) DEFAULT NULL,
     status ENUM('queued', 'sent', 'delivered', 'failed', 'undelivered') DEFAULT 'queued',
     sent_at DATETIME DEFAULT NULL,
     delivered_at DATETIME DEFAULT NULL,
@@ -568,7 +568,3 @@ ALTER TABLE auth_logs
 -- RE-ENABLE FOREIGN KEY CHECKS
 -- =============================================================================
 SET FOREIGN_KEY_CHECKS = 1;
-
-use eventra_db;
-select * from clients;
-delete from clients where id = 1;

@@ -396,7 +396,7 @@ function initProfileClick() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 Profile
             </a>
-            <a href="mailto:testalive9@gmail.com"
+            <a href="#" onclick="window.toggleSupportChat('general'); document.getElementById('inlineProfileDropdown').style.display='none'; return false;"
                style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"
                onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -815,3 +815,51 @@ function closeMobileSidebar() {
 
 window.toggleMobileSidebar = toggleMobileSidebar;
 window.closeMobileSidebar = closeMobileSidebar;
+
+// ============================================================================
+// Network State Resync Hook
+// ============================================================================
+window.addEventListener('online', async () => {
+  console.log('Network connection restored. Syncing offline states...');
+  if (typeof showNotification === 'function') {
+    showNotification('Back online. Syncing changes...', 'success');
+  }
+  
+  // Example offline action track: JSON array in localStorage
+  const offlineActionsStr = localStorage.getItem('eventra_offline_actions');
+  if (offlineActionsStr) {
+    try {
+      const actions = JSON.parse(offlineActionsStr);
+      if (Array.isArray(actions) && actions.length > 0) {
+        // Sync with PHP backend
+        const response = await fetch('/api/health.php?sync=true', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actions })
+        });
+        
+        if (response.ok) {
+          console.log('Offline actions synced successfully.');
+          localStorage.removeItem('eventra_offline_actions');
+          if (typeof showNotification === 'function') {
+             showNotification('Offline changes synced successfully.', 'success');
+          }
+          // Trigger UI notification refresh
+          if (window.notificationManager && typeof window.notificationManager.fetchNotifications === 'function') {
+             window.notificationManager.fetchNotifications();
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync offline actions', e);
+    }
+  }
+});
+
+window.addEventListener('offline', () => {
+  console.warn('Network connection lost. Actions will be tracked offline.');
+  if (typeof showNotification === 'function') {
+    showNotification('You are offline. Changes will sync when connection is restored.', 'warning');
+  }
+});
+

@@ -73,115 +73,112 @@ try {
             echo "Sent starting notifications to Admin and Client for '{$eventName}'\n";
         }
 
-        // 3. Fetch all unique valid tickets for this event that haven't received a 20m reminder
-        $ticketStmt = $pdo->prepare("
-            SELECT t.id as ticket_id, t.barcode, u.name, u.phone, aa.email, aa.id as auth_id, p.paystack_response
-            FROM tickets t
-            JOIN users u ON t.user_id = u.id
-            JOIN auth_accounts aa ON u.user_auth_id = aa.id
-            LEFT JOIN payments p ON t.payment_id = p.id
-            WHERE t.event_id = ? AND t.status = 'valid'
-        ");
-        $ticketStmt->execute([$eventId]);
-        $attendees = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
+        // 3. Fetch attendees for 20m reminder
+        if (empty($event['user_reminder_sent'])) {
+            $ticketStmt = $pdo->prepare("
+                SELECT t.id as ticket_id, t.barcode, u.name, u.phone, aa.email, aa.id as auth_id, p.paystack_response
+                FROM tickets t
+                JOIN users u ON t.user_id = u.id
+                JOIN auth_accounts aa ON u.user_auth_id = aa.id
+                LEFT JOIN payments p ON t.payment_id = p.id
+                WHERE t.event_id = ? AND t.status = 'valid'
+            ");
+            $ticketStmt->execute([$eventId]);
+            $attendees = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $sentTickets = $metadata['reminder_20m_sent_tickets'] ?? [];
-        $metadataUpdated = false;
+            $notifiedCount = 0;
 
-        foreach ($attendees as $attendee) {
-            if (in_array($attendee['ticket_id'], $sentTickets)) {
-                continue;
-            }
-
-            // Resolve attendee's location name
-            $selectedLocName = null;
-            if (!empty($attendee['paystack_response'])) {
-                $pr = json_decode($attendee['paystack_response'], true);
-                if (isset($pr['selected_locs'])) {
-                    $selectedLocName = $pr['selected_locs'];
-                } elseif (isset($pr['data']['metadata']['selected_locs'])) {
-                    $selectedLocName = $pr['data']['metadata']['selected_locs'];
-                }
-            }
-
-            // Find matching location entry
-            $matchingLoc = null;
-            if ($selectedLocName) {
-                foreach ($locs as $l) {
-                    if (strcasecmp(trim($l['state']), trim($selectedLocName)) === 0) {
-                        $matchingLoc = $l;
-                        break;
+            foreach ($attendees as $attendee) {
+                // Resolve attendee's location name
+                $selectedLocName = null;
+                if (!empty($attendee['paystack_response'])) {
+                    $pr = json_decode($attendee['paystack_response'], true);
+                    if (isset($pr['selected_locs'])) {
+                        $selectedLocName = $pr['selected_locs'];
+                    } elseif (isset($pr['data']['metadata']['selected_locs'])) {
+                        $selectedLocName = $pr['data']['metadata']['selected_locs'];
                     }
                 }
-            }
 
-            if (!$matchingLoc) {
-                $matchingLoc = $locs[0] ?? [
-                    'state' => $event['state'],
-                    'address' => $event['address'],
-                    'date' => $event['event_date'],
-                    'time' => $event['event_time']
-                ];
-            }
-
-            // Resolve date & time for this location
-            $locDate = !empty($matchingLoc['date']) ? $matchingLoc['date'] : $event['event_date'];
-            $locTime = !empty($matchingLoc['time']) ? $matchingLoc['time'] : $event['event_time'];
-            $locStartTimestamp = strtotime($locDate . ' ' . ($locTime ?? '00:00:00'));
-
-            // Calculate diff
-            $locDiffMinutes = ($locStartTimestamp - $now) / 60.0;
-
-            if ($locDiffMinutes >= 15 && $locDiffMinutes <= 25) {
-                $subject = "Reminder: {$eventName} starts in 20 minutes!";
-                $body = "
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
-                        <h2 style='color: #ff5a5f;'>Event Reminder</h2>
-                        <p>Hi <strong>{$attendee['name']}</strong>,</p>
-                        <p>This is a friendly reminder that <strong>$eventName</strong> is starting in just 20 minutes!</p>
-                        <div style='background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <p style='margin: 5px 0;'><strong>Time:</strong> " . date('g:i A', $locStartTimestamp) . "</p>
-                            <p style='margin: 5px 0;'><strong>Location:</strong> {$matchingLoc['address']}, {$matchingLoc['state']}</p>
-                        </div>
-                        <p>Please have your ticket QR code ready for scanning at the entrance.</p>
-                        <p>See you there!</p>
-                        <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
-                        <p style='font-size: 12px; color: #999; text-align: center;'>&copy; " . date('Y') . " Eventra</p>
-                    </div>
-                ";
-
-                // Send Email
-                $emailResult = EmailHelper::sendEmail($attendee['email'], $subject, $body);
-
-                // Send SMS if phone available
-                if (!empty($attendee['phone'])) {
-                    $smsMessage = "Reminder: {$eventName} starts in 20 minutes! Time: "
-                        . date('g:i A', $locStartTimestamp)
-                        . " at {$matchingLoc['address']}, {$matchingLoc['state']}. Please have your ticket ready.";
-                    sendSMS($attendee['phone'], $smsMessage);
+                // Find matching location entry
+                $matchingLoc = null;
+                if ($selectedLocName) {
+                    foreach ($locs as $l) {
+                        if (strcasecmp(trim($l['state']), trim($selectedLocName)) === 0) {
+                            $matchingLoc = $l;
+                            break;
+                        }
+                    }
                 }
 
-                // Create In-app Notification
-                createNotification(
-                    $attendee['auth_id'],
-                    "Reminder: '$eventName' starts in 20 minutes!",
-                    'event_reminder',
-                    null,
-                    'user',
-                    'system',
-                    ['event_id' => $eventId]
-                );
+                if (!$matchingLoc) {
+                    $matchingLoc = $locs[0] ?? [
+                        'state' => $event['state'],
+                        'address' => $event['address'],
+                        'date' => $event['event_date'],
+                        'time' => $event['event_time']
+                    ];
+                }
 
-                $sentTickets[] = $attendee['ticket_id'];
-                $metadataUpdated = true;
+                // Resolve date & time for this location
+                $locDate = !empty($matchingLoc['date']) ? $matchingLoc['date'] : $event['event_date'];
+                $locTime = !empty($matchingLoc['time']) ? $matchingLoc['time'] : $event['event_time'];
+                $locStartTimestamp = strtotime($locDate . ' ' . ($locTime ?? '00:00:00'));
+
+                // Calculate diff
+                $locDiffMinutes = ($locStartTimestamp - $now) / 60.0;
+
+                if ($locDiffMinutes >= 15 && $locDiffMinutes <= 25) {
+                    $subject = "Reminder: {$eventName} starts in 20 minutes!";
+                    $body = "
+                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
+                            <h2 style='color: #ff5a5f;'>Event Reminder</h2>
+                            <p>Hi <strong>{$attendee['name']}</strong>,</p>
+                            <p>This is a friendly reminder that <strong>$eventName</strong> is starting in just 20 minutes!</p>
+                            <div style='background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                                <p style='margin: 5px 0;'><strong>Time:</strong> " . date('g:i A', $locStartTimestamp) . "</p>
+                                <p style='margin: 5px 0;'><strong>Location:</strong> {$matchingLoc['address']}, {$matchingLoc['state']}</p>
+                            </div>
+                            <p>Please have your ticket QR code ready for scanning at the entrance.</p>
+                            <p>See you there!</p>
+                            <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
+                            <p style='font-size: 12px; color: #999; text-align: center;'>&copy; " . date('Y') . " Eventra</p>
+                        </div>
+                    ";
+
+                    // Send Email
+                    $emailResult = EmailHelper::sendEmail($attendee['email'], $subject, $body);
+
+                    // Send SMS if phone available
+                    if (!empty($attendee['phone'])) {
+                        $smsMessage = "Reminder: {$eventName} starts in 20 minutes! Time: "
+                            . date('g:i A', $locStartTimestamp)
+                            . " at {$matchingLoc['address']}, {$matchingLoc['state']}. Please have your ticket ready.";
+                        sendSMS($attendee['phone'], $smsMessage);
+                    }
+
+                    // Create In-app Notification
+                    createNotification(
+                        $attendee['auth_id'],
+                        "Reminder: '$eventName' starts in 20 minutes!",
+                        'event_reminder',
+                        null,
+                        'user',
+                        'system',
+                        ['event_id' => $eventId]
+                    );
+
+                    $notifiedCount++;
+                }
             }
-        }
 
-        if ($metadataUpdated) {
-            $metadata['reminder_20m_sent_tickets'] = $sentTickets;
-            $updateMetaStmt = $pdo->prepare("UPDATE events SET metadata = ? WHERE id = ?");
-            $updateMetaStmt->execute([json_encode($metadata), $eventId]);
-            echo "Successfully sent reminders for event '$eventName'.\n";
+            if ($notifiedCount > 0) {
+                // If this is a single location event, we can safely flag it as done.
+                // For multi-location, we might need a more complex solution, but for now we follow the requirement.
+                $updateFlagStmt = $pdo->prepare("UPDATE events SET user_reminder_sent = 1 WHERE id = ?");
+                $updateFlagStmt->execute([$eventId]);
+                echo "Successfully sent $notifiedCount reminders for event '$eventName'.\n";
+            }
         }
     }
 

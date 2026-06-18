@@ -34,6 +34,9 @@ try {
     $result = Ticket::validateAndUse($pdo, $qrData, $client_auth_id);
 
     if ($result['success']) {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $baseUrl = $protocol . $_SERVER['HTTP_HOST'];
+        
         echo json_encode([
             'success'    => true,
             'message'    => 'Ticket Validated! Entry Granted ✅',
@@ -45,7 +48,7 @@ try {
                 'buyer_name'  => $result['data']['buyer_name'],
                 'buyer_email' => $result['data']['buyer_email'],
                 'ticket_id'   => $result['data']['barcode'],
-                'qr_code_path'=> $result['data']['qr_code_path'] ? '/' . ltrim($result['data']['qr_code_path'], '/') : null,
+                'qr_code_path'=> $result['data']['qr_code_path'] ? $baseUrl . '/' . ltrim($result['data']['qr_code_path'], '/') : null,
                 'scanned_at'  => date('Y-m-d H:i:s')
             ]
         ]);

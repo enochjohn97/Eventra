@@ -51,6 +51,7 @@ if (!$auth_id) {
 
 try {
     // Lazy-load PDO and perform a single cheap update
+    require_once __DIR__ . '/../config/database.php';
     $pdo = getPDO();
     $stmt = $pdo->prepare("UPDATE auth_accounts SET last_seen = NOW(), is_online = 1 WHERE id = ?");
     $stmt->execute([$auth_id]);
