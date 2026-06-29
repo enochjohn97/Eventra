@@ -47,7 +47,7 @@ try {
             u.gender,
             u.profile_pic,
             aa.created_at,
-            aa.is_online as status,
+            IF(aa.is_online = 1 AND aa.last_seen >= NOW() - INTERVAL 15 MINUTE, 1, 0) as status,
             COALESCE(COUNT(DISTINCT t.id), 0) as ticket_count,
             COALESCE(SUM(CASE WHEN p.status = 'paid' THEN 1 ELSE 0 END), 0) as paid_count
         FROM users u

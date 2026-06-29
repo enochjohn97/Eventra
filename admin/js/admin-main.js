@@ -84,9 +84,9 @@ function initInactivityMonitor() {
             if (result.isConfirmed) {
                 // Heartbeat API will refresh PHP session timestamp
                 if (typeof apiFetch !== 'undefined') {
-                    apiFetch('/api/heartbeat.php').then(() => resetTimers());
+                    apiFetch('/api/utils/heartbeat.php').then(() => resetTimers());
                 } else {
-                    fetch('/api/heartbeat.php').then(() => resetTimers());
+                    fetch('/api/utils/heartbeat.php').then(() => resetTimers());
                 }
             } else if (result.dismiss === Swal.DismissReason.cancel) {
                 if (window.logout) window.logout();
@@ -836,20 +836,7 @@ window.initPreviews = function() {
                                                     <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Phone</div>
                                                     <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.phone) || 'N/A'}</div>
                                                 </div>
-                                                <div style="background: ${client.nin ? '#f0fdf4' : '#fff7ed'}; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid ${client.nin ? '#bbf7d0' : '#fed7aa'};">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">NIN Number</div>
-                                                    <div style="font-weight: 700; font-size: 0.82rem; font-family: monospace; letter-spacing: 1px; color: ${client.nin ? '#15803d' : '#c2410c'}; display: flex; align-items: center; gap: 6px;">
-                                                        ${escapeHTML(client.nin) || '⚠ Not Provided'}
-                                                        ${Number(client.nin_verified) === 1 ? '<span style="font-size:0.6rem;background:#10b981;color:white;padding:1px 5px;border-radius:10px;font-weight:800;">✓ Verified</span>' : ''}
-                                                    </div>
-                                                </div>
-                                                <div style="background: ${client.bvn ? '#f0fdf4' : '#fff7ed'}; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid ${client.bvn ? '#bbf7d0' : '#fed7aa'};">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">BVN Number</div>
-                                                    <div style="font-weight: 700; font-size: 0.82rem; font-family: monospace; letter-spacing: 1px; color: ${client.bvn ? '#15803d' : '#c2410c'}; display: flex; align-items: center; gap: 6px;">
-                                                        ${escapeHTML(client.bvn) || '⚠ Not Provided'}
-                                                        ${Number(client.bvn_verified) === 1 ? '<span style="font-size:0.6rem;background:#10b981;color:white;padding:1px 5px;border-radius:10px;font-weight:800;">✓ Verified</span>' : ''}
-                                                    </div>
-                                                </div>
+
                                                 <div style="grid-column: span 2; background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
                                                     <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Address</div>
                                                     <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${[escapeHTML(client.address), escapeHTML(client.city), escapeHTML(client.state), escapeHTML(client.country)].filter(Boolean).join(', ') || 'N/A'}</div>
@@ -861,7 +848,7 @@ window.initPreviews = function() {
                                         <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
                                             <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
                                                 <i data-lucide="file-check-2" style="width: 18px; color: #10b981;"></i> KYC Documents
-                                                <span style="font-size: 0.68rem; background: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file, client.kyc_other_file].filter(Boolean).length > 0 ? '#dcfce7' : '#fee2e2'}; color: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file, client.kyc_other_file].filter(Boolean).length > 0 ? '#15803d' : '#b91c1c'}; padding: 2px 8px; border-radius: 20px; font-weight: 700; margin-left: 4px;">${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file, client.kyc_other_file].filter(Boolean).length}/6 uploaded</span>
+                                                <span style="font-size: 0.68rem; background: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file].filter(Boolean).length > 0 ? '#dcfce7' : '#fee2e2'}; color: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file].filter(Boolean).length > 0 ? '#15803d' : '#b91c1c'}; padding: 2px 8px; border-radius: 20px; font-weight: 700; margin-left: 4px;">${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file].filter(Boolean).length}/5 uploaded</span>
                                                 <span style="font-size: 0.65rem; color: #94a3b8; margin-left: auto;">Click thumbnail to view</span>
                                             </div>
                                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem;">
@@ -905,49 +892,7 @@ window.initPreviews = function() {
                                             </div>
                                         </div>
 
-                                        <!-- Verification Actions -->
-                                        <div style="background: #f8fafc; border-radius: 16px; padding: 1.25rem;">
-                                            <div style="font-weight: 700; color: #333; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                                                <i data-lucide="shield-check" style="width: 18px; color: #10b981;"></i> Identity Verification
-                                            </div>
 
-                                            ${client.admin_notes ? `
-                                            <div style="background: #fffbeb; border: 1px solid #fbd38d; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
-                                                <div style="font-size: 0.7rem; color: #b7791f; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
-                                                    <i data-lucide="sticky-note" style="width: 14px;"></i> Latest Admin Notes
-                                                </div>
-                                                <div style="font-size: 0.85rem; color: #744210; font-style: italic; line-height: 1.5;">"${escapeHTML(client.admin_notes)}"</div>
-                                            </div>
-                                            ` : ''}
-                                            
-                                            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                                <!-- NIN/BVN Rows -->
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                                    <div style="background: white; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                                                        <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700;">NIN NUMBER</div>
-                                                        <div style="font-weight: 600; font-size: 0.85rem; margin: 4px 0;">${escapeHTML(client.nin) || 'N/A'}</div>
-                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                                                            <span style="font-size: 0.75rem; font-weight: 700; color: ${Number(client.nin_verified) === 1 ? '#10b981' : '#f59e0b'};">
-                                                                ${Number(client.nin_verified) === 1 ? '✓ Verified' : 'Pending'}
-                                                            </span>
-                                                            <button onclick="toggleVerification(${client.id}, 'nin', ${Number(client.nin_verified) === 1 ? 0 : 1})" style="background: ${Number(client.nin_verified) === 1 ? '#fee2e2' : '#dcfce7'}; color: ${Number(client.nin_verified) === 1 ? '#ef4444' : '#15803d'}; border: none; border-radius: 4px; padding: 2px 8px; font-size: 0.65rem; font-weight: 800; cursor: pointer;">
-                                                                ${Number(client.nin_verified) === 1 ? 'REVOKE' : 'VERIFY'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div style="background: white; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                                                        <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700;">BVN NUMBER</div>
-                                                        <div style="font-weight: 600; font-size: 0.85rem; margin: 4px 0;">${escapeHTML(client.bvn) || 'N/A'}</div>
-                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                                                            <span style="font-size: 0.75rem; font-weight: 700; color: ${Number(client.bvn_verified) === 1 ? '#10b981' : '#f59e0b'};">
-                                                                ${Number(client.bvn_verified) === 1 ? '✓ Verified' : 'Pending'}
-                                                            </span>
-                                                            <button onclick="toggleVerification(${client.id}, 'bvn', ${Number(client.bvn_verified) === 1 ? 0 : 1})" style="background: ${Number(client.bvn_verified) === 1 ? '#fee2e2' : '#dcfce7'}; color: ${Number(client.bvn_verified) === 1 ? '#ef4444' : '#15803d'}; border: none; border-radius: 4px; padding: 2px 8px; font-size: 0.65rem; font-weight: 800; cursor: pointer;">
-                                                                ${Number(client.bvn_verified) === 1 ? 'REVOKE' : 'VERIFY'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
 
                                                 <!-- Main Approval Buttons -->
                                                 <div class="profile-preview-actions" style="display: flex; gap: 12px; margin-top: 2rem;">

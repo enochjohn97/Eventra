@@ -210,6 +210,26 @@ try {
 
     $pdo->commit();
 
+    // Return response immediately — PDF/email generation continues after flush
+    $responsePayload = json_encode([
+        'success' => true,
+        'message' => 'Ticket purchased successfully',
+        'tickets' => $tickets_generated,
+        'barcode' => $tickets_generated[0] ?? null,
+        'quantity' => $quantity,
+        'total_price' => $total_price,
+        'event_name' => $event['event_name']
+    ]);
+    header('Content-Type: application/json');
+    header('Content-Length: ' . strlen($responsePayload));
+    echo $responsePayload;
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        while (ob_get_level() > 0) { ob_end_flush(); }
+        flush();
+    }
+
     // 7. Post-Processing: QR/PDF Generation and Email
     require_once '../../includes/helpers/ticket-helper.php';
     require_once '../../includes/helpers/email-helper.php';
@@ -221,8 +241,7 @@ try {
     
     if (!$user) {
         error_log("[purchase-ticket.php] Critical Error: User not found for ID $user_id after successful purchase.");
-        echo json_encode(['success' => true, 'message' => 'Purchased, but user profile missing for delivery.']);
-        exit;
+        return;
     }
 
     $pdfPaths = [];
@@ -308,15 +327,6 @@ try {
     } catch (Exception $e) {
         error_log("Notification Error: " . $e->getMessage());
     }
-
-    echo json_encode([
-        'success' => true,
-        'message' => 'Ticket purchased successfully',
-        'tickets' => $tickets_generated,
-        'quantity' => $quantity,
-        'total_price' => $total_price,
-        'event_name' => $event['event_name']
-    ]);
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

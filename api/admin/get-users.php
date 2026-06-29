@@ -45,8 +45,8 @@ try {
     // Get users with optimized queries using JOINs instead of subqueries
     $sql = "SELECT p.id, p.custom_id, p.name, a.email, p.profile_pic, p.phone, 
             p.gender, p.dob, p.address, p.city, p.state, p.country,
-            a.is_active, a.is_online,
-            IF(a.is_online = 1, 'active', 'inactive') as status, p.created_at, a.last_login_at, a.email_verified_at,
+            a.is_active, IF(a.is_online = 1 AND a.last_seen >= NOW() - INTERVAL 15 MINUTE, 1, 0) as is_online,
+            IF(a.is_online = 1 AND a.last_seen >= NOW() - INTERVAL 15 MINUTE, 'active', 'inactive') as status, p.created_at, a.last_login_at, a.email_verified_at,
             COUNT(DISTINCT CASE WHEN t.used = 1 THEN t.id END) as checked_in_count,
             MAX(c.business_name) as client_name
             FROM users p
@@ -76,7 +76,7 @@ try {
     $summary_sql = "SELECT 
         (SELECT COUNT(*) FROM users u JOIN auth_accounts a ON u.user_auth_id = a.id WHERE u.deleted_at IS NULL AND a.deleted_at IS NULL) as total_registered,
         (SELECT COUNT(*) FROM users u JOIN auth_accounts a ON u.user_auth_id = a.id WHERE a.is_active = 1 AND u.deleted_at IS NULL AND a.deleted_at IS NULL) as total_active,
-        (SELECT COUNT(*) FROM users u JOIN auth_accounts a ON u.user_auth_id = a.id WHERE a.is_online = 1 AND u.deleted_at IS NULL AND a.deleted_at IS NULL) as total_checked_in";
+        (SELECT COUNT(*) FROM users u JOIN auth_accounts a ON u.user_auth_id = a.id WHERE a.is_online = 1 AND a.last_seen >= NOW() - INTERVAL 15 MINUTE AND u.deleted_at IS NULL AND a.deleted_at IS NULL) as total_checked_in";
     
     $summary_stmt = $pdo->prepare($summary_sql);
     $summary_stmt->execute();

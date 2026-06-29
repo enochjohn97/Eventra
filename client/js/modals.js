@@ -15,12 +15,6 @@ function showProfileEditModal() {
                     <h2>Edit Profile</h2>
                     <button type="button" class="modal-close" onclick="closeProfileEditModal()">&times;</button>
                 </div>
-                
-                <div class="wizard-tabs" style="display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow-x: auto;">
-                    <button type="button" class="wizard-tab active" onclick="window.switchWizardTab(1)" id="wizardTab1" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #722f37; border-bottom: 3px solid #722f37; cursor: pointer; min-width: 150px;">1. Personal Info</button>
-                    <button type="button" class="wizard-tab" onclick="window.switchWizardTab(2)" id="wizardTab2" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; min-width: 150px;">2. Payment Info</button>
-                    <button type="button" class="wizard-tab" onclick="window.switchWizardTab(3)" id="wizardTab3" style="flex: 1; padding: 1rem; border: none; background: transparent; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; min-width: 150px;">3. KYC Documents</button>
-                </div>
 
                 <div class="modal-body" style="overflow-y: auto; padding-top: 0;">
                     <form id="profileEditForm" enctype="multipart/form-data">
@@ -94,9 +88,9 @@ function showProfileEditModal() {
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State <span class="text-danger">*</span></label>
                                     <select name="state" class="form-control" required>
                                         <option value="">Select State</option>
-                                        ${getNigerianStates().map(state => 
-                                            `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
-                                        ).join('')}
+                                        ${getNigerianStates().map(state =>
+        `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
+    ).join('')}
                                     </select>
                                 </div>
                                 <div class="form-group modal-grid-full">
@@ -123,9 +117,9 @@ function showProfileEditModal() {
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
                                         <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
                                         <div id="accountStatus" class="verification-status-indicator">
-                                            ${user.subaccount_code 
-                                                ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>' 
-                                                : ''}
+                                            ${user.subaccount_code
+            ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>'
+            : ''}
                                         </div>
                                     </label>
                                     <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
@@ -145,18 +139,22 @@ function showProfileEditModal() {
                         <div id="wizardStep3" class="wizard-step" style="display: none;">
                             <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
                                 ${[
-                                    { name: 'kyc_nin_file', label: 'NIN Document' },
-                                    { name: 'kyc_bvn_file', label: 'BVN Document' },
-                                    { name: 'kyc_voter_card_file', label: "Voter's Card" },
-                                    { name: 'kyc_driver_license_file', label: "Driver's License" },
-                                    { name: 'kyc_cac_file', label: 'CAC Certificate' }
-                                ].map(field => {
-                                    const fileUrl = user[field.name];
-                                    const hasFile = !!fileUrl;
-                                    const isImage = fileUrl && fileUrl.match(/\.(jpeg|jpg|gif|png)$/i);
-                                    const displayImage = isImage ? `/${fileUrl}` : '';
-                                    const filename = fileUrl ? fileUrl.split('/').pop() : 'Not selected file';
-                                    return `
+            { name: 'kyc_nin_file', label: 'NIN Document' },
+            { name: 'kyc_bvn_file', label: 'BVN Document' },
+            { name: 'kyc_voter_card_file', label: "Voter's Card" },
+            { name: 'kyc_driver_license_file', label: "Driver's License" },
+            { name: 'kyc_cac_file', label: 'CAC Certificate' }
+        ].map(field => {
+            const fileUrl = user[field.name];
+            const hasFile = !!fileUrl;
+            const isImage = fileUrl && fileUrl.match(/\.(jpeg|jpg|gif|png)$/i);
+            const displayImage = isImage ? `/${fileUrl}` : '';
+            const rawFilename = fileUrl ? fileUrl.split('/').pop() : 'Not selected file';
+            // Strip server-added prefix pattern: kyc_<number>_kyc_ → show only original filename
+            const filename = rawFilename !== 'Not selected file'
+                ? rawFilename.replace(/^kyc_\d+_kyc_/, '')
+                : rawFilename;
+            return `
                                     <div class="kyc-upload-card" style="border: 2px dashed #93c5fd; border-radius: 8px; background: #eff6ff; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 180px; text-align: center; cursor: pointer; transition: border-color 0.3s;" onclick="document.getElementById('${field.name}_input').click()">
                                         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative;">
                                             <div id="${field.name}_preview_container" style="display: ${hasFile ? 'flex' : 'none'}; width: 100%; height: 100%; align-items: center; justify-content: center;">
@@ -173,7 +171,7 @@ function showProfileEditModal() {
                                         </div>
                                         <div style="position: absolute; top: 0; left: 0; background: rgba(30, 58, 138, 0.8); color: white; padding: 4px 10px; font-size: 0.75rem; border-bottom-right-radius: 8px; font-weight: 600;">${field.label}</div>
                                     </div>`;
-                                }).join('')}
+        }).join('')}
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>
@@ -188,13 +186,13 @@ function showProfileEditModal() {
     `;
 
     // Make switchWizardTab globally available
-    window.switchWizardTab = function(step) {
+    window.switchWizardTab = function (step) {
         // Validate current step before advancing
         if (step > 1) {
             const form = document.getElementById('profileEditForm');
             let currentStepValid = true;
             let currentFields = [];
-            
+
             if (step === 2) {
                 currentFields = form.querySelector('#wizardStep1').querySelectorAll('[required]');
             } else if (step === 3) {
@@ -202,9 +200,10 @@ function showProfileEditModal() {
             }
 
             for (const field of currentFields) {
-                if (!field.value.trim()) {
+                if (!field.value.trim() && !window._isPasting) {
                     field.style.borderColor = '#ef4444';
                     field.addEventListener('input', () => { field.style.borderColor = ''; }, { once: true });
+                    field.addEventListener('paste', () => { setTimeout(() => { field.style.borderColor = ''; }, 50); }, { once: true });
                     currentStepValid = false;
                 }
             }
@@ -242,20 +241,20 @@ function showProfileEditModal() {
 
     // Add window.handleKycPreview function
     if (!window.handleKycPreview) {
-        window.handleKycPreview = function(input, fieldName) {
+        window.handleKycPreview = function (input, fieldName) {
             const file = input.files[0];
             const previewContainer = document.getElementById(`${fieldName}_preview_container`);
             const promptContainer = document.getElementById(`${fieldName}_upload_prompt`);
             const filenameBanner = document.getElementById(`${fieldName}_filename_banner`);
-            
+
             if (file) {
                 filenameBanner.textContent = file.name;
                 promptContainer.style.display = 'none';
                 previewContainer.style.display = 'flex';
-                
+
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
+                    reader.onload = function (e) {
                         previewContainer.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 120px; border-radius: 4px; object-fit: contain;">`;
                     };
                     reader.readAsDataURL(file);
@@ -308,7 +307,7 @@ function previewProfilePic(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             document.getElementById('profilePreview').src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -322,20 +321,20 @@ async function handleProfileUpdate(e) {
 
     // ── Pre-flight validation ───────────────────────────────────────────────
     const requiredFields = [
-        { name: 'name',           label: 'Contact Name' },
-        { name: 'business_name',  label: 'Business/Organization Name' },
-        { name: 'phone',          label: 'Phone' },
-        { name: 'address',        label: 'Address' },
-        { name: 'city',           label: 'City' },
-        { name: 'state',          label: 'State' },
-        { name: 'country',        label: 'Country' },
-        { name: 'job_title',      label: 'Job Title' },
-        { name: 'company',        label: 'Company' },
-        { name: 'dob',            label: 'Date of Birth' },
-        { name: 'gender',         label: 'Gender' },
-        { name: 'bank_code',      label: 'Settlement Bank' },
+        { name: 'name', label: 'Contact Name' },
+        { name: 'business_name', label: 'Business/Organization Name' },
+        { name: 'phone', label: 'Phone' },
+        { name: 'address', label: 'Address' },
+        { name: 'city', label: 'City' },
+        { name: 'state', label: 'State' },
+        { name: 'country', label: 'Country' },
+        { name: 'job_title', label: 'Job Title' },
+        { name: 'company', label: 'Company' },
+        { name: 'dob', label: 'Date of Birth' },
+        { name: 'gender', label: 'Gender' },
+        { name: 'bank_code', label: 'Settlement Bank' },
         { name: 'account_number', label: 'Account Number' },
-        { name: 'account_name',   label: 'Account Holder Name' },
+        { name: 'account_name', label: 'Account Holder Name' },
     ];
 
     let firstInvalidField = null;
@@ -398,10 +397,10 @@ async function handleProfileUpdate(e) {
             // Update stored user data
             storage.set('client_user', profileResult.user);
             if (window.storage) window.storage.set('user', profileResult.user);
-            
+
             // Dispatch event for unified UI sync (used in utils.js)
-            document.dispatchEvent(new CustomEvent('EventraProfileUpdated', { 
-                detail: profileResult.user 
+            document.dispatchEvent(new CustomEvent('EventraProfileUpdated', {
+                detail: profileResult.user
             }));
 
             // Close modal
@@ -437,12 +436,12 @@ async function handleProfileUpdate(e) {
 
 // Real-time Account Resolution — Pure client-side (no external API calls)
 function resolveAccount() {
-    const bankSelect   = document.getElementById('bankSelect');
-    const bankCode     = bankSelect ? bankSelect.value : '';
+    const bankSelect = document.getElementById('bankSelect');
+    const bankCode = bankSelect ? bankSelect.value : '';
     const accountInput = document.getElementById('accountNumberInput');
     const accountNumber = accountInput ? accountInput.value.replace(/\D/g, '') : '';
-    const statusDiv    = document.getElementById('accountStatus');
-    const nameInput    = document.getElementById('accountNameInput');
+    const statusDiv = document.getElementById('accountStatus');
+    const nameInput = document.getElementById('accountNameInput');
     const bankNameInput = document.getElementById('bankNameInput');
 
     // Keep bank_name hidden input in sync
@@ -497,7 +496,7 @@ async function validateAndVerifyField(type) {
         if (result.success) {
             updateFieldStatus(type, 'success');
             showNotification(`${type.toUpperCase()} verified successfully!`, 'success');
-            
+
             // Update local user object for preview
             const user = storage.get('client_user') || storage.get('user');
             if (user) {
@@ -506,7 +505,7 @@ async function validateAndVerifyField(type) {
                 storage.set('client_user', user);
                 updateVerificationBadge();
             }
-            
+
             // Sync hidden form input
             const hiddenStatus = document.getElementById(`${type}VerifiedInput`);
             if (hiddenStatus) hiddenStatus.value = 1;
@@ -514,7 +513,7 @@ async function validateAndVerifyField(type) {
             const errorMsg = result.message || `Invalid ${type.toUpperCase()}`;
             updateFieldStatus(type, 'error', escapeHTML(errorMsg));
             // User requested notifications only on success
-            
+
             const user = storage.get('client_user') || storage.get('user');
             if (user) {
                 user[`${type}_verified`] = 0;
@@ -552,9 +551,9 @@ function updateVerificationBadge() {
     // Replace existing badge
     const oldBadge = container.querySelector('.verification-badge');
     if (oldBadge) oldBadge.remove();
-    
+
     container.insertAdjacentHTML('beforeend', getVerificationBadge(user.verification_status));
-    
+
     // Re-initialize icons if using Lucide
     if (window.lucide) window.lucide.createIcons();
 }
@@ -620,9 +619,9 @@ function displayEventPreview(event) {
     const regPrice = parseFloat(event.regular_price) || 0;
     const vPrice = parseFloat(event.vip_price) || 0;
     const premPrice = parseFloat(event.premium_price) || 0;
-    
+
     const isFree = basePrice === 0 && regPrice === 0 && vPrice === 0 && premPrice === 0;
-    
+
     if (!isFree) {
         const mode = event.ticket_type_mode || 'all';
         if (mode === 'all' || mode.includes('all')) {
@@ -633,7 +632,7 @@ function displayEventPreview(event) {
             if (modes.includes('regular') && regPrice > 0) prices.push(`Regular: ₦${regPrice.toLocaleString()}`);
             if (modes.includes('vip') && vPrice > 0) prices.push(`VIP: ₦${vPrice.toLocaleString()}`);
             if (modes.includes('premium') && premPrice > 0) prices.push(`Premium: ₦${premPrice.toLocaleString()}`);
-            
+
             if (prices.length > 0) {
                 price = `<div style="display: flex; flex-direction: column; gap: 4px;">${prices.map(p => `<span>${p}</span>`).join('')}</div>`;
             } else if (basePrice > 0) {
@@ -645,7 +644,7 @@ function displayEventPreview(event) {
     }
     const date = new Date(event.event_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
     const time = event.event_time ? event.event_time.substring(0, 5) : '--:--';
-    
+
     // Get client name for sharing
     const user = storage.get('client_user') || storage.get('user') || {};
     const organizerName = user.name || 'organizer';
@@ -714,26 +713,26 @@ function displayEventPreview(event) {
                             <label style="display: block; font-size: 0.9rem; color: #111827; margin-bottom: 1rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">📍 Venue & Location</label>
                             <div style="background: #f9fafb; padding: 1.25rem; border-radius: 16px; border: 1px solid #e5e7eb; color: #4b5563; font-weight: 500; line-height: 1.6;">
                                 ${(() => {
-                                    // Try structured locations JSON (multi-state events)
-                                    let locs = null;
-                                    try {
-                                        locs = event.locations
-                                            ? (typeof event.locations === 'string' ? JSON.parse(event.locations) : event.locations)
-                                            : null;
-                                    } catch(e) {}
-                                    if (Array.isArray(locs) && locs.length > 1) {
-                                        return locs.map(loc => `
+            // Try structured locations JSON (multi-state events)
+            let locs = null;
+            try {
+                locs = event.locations
+                    ? (typeof event.locations === 'string' ? JSON.parse(event.locations) : event.locations)
+                    : null;
+            } catch (e) { }
+            if (Array.isArray(locs) && locs.length > 1) {
+                return locs.map(loc => `
                                             <div style="margin-bottom:0.6rem;padding-bottom:0.6rem;border-bottom:1px dashed #e5e7eb;">
                                                 <div style="font-weight:700;color:#111827;font-size:0.9rem;margin-bottom:0.2rem;">${escapeHTML(loc.state)}</div>
                                                 ${loc.address ? `<div style="color:#6b7280;font-size:0.82rem;">${escapeHTML(loc.address)}</div>` : ''}
-                                                ${loc.date ? `<div style="color:#4f46e5;font-size:0.78rem;margin-top:0.2rem;">📅 ${new Date(loc.date + 'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}${loc.time ? ' &nbsp;🕒 ' + loc.time.substring(0,5) : ''}</div>` : ''}
+                                                ${loc.date ? `<div style="color:#4f46e5;font-size:0.78rem;margin-top:0.2rem;">📅 ${new Date(loc.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}${loc.time ? ' &nbsp;🕒 ' + loc.time.substring(0, 5) : ''}</div>` : ''}
                                             </div>
                                         `).join('');
-                                    }
-                                    // Fallback: single address/state
-                                    return (escapeHTML(event.address) || 'No address provided')
-                                        + (event.state ? `<br><span style="color:#111827;font-weight:700;">${escapeHTML(event.state)}</span>` : '');
-                                })()}
+            }
+            // Fallback: single address/state
+            return (escapeHTML(event.address) || 'No address provided')
+                + (event.state ? `<br><span style="color:#111827;font-weight:700;">${escapeHTML(event.state)}</span>` : '');
+        })()}
                             </div>
                         </div>
 
@@ -848,7 +847,7 @@ function getNigerianStates(includeGlobal = false) {
         'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
         'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT', 'Gombe', 'Imo',
         'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa',
-        'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Sokoto', 'Taraba',
+        'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba',
         'Yobe', 'Zamfara'
     ];
     if (includeGlobal) {
@@ -891,11 +890,11 @@ function getPriorityIcon(priority) {
 
 function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
         weekday: 'long',
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
     });
 }
 
@@ -1059,9 +1058,9 @@ function showEditEventModal(event) {
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State <span class="text-danger">*</span></label>
                                     <select name="state" class="form-control" required>
                                         <option value="">Select State</option>
-                                        ${getNigerianStates().map(state => 
-                                            `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
-                                        ).join('')}
+                                        ${getNigerianStates().map(state =>
+        `<option value="${state}" ${user.state === state ? 'selected' : ''}>${state}</option>`
+    ).join('')}
                                     </select>
                                 </div>
                                 <div class="form-group modal-grid-full">
@@ -1088,9 +1087,9 @@ function showEditEventModal(event) {
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
                                         <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
                                         <div id="accountStatus" class="verification-status-indicator">
-                                            ${user.subaccount_code 
-                                                ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>' 
-                                                : ''}
+                                            ${user.subaccount_code
+            ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>'
+            : ''}
                                         </div>
                                     </label>
                                     <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
@@ -1199,13 +1198,13 @@ function showEditEventModal(event) {
     `;
 
     // Make switchWizardTab globally available
-    window.switchWizardTab = function(step) {
+    window.switchWizardTab = function (step) {
         // Validate current step before advancing
         if (step > 1) {
             const form = document.getElementById('profileEditForm');
             let currentStepValid = true;
             let currentFields = [];
-            
+
             if (step === 2) {
                 currentFields = form.querySelector('#wizardStep1').querySelectorAll('[required]');
             } else if (step === 3) {
@@ -1274,7 +1273,7 @@ function showEditEventModal(event) {
     const editStatusSelect = document.getElementById('editEventStatusSelect');
     const editScheduledTimeGroup = document.getElementById('editScheduledTimeGroup');
     if (editStatusSelect && editScheduledTimeGroup) {
-        editStatusSelect.addEventListener('change', function(e) {
+        editStatusSelect.addEventListener('change', function (e) {
             editScheduledTimeGroup.style.display = e.target.value === 'scheduled' ? 'block' : 'none';
         });
     }
@@ -1285,7 +1284,7 @@ function showEditEventModal(event) {
     const editVipPriceSection = document.getElementById('editVipPriceSection');
     const editPremiumPriceSection = document.getElementById('editPremiumPriceSection');
     const editAllPriceSection = document.getElementById('editAllPriceSection');
-    
+
     const editRegularPriceInput = document.getElementById('editRegularPriceInput');
     const editVipPriceInput = document.getElementById('editVipPriceInput');
     const editPremiumPriceInput = document.getElementById('editPremiumPriceInput');
@@ -1294,7 +1293,7 @@ function showEditEventModal(event) {
     function updateEditTicketTypeSections() {
         const checkedBoxes = document.querySelectorAll('.edit-ticket-type-checkbox:checked');
         const selectedModes = Array.from(checkedBoxes).map(cb => cb.value);
-        
+
         // Sections
         const sections = {
             'regular': document.getElementById('editRegularConfig'),
@@ -1306,7 +1305,7 @@ function showEditEventModal(event) {
         Object.keys(sections).forEach(key => {
             if (sections[key]) {
                 sections[key].style.display = selectedModes.includes(key) ? 'block' : 'none';
-                
+
                 // If All is selected, we can optionally hide others or just show all. 
                 // Creating consistency with create-event.js which shows All separately.
             }
@@ -1323,7 +1322,7 @@ function showEditEventModal(event) {
                 label.style.background = 'white';
             }
         });
-        
+
         // Update required attribute
         if (editRegularPriceInput) editRegularPriceInput.required = selectedModes.includes('regular');
         if (editVipPriceInput) editVipPriceInput.required = selectedModes.includes('vip');
@@ -1394,7 +1393,7 @@ function showEditEventModal(event) {
                 if (editVipPriceInput) { editVipPriceInput.value = 0; editVipPriceInput.required = false; }
                 if (editPremiumPriceInput) { editPremiumPriceInput.value = 0; editPremiumPriceInput.required = false; }
                 if (editAllPriceInput) { editAllPriceInput.value = 0; editAllPriceInput.required = false; }
-                
+
                 const qtyInputs = document.querySelectorAll('#editTicketTypeConfigSection input[type="number"]');
                 qtyInputs.forEach(input => {
                     if (input.name.includes('quantity')) input.value = '';
@@ -1416,7 +1415,7 @@ function showEditEventModal(event) {
     // Add status change handler (Edit Modal)
     const statusSelect = document.getElementById('editEventStatusSelect');
     if (statusSelect) {
-        statusSelect.addEventListener('change', function(e) {
+        statusSelect.addEventListener('change', function (e) {
             const scheduledGroup = document.getElementById('editScheduledTimeGroup');
             if (scheduledGroup) {
                 scheduledGroup.style.display = e.target.value === 'scheduled' ? 'block' : 'none';
@@ -1581,9 +1580,9 @@ function updateEditSelectedStates() {
         displaySpan.style.color = '#1e293b';
         hiddenInput.value = selectedValues.join(',');
     }
-    
+
     renderPerStateEditAddressFields(selectedValues);
-    
+
     // Trigger input event for persistence
     hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -1609,7 +1608,7 @@ function previewEditEventImage(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             document.getElementById('editEventImagePreview').src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -1618,16 +1617,16 @@ function previewEditEventImage(event) {
 
 async function handleEventUpdate(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(e.target);
     const eventId = formData.get('event_id');
-    
+
     // Show loading state
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Updating...';
     submitBtn.disabled = true;
-    
+
     try {
         const response = await apiFetch('/api/events/update-event.php', {
             method: 'POST',
@@ -1638,12 +1637,12 @@ async function handleEventUpdate(e) {
 
         if (result.success) {
             showNotification('Event updated successfully!', 'success');
-            
+
             // Clear saved form state ONLY on success
             clearFormState(`editEventForm_${eventId}`);
-            
+
             closeEditEventModal();
-            
+
             // Update UI immediately without refresh
             if (result.event) {
                 if (typeof window.updateEventInList === 'function') {
@@ -1807,7 +1806,7 @@ function closeTicketPreviewModal() {
 // User Preview Modal
 function showUserPreviewModal(user) {
     const hasValidUrl = user.profile_pic && user.profile_pic.startsWith('http');
-    const profileImage = user.profile_pic 
+    const profileImage = user.profile_pic
         ? (hasValidUrl ? user.profile_pic : `../../${user.profile_pic}`)
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random&size=150`;
 

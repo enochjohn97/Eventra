@@ -122,12 +122,7 @@ if ($folder_id) {
     }
 }
 
-// Validate file size
-$max_size = $_ENV['UPLOAD_MAX_SIZE'] ?? 5242880; // 5MB default
-if ($file['size'] > $max_size) {
-    echo json_encode(['success' => false, 'message' => 'File size exceeds maximum allowed size']);
-    exit;
-}
+
 
 // Get file info
 $file_name = basename($file['name']);

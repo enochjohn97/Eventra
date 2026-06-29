@@ -18,13 +18,13 @@ function updateEventInList(updatedEvent) {
     if (index !== -1) {
         // Merge updated data with existing data to preserve any fields not returned by the API
         eventsData[index] = { ...eventsData[index], ...updatedEvent };
-        
+
         if (pagination) {
             pagination.updateData(eventsData);
         } else {
             updateEventsTable(eventsData);
         }
-        
+
         // Also refresh stats since an update might change counts (e.g. status change)
         const user = storage.getUser();
         refreshStats(user.id);
@@ -34,7 +34,7 @@ window.updateEventInList = updateEventInList;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = storage.getUser();
-    
+
     // Load cached stats first for instant feedback
     loadCachedStats();
 
@@ -54,15 +54,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId) {
-        setTimeout(() => {
+        const tryHighlight = (attempts = 0) => {
             const row = document.querySelector(`tr[data-id="${highlightId}"]`);
             if (row) {
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                row.style.transition = 'background 0.5s';
-                row.style.background = 'rgba(99, 91, 255, 0.15)';
-                setTimeout(() => { row.style.background = ''; }, 3000);
+                row.classList.add('search-highlight-row');
+                setTimeout(() => row.classList.remove('search-highlight-row'), 3500);
+            } else if (attempts < 15) {
+                setTimeout(() => tryHighlight(attempts + 1), 300);
             }
-        }, 800);
+        };
+        setTimeout(() => tryHighlight(), 800);
     }
 
     // Initialize create event button
@@ -134,7 +136,7 @@ function updateStatsCards(stats) {
     const scheduledCard = document.getElementById('statScheduled');
     const deletedCard = document.getElementById('statDeleted');
     const restoredCard = document.getElementById('statRestored');
-    
+
     if (createdCard) createdCard.textContent = stats.total_events || 0;
     if (publishedCard) publishedCard.textContent = stats.published_events || 0;
     if (scheduledCard) scheduledCard.textContent = stats.scheduled_events || 0;
@@ -197,7 +199,7 @@ function updateEventsTable(events) {
     tbody.innerHTML = events.map(event => {
         const user = storage.getUser();
         const clientNameSlug = (user?.name || '').toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
-        
+
         if (currentTab === 'trash') {
             const deletedAt = event.deleted_at ? new Date(event.deleted_at).toLocaleDateString() : '—';
             return `
@@ -209,13 +211,13 @@ function updateEventsTable(events) {
                 <td>${(event.event_date || '').split('-').reverse().join('/')}</td>
                 <td>
                     ${(() => {
-                        const basePrice = parseFloat(event.price) || 0;
-                        const regPrice = parseFloat(event.regular_price) || 0;
-                        const vPrice = parseFloat(event.vip_price) || 0;
-                        const premPrice = parseFloat(event.premium_price) || 0;
-                        const isFree = basePrice === 0 && regPrice === 0 && vPrice === 0 && premPrice === 0;
-                        return isFree ? 'Free' : (basePrice > 0 ? `₦${basePrice.toLocaleString()}` : 'Paid');
-                    })()}
+                    const basePrice = parseFloat(event.price) || 0;
+                    const regPrice = parseFloat(event.regular_price) || 0;
+                    const vPrice = parseFloat(event.vip_price) || 0;
+                    const premPrice = parseFloat(event.premium_price) || 0;
+                    const isFree = basePrice === 0 && regPrice === 0 && vPrice === 0 && premPrice === 0;
+                    return isFree ? 'Free' : (basePrice > 0 ? `₦${basePrice.toLocaleString()}` : 'Paid');
+                })()}
                 </td>
                 <td><span style="color:#ef4444;">${deletedAt}</span></td>
                 <td class="text-center">
@@ -246,15 +248,15 @@ function updateEventsTable(events) {
         }
 
         const ticketTypeMode = metadata.ticket_type_mode || 'all';
-        
+
         // Fix: Determine if free by checking all potential price sources
         const basePrice = parseFloat(event.price) || 0;
         const regPrice = parseFloat(metadata.regular_price) || 0;
         const vPrice = parseFloat(metadata.vip_price) || 0;
         const premPrice = parseFloat(metadata.premium_price) || 0;
-        
+
         const isFree = basePrice === 0 && regPrice === 0 && vPrice === 0 && premPrice === 0;
-        
+
         // If not free, but base price is 0, we might have tiered prices
         let displayPrice = 'Free';
         if (!isFree) {
@@ -267,7 +269,7 @@ function updateEventsTable(events) {
                 if (modes.includes('regular') && regPrice > 0) prices.push(`Reg: ₦${regPrice.toLocaleString()}`);
                 if (modes.includes('vip') && vPrice > 0) prices.push(`VIP: ₦${vPrice.toLocaleString()}`);
                 if (modes.includes('premium') && premPrice > 0) prices.push(`Prem: ₦${premPrice.toLocaleString()}`);
-                
+
                 if (prices.length > 0) {
                     displayPrice = prices.join(', ');
                 } else if (basePrice > 0) {
@@ -277,7 +279,7 @@ function updateEventsTable(events) {
                 }
             }
         }
-        
+
         let regularPrice = isFree ? 'Free' : '—';
         let vipPrice = isFree ? 'Free' : '—';
         let premiumPrice = isFree ? 'Free' : '—';
@@ -416,7 +418,7 @@ function updatePagination(events) {
 
 function getSortIcon(key) {
     if (sortConfig.key !== key) return '<i data-lucide="arrow-up-down" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>';
-    return sortConfig.direction === 'asc' 
+    return sortConfig.direction === 'asc'
         ? '<i data-lucide="arrow-up" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; color: var(--card-blue);"></i>'
         : '<i data-lucide="arrow-down" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; color: var(--card-blue);"></i>';
 }
@@ -464,7 +466,7 @@ function getStatusColor(status) {
 function initCreateEventButton() {
     const user = storage.getUser();
     const createBtn = document.getElementById('eventsCreateEventBtn');
-    
+
     if (createBtn && user) {
         if (user.verification_status !== 'verified') {
             createBtn.disabled = true;
@@ -482,18 +484,27 @@ function initCreateEventButton() {
 
 async function editEvent(eventId) {
     try {
+        // ── 1. Try the already-loaded local cache first (fastest, no network) ──
+        const cachedEvent = eventsData.find(e => e.id == eventId);
+        if (cachedEvent) {
+            showCreateEventModal(cachedEvent);
+            return;
+        }
+
+        // ── 2. Fallback: fetch all events without an artificial limit ──
         const user = storage.getUser();
-        const response = await apiFetch(`/api/events/get-events.php?client_id=${user.id}&limit=100`);
+        const response = await apiFetch(`/api/events/get-events.php?client_id=${user.id}&limit=all`);
         const result = await response.json();
 
         if (result.success) {
             const event = result.events.find(e => e.id == eventId);
             if (event) {
-                // The user wants to allow editing published events
-                showEditEventModal(event);
+                showCreateEventModal(event);
             } else {
                 showNotification('Event not found', 'error');
             }
+        } else {
+            showNotification('Failed to load event details', 'error');
         }
     } catch (error) {
         showNotification('Failed to load event details', 'error');
@@ -575,7 +586,7 @@ async function deleteEvent(eventId) {
             btn.disabled = false;
             btn.innerHTML = originalBtnContent;
         }
-        showNotification('An error occurred', 'error');
+        showNotification(error.message || 'An error occurred', 'error');
     }
 }
 
@@ -634,7 +645,7 @@ async function undoDelete(eventId) {
             showNotification('Failed to undo: ' + data.message, 'error');
         }
     } catch (error) {
-        showNotification('Failed to undo deletion', 'error');
+        showNotification(error.message || 'Failed to undo deletion', 'error');
     }
 }
 window.undoDelete = undoDelete;
@@ -748,7 +759,7 @@ async function restoreEvent(eventId) {
         }
     } catch (error) {
         if (row) { row.style.opacity = '1'; row.style.transform = 'translateX(0)'; }
-        showNotification('An error occurred', 'error');
+        showNotification(error.message || 'An error occurred', 'error');
     }
 }
 window.restoreEvent = restoreEvent;
@@ -804,7 +815,7 @@ async function permanentDeleteEvent(eventId) {
         }
     } catch (error) {
         if (row) { row.style.opacity = '1'; row.style.transform = 'translateX(0)'; }
-        showNotification('An error occurred', 'error');
+        showNotification(error.message || 'An error occurred', 'error');
     }
 }
 window.permanentDeleteEvent = permanentDeleteEvent;
@@ -816,24 +827,24 @@ async function previewEvent(eventId) {
 
     // Provide visual feedback while loading
     row.style.opacity = '0.7';
-    
+
     let event;
     try {
         const response = await apiFetch(`/api/events/get-event.php?id=${eventId}`);
         const result = await response.json();
-        
+
         if (result.success && result.event) {
             const data = result.event;
-            
+
             // Format prices dynamically
             let formattedPrice = 'Free';
             const basePrice = parseFloat(data.price) || 0;
             const regPrice = parseFloat(data.regular_price) || 0;
             const vPrice = parseFloat(data.vip_price) || 0;
             const premPrice = parseFloat(data.premium_price) || 0;
-            
+
             const isFree = basePrice === 0 && regPrice === 0 && vPrice === 0 && premPrice === 0;
-            
+
             if (!isFree) {
                 const mode = data.ticket_type_mode || 'all';
                 if (mode === 'all' || mode.includes('all')) {
@@ -844,7 +855,7 @@ async function previewEvent(eventId) {
                     if (modes.includes('regular') && regPrice > 0) prices.push(`Regular ₦${regPrice.toLocaleString()}`);
                     if (modes.includes('vip') && vPrice > 0) prices.push(`VIP ₦${vPrice.toLocaleString()}`);
                     if (modes.includes('premium') && premPrice > 0) prices.push(`Premium ₦${premPrice.toLocaleString()}`);
-                    
+
                     if (prices.length > 0) {
                         formattedPrice = prices.join(', ');
                     } else if (basePrice > 0) {
@@ -859,13 +870,13 @@ async function previewEvent(eventId) {
             if (data.locations) {
                 try {
                     parsedLocations = typeof data.locations === 'string' ? JSON.parse(data.locations) : data.locations;
-                } catch(e) {}
+                } catch (e) { }
             }
             if ((!parsedLocations || parsedLocations.length === 0) && data.state) {
                 let stateList = [];
                 try {
                     stateList = typeof data.state === 'string' && data.state.startsWith('[') ? JSON.parse(data.state) : [data.state];
-                } catch(e) {
+                } catch (e) {
                     stateList = [data.state];
                 }
                 parsedLocations = stateList.map(s => ({
@@ -953,7 +964,7 @@ async function previewEvent(eventId) {
 
     const content = backdrop.querySelector('#previewContent');
     const statusColor = getStatusColor(status.toLowerCase());
-    
+
     content.innerHTML = `
         <div class="event-preview-container" style="font-family: 'Plus Jakarta Sans', sans-serif;">
             <!-- Hero Header -->
@@ -1023,19 +1034,19 @@ async function previewEvent(eventId) {
                             Venue Location
                         </h3>
                         ${(() => {
-                            if (event.locations && event.locations.length > 0) {
-                                const uniqueLocations = [];
-                                const seenStates = new Set();
-                                for (const loc of event.locations) {
-                                    if (!seenStates.has(loc.state)) {
-                                        seenStates.add(loc.state);
-                                        uniqueLocations.push(loc);
-                                    }
-                                }
-                                
-                                if (uniqueLocations.length === 1) {
-                                    const loc = uniqueLocations[0];
-                                    return `
+            if (event.locations && event.locations.length > 0) {
+                const uniqueLocations = [];
+                const seenStates = new Set();
+                for (const loc of event.locations) {
+                    if (!seenStates.has(loc.state)) {
+                        seenStates.add(loc.state);
+                        uniqueLocations.push(loc);
+                    }
+                }
+
+                if (uniqueLocations.length === 1) {
+                    const loc = uniqueLocations[0];
+                    return `
                                         <div style="display: flex; align-items: flex-start; gap: 15px; background: #f1f5f9; padding: 1.5rem; border-radius: 20px;">
                                             <div style="font-size: 1.5rem;">📍</div>
                                             <div>
@@ -1044,8 +1055,8 @@ async function previewEvent(eventId) {
                                             </div>
                                         </div>
                                     `;
-                                } else {
-                                    return `
+                } else {
+                    return `
                                         <div style="background: #f1f5f9; padding: 1.5rem; border-radius: 20px;">
                                             <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;" onclick="const content = document.getElementById('venueDropdownContent_${event.id}'); const arrow = document.getElementById('venueDropdownArrow_${event.id}'); if(content.style.display === 'none'){ content.style.display = 'block'; arrow.style.transform = 'rotate(180deg)'; } else { content.style.display = 'none'; arrow.style.transform = 'rotate(0deg)'; }">
                                                 <div style="display: flex; align-items: center; gap: 15px;">
@@ -1069,9 +1080,9 @@ async function previewEvent(eventId) {
                                             </div>
                                         </div>
                                     `;
-                                }
-                            } else {
-                                return `
+                }
+            } else {
+                return `
                                     <div style="display: flex; align-items: flex-start; gap: 15px; background: #f1f5f9; padding: 1.5rem; border-radius: 20px;">
                                         <div style="font-size: 1.5rem;">📍</div>
                                         <div>
@@ -1080,8 +1091,8 @@ async function previewEvent(eventId) {
                                         </div>
                                     </div>
                                 `;
-                            }
-                        })()}
+            }
+        })()}
                     </div>
 
                     <div>
@@ -1132,7 +1143,7 @@ async function previewEvent(eventId) {
 
 async function publishEvent(eventId) {
     if (document.activeElement) document.activeElement.blur();
-    
+
     const confirmed = await Swal.fire({
         title: 'Publish Event?',
         text: 'Are you sure you want to publish this event? It will be visible to all users on the platform.',
@@ -1156,7 +1167,7 @@ async function publishEvent(eventId) {
         });
         publishResult = await response.json();
     } catch (error) {
-        showNotification('An error occurred while publishing event', 'error');
+        showNotification(error.message || 'An error occurred while publishing event', 'error');
         return;
     }
 

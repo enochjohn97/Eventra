@@ -1,4 +1,4 @@
-function showCreateEventModal() {
+function showCreateEventModal(eventToEdit = null) {
     const user = storage.getUser();
     if (!user) return;
 
@@ -86,18 +86,31 @@ function showCreateEventModal() {
                                             <option value="Workshop">Workshop</option>
                                             <option value="Seminar">Seminar</option>
                                             <option value="Entertainment">Entertainment</option>
-                                            <option value="Sports">Sports</option>
+                                            <option value="Sport & Fitness">Sport & Fitness</option>
                                             <option value="Exhibition">Exhibition</option>
                                             <option value="Networking">Networking</option>
                                             <option value="Festival">Festival</option>
                                             <option value="Concert">Concert</option>
                                             <option value="Business">Business</option>
-                                            <option value="Educational">Educational</option>
+                                            <option value="Education">Education</option>
                                             <option value="Social">Social</option>
-                                            <option value="Personal">Personal</option>
+                                            <option value="Personal">Personal (Wedding, Anniversary, etc.)</option>
                                             <option value="Community">Community</option>
-                                            <option value="Religious">Religious</option>
+                                            <option value="Religion">Religion</option>
                                             <option value="Cultural">Cultural</option>
+                                            <option value="Technology">Technology</option>
+                                            <option value="Art">Art</option>
+                                            <option value="Health">Health</option>
+                                            <option value="Food">Food</option>
+                                            <option value="Agriculture">Agriculture</option>
+                                            <option value="Tourism">Tourism</option>
+                                            <option value="Fashion">Fashion</option>
+                                            <option value="Real Estate">Real Estate</option>
+                                            <option value="Awards">Awards</option>
+                                            <option value="Charity">Charity</option>
+                                            <option value="Finance">Finance</option>
+                                            <option value="Gaming">Gaming</option>
+                                            <option value="Political">Political</option>
                                             <option value="Other">Other</option>
                                         </select>
                                     </div>
@@ -120,17 +133,18 @@ function showCreateEventModal() {
                                 <!-- Row: City, State, Zip -->
                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
                                     <div class="form-group" style="position: relative;">
-                                        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Date <span style="color: #ef4444">*</span></label>
+                                        <label for="customDateDisplay" style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Date <span style="color: #ef4444">*</span></label>
                                         <div style="position: relative;">
                                             <input type="text" id="customDateDisplay" readonly required placeholder="Select a date" 
+                                                   role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-controls="materialDatePicker" aria-label="Event date, press Enter to open calendar"
                                                    style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer;"
-                                                   onclick="openMaterialDatePicker()">
-                                            <span style="position: absolute; right: 1rem; top: 1rem; color: #9ca3af; pointer-events: none; font-size: 1.25rem;">📅</span>
+                                                   onclick="openMaterialDatePicker()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMaterialDatePicker();}">
+                                            <span aria-hidden="true" style="position: absolute; right: 1rem; top: 1rem; color: #9ca3af; pointer-events: none; font-size: 1.25rem;">📅</span>
                                         </div>
-                                        <input type="hidden" name="event_date" id="eventDateInput" required>
+                                        <input type="hidden" name="event_date" id="eventDateInput" required aria-hidden="true">
                                         
                                         <!-- Material Datepicker Dropdown -->
-                                        <div id="materialDatePicker" class="material-datepicker">
+                                        <div id="materialDatePicker" class="material-datepicker" role="dialog" aria-modal="true" aria-label="Choose event date">
                                             <div class="mdp-header">
                                                 <div id="mdpYear" class="mdp-year">2026</div>
                                                 <div id="mdpDateDisplay" class="mdp-date">Thu, Apr 16</div>
@@ -153,12 +167,12 @@ function showCreateEventModal() {
                                     </div>
 
                                     <div class="form-group">
-                                        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Time <span style="color: #ef4444">*</span></label>
+                                        <label id="eventTimeLabel" style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Time <span style="color: #ef4444">*</span></label>
                                         <div id="eventTimePickerContainer" class="time-picker-container">
-                                            <div class="time-picker-display" onclick="toggleTimePicker('eventTimePickerDropdown')">
+                                            <button type="button" class="time-picker-display" id="eventTimeDisplayBtn" aria-labelledby="eventTimeLabel" aria-haspopup="listbox" aria-expanded="false" aria-controls="eventTimePickerDropdown" onclick="toggleTimePicker('eventTimePickerDropdown')">
                                                 <span id="eventTimeDisplay">Select Time</span>
-                                                <span style="font-size: 0.8rem; opacity: 0.5;">🕒</span>
-                                            </div>
+                                                <span aria-hidden="true" style="font-size: 0.8rem; opacity: 0.5;">🕒</span>
+                                            </button>
                                             <div id="eventTimePickerDropdown" class="time-picker-dropdown">
                                                 <!-- Top Section: Hours -->
                                                 <div class="time-picker-section">
@@ -421,6 +435,34 @@ function showCreateEventModal() {
             .mdp-btn { background: none; border: none; color: #008080; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: 0.2s; padding: 8px 16px; border-radius: 8px; text-transform: uppercase; }
             .mdp-btn:hover { background: rgba(0,128,128,0.08); }
             @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+            .per-state-container { background: #f9fafc; padding: 1.25rem; border-radius: 12px; border: 1px solid #eaeef2; margin-top: 1rem; }
+            .per-state-section { display: flex; flex-direction: column; gap: 1rem; }
+            .per-state-header { display: flex; gap: 0.75rem; align-items: flex-start; }
+            .per-state-title { font-size: 0.85rem; font-weight: 700; color: #111827; text-transform: uppercase; letter-spacing: 0.5px; }
+            .per-state-desc { font-size: 0.8rem; color: #6b7280; margin-top: 0.15rem; }
+            .per-state-toggle { display: flex; align-items: center; gap: 0.5rem; padding: 0.65rem 0.75rem; background: rgba(99,102,241,0.08); border-radius: 6px; border: 1px solid #eaeef2; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+            .per-state-toggle input { accent-color: #6366f1; }
+            .per-state-cards { display: flex; flex-direction: column; gap: 0.75rem; }
+            .per-state-card { background: #fff; border: 1px solid #eaeef2; border-radius: 12px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+            .per-state-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+            .per-state-badge { font-size: 0.82rem; font-weight: 700; color: #6366f1; background: rgba(99,102,241,0.1); padding: 0.2rem 0.6rem; border-radius: 6px; }
+            .per-state-required { font-size: 0.65rem; font-weight: 700; color: #ef4444; text-transform: uppercase; }
+            .per-state-address-input { width: 100%; padding: 0.75rem 1rem; border: 1px solid #eaeef2; border-radius: 6px; font-size: 0.9rem; font-family: inherit; resize: vertical; }
+            .per-state-datetime { grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem; }
+            .per-state-field { position: relative; }
+            .per-state-field label, .per-state-field > span { display: block; font-size: 0.72rem; font-weight: 600; color: #6b7280; margin-bottom: 0.25rem; text-transform: uppercase; }
+            .per-state-date-wrap { position: relative; }
+            .per-state-date-display { width: 100%; padding: 0.65rem 1rem; border: 1px solid #eaeef2; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box; }
+            .per-state-date-wrap > span { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+            .per-state-mdp { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 9999; background: #fff; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); width: 280px; overflow: hidden; border: 1px solid #eaeef2; }
+            .per-state-mdp.open { display: block; }
+            .per-state-mdp-head { background: #6366f1; color: white; padding: 14px 16px; }
+            .per-state-mdp-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; padding: 0 12px; }
+            .per-state-mdp-nav button { background: none; border: none; cursor: pointer; color: #6b7280; }
+            .per-state-mdp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; font-size: 0.8rem; padding: 0 12px 12px; }
+            .per-state-mdp-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 8px 16px 14px; }
+            .per-state-mdp-foot button { background: none; border: none; color: #6366f1; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+            .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
         </style>
     `;
 
@@ -431,6 +473,121 @@ function showCreateEventModal() {
     // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
+    const createEventForm = document.getElementById('createEventForm');
+
+    // If editing, populate form and change title
+    if (eventToEdit) {
+        document.querySelector('#createEventModal h2').textContent = 'Edit Event';
+        createEventForm.setAttribute('data-event-id', eventToEdit.id);
+
+        // Basic fields
+        document.getElementById('eventNameInput').value = (eventToEdit.event_name || '').replace(/\s*#\d+$/, '');
+        createEventForm.querySelector('select[name="event_type"]').value = eventToEdit.event_type || '';
+        createEventForm.querySelector('textarea[name="description"]').value = eventToEdit.description || '';
+        createEventForm.querySelector('input[name="phone_contact_1"]').value = eventToEdit.phone_contact_1 || '';
+
+        // Date & Time (global)
+        document.getElementById('customDateDisplay').value = eventToEdit.event_date || '';
+        createEventForm.querySelector('input[name="event_date"]').value = eventToEdit.event_date || '';
+
+        if (eventToEdit.event_time) {
+            const timeParts = eventToEdit.event_time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+            if (timeParts) {
+                document.getElementById('timeHour').value = timeParts[1].padStart(2, '0');
+                document.getElementById('timeMinute').value = timeParts[2].padStart(2, '0');
+                if (timeParts[3]) {
+                    document.getElementById('timeAmPm').value = timeParts[3].toUpperCase();
+                }
+            }
+        }
+
+        // Image
+        if (eventToEdit.image_path) {
+            document.getElementById('eventImagePreview').src = '/' + eventToEdit.image_path;
+            document.getElementById('eventImageInput').removeAttribute('required');
+        }
+
+        // Parse metadata to extract ticket data
+        let metadata = {};
+        if (eventToEdit.metadata) {
+            try {
+                metadata = typeof eventToEdit.metadata === 'string' ? JSON.parse(eventToEdit.metadata) : eventToEdit.metadata;
+            } catch (e) { }
+        }
+
+        // Tickets & Prices
+        if (metadata.ticket_type_mode) {
+            const modes = metadata.ticket_type_mode.toLowerCase();
+            document.querySelectorAll('.ticket-type-checkbox').forEach(cb => {
+                if (modes.includes('all') && cb.value === 'all') cb.checked = true;
+                if (modes.includes('regular') && cb.value === 'regular') cb.checked = true;
+                if (modes.includes('vip') && cb.value === 'vip') cb.checked = true;
+                if (modes.includes('premium') && cb.value === 'premium') cb.checked = true;
+            });
+            updateTicketTypeSections();
+        }
+
+        if (document.getElementById('regularPriceInput') && metadata.regular_price) document.getElementById('regularPriceInput').value = metadata.regular_price;
+        if (document.getElementById('vipPriceInput') && metadata.vip_price) document.getElementById('vipPriceInput').value = metadata.vip_price;
+        if (document.getElementById('premiumPriceInput') && metadata.premium_price) document.getElementById('premiumPriceInput').value = metadata.premium_price;
+        if (document.getElementById('allPriceInput') && eventToEdit.price) document.getElementById('allPriceInput').value = eventToEdit.price;
+
+        // Total Tickets
+        if (eventToEdit.total_tickets) {
+            createEventForm.querySelector('input[name="total_tickets"]').value = eventToEdit.total_tickets;
+        }
+
+        // Location / States
+        if (eventToEdit.state) {
+            const states = eventToEdit.state.split(',').map(s => s.trim());
+            document.querySelectorAll('.state-checkbox').forEach(cb => {
+                if (states.includes(cb.value)) cb.checked = true;
+            });
+            updateSelectedStates();
+
+            // Per-state logic
+            setTimeout(() => {
+                const mainAddressTextarea = document.getElementById('mainAddressTextarea');
+                if (states.length === 1) {
+                    if (mainAddressTextarea) mainAddressTextarea.value = eventToEdit.address || '';
+                } else if (states.length > 1 && eventToEdit.locations) {
+                    let locs = [];
+                    try {
+                        locs = typeof eventToEdit.locations === 'string' ? JSON.parse(eventToEdit.locations) : eventToEdit.locations;
+                    } catch (e) { }
+
+                    let hasCustomDates = false;
+                    locs.forEach(loc => {
+                        const ta = document.querySelector(`textarea[data-state="${loc.state}"]`);
+                        if (ta) ta.value = loc.address || '';
+
+                        if (loc.date || loc.time) hasCustomDates = true;
+
+                        if (loc.date) {
+                            const di = document.querySelector(`input[data-type="date"][data-state="${loc.state}"]`);
+                            if (di) di.value = loc.date;
+                        }
+                        if (loc.time) {
+                            const ti = document.querySelector(`input[data-type="time"][data-state="${loc.state}"]`);
+                            if (ti) ti.value = loc.time;
+                        }
+                    });
+
+                    if (hasCustomDates) {
+                        const customizeCb = document.getElementById('customizeDatesPerStateCheckbox');
+                        if (customizeCb) {
+                            customizeCb.checked = true;
+                            togglePerStateDateTimeFields();
+                        }
+                    }
+                }
+            }, 100);
+        }
+
+        // Change Submit Button text
+        const submitBtn = createEventForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.textContent = 'Save Changes';
+    }
 
 
     // Set minimum date to today is handled by the new Material DatePicker JS component
@@ -446,7 +603,6 @@ function showCreateEventModal() {
     });
 
     // Add form submit handler
-    const createEventForm = document.getElementById('createEventForm');
     createEventForm.addEventListener('submit', handleEventCreation);
 
     // Inject the per-state address container below the main address textarea
@@ -482,11 +638,11 @@ function showCreateEventModal() {
     const priceInputGroup = document.getElementById('priceInputGroup');
     const ticketConfig = document.getElementById('ticketTypeConfigSection');
 
-    freeCheckbox.addEventListener('change', function() {
+    freeCheckbox.addEventListener('change', function () {
         if (this.checked) {
             // If free, hide ticket config and set hidden inputs to 0
             if (ticketConfig) ticketConfig.style.display = 'none';
-            
+
             const regularPriceInput = document.getElementById('regularPriceInput');
             const vipPriceInput = document.getElementById('vipPriceInput');
             const premiumPriceInput = document.getElementById('premiumPriceInput');
@@ -496,7 +652,7 @@ function showCreateEventModal() {
             if (vipPriceInput) { vipPriceInput.value = 0; vipPriceInput.required = false; }
             if (premiumPriceInput) { premiumPriceInput.value = 0; premiumPriceInput.required = false; }
             if (allPriceInput) { allPriceInput.value = 0; allPriceInput.required = false; }
-            
+
             // Clear quantities
             const qtyInputs = document.querySelectorAll('#ticketTypeConfigSection input[type="number"]');
             qtyInputs.forEach(input => {
@@ -510,10 +666,10 @@ function showCreateEventModal() {
     });
 
     // Add status change handler
-    document.querySelector('select[name="status"]').addEventListener('change', function(e) {
+    document.querySelector('select[name="status"]').addEventListener('change', function (e) {
         const scheduledGroup = document.getElementById('scheduledTimeGroup');
         scheduledGroup.style.display = e.target.value === 'scheduled' ? 'block' : 'none';
-        
+
         // Ensure priority fields are visible regardless of status
     });
 
@@ -534,17 +690,41 @@ function showCreateEventModal() {
         const checkedBoxes = document.querySelectorAll('.ticket-type-checkbox:checked');
         const selectedModes = Array.from(checkedBoxes).map(cb => cb.value);
 
-        // Show / hide each price config panel based on selection
+        // ── Fix: When "All" is checked, auto-select regular/vip/premium ──────
+        const allCb = document.querySelector('.ticket-type-checkbox[value="all"]');
+        const individualTypes = ['regular', 'vip', 'premium'];
+        if (allCb && allCb.checked) {
+            // Force-check the three individual checkboxes
+            individualTypes.forEach(type => {
+                const cb = document.querySelector(`.ticket-type-checkbox[value="${type}"]`);
+                if (cb && !cb.checked) cb.checked = true;
+            });
+            // Hide the "allConfig" panel — we show the three individual panels instead
+            const allPanel = document.getElementById('allConfig');
+            if (allPanel) allPanel.style.display = 'none';
+        } else if (allCb && !allCb.checked) {
+            // When "All" is unchecked, uncheck and hide the individual types only if
+            // they were selected solely because of "All" (i.e. no independent reason)
+            // We do nothing here — user may have individually selected them
+        }
+
+        // Re-collect after possible auto-check above
+        const finalCheckedBoxes = document.querySelectorAll('.ticket-type-checkbox:checked');
+        const finalModes = Array.from(finalCheckedBoxes).map(cb => cb.value);
+
+        // Show / hide each price config panel based on final selection
         const sections = {
             'regular': document.getElementById('regularConfig'),
-            'vip':     document.getElementById('vipConfig'),
+            'vip': document.getElementById('vipConfig'),
             'premium': document.getElementById('premiumConfig'),
-            'all':     document.getElementById('allConfig')
+            'all': document.getElementById('allConfig')
         };
 
-        Object.keys(sections).forEach(key => {
+        // Always hide allConfig — individual panels used instead
+        if (sections['all']) sections['all'].style.display = 'none';
+        ['regular', 'vip', 'premium'].forEach(key => {
             if (sections[key]) {
-                sections[key].style.display = selectedModes.includes(key) ? 'block' : 'none';
+                sections[key].style.display = finalModes.includes(key) ? 'block' : 'none';
             }
         });
 
@@ -553,10 +733,10 @@ function showCreateEventModal() {
             const input = label.querySelector('input');
             if (input && input.checked) {
                 label.style.borderColor = '#2563eb';
-                label.style.background  = '#eff6ff';
+                label.style.background = '#eff6ff';
             } else {
                 label.style.borderColor = '#e5e7eb';
-                label.style.background  = 'transparent';
+                label.style.background = 'transparent';
             }
         });
 
@@ -566,10 +746,10 @@ function showCreateEventModal() {
         const ppi = document.getElementById('premiumPriceInput');
         const api = document.getElementById('allPriceInput');
 
-        if (rpi) rpi.required = selectedModes.includes('regular');
-        if (vpi) vpi.required = selectedModes.includes('vip');
-        if (ppi) ppi.required = selectedModes.includes('premium');
-        if (api) api.required = selectedModes.includes('all');
+        if (rpi) rpi.required = finalModes.includes('regular');
+        if (vpi) vpi.required = finalModes.includes('vip');
+        if (ppi) ppi.required = finalModes.includes('premium');
+        if (api) api.required = false; // allConfig is hidden, never required
     }
 
     ticketTypeCheckboxes.forEach(checkbox => {
@@ -578,12 +758,20 @@ function showCreateEventModal() {
 
     // Sync prices when inputs change
     if (regularPriceInput) regularPriceInput.addEventListener('change', updateTicketTypeSections);
-    if (vipPriceInput)     vipPriceInput.addEventListener('change', updateTicketTypeSections);
+    if (vipPriceInput) vipPriceInput.addEventListener('change', updateTicketTypeSections);
     if (premiumPriceInput) premiumPriceInput.addEventListener('change', updateTicketTypeSections);
-    if (allPriceInput)     allPriceInput.addEventListener('change', updateTicketTypeSections);
+    if (allPriceInput) allPriceInput.addEventListener('change', updateTicketTypeSections);
 
     // Initial render
     updateTicketTypeSections();
+
+    // ── Fix 5: Paste suppression — don't trigger red-border validation on paste ──
+    // When user pastes into any field, set a flag that validation checks before
+    // applying the error highlight
+    createEventForm.addEventListener('paste', () => {
+        window._isPasting = true;
+        setTimeout(() => { window._isPasting = false; }, 300);
+    }, true);
 }
 
 function closeCreateEventModal() {
@@ -595,7 +783,7 @@ function previewEventImage(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             document.getElementById('eventImagePreview').src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -605,7 +793,7 @@ function previewEventImage(event) {
 function generateEventTagAndLink() {
     const eventNameInput = document.getElementById('eventNameInput');
     const eventName = eventNameInput.value.trim();
-    
+
     if (!eventName) {
         document.getElementById('eventTagField').value = '';
         document.getElementById('eventLinkField').value = '';
@@ -638,7 +826,7 @@ function generateEventTagAndLink() {
 
 async function handleEventCreation(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(e.target);
 
     // ── Build structured locations JSON from per-state address fields ──────────
@@ -694,22 +882,28 @@ async function handleEventCreation(e) {
         }
     } else {
         // Single-state: build a minimal locations array from the main address field
-        const singleState  = formData.get('state') || '';
-        const singleAddr   = formData.get('address') || '';
+        const singleState = formData.get('state') || '';
+        const singleAddr = formData.get('address') || '';
         if (singleState && singleAddr) {
             formData.set('locations_json', JSON.stringify([{ state: singleState, address: singleAddr }]));
         }
     }
-    // ─────────────────────────────────────────────────────────────────────────
-    
+    // Check if we are updating
+    const eventId = e.target.getAttribute('data-event-id');
+    if (eventId) {
+        formData.append('event_id', eventId);
+    }
+
+    const endpoint = eventId ? '/api/events/update-event.php' : '/api/events/create-event.php';
+
     // Show loading state
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Creating... ⏳';
+    submitBtn.textContent = eventId ? 'Updating... ⏳' : 'Creating... ⏳';
     submitBtn.disabled = true;
-    
+
     try {
-        const response = await apiFetch('/api/events/create-event.php', {
+        const response = await apiFetch(endpoint, {
             method: 'POST',
             body: formData
         });
@@ -717,17 +911,17 @@ async function handleEventCreation(e) {
         const result = await response.json();
 
         if (result.success) {
-            showNotification('Event created successfully!', 'success');
+            showNotification(eventId ? 'Event updated successfully!' : 'Event created successfully!', 'success');
             clearFormState('createEventForm');
             closeCreateEventModal();
             setTimeout(() => window.location.reload(), 1000);
         } else {
-            showNotification('Failed to create event: ' + result.message, 'error');
+            showNotification((eventId ? 'Failed to update event: ' : 'Failed to create event: ') + result.message, 'error');
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
         }
     } catch (error) {
-        showNotification('An error occurred while creating event', 'error');
+        showNotification(error.message || (eventId ? 'An error occurred while updating event' : 'An error occurred while creating event'), 'error');
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     }
@@ -744,17 +938,28 @@ window.generateEventTagAndLink = generateEventTagAndLink;
 window.mdpCurrentDate = new Date();
 window.mdpSelectedDate = null;
 window.mdpToday = new Date();
-window.mdpToday.setHours(0,0,0,0);
+window.mdpToday.setHours(0, 0, 0, 0);
 
 function openMaterialDatePicker() {
-    document.getElementById('materialDatePicker').classList.add('active');
+    const dp = document.getElementById('materialDatePicker');
+    const display = document.getElementById('customDateDisplay');
+    dp.classList.add('active');
+    if (display) display.setAttribute('aria-expanded', 'true');
     if (!window.mdpSelectedDate) window.mdpSelectedDate = new Date();
     window.mdpCurrentDate = new Date(window.mdpSelectedDate);
     renderMaterialDatePicker();
+    const firstDay = dp.querySelector('.mdp-day:not(.disabled)');
+    if (firstDay) firstDay.focus();
 }
 
 function closeMaterialDatePicker() {
-    document.getElementById('materialDatePicker').classList.remove('active');
+    const dp = document.getElementById('materialDatePicker');
+    const display = document.getElementById('customDateDisplay');
+    dp.classList.remove('active');
+    if (display) {
+        display.setAttribute('aria-expanded', 'false');
+        display.focus();
+    }
 }
 
 function mdpChangeMonth(delta) {
@@ -767,7 +972,7 @@ function selectMdpDate(year, month, date) {
     if (selected < window.mdpToday) return; // Previous days not accessible
     window.mdpSelectedDate = selected;
     renderMaterialDatePicker();
-    
+
     // Auto-confirm on click for smoother experience
     setTimeout(() => {
         confirmMaterialDatePicker();
@@ -780,11 +985,11 @@ function confirmMaterialDatePicker() {
         const yyyy = window.mdpSelectedDate.getFullYear();
         const mm = String(window.mdpSelectedDate.getMonth() + 1).padStart(2, '0');
         const dd = String(window.mdpSelectedDate.getDate()).padStart(2, '0');
-        
+
         const dateInput = document.getElementById('eventDateInput');
         dateInput.value = `${yyyy}-${mm}-${dd}`;
         dateInput.dispatchEvent(new Event('input', { bubbles: true }));
-        
+
         // Format display
         const displayOpts = { month: 'long', day: 'numeric', year: 'numeric' };
         const displayInput = document.getElementById('customDateDisplay');
@@ -797,51 +1002,51 @@ function confirmMaterialDatePicker() {
 function renderMaterialDatePicker() {
     const year = window.mdpCurrentDate.getFullYear();
     const month = window.mdpCurrentDate.getMonth();
-    
+
     // Update header (if selected date exists, use it, else current)
     const refDate = window.mdpSelectedDate || window.mdpCurrentDate;
     document.getElementById('mdpYear').textContent = refDate.getFullYear();
-    const shortDays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const shortMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     document.getElementById('mdpDateDisplay').textContent = `${shortDays[refDate.getDay()]}, ${shortMonths[refDate.getMonth()]} ${refDate.getDate()}`;
-    
+
     // Month Year display
-    const longMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const longMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     document.getElementById('mdpMonthYear').textContent = `${longMonths[month]} ${year}`;
-    
+
     // generate grid
     const grid = document.getElementById('mdpDaysGrid');
-    
+
     let html = '';
-    ['S','M','T','W','T','F','S'].forEach(d => {
+    ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
         html += `<div class="mdp-day-header">${d}</div>`;
     });
-    
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    for(let i=0; i<firstDay; i++) {
+
+    for (let i = 0; i < firstDay; i++) {
         html += `<div></div>`;
     }
-    
-    for(let d=1; d<=daysInMonth; d++) {
+
+    for (let d = 1; d <= daysInMonth; d++) {
         const dateObj = new Date(year, month, d);
         const isPast = dateObj < window.mdpToday;
-        
+
         let classes = 'mdp-day';
         if (isPast) classes += ' disabled';
-        
+
         if (window.mdpSelectedDate && window.mdpSelectedDate.getFullYear() === year && window.mdpSelectedDate.getMonth() === month && window.mdpSelectedDate.getDate() === d) {
             classes += ' selected';
         }
-        
+
         if (isPast) {
-            html += `<div class="${classes}">${d}</div>`;
+            html += `<div class="${classes}" aria-disabled="true">${d}</div>`;
         } else {
-            html += `<div class="${classes}" onclick="selectMdpDate(${year}, ${month}, ${d})">${d}</div>`;
+            html += `<div class="${classes}" role="button" tabindex="0" aria-label="${longMonths[month]} ${d}, ${year}" onclick="selectMdpDate(${year}, ${month}, ${d})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectMdpDate(${year}, ${month}, ${d});}">${d}</div>`;
         }
     }
-    
+
     grid.innerHTML = html;
 }
 
@@ -909,11 +1114,11 @@ function updateSelectedStates() {
     if (mainAddressTextarea) {
         const hasMultipleIndividual =
             selectedValues.length > 1 && !selectedValues.includes('All States');
-        mainAddressTextarea.disabled   = hasMultipleIndividual;
-        mainAddressTextarea.style.background  = hasMultipleIndividual ? '#f3f4f6' : 'white';
-        mainAddressTextarea.style.cursor      = hasMultipleIndividual ? 'not-allowed' : 'text';
-        mainAddressTextarea.style.opacity     = hasMultipleIndividual ? '0.6' : '1';
-        mainAddressTextarea.placeholder       = hasMultipleIndividual
+        mainAddressTextarea.disabled = hasMultipleIndividual;
+        mainAddressTextarea.style.background = hasMultipleIndividual ? '#f3f4f6' : 'white';
+        mainAddressTextarea.style.cursor = hasMultipleIndividual ? 'not-allowed' : 'text';
+        mainAddressTextarea.style.opacity = hasMultipleIndividual ? '0.6' : '1';
+        mainAddressTextarea.placeholder = hasMultipleIndividual
             ? 'Using per-state addresses below…'
             : 'Street address, landmarks…';
     }
@@ -955,55 +1160,224 @@ function renderPerStateAddressFields(states) {
     });
 
     container.innerHTML = `
-        <div style="margin-bottom:0.5rem; font-size:0.85rem; font-weight:700; color:#722f37; text-transform:uppercase; letter-spacing:0.5px;">
-            📍 Per-State Venue Address &amp; Schedule
-        </div>
-        <p style="font-size:0.8rem; color:#6b7280; margin-bottom:0.75rem;">
-            Enter the specific venue address for each selected state.
-        </p>
-        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; font-weight:600; color:#374151; margin-bottom:1rem; cursor:pointer; padding:0.6rem 0.75rem; background:#fff7ed; border-radius:8px; border:1px solid #fed7aa;">
-            <input type="checkbox" id="customizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="togglePerStateDateTimeFields()" style="width:16px;height:16px;cursor:pointer;accent-color:#f97316;">
-            <span>📅 Use different dates &amp; times for each state</span>
-        </label>
-        ${states.map(state => `
-            <div style="margin-bottom:1.25rem; background:#fff; padding:1rem; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                <label style="display:block; font-size:0.82rem; font-weight:700; color:#374151; margin-bottom:0.5rem;">
-                    📍 ${state} <span style="color:#ef4444">*</span>
-                </label>
+        <div class="per-state-section">
+            <div class="per-state-header">
+                <span class="per-state-icon">📍</span>
+                <div>
+                    <div class="per-state-title">Per-State Venue &amp; Schedule</div>
+                    <p class="per-state-desc">Enter the venue address for each selected state.</p>
+                </div>
+            </div>
+            <label class="per-state-toggle">
+                <input type="checkbox" id="customizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="togglePerStateDateTimeFields()">
+                <span>Use different dates &amp; times per state</span>
+            </label>
+            <div class="per-state-cards">
+        ${states.map(state => {
+        const sid = state.replace(/\s+/g, '_');
+        return `
+            <div class="per-state-card">
+                <div class="per-state-card-head">
+                    <span class="per-state-badge">${escapeHTML(state)}</span>
+                    <span class="per-state-required">Required</span>
+                </div>
+                <label class="sr-only" for="stateAddr_${sid}">Venue address in ${escapeHTML(state)}</label>
                 <textarea
-                    name="state_address_${state.replace(/\s+/g, '_')}"
+                    id="stateAddr_${sid}"
+                    name="state_address_${sid}"
                     data-state="${state}"
                     placeholder="Full venue address in ${state}..."
                     rows="2"
                     required
-                    style="width:100%; padding:0.75rem 1rem; border:2px solid #e5e7eb; border-radius:10px; font-size:0.9rem; background:white; font-family:inherit; resize:vertical; margin-bottom:0.5rem;"
+                    class="per-state-address-input"
                 >${existing[state] || ''}</textarea>
-                <div class="per-state-datetime" style="display:${customizeDatesWasChecked ? 'flex' : 'none'}; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
-                    <div style="flex:1; min-width:140px;">
-                        <label style="display:block; font-size:0.72rem; font-weight:600; color:#6b7280; margin-bottom:0.25rem; text-transform:uppercase; letter-spacing:0.4px;">📅 Date *</label>
-                        <input type="date"
-                            data-date-state="${state}"
-                            value="${existingDate[state] || ''}"
-                            style="width:100%; padding:0.6rem 0.75rem; border:2px solid #e5e7eb; border-radius:8px; font-size:0.85rem; background:white; font-family:inherit; box-sizing:border-box;">
+                <div class="per-state-datetime" style="display:${customizeDatesWasChecked ? 'grid' : 'none'};">
+                    <div class="per-state-field">
+                        <label for="psDateDisp_${sid}">Date</label>
+                        <div class="per-state-date-wrap">
+                            <input type="text" id="psDateDisp_${sid}" readonly placeholder="Select date"
+                                role="button" tabindex="0" aria-haspopup="dialog" aria-label="Date for ${escapeHTML(state)}"
+                                onclick="openPerStateDatePicker('${sid}')"
+                                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPerStateDatePicker('${sid}');}"
+                                value="${existingDate[state] || ''}"
+                                class="per-state-date-display">
+                            <span aria-hidden="true">📅</span>
+                        </div>
+                        <input type="hidden" data-date-state="${state}" id="psDateVal_${sid}" value="${existingDate[state] || ''}">
+                        <div id="psMDP_${sid}" class="per-state-mdp" role="dialog" aria-modal="true" aria-label="Choose date for ${escapeHTML(state)}">
+                            <div class="per-state-mdp-head">
+                                <div id="psMDPYear_${sid}"></div>
+                                <div id="psMDPDate_${sid}"></div>
+                            </div>
+                            <div class="per-state-mdp-body">
+                                <div class="per-state-mdp-nav">
+                                    <button type="button" aria-label="Previous month" onclick="psChangeMonth('${sid}',-1)">&#10094;</button>
+                                    <span id="psMDPMY_${sid}"></span>
+                                    <button type="button" aria-label="Next month" onclick="psChangeMonth('${sid}',1)">&#10095;</button>
+                                </div>
+                                <div id="psMDPGrid_${sid}" class="per-state-mdp-grid"></div>
+                            </div>
+                            <div class="per-state-mdp-foot">
+                                <button type="button" onclick="closePsDatePicker('${sid}')">Cancel</button>
+                                <button type="button" onclick="confirmPsDate('${sid}')">OK</button>
+                            </div>
+                        </div>
                     </div>
-                    <div style="flex:1; min-width:120px;">
-                        <label style="display:block; font-size:0.72rem; font-weight:600; color:#6b7280; margin-bottom:0.25rem; text-transform:uppercase; letter-spacing:0.4px;">🕒 Time *</label>
-                        <input type="time"
-                            data-time-state="${state}"
-                            value="${existingTime[state] || ''}"
-                            style="width:100%; padding:0.6rem 0.75rem; border:2px solid #e5e7eb; border-radius:8px; font-size:0.85rem; background:white; font-family:inherit; box-sizing:border-box;">
+                    <div class="per-state-field">
+                        <span id="psTimeLabel_${sid}">Time</span>
+                        <div id="psTC_${sid}" class="time-picker-container">
+                            <button type="button" class="time-picker-display per-state-time-btn" aria-labelledby="psTimeLabel_${sid}" aria-haspopup="listbox" aria-expanded="false" onclick="toggleTimePicker('psTD_${sid}')">
+                                <span class="ps-time-text">Select Time</span>
+                                <span aria-hidden="true">🕒</span>
+                            </button>
+                            <div id="psTD_${sid}" class="time-picker-dropdown">
+                                <div class="time-picker-section">
+                                    <span class="time-picker-label">Hours</span>
+                                    <div class="time-picker-grid hours">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => `<button type="button" class="time-btn" onclick="selectHour('${h}','psTC_${sid}')">${h}</button>`).join('')}</div>
+                                </div>
+                                <div class="time-picker-section">
+                                    <span class="time-picker-label">Minutes</span>
+                                    <div class="time-picker-grid minutes">${['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => `<button type="button" class="time-btn" onclick="selectMinute('${m}','psTC_${sid}')">${m}</button>`).join('')}</div>
+                                </div>
+                                <div class="time-picker-section">
+                                    <div class="time-picker-ampm">
+                                        <button type="button" class="time-btn ampm-btn" onclick="selectAmPm('am','psTC_${sid}')">am</button>
+                                        <button type="button" class="time-btn ampm-btn" onclick="selectAmPm('pm','psTC_${sid}')">pm</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" data-time-state="${state}" id="psTimeVal_${sid}">
+                        </div>
                     </div>
                 </div>
             </div>
-        `).join('')}
+        `}).join('')}
+            </div>
+        </div>
     `;
+
+    // Initialise per-state mini datepickers
+    if (!window._psDPState) window._psDPState = {};
+    states.forEach(state => {
+        const sid = state.replace(/\s+/g, '_');
+        const existing_date = existingDate[state] || null;
+        const now = existing_date ? new Date(existing_date + 'T00:00:00') : new Date();
+        window._psDPState[sid] = { month: now.getMonth(), year: now.getFullYear(), selected: existing_date, temp: existing_date };
+        renderPsDatePicker(sid);
+        if (existing_date) {
+            const d = new Date(existing_date + 'T00:00:00');
+            const dispEl = document.getElementById('psDateDisp_' + sid);
+            const yearEl = document.getElementById('psMDPYear_' + sid);
+            const dateEl = document.getElementById('psMDPDate_' + sid);
+            if (dispEl) dispEl.value = existing_date;
+            if (yearEl) yearEl.textContent = d.getFullYear();
+            if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+    });
+}
+
+function openPerStateDatePicker(sid) {
+    document.querySelectorAll('.per-state-mdp').forEach(el => el.classList.remove('open'));
+    const dp = document.getElementById('psMDP_' + sid);
+    if (dp) { dp.classList.add('open'); renderPsDatePicker(sid); }
+}
+
+function closePsDatePicker(sid) {
+    const dp = document.getElementById('psMDP_' + sid);
+    if (dp) dp.classList.remove('open');
+}
+
+function confirmPsDate(sid) {
+    const state = window._psDPState && window._psDPState[sid];
+    if (state && state.temp) {
+        state.selected = state.temp;
+        const valEl = document.getElementById('psDateVal_' + sid);
+        const dispEl = document.getElementById('psDateDisp_' + sid);
+        if (valEl) valEl.value = state.selected;
+        if (dispEl) dispEl.value = state.selected;
+    }
+    closePsDatePicker(sid);
+}
+
+function psChangeMonth(sid, delta) {
+    if (!window._psDPState || !window._psDPState[sid]) return;
+    const s = window._psDPState[sid];
+    s.month += delta;
+    if (s.month > 11) { s.month = 0; s.year++; }
+    if (s.month < 0) { s.month = 11; s.year--; }
+    renderPsDatePicker(sid);
+}
+
+function psDaySelect(sid, dateStr) {
+    if (!window._psDPState || !window._psDPState[sid]) return;
+    const s = window._psDPState[sid];
+    s.temp = dateStr;
+    const d = new Date(dateStr + 'T00:00:00');
+    const yearEl = document.getElementById('psMDPYear_' + sid);
+    const dateEl = document.getElementById('psMDPDate_' + sid);
+    if (yearEl) yearEl.textContent = d.getFullYear();
+    if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    renderPsDatePicker(sid);
+}
+
+function renderPsDatePicker(sid) {
+    if (!window._psDPState || !window._psDPState[sid]) return;
+    const s = window._psDPState[sid];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const daysH = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const myEl = document.getElementById('psMDPMY_' + sid);
+    const gridEl = document.getElementById('psMDPGrid_' + sid);
+    if (!myEl || !gridEl) return;
+    myEl.textContent = `${months[s.month]} ${s.year}`;
+    const firstDay = new Date(s.year, s.month, 1).getDay();
+    const daysInMonth = new Date(s.year, s.month + 1, 0).getDate();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let html = daysH.map(d => `<div style="font-size:0.65rem;font-weight:700;color:#9ca3af;text-transform:uppercase;padding:2px;">${d}</div>`).join('');
+    for (let i = 0; i < firstDay; i++) html += '<div></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${s.year}-${String(s.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isPast = new Date(s.year, s.month, d) < today;
+        const isSel = s.temp === dateStr || s.selected === dateStr;
+        const isToday = new Date(s.year, s.month, d).getTime() === today.getTime();
+        html += `<div onclick="${isPast ? '' : `psDaySelect('${sid}','${dateStr}')`}" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:auto;cursor:${isPast ? 'not-allowed' : 'pointer'};font-size:0.8rem;font-weight:500;${isSel ? 'background:#008080;color:white;' : isToday ? 'border:2px solid #008080;color:#008080;' : isPast ? 'color:#d1d5db;' : 'color:#374151;'}">${d}</div>`;
+    }
+    gridEl.innerHTML = html;
 }
 
 function togglePerStateDateTimeFields() {
     const checkbox = document.getElementById('customizeDatesPerStateCheckbox');
     const fields = document.querySelectorAll('#perStateAddressContainer .per-state-datetime');
     const show = checkbox ? checkbox.checked : false;
-    fields.forEach(f => { f.style.display = show ? 'flex' : 'none'; });
+    fields.forEach(f => { f.style.display = show ? 'grid' : 'none'; });
+
+    // ── Fix 1: Lock / unlock the global Date & Time fields ────────────────────
+    // When per-state dates are active, the global date/time fields should be
+    // inaccessible (disabled + visually greyed out) to avoid confusion.
+    const globalDateDisplay  = document.getElementById('customDateDisplay');
+    const globalDateInput    = document.getElementById('eventDateInput');
+    const globalTimeBtn      = document.getElementById('eventTimeDisplayBtn');
+    const globalTimeInput    = document.getElementById('eventTimeInput');
+
+    const disabledStyle = 'background: #f3f4f6; cursor: not-allowed; opacity: 0.5; pointer-events: none;';
+    const enabledStyle  = '';
+
+    if (globalDateDisplay) {
+        globalDateDisplay.style.cssText  = show ? disabledStyle : enabledStyle;
+        globalDateDisplay.setAttribute('tabindex', show ? '-1' : '0');
+        if (show) {
+            globalDateDisplay.removeAttribute('onclick');
+            globalDateDisplay.removeAttribute('onkeydown');
+        } else {
+            globalDateDisplay.setAttribute('onclick', 'openMaterialDatePicker()');
+            globalDateDisplay.setAttribute('onkeydown', "if(event.key==='Enter'||event.key===' '){event.preventDefault();openMaterialDatePicker();}");
+        }
+    }
+    if (globalTimeBtn) {
+        globalTimeBtn.style.cssText    = show ? disabledStyle : enabledStyle;
+        globalTimeBtn.disabled          = show;
+    }
+    if (globalDateInput) globalDateInput.required = !show;
+    if (globalTimeInput) globalTimeInput.required = !show;
 }
 
 // Expose per-state container placeholder in the form HTML (injected once the form opens)
@@ -1013,7 +1387,8 @@ function injectPerStateContainer() {
     if (document.getElementById('perStateAddressContainer')) return;
     const div = document.createElement('div');
     div.id = 'perStateAddressContainer';
-    div.style.cssText = 'display:none; background:#f8fafc; padding:1.25rem; border-radius:12px; border:2px solid #e5e7eb; margin-top:1rem;';
+    div.className = 'per-state-container';
+    div.style.display = 'none';
     addressGroup.after(div);
 }
 

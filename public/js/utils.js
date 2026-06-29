@@ -674,6 +674,50 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 /**
+ * Shared multi-location HTML builder
+ * @param {Array} locs - [{state, address, date?, time?}]
+ * @param {Object} opts - { expandable, checkbox, idPrefix }
+ */
+function buildMultiLocationHTML(locs, opts = {}) {
+    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const prefix = opts.idPrefix || 'mloc';
+    const listId = prefix + 'List';
+    const items = (locs || []).map((loc, idx) => {
+        const meta = [loc.date, loc.time].filter(Boolean).join(' · ');
+        const chk = opts.checkbox
+            ? `<input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}" checked onchange="window._updateLocSelection && window._updateLocSelection()" style="width:16px;height:16px;accent-color:var(--primary-color);margin-top:3px;flex-shrink:0;">`
+            : '';
+        return `<div class="mloc-card">${chk}<span class="mloc-pin" aria-hidden="true">📍</span><div class="mloc-body">
+            <div class="mloc-state">${esc(loc.state)}</div>
+            <div class="mloc-addr">${esc(loc.address || 'Address TBA')}</div>
+            ${meta ? `<div class="mloc-meta">${esc(meta)}</div>` : ''}
+        </div></div>`;
+    }).join('');
+
+    if (opts.expandable) {
+        return `<div class="mloc-wrap">
+            <div class="mloc-header">
+                <span class="mloc-title">${locs.length} Locations</span>
+                <button type="button" class="mloc-toggle" onclick="toggleMlocList('${listId}', this)" aria-expanded="false" aria-controls="${listId}">View all ▼</button>
+            </div>
+            <div id="${listId}" class="mloc-list" role="list">${items}</div>
+        </div>`;
+    }
+    return `<div class="mloc-wrap"><div class="mloc-list open" role="list">${items}</div></div>`;
+}
+
+function toggleMlocList(listId, btn) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    const open = list.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.textContent = open ? 'Hide ▲' : 'View all ▼';
+}
+
+window.buildMultiLocationHTML = buildMultiLocationHTML;
+window.toggleMlocList = toggleMlocList;
+
+/**
  * Custom Time Picker Logic
  * Used by create-event.js and modals.js
  */
@@ -684,33 +728,32 @@ function toggleTimePicker(dropdownId) {
     const container = dropdown.closest('.time-picker-container');
     const display = container.querySelector('.time-picker-display');
     
-    // Close other dropdowns if any
     document.querySelectorAll('.time-picker-dropdown').forEach(d => {
         if (d.id !== dropdownId) {
             d.classList.remove('active');
             const otherContainer = d.closest('.time-picker-container');
             if (otherContainer) {
-                otherContainer.querySelector('.time-picker-display').classList.remove('active');
+                const otherDisplay = otherContainer.querySelector('.time-picker-display');
+                otherDisplay.classList.remove('active');
+                otherDisplay.setAttribute('aria-expanded', 'false');
             }
         }
     });
     
-    dropdown.classList.toggle('active');
+    const isOpen = dropdown.classList.toggle('active');
+    display.classList.toggle('active', isOpen);
+    display.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     
-    if (dropdown.classList.contains('active')) {
-        display.classList.add('active');
-        
-        // Add one-time click listener to document to close when clicking outside
+    if (isOpen) {
         const closePicker = (e) => {
             if (!container.contains(e.target)) {
                 dropdown.classList.remove('active');
                 display.classList.remove('active');
+                display.setAttribute('aria-expanded', 'false');
                 document.removeEventListener('click', closePicker);
             }
         };
         setTimeout(() => document.addEventListener('click', closePicker), 10);
-    } else {
-        display.classList.remove('active');
     }
 }
 
@@ -754,7 +797,7 @@ function updateTimeValue(containerId) {
     const hourBtn = container.querySelector('.hours .time-btn.selected');
     const minuteBtn = container.querySelector('.minutes .time-btn.selected');
     const ampmBtn = container.querySelector('.time-picker-ampm .time-btn.selected');
-    const display = container.querySelector('.time-picker-display span');
+    const display = container.querySelector('.time-picker-display span:not([aria-hidden])') || container.querySelector('.time-picker-display span');
     const input = container.querySelector('input[type="hidden"]');
     
     if (hourBtn && minuteBtn && ampmBtn) {
@@ -933,7 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.insertAdjacentHTML('beforeend', chatHTML);
 
     // Chat functionality
-    let chatInterval = null;
+    let chatEventSource = null;
     let currentTicket = 'general';
     let currentChatContextId = null;
 
@@ -951,12 +994,11 @@ document.addEventListener('DOMContentLoaded', () => {
             chat.style.display = 'flex';
             document.getElementById('btnToggleFloatingChat').style.transform = 'scale(0)';
             loadGlobalMessages();
-            if(chatInterval) clearInterval(chatInterval);
-            chatInterval = setInterval(loadGlobalMessages, 3000);
+            startSupportChatSSE();
         } else {
             chat.style.display = 'none';
             document.getElementById('btnToggleFloatingChat').style.transform = 'scale(1)';
-            if(chatInterval) clearInterval(chatInterval);
+            if (chatEventSource) { chatEventSource.close(); chatEventSource = null; }
         }
     };
 
@@ -970,17 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 if (data.chat) currentChatContextId = data.chat.id;
                 if (data.messages && data.messages.length > 0) {
-                    const list = document.getElementById('globalChatMessageList');
-                    list.innerHTML = data.messages.map(m => {
-                        const isOwn = m.sender_role !== 'admin';
-                        const label = isOwn ? 'You' : 'Eventra Support';
-                        const txt   = window.escapeHTML ? window.escapeHTML(m.message_text) : m.message_text;
-                        return `<div style="align-self:${isOwn ? 'flex-end' : 'flex-start'}; max-width:82%;">
-                            <div style="font-size:0.68rem; color:#94a3b8; margin-bottom:3px; text-align:${isOwn ? 'right' : 'left'}; padding:0 4px;">${label}</div>
-                            <div style="background:${isOwn ? 'linear-gradient(135deg,#1e3a8a,#2563eb)' : '#f1f5f9'}; color:${isOwn ? '#fff' : '#1e293b'}; padding:10px 14px; border-radius:${isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px'}; font-size:0.88rem; word-break:break-word; line-height:1.5;">${txt}</div>
-                        </div>`;
-                    }).join('');
-                    list.scrollTop = list.scrollHeight;
+                    renderGlobalMessages(data.messages);
                 }
                 
                 // Refund Status Banner
@@ -999,6 +1031,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {}
     }
+    
+    function renderGlobalMessages(messages) {
+        const list = document.getElementById('globalChatMessageList');
+        if (!list) return;
+        
+        // Find existing non-dynamic messages to keep
+        const staticMessages = Array.from(list.children).filter(el => !el.classList.contains('dynamic-msg'));
+        
+        list.innerHTML = '';
+        staticMessages.forEach(el => list.appendChild(el));
+        
+        const newHtml = messages.map(m => {
+            const isOwn = m.sender_type !== 'admin';
+            const label = isOwn ? 'You' : 'Eventra Support';
+            const txt   = window.escapeHTML ? window.escapeHTML(m.message) : m.message;
+            return `<div class="dynamic-msg" style="align-self:${isOwn ? 'flex-end' : 'flex-start'}; max-width:82%;">
+                <div style="font-size:0.68rem; color:#94a3b8; margin-bottom:3px; text-align:${isOwn ? 'right' : 'left'}; padding:0 4px;">${label}</div>
+                <div style="background:${isOwn ? 'linear-gradient(135deg,#1e3a8a,#2563eb)' : '#f1f5f9'}; color:${isOwn ? '#fff' : '#1e293b'}; padding:10px 14px; border-radius:${isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px'}; font-size:0.88rem; word-break:break-word; line-height:1.5;">${txt}</div>
+            </div>`;
+        }).join('');
+        
+        list.insertAdjacentHTML('beforeend', newHtml);
+        list.scrollTop = list.scrollHeight;
+    }
+    
+    function startSupportChatSSE() {
+        if (chatEventSource) return;
+        chatEventSource = new EventSource('/api/chat.php?action=stream');
+        
+        chatEventSource.onmessage = async (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.ticket_id === currentTicket) {
+                await loadGlobalMessages();
+                // Mark as read immediately on server
+                fetch('/api/chat.php', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'mark_read', ticket_id: currentTicket}) });
+            }
+            if (msg.sender_type === 'admin') {
+                try {
+                    const audio = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
+                    audio.play();
+                } catch(err){}
+                if (!document.getElementById('floatingSupportChat') || document.getElementById('floatingSupportChat').style.display === 'none') {
+                    // Show a badge or visual indicator if closed
+                    document.getElementById('btnToggleFloatingChat').style.animation = 'pulse 2s infinite';
+                }
+            }
+        };
+        
+        chatEventSource.onerror = () => {
+            chatEventSource.close();
+            chatEventSource = null;
+            setTimeout(() => {
+                if (document.getElementById('floatingSupportChat').style.display !== 'none') {
+                    startSupportChatSSE();
+                }
+            }, 5000); // Reconnect
+        };
+    }
 
     document.getElementById('btnSendGlobalChat')?.addEventListener('click', async () => {
         const input = document.getElementById('globalChatInput');
@@ -1009,16 +1099,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.storage) user = window.storage.getUser();
         
         try {
-            await fetch('/api/chat.php', {
+            await apiFetch('/api/chat.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ticket_id: currentTicket,
-                    sender_role: user?.role || 'user',
-                    sender_id: user?.id || 0,
-                    message: msg,
-                    event_owner_id: user?.id || 0
+                    message: msg
                 })
             });
             input.value = '';

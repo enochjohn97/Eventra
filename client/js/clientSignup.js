@@ -196,6 +196,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         color: '#fff'
                     });
                 }
+                
+                // Clear form data
+                if (typeof clearFormState === 'function') {
+                    clearFormState('signupForm');
+                }
+                signupForm.reset();
+
                 setTimeout(() => {
                     const loginUrl = (intent === 'admin') ? 'clientLogin.html?role=admin' : `clientLogin.html?role=${intent}`;
                     window.location.href = `${loginUrl}?registered=${encodeURIComponent(data.email || emailInput.value)}`;

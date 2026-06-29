@@ -460,6 +460,10 @@ try {
             $admin_message = "Event '{$name}' has been updated" . ($role === 'admin' ? " by an administrator." : " by organizer.");
             createNotification($admin_id, $admin_message, 'event_updated', $auth_id, 'admin', ($role === 'admin' ? 'admin' : 'client'));
         }
+
+        if ($status === 'scheduled' && $scheduled_publish_time) {
+            createEventScheduledNotification($client_auth_id, $_POST['event_name'], $scheduled_publish_time);
+        }
     } catch (Throwable $notif_err) {
         error_log("[Update Event Notification Error] " . $notif_err->getMessage());
     }

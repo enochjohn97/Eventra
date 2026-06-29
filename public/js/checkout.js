@@ -242,49 +242,13 @@ function renderEventSummary(event, quantity, ticketType = 'regular') {
         const isMultiple = (Array.isArray(locs) && locs.length > 1) || (states.length > 1 && !states.includes('All States'));
 
         if (isMultiple) {
-            // Multi-location UI
             const locList = Array.isArray(locs) && locs.length > 0 
                 ? locs 
                 : states.map(s => ({ state: s, address: '' }));
 
-            elLoc.innerHTML = `
-                <div class="location-summary-container">
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer;" onclick="toggleLocationExpand()">
-                        <span style="font-weight: 600; color: #1e293b;">Multiple Locations</span>
-                        <button type="button" id="locationToggleBtn" style="background: #f1f5f9; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #722f37; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                            See more <span id="locToggleIcon">▼</span>
-                        </button>
-                    </div>
-                    <div id="expandedLocations" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e2e8f0; max-height: 200px; overflow-y: auto;">
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
-                            ${locList.map(loc => `
-                                <li style="display: flex; flex-direction: column; gap: 2px;">
-                                    <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">📍 ${escapeHTML(loc.state)}</div>
-                                    <div style="font-size: 0.8rem; color: #64748b; line-height: 1.4; padding-left: 18px;">${escapeHTML(loc.address || 'Address TBA')}</div>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                </div>
-            `;
-            
-            // Add global toggle function if not exists
-            if (!window.toggleLocationExpand) {
-                window.toggleLocationExpand = function() {
-                    const expanded = document.getElementById('expandedLocations');
-                    const btnText = document.querySelector('#locationToggleBtn');
-                    const icon = document.getElementById('locToggleIcon');
-                    if (expanded.style.display === 'none') {
-                        expanded.style.display = 'block';
-                        icon.textContent = '▲';
-                        if (btnText) btnText.firstChild.textContent = 'See less ';
-                    } else {
-                        expanded.style.display = 'none';
-                        icon.textContent = '▼';
-                        if (btnText) btnText.firstChild.textContent = 'See more ';
-                    }
-                };
-            }
+            elLoc.innerHTML = typeof buildMultiLocationHTML === 'function'
+                ? buildMultiLocationHTML(locList, { expandable: true, idPrefix: 'checkoutMloc' })
+                : `${locList.map(loc => loc.state).join(', ')}`;
         } else {
             // Single location UI
             const stateText = event.state || 'Nigeria';

@@ -26,7 +26,7 @@ class ProfilePicUpload {
                             <p class="upload-subtext">or</p>
                             <button type="button" class="btn btn-primary" id="browseFileBtn">Browse Files</button>
                             <input type="file" id="profilePicInput" accept="image/jpeg,image/jpg,image/png,image/gif" style="display: none;">
-                            <p class="upload-hint">JPG, PNG or GIF (Max 5MB)</p>
+                            <p class="upload-hint">JPG, PNG or GIF</p>
                         </div>
                         <div class="upload-preview" id="uploadPreview" style="display: none;">
                             <img id="previewImage" src="" alt="Preview">
@@ -147,14 +147,7 @@ class ProfilePicUpload {
             return;
         }
 
-        // Validate file size (5MB)
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
-            if (window.toast) {
-                window.toast.error('File size exceeds 5MB. Please select a smaller image.');
-            }
-            return;
-        }
+
 
         this.selectedFile = file;
         this.showPreview(file);

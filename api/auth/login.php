@@ -211,16 +211,19 @@ try {
 
         // Strict Role-Specific Session Keys + Universal auth_id
         $_SESSION['auth_id'] = $user['id']; // Global auth account ID
+        $profileId = null;
         if ($userRole === 'admin') {
             $stmt = $pdo->prepare("SELECT id FROM admins WHERE admin_auth_id = ?");
             $stmt->execute([$user['id']]);
             $adminId = $stmt->fetchColumn();
             if ($adminId) {
                 $_SESSION['admin_id'] = $adminId;
+                $profileId = (int)$adminId;
             } else {
                 $stmt = $pdo->prepare("INSERT INTO admins (admin_auth_id, name) VALUES (?, ?)");
                 $stmt->execute([$user['id'], $user['name'] ?? 'Admin']);
                 $_SESSION['admin_id'] = $pdo->lastInsertId();
+                $profileId = (int)$_SESSION['admin_id'];
             }
         } elseif ($userRole === 'client') {
             $stmt = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
@@ -228,10 +231,12 @@ try {
             $clientId = $stmt->fetchColumn();
             if ($clientId) {
                 $_SESSION['client_id'] = $clientId;
+                $profileId = (int)$clientId;
             } else {
                 $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, name, business_name) VALUES (?, ?, ?)");
                 $stmt->execute([$user['id'], $user['name'] ?? 'Client', $user['business_name'] ?? '']);
                 $_SESSION['client_id'] = $pdo->lastInsertId();
+                $profileId = (int)$_SESSION['client_id'];
             }
         } elseif ($userRole === 'user') {
             $stmt = $pdo->prepare("SELECT id FROM users WHERE user_auth_id = ?");
@@ -239,10 +244,12 @@ try {
             $userId = $stmt->fetchColumn();
             if ($userId) {
                 $_SESSION['user_id'] = $userId;
+                $profileId = (int)$userId;
             } else {
                 $stmt = $pdo->prepare("INSERT INTO users (user_auth_id, name) VALUES (?, ?)");
                 $stmt->execute([$user['id'], $user['name'] ?? 'User']);
                 $_SESSION['user_id'] = $pdo->lastInsertId();
+                $profileId = (int)$_SESSION['user_id'];
             }
         }
 
@@ -286,11 +293,21 @@ try {
             'redirect' => $redirect,
             'user' => [
                 'id' => $user['id'],
+                'profile_id' => $profileId,
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'role' => $userRole,
                 'custom_id' => $user['custom_id'] ?? null,
                 'bvn' => $user['bvn'] ?? null,
+                'profile_pic' => (function ($pic) {
+                    if (!$pic) {
+                        return null;
+                    }
+                    if (preg_match('/^https?:\/\//i', $pic)) {
+                        return $pic;
+                    }
+                    return '/' . ltrim($pic, '/');
+                })($user['profile_pic'] ?? null),
                 'profile_image' => (function ($pic) {
                     if (!$pic) {
                         return null;

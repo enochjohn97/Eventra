@@ -41,8 +41,7 @@ try {
         JOIN clients c ON e.client_id = c.id
         WHERE e.status = 'scheduled'
             AND e.deleted_at IS NULL
-            AND TIMESTAMP(e.event_date, e.event_time) <= NOW()
-            AND (e.schedule_notification_sent IS NULL OR e.schedule_notification_sent = 0)
+            AND e.scheduled_publish_time <= NOW()
     ");
     $immediateQuery->execute();
     $immediateEvents = $immediateQuery->fetchAll();
@@ -57,7 +56,11 @@ try {
             // If the script crashes, we might miss one, but better than spamming.
             // Actually, for 100% delivery, we should mark it AFTER success,
             // but the user asked for "set to 1 immediately to prevent duplicate alerts".
-            $pdo->prepare("UPDATE events SET schedule_notification_sent = 1 WHERE id = ?")->execute([$event['id']]);
+            if (!$isLeadTime) {
+                $pdo->prepare("UPDATE events SET status = 'published', schedule_notification_sent = 1 WHERE id = ?")->execute([$event['id']]);
+            } else {
+                $pdo->prepare("UPDATE events SET schedule_notification_sent = 1 WHERE id = ?")->execute([$event['id']]);
+            }
 
             $eventDateTime = date('F j, Y \a\t g:i A', strtotime("{$event['event_date']} {$event['event_time']}"));
 

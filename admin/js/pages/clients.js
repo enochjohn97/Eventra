@@ -74,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span style="font-weight: 600; color: var(--admin-text-main);">${escapeHTML(client.name)}</span>
                 </td>
                 <td>${escapeHTML(client.email)}</td>
-                <td>${escapeHTML(client.nin) || 'N/A'}</td>
                 <td>${escapeHTML(client.dob) || 'N/A'}</td>
                 <td style="text-transform: capitalize;">${escapeHTML(client.gender) || 'N/A'}</td>
                 <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHTML(client.address) || ''}">${escapeHTML(client.address) || 'N/A'}</td>
@@ -208,6 +207,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial load
     await loadClients();
     await loadStats();
+
+    // Handle search highlighting — ?highlight=ID scrolls to and pulses the matching row
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+        const tryHighlight = (attempts = 0) => {
+            const row = document.querySelector(`tr[data-id="${highlightId}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('search-highlight-row');
+                setTimeout(() => row.classList.remove('search-highlight-row'), 3500);
+            } else if (attempts < 10) {
+                setTimeout(() => tryHighlight(attempts + 1), 300);
+            }
+        };
+        setTimeout(() => tryHighlight(), 800);
+    }
 
     // Auto-refresh every 60s (reduced from 30s) to decrease database load
     // Visibility check prevents unnecessary queries when tab is in background

@@ -39,11 +39,7 @@ if ($uri === '/client' || $uri === '/client/') {
 }
 
 if ($uri === '/admin' || $uri === '/admin/') {
-    if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin') {
-        header('Location: /admin/pages/adminDashboard.html');
-    } else {
-        header('Location: /admin/pages/adminLogin.html');
-    }
+    header('Location: /admin/pages/adminLogin.html');
     exit;
 }
 

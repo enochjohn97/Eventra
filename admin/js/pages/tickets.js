@@ -13,6 +13,23 @@ const selectedTicketIds = new Set();
 document.addEventListener('DOMContentLoaded', async () => {
     await loadTickets();
 
+    // Handle search highlighting — ?highlight=ID scrolls to and pulses the matching row
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+        const tryHighlight = (attempts = 0) => {
+            const row = document.querySelector(`tr[data-id="${highlightId}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('search-highlight-row');
+                setTimeout(() => row.classList.remove('search-highlight-row'), 3500);
+            } else if (attempts < 10) {
+                setTimeout(() => tryHighlight(attempts + 1), 300);
+            }
+        };
+        setTimeout(() => tryHighlight(), 800);
+    }
+
     // Status filter tabs
     document.querySelectorAll('[data-status]').forEach(btn => {
         btn.addEventListener('click', () => {

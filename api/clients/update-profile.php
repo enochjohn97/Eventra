@@ -21,6 +21,8 @@ if (!$client_auth_id) {
     echo json_encode(['success' => false, 'message' => 'Client profile not found']);
     exit;
 }
+
+
     // Fetch ALL existing data to handle partial updates properly
     $stmt_existing = $pdo->prepare("
         SELECT c.*, a.email
@@ -43,22 +45,12 @@ if (!$client_auth_id) {
     $company        = isset($_POST['company']) && trim($_POST['company']) !== '' ? trim($_POST['company']) : ($existing['company'] ?? '');
     $dob            = isset($_POST['dob']) && trim($_POST['dob']) !== '' ? trim($_POST['dob']) : ($existing['dob'] ?? '');
     $gender         = isset($_POST['gender']) && trim($_POST['gender']) !== '' ? trim($_POST['gender']) : ($existing['gender'] ?? '');
-    $nin            = isset($_POST['nin']) && trim($_POST['nin']) !== '' ? trim($_POST['nin']) : ($existing['nin'] ?? '');
-    $bvn            = isset($_POST['bvn']) && trim($_POST['bvn']) !== '' ? trim($_POST['bvn']) : ($existing['bvn'] ?? '');
     $account_number = isset($_POST['account_number']) && trim($_POST['account_number']) !== '' ? trim($_POST['account_number']) : ($existing['account_number'] ?? '');
     $bank_code      = isset($_POST['bank_code']) && trim($_POST['bank_code']) !== '' ? trim($_POST['bank_code']) : ($existing['bank_code'] ?? '');
     $bank_name      = isset($_POST['bank_name']) && trim($_POST['bank_name']) !== '' ? trim($_POST['bank_name']) : ($existing['bank_name'] ?? '');
     $account_name   = isset($_POST['account_name']) && trim($_POST['account_name']) !== '' ? trim($_POST['account_name']) : ($existing['account_name'] ?? '');
 
     // ── Conditional strict-length validations (only when non-empty) ───────────
-    if ($nin !== '' && (strlen($nin) !== 11 || !ctype_digit($nin))) {
-        echo json_encode(['success' => false, 'message' => 'NIN must be exactly 11 digits']);
-        exit;
-    }
-    if ($bvn !== '' && (strlen($bvn) !== 11 || !ctype_digit($bvn))) {
-        echo json_encode(['success' => false, 'message' => 'BVN must be exactly 11 digits']);
-        exit;
-    }
     if ($account_number !== '' && (strlen($account_number) !== 10 || !ctype_digit($account_number))) {
         echo json_encode(['success' => false, 'message' => 'Account Number must be exactly 10 digits']);
         exit;
@@ -99,6 +91,15 @@ if (!$client_auth_id) {
     $kyc_paths  = [];
     $allowed_kyc_exts = ['pdf', 'jpg', 'jpeg', 'png'];
 
+    $required_kyc = ['kyc_nin_file', 'kyc_bvn_file', 'kyc_voter_card_file', 'kyc_driver_license_file', 'kyc_cac_file'];
+    foreach ($required_kyc as $req_field) {
+        if (empty($existing[$req_field]) && (!isset($_FILES[$req_field]) || $_FILES[$req_field]['error'] !== UPLOAD_ERR_OK)) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'All KYC documents are required. Missing: ' . str_replace('kyc_', '', $req_field)]);
+            exit;
+        }
+    }
+
     foreach ($kyc_fields as $field) {
         if (isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
             $ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
@@ -117,8 +118,6 @@ if (!$client_auth_id) {
     $bvn_verified = $existing['bvn_verified'] ?? 0;
 
     $sensitive_changed = (
-        ($nin            !== '' && $nin            !== ($existing['nin']            ?? '')) ||
-        ($bvn            !== '' && $bvn            !== ($existing['bvn']            ?? '')) ||
         ($account_number !== '' && $account_number !== ($existing['account_number'] ?? '')) ||
         ($bank_code      !== '' && $bank_code      !== ($existing['bank_code']      ?? ''))
     );
@@ -159,20 +158,21 @@ if (!$client_auth_id) {
                 exit;
             }
 
+            // Prefer user-submitted name > API resolved name > existing DB name
             $resolved_account_name = !empty($account_name)
                 ? $account_name
-                : ($subResult['account_name'] ?? 'Test Account');
+                : ($subResult['account_name'] ?? ($existing['account_name'] ?? null));
         } else {
-            $resolved_account_name = $existing['account_name'] ?? ($business_name ?: $name);
+            $resolved_account_name = !empty($account_name) ? $account_name : ($existing['account_name'] ?? null);
         }
     } elseif (!empty($account_name)) {
         $resolved_account_name = $account_name;
     }
 
-    // ── Custom ID ────────────────────────────────────────────────────────
+    // ── Custom ID ────────────────────────────────────────────────────────────────────
     $customId = $existing['custom_id'] ?? null;
     if (empty($customId)) {
-        require_once __DIR__ . '/../../api/utils/id-generator.php';
+        require_once __DIR__ . '/../utils/id-generator.php';
         $customId = generateClientId($pdo);
     }
 
@@ -180,7 +180,7 @@ if (!$client_auth_id) {
     $query = "UPDATE clients SET
         custom_id = ?, name = ?, business_name = ?, phone = ?, address = ?, city = ?,
         state = ?, country = ?, job_title = ?, company = ?, dob = ?, gender = ?,
-        nin = ?, bvn = ?, nin_verified = ?, bvn_verified = ?,
+        nin_verified = ?, bvn_verified = ?,
         account_name = ?, account_number = ?, bank_name = ?, bank_code = ?,
         verification_status = ?, updated_at = NOW()";
 
@@ -188,7 +188,6 @@ if (!$client_auth_id) {
         $customId, $name, $business_name, $phone, $address, $city,
         $state, $country, $job_title, $company,
         ($dob !== '' ? $dob : null), ($gender !== '' ? $gender : null),
-        ($nin !== '' ? $nin : null), ($bvn !== '' ? $bvn : null),
         $nin_verified, $bvn_verified,
         $resolved_account_name,
         ($account_number !== '' ? $account_number : null),
@@ -214,15 +213,24 @@ if (!$client_auth_id) {
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
 
-    // Fetch updated client
-    $stmt = $pdo->prepare("SELECT * FROM clients WHERE client_auth_id = ?");
+    // Fetch updated client + email for complete user object
+    $stmt = $pdo->prepare("
+        SELECT c.*, a.email, a.username, a.role
+        FROM clients c
+        JOIN auth_accounts a ON c.client_auth_id = a.id
+        WHERE c.client_auth_id = ?
+    ");
     $stmt->execute([$client_auth_id]);
     $updated_client = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($updated_client) {
+        $profileId = (int)$updated_client['id'];
+        $updated_client['profile_id'] = $profileId;
+        $updated_client['client_id'] = $profileId;
+        $updated_client['id'] = (int)$client_auth_id;
         $updated_client['role'] = 'client';
-        if ($updated_client['profile_pic']) {
-            $updated_client['profile_pic'] = '/' . $updated_client['profile_pic'];
+        if (!empty($updated_client['profile_pic'])) {
+            $updated_client['profile_pic'] = '/' . ltrim($updated_client['profile_pic'], '/');
         }
         unset($updated_client['password']);
     }

@@ -139,11 +139,17 @@ if ($intent === 'client_login_otp') {
             'redirect' => '/client/pages/clientDashboard.html',
             'user' => [
                 'id' => $user['id'],
+                'profile_id' => (int)$user['client_id'],
+                'client_id' => (int)$user['client_id'],
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'role' => 'client',
-                'client_id' => $user['client_id'],
                 'business_name' => $user['business_name'] ?? '',
+                'profile_pic' => (function ($pic) {
+                    if (!$pic) return null;
+                    if (preg_match('/^https?:\/\//i', $pic)) return $pic;
+                    return '/' . ltrim($pic, '/');
+                })($user['profile_pic'] ?? null),
                 'profile_image' => (function ($pic) {
                     if (!$pic) return null;
                     if (preg_match('/^https?:\/\//i', $pic)) return $pic;

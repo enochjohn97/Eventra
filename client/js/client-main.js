@@ -103,9 +103,9 @@ function initInactivityMonitor() {
       if (result.isConfirmed) {
         // Heartbeat API will refresh PHP session timestamp
         if (typeof apiFetch !== "undefined") {
-          apiFetch("/api/heartbeat.php").then(() => resetTimers());
+          apiFetch("/api/utils/heartbeat.php").then(() => resetTimers());
         } else {
-          fetch("/api/heartbeat.php").then(() => resetTimers());
+          fetch("/api/utils/heartbeat.php").then(() => resetTimers());
         }
       } else if (result.dismiss === Swal.DismissReason.cancel) {
         if (window.logout) window.logout();
@@ -396,12 +396,7 @@ function initProfileClick() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 Profile
             </a>
-            <a href="#" onclick="window.toggleSupportChat('general'); document.getElementById('inlineProfileDropdown').style.display='none'; return false;"
-               style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"
-               onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Support
-            </a>
+          
             <div style="border-top:1px solid #f1f5f9;"></div>
             <a href="#" onclick="logout();return false;"
                style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#ef4444;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"

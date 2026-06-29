@@ -339,6 +339,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial load
     await loadEvents();
 
+    // Handle search highlighting — ?highlight=ID scrolls to and pulses the matching row
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+        // Wait for table to render then scroll + highlight
+        const tryHighlight = (attempts = 0) => {
+            const row = document.querySelector(`tr[data-id="${highlightId}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('search-highlight-row');
+                setTimeout(() => row.classList.remove('search-highlight-row'), 3500);
+            } else if (attempts < 10) {
+                setTimeout(() => tryHighlight(attempts + 1), 300);
+            }
+        };
+        setTimeout(() => tryHighlight(), 800);
+    }
+
     // Task 3: Real-time synchronization (10s polling)
     setInterval(loadEvents, 10000);
 });

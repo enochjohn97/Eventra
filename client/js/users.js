@@ -21,20 +21,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId) {
-        setTimeout(() => {
-            const rows = document.querySelectorAll('#usersTableBody tr');
-            rows.forEach(row => {
-                // If we use ID in the data-id attribute or similar
-                if (row.innerHTML.includes(`id":${highlightId}`)) {
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    row.style.transition = 'background 0.5s';
-                    row.style.background = 'rgba(99, 91, 255, 0.15)';
-                    setTimeout(() => {
-                        row.style.background = '';
-                    }, 3000);
-                }
-            });
-        }, 500);
+        const tryHighlight = (attempts = 0) => {
+            const row = document.querySelector(`tr[data-id="${highlightId}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('search-highlight-row');
+                setTimeout(() => row.classList.remove('search-highlight-row'), 3500);
+            } else if (attempts < 10) {
+                setTimeout(() => tryHighlight(attempts + 1), 300);
+            }
+        };
+        setTimeout(() => tryHighlight(), 600);
     }
 });
 

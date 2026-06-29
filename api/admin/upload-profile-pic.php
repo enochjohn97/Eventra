@@ -101,13 +101,7 @@ if (!isset($_FILES['profile_pic']) || $_FILES['profile_pic']['error'] !== UPLOAD
 
 $file = $_FILES['profile_pic'];
 
-// Validate file size (max 5MB)
-$maxSize = 5 * 1024 * 1024; // 5MB in bytes
-if ($file['size'] > $maxSize) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'File size exceeds 5MB limit.']);
-    exit;
-}
+
 
 // Validate file type
 $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];

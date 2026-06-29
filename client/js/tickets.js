@@ -16,17 +16,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId) {
-        setTimeout(() => {
-            const rows = document.querySelectorAll('#ticketsTableBody tr');
-            rows.forEach(row => {
-                if (row.innerHTML.includes(`"id":${highlightId}`) || row.children[0].textContent.trim() == highlightId) {
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    row.style.transition = 'background 0.5s';
-                    row.style.background = 'rgba(99, 91, 255, 0.15)';
-                    setTimeout(() => { row.style.background = ''; }, 3000);
-                }
-            });
-        }, 500);
+        const tryHighlight = (attempts = 0) => {
+            const row = document.querySelector(`tr[data-id="${highlightId}"]`) ||
+                        document.querySelector(`#ticketsTableBody tr[data-ticket-id="${highlightId}"]`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('search-highlight-row');
+                setTimeout(() => row.classList.remove('search-highlight-row'), 3500);
+            } else if (attempts < 10) {
+                setTimeout(() => tryHighlight(attempts + 1), 300);
+            }
+        };
+        setTimeout(() => tryHighlight(), 600);
     }
 
     // Sort Select Wiring

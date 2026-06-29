@@ -15,7 +15,7 @@
 
     // ── Determine correct paths regardless of page depth ──────────────────────
     const relBase = typeof getBasePath === 'function' ? getBasePath() : '../../';
-    const HEARTBEAT_URL = relBase + 'api/heartbeat.php';
+    const HEARTBEAT_URL = relBase + 'api/utils/heartbeat.php';
     const LOGOUT_URL = relBase + 'api/auth/logout.php';
 
     // ── Determine login page URL by role ──────────────────────────────────────

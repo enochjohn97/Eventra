@@ -37,7 +37,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             try {
                 const verifyRes = await apiFetch(`/api/payments/verify-payment.php?reference=${reference}`);
-                // Proceed to polling regardless of immediate result, get-order will handle the final state
+                const verifyData = verifyRes ? await verifyRes.json() : null;
+                if (verifyData && verifyData.success && verifyData.barcode) {
+                    await showPaymentSuccess(reference, verifyData.barcode);
+                    return;
+                }
                 startPolling(reference);
             } catch (err) {
                 startPolling(reference);
@@ -96,8 +100,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 let pollCount = 0;
 let consecutiveErrors = 0;
-const maxPolls = 15; // ~45 seconds of polling
+const maxPolls = 20;
 const maxConsecutiveErrors = 3;
+
+async function showPaymentSuccess(reference, barcode) {
+    const paymentLoading = document.getElementById('paymentLoading');
+    const paymentForm = document.getElementById('paymentForm');
+    const statusContainer = document.getElementById('paymentStatusContainer');
+    const icon = document.getElementById('statusIcon');
+    const title = document.getElementById('statusTitle');
+    const msg = document.getElementById('statusMessage');
+    const actions = document.getElementById('successActions');
+    const downloadBtn = document.getElementById('downloadTicketBtn');
+
+    if (paymentLoading) paymentLoading.style.display = 'none';
+    if (paymentForm) paymentForm.style.display = 'none';
+    if (statusContainer) statusContainer.style.display = 'block';
+
+    let order = null;
+    try {
+        const res = await apiFetch(`/api/payments/get-order.php?reference=${reference}`);
+        const result = res ? await res.json() : null;
+        if (result && result.success) order = result.order;
+    } catch (e) {}
+
+    const cleanedName = (order?.event_name || '').replace(/\s*#\d+$/, '');
+    const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
+
+    icon.innerHTML = `<div id="qrcode-container" style="display:flex;flex-direction:column;align-items:center;margin-bottom:1.5rem;pointer-events:none;user-select:none;">
+        <div id="qrcode" style="background:#fff;padding:10px;border-radius:1rem;box-shadow:var(--shadow-card);border:1px solid var(--border-light);"></div>
+    </div>
+    <div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.75rem;">Scan to validate ticket</div>`;
+
+    try {
+        new QRCode(document.getElementById('qrcode'), { text: String(qrPayload), width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.L });
+    } catch (e) { console.error('QRCode generation failed:', e); }
+
+    title.textContent = order?.amount <= 0 ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
+    msg.innerHTML = `Your ticket${(order?.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? 'have been issued' : 'are ready'}.<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
+
+    if (order) renderSummary(order, order.quantity || 1, order.ticket_type || 'regular');
+    prepareTicketForDownload(order || { event_name: cleanedName, barcode }, barcode);
+
+    if (downloadBtn) {
+        downloadBtn.onclick = () => {
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = '<span class="btn-spinner"></span> Generating PDF...';
+            downloadBtn.disabled = true;
+            const element = document.getElementById('ticket-card');
+            const opt = { margin: 0.5, filename: `eventra_ticket_${barcode}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+            const generatePdf = () => html2pdf().set(opt).from(element).save().then(() => { downloadBtn.innerHTML = originalText; downloadBtn.disabled = false; });
+            if (typeof html2pdf === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                script.onload = generatePdf;
+                document.head.appendChild(script);
+            } else generatePdf();
+        };
+    }
+    if (actions) actions.style.display = 'flex';
+    sessionStorage.removeItem('pending_order');
+    sessionStorage.setItem('purchase_success_redirection', 'true');
+}
 
 async function startPolling(reference) {
     const paymentLoading = document.getElementById('paymentLoading');
@@ -131,100 +195,12 @@ async function startPolling(reference) {
                 const status = result.status || order.payment_status;
                 
                 if (status === 'paid' || status === 'success') {
-                    // SUCCESS!
-                    const cleanedName = (order.event_name || '').replace(/\s*#\d+$/, '');
-                    
-                    // Hide any remaining loading indicators
-                    if (paymentLoading) paymentLoading.style.display = 'none';
-                    if (paymentForm) paymentForm.style.display = 'none';
-                    if (statusContainer) statusContainer.style.display = 'block';
-
-                    // Build QR using the SAME validation URL as the ticket PDF
-                    const firstBarcode  = order.barcode || (order.tickets && order.tickets[0]?.barcode);
-                    const qrPayload     = firstBarcode
-                        ? `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(firstBarcode)}`
-                        : `${window.location.origin}/api/payments/get-order.php?reference=${reference}`;
-                    
-                    
-                    icon.innerHTML = `<div id="qrcode-container" 
-                                           oncontextmenu="return false;" 
-                                           onmousedown="return false;"
-                                           style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1.5rem; pointer-events: none; user-select: none;">
-                                        <div id="qrcode" style="position: relative; background: #fff; padding: 10px; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;"></div>
-                                        <div style="position: absolute; width: 160px; height: 160px; background: transparent; z-index: 5;"></div>
-                                      </div>
-                                      <div style="font-size:0.75rem; font-weight: 600; color:#64748b; margin-top:-0.5rem; margin-bottom:0.75rem; user-select: none;">Scan to validate ticket</div>`;
-                    
-                    try {
-                        new QRCode(document.getElementById("qrcode"), {
-                            text: String(qrPayload),
-                            width: 160,
-                            height: 160,
-                            colorDark : "#000000",
-                            colorLight : "#ffffff",
-                            correctLevel : QRCode.CorrectLevel.L
-                        });
-                    } catch (e) {
-                        console.error("QRCode generation failed:", e);
-                        const qrContainer = document.getElementById('qrcode');
-                        if (qrContainer) {
-                            qrContainer.innerHTML = '<div style="font-size: 0.7rem; color: #ef4444; padding: 20px;">QR Generation Error</div>';
-                        }
-                    }
-                    
-                    title.textContent = order.is_free ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
-                    msg.innerHTML = `Your ticket${(order.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order.is_free ? 'have been issued' : 'are ready'}.<br><span style="font-size:0.8rem;color:#6b7280;">Ref: ${escapeHTML(reference)}</span>`;
-                    
-                    if (order) {
-                        renderSummary(order, order.quantity || quantity || 1, order.ticket_type || ticket_type || 'regular');
-                    }
-                    
+                    const firstBarcode = order.barcode || (order.tickets && order.tickets[0]?.barcode);
                     if (firstBarcode) {
-                        // Populate hidden ticket card for PDF generation
-                        prepareTicketForDownload(order, firstBarcode);
-                        
-                        // Use html2pdf for ticket downloading
-                        if (downloadBtn) {
-                            downloadBtn.onclick = () => {
-                                const originalText = downloadBtn.innerHTML;
-                                downloadBtn.innerHTML = '<span class="btn-spinner"></span> Generating PDF...';
-                                downloadBtn.disabled = true;
-
-                                const element = document.getElementById('ticket-card');
-
-                                const opt = {
-                                    margin:       0.5, // added margin to look nice on letter size
-                                    filename:     `eventra_ticket_${firstBarcode}.pdf`,
-                                    image:        { type: 'jpeg', quality: 0.98 },
-                                    html2canvas:  { scale: 2, useCORS: true },
-                                    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-                                };
-
-                                const generatePdf = () => {
-                                    html2pdf().set(opt).from(element).save().then(() => {
-                                        downloadBtn.innerHTML = originalText;
-                                        downloadBtn.disabled = false;
-                                    });
-                                };
-
-                                if (typeof html2pdf === 'undefined') {
-                                    const script = document.createElement('script');
-                                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                                    script.onload = generatePdf;
-                                    document.head.appendChild(script);
-                                } else {
-                                    generatePdf();
-                                }
-                            };
-                        }
-                        if (actions) actions.style.display = 'flex';
+                        await showPaymentSuccess(reference, firstBarcode);
+                        return;
                     }
-                    
-                    sessionStorage.removeItem('pending_order');
-                    sessionStorage.setItem('purchase_success_redirection', 'true');
-                    return; // Stop polling
-
-                } 
+                }
                 
                 if (status === 'failed') {
                     icon.textContent = '❌';
@@ -267,7 +243,7 @@ async function startPolling(reference) {
             return;
         }
 
-        setTimeout(poll, 4000); // Increased delay to 4s as requested (3-5s)
+        setTimeout(poll, pollCount <= 5 ? 1500 : 2500);
     };
 
     poll();
@@ -315,11 +291,17 @@ function setupFreeEventState(form, eventData, quantity, ticketType = 'regular') 
 
             if (result.success) {
                 sessionStorage.removeItem('pending_order');
-                Swal.fire({
-                    title: 'Tickets Issued!',
-                    text: 'Your free tickets are ready. Check your email.',
-                    icon: 'success'
-                }).then(() => { window.location.href = 'index.html'; });
+                const barcode = result.barcode || (result.tickets && result.tickets[0]);
+                const paymentForm = document.getElementById('paymentForm');
+                const statusContainer = document.getElementById('paymentStatusContainer');
+                if (paymentForm) paymentForm.style.display = 'none';
+                if (statusContainer) statusContainer.style.display = 'block';
+                if (barcode && typeof showPaymentSuccess === 'function') {
+                    await showPaymentSuccess(finalRef, barcode);
+                } else {
+                    Swal.fire({ title: 'Tickets Issued!', text: 'Your free tickets are ready.', icon: 'success' })
+                        .then(() => { window.location.href = 'index.html'; });
+                }
             } else {
                 Swal.fire('Error', result.message, 'error');
                 btn.disabled = false;
@@ -361,20 +343,28 @@ function renderSummary(event, qty, ticketType = 'regular') {
     const cleanEventName = (event.event_name || '').replace(/\s*#\d+$/, '');
     
     // Normalize address/location
-    let locationStr = '';
-    if (event.location || event.address) {
-        locationStr = [event.location || event.address, event.city, event.state].filter(Boolean).join(', ');
+    let locationHtml = '';
+    let locs = null;
+    try {
+        locs = event.locations ? (typeof event.locations === 'string' ? JSON.parse(event.locations) : event.locations) : null;
+    } catch (e) {}
+    const states = (event.state || '').split(',').map(s => s.trim()).filter(Boolean);
+    const isMultiple = (Array.isArray(locs) && locs.length > 1) || (states.length > 1 && !states.includes('All States'));
+    if (isMultiple && typeof buildMultiLocationHTML === 'function') {
+        const locList = Array.isArray(locs) && locs.length > 0 ? locs : states.map(s => ({ state: s, address: event.address || '' }));
+        locationHtml = buildMultiLocationHTML(locList, { expandable: true, idPrefix: 'payMloc' });
     } else {
-        locationStr = 'Location details unavailable';
+        const locationStr = [event.location || event.address, event.city, event.state].filter(Boolean).join(', ') || 'Location details unavailable';
+        locationHtml = `<p style="font-size: 0.8rem; color: var(--text-muted);">${escapeHTML(locationStr)}</p>`;
     }
 
     container.innerHTML = `
         <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
             <img src="${imgUrl}" onerror="this.src='${fallback}'" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
-            <div>
-                <h4 style="font-weight: 700; color: #1e293b;">${escapeHTML(cleanEventName)}</h4>
-                <p style="font-size: 0.8rem; color: #64748b;">${escapeHTML(locationStr)}</p>
-                <p style="font-size: 0.75rem; color: #722f37; font-weight: 600; margin-top: 4px; text-transform: uppercase;">
+            <div style="flex:1;min-width:0;">
+                <h4 style="font-weight: 700; color: var(--text-main);">${escapeHTML(cleanEventName)}</h4>
+                ${locationHtml}
+                <p style="font-size: 0.75rem; color: var(--primary-color); font-weight: 600; margin-top: 4px; text-transform: uppercase;">
                     ${escapeHTML(typeLabel)} Ticket
                 </p>
             </div>

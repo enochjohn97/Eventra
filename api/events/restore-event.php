@@ -107,6 +107,7 @@ try {
             $message = "Event '{$event['event_name']}' has been restored by $user_name";
             createNotification($admin_id, $message, 'event_restored', $auth_id, 'admin', 'client', $metadata);
         }
+        createNotification($auth_id, "Your event '{$event['event_name']}' has been restored to draft.", 'event_restored', $auth_id, 'client', 'client', $metadata);
     } else {
         // Admin restored the event - notify the client owner
         $message = "Your event '{$event['event_name']}' has been restored.";

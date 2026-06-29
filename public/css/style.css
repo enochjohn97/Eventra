@@ -3095,3 +3095,58 @@ body {
     text-align: center;
   }
 }
+
+/* Per-state venue section (create-event) */
+.per-state-container { background: var(--bg-card); padding: var(--space-md); border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-top: var(--space-sm); }
+.per-state-section { display: flex; flex-direction: column; gap: var(--space-sm); }
+.per-state-header { display: flex; gap: var(--space-sm); align-items: flex-start; }
+.per-state-icon { font-size: 1.25rem; }
+.per-state-title { font-size: 0.85rem; font-weight: 700; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; }
+.per-state-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+.per-state-toggle { display: flex; align-items: center; gap: 0.5rem; padding: 0.65rem 0.75rem; background: var(--accent-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.per-state-toggle input { accent-color: var(--primary-color); }
+.per-state-cards { display: flex; flex-direction: column; gap: var(--space-sm); }
+.per-state-card { background: var(--bg-page); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: var(--space-sm); box-shadow: var(--shadow-subtle); }
+.per-state-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.per-state-badge { font-size: 0.82rem; font-weight: 700; color: var(--primary-color); background: var(--accent-soft); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); }
+.per-state-required { font-size: 0.65rem; font-weight: 700; color: var(--danger-color); text-transform: uppercase; }
+.per-state-address-input { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; resize: vertical; }
+.per-state-datetime { grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem; }
+.per-state-field label, .per-state-field > span { display: block; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; }
+.per-state-date-wrap { position: relative; }
+.per-state-date-display { width: 100%; padding: 0.65rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 0.85rem; background: var(--bg-card); cursor: pointer; box-sizing: border-box; }
+.per-state-date-wrap > span { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-light); pointer-events: none; }
+.per-state-mdp { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 9999; background: var(--bg-card); border-radius: var(--radius-md); box-shadow: var(--shadow-hover); width: 280px; overflow: hidden; border: 1px solid var(--border-light); }
+.per-state-mdp.open { display: block; }
+.per-state-mdp-head { background: var(--primary-color); color: white; padding: 14px 16px; }
+.per-state-mdp-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; }
+.per-state-mdp-nav button { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px 8px; border-radius: 50%; }
+.per-state-mdp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; font-size: 0.8rem; padding: 0 12px 12px; }
+.per-state-mdp-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 8px 16px 14px; }
+.per-state-mdp-foot button { background: none; border: none; color: var(--primary-color); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+.per-state-time-btn { padding: 0.65rem 1rem !important; font-size: 0.85rem !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* Multi-location UI */
+.mloc-wrap { display: flex; flex-direction: column; gap: var(--space-xs); }
+.mloc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mloc-title { font-weight: 700; color: var(--text-main); font-size: 0.9rem; }
+.mloc-toggle { background: var(--bg-page); border: 1px solid var(--border-light); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700; color: var(--primary-color); cursor: pointer; }
+.mloc-list { display: none; flex-direction: column; gap: 0.5rem; margin-top: var(--space-xs); padding-top: var(--space-xs); border-top: 1px dashed var(--border-light); max-height: 220px; overflow-y: auto; }
+.mloc-list.open { display: flex; }
+.mloc-card { display: flex; gap: 0.5rem; padding: 0.6rem 0.75rem; background: var(--bg-page); border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
+.mloc-pin { color: var(--primary-color); font-size: 0.85rem; flex-shrink: 0; }
+.mloc-body { flex: 1; min-width: 0; }
+.mloc-state { font-weight: 700; color: var(--text-main); font-size: 0.85rem; }
+.mloc-addr { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+.mloc-meta { font-size: 0.72rem; color: var(--text-light); margin-top: 2px; }
+
+/* Favorites sidebar cards */
+.favorite-card { display: flex; gap: var(--space-sm); padding: var(--space-sm); background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-subtle); transition: var(--transition-base); cursor: pointer; }
+.favorite-card:hover { box-shadow: var(--shadow-card); border-color: var(--border-focus); transform: translateY(-1px); }
+.favorite-card-img { width: 72px; height: 72px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.favorite-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem; }
+.favorite-card-title { font-weight: 700; font-size: 0.9rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.favorite-card-meta { font-size: 0.72rem; color: var(--text-muted); }
+.favorite-card-price { font-weight: 700; font-size: 0.85rem; color: var(--primary-color); }
+.favorite-card-actions { display: flex; flex-direction: column; gap: 0.35rem; justify-content: center; }

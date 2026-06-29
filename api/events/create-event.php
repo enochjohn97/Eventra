@@ -366,7 +366,7 @@ try {
         if (empty($address)) {
             $missing[] = 'Address';
         }
-        if (empty($image_path)) {
+        if ($status !== 'draft' && empty($image_path)) {
             $missing[] = 'Event Image (Banner)';
         }
 

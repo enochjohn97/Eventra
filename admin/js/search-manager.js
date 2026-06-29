@@ -106,15 +106,15 @@ class SearchManager {
 
         switch(type) {
             case 'events':
-                link = `events.html?id=${item.id}`;
+                link = `events.html?highlight=${item.id}`;
                 meta = `${item.custom_id} • ${item.type} • ${item.state}`;
                 break;
             case 'users':
-                link = `users.html?email=${item.email}`;
+                link = `users.html?highlight=${item.id}`;
                 meta = `${item.custom_id} • ${item.email}`;
                 break;
             case 'clients':
-                link = `clients.html?id=${item.id}`;
+                link = `clients.html?highlight=${item.id}`;
                 meta = `${item.custom_id} • ${item.company || item.email}`;
                 break;
         }

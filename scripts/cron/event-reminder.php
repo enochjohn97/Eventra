@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/helpers/email-helper.php';
+require_once __DIR__ . '/../../includes/helpers/sms-helper.php';
 
 // Security check: simple secret key for cron
 $cron_secret = $_ENV['CRON_SECRET'] ?? '';
@@ -17,7 +18,7 @@ if (!isset($argv[1]) || $argv[1] !== $cron_secret) {
 try {
     // 1. Fetch tickets for events starting between 24 and 25 hours from now
     $stmt = $pdo->prepare("
-        SELECT DISTINCT u.email, u.name, e.event_name, e.event_date, e.event_time, e.location 
+        SELECT DISTINCT u.email, u.phone, u.name, e.event_name, e.event_date, e.event_time, e.location 
         FROM tickets t
         JOIN payments p ON t.payment_id = p.id
         JOIN users u ON p.user_id = u.id
@@ -51,6 +52,11 @@ try {
             $count++;
         } else {
             error_log("Failed to send reminder to {$reminder['email']}: {$result['message']}");
+        }
+
+        if (!empty($reminder['phone'])) {
+            $smsMsg = "Hi {$reminder['name']}, reminder that {$reminder['event_name']} is happening tomorrow at {$reminder['event_time']}!";
+            sendSMS($reminder['phone'], $smsMsg);
         }
     }
 

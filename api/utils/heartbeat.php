@@ -11,8 +11,8 @@ error_reporting(0);
  */
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../includes/middleware/auth.php';
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 // If there's no session cookie and no Authorization header, short-circuit without DB
 $hasSessionCookie = isset($_COOKIE['EVENTRA_ADMIN_SESS']) || isset($_COOKIE['EVENTRA_CLIENT_SESS']) || isset($_COOKIE['EVENTRA_USER_SESS']);
@@ -26,7 +26,7 @@ if (!$hasSessionCookie && !$hasAuthHeader) {
 
 // Ensure session is active
 if (session_status() === PHP_SESSION_NONE) {
-    require_once __DIR__ . '/../config/session-config.php';
+    require_once __DIR__ . '/../../config/session-config.php';
 }
 
 // Rate-limit DB writes: only touch DB if more than 60s since last update
@@ -51,7 +51,7 @@ if (!$auth_id) {
 
 try {
     // Lazy-load PDO and perform a single cheap update
-    require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../../config/database.php';
     $pdo = getPDO();
     $stmt = $pdo->prepare("UPDATE auth_accounts SET last_seen = NOW(), is_online = 1 WHERE id = ?");
     $stmt->execute([$auth_id]);

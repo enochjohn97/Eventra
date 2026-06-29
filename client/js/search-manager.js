@@ -191,26 +191,22 @@ function highlightText(text, query) {
 }
 
 function goToEvent(eventId) {
-    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
-    window.location.href = `${basePath}pages/events.html?highlight=${eventId}`;
+    window.location.href = `events.html?highlight=${eventId}`;
     hideSearchResults();
 }
 
 function goToTickets(ticketId) {
-    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
-    window.location.href = `${basePath}pages/tickets.html?highlight=${ticketId}`;
+    window.location.href = `tickets.html?highlight=${ticketId}`;
     hideSearchResults();
 }
 
 function goToUsers(userId) {
-    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
-    window.location.href = `${basePath}pages/users.html?highlight=${userId}`;
+    window.location.href = `users.html?highlight=${userId}`;
     hideSearchResults();
 }
 
 function goToMedia(id, type) {
-    const basePath = typeof getBasePath === 'function' ? getBasePath() : '';
-    window.location.href = `${basePath}pages/media.html?highlight=${id}&type=${type}`;
+    window.location.href = `media.html?highlight=${id}&type=${type}`;
     hideSearchResults();
 }
 
