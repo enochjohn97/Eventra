@@ -416,20 +416,7 @@
           <button id="resetFilters">Reset</button>
         </div>
 
-        <div class="filter-group-collapsible">
-          <div
-            class="filter-group-header"
-            onclick="toggleSidebarSection('stateFiltersWrapper')"
-          >
-            <label>Location (State)</label>
-            <i data-lucide="chevron-down" class="chevron-icon"></i>
-          </div>
-          <div id="stateFiltersWrapper" class="collapsible-content">
-            <div id="stateFilters" class="checkbox-group">
-              <!-- Populated dynamically -->
-            </div>
-          </div>
-        </div>
+
 
         <div class="filter-group-collapsible">
           <div
@@ -441,6 +428,21 @@
           </div>
           <div id="categoryFiltersWrapper" class="collapsible-content">
             <div id="categoryFilters" class="checkbox-group">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-group-collapsible">
+          <div
+            class="filter-group-header"
+            onclick="toggleSidebarSection('stateFiltersWrapper')"
+          >
+            <label>Location (State)</label>
+            <i data-lucide="chevron-down" class="chevron-icon"></i>
+          </div>
+          <div id="stateFiltersWrapper" class="collapsible-content">
+            <div id="stateFilters" class="checkbox-group">
               <!-- Populated dynamically -->
             </div>
           </div>
@@ -520,7 +522,56 @@
       </aside>
 
       <div class="discovery-content">
-        <!-- ... existing queues ... -->
+        <!-- Priority Queues -->
+        <section id="featuredSection" style="display: none; margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">⭐ Featured Events</h2>
+          <div class="swiper featured-swiper" style="position: relative; padding-bottom: 30px;">
+            <div class="swiper-wrapper" id="featured-events-grid"></div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-next" style="top: 35%; color: var(--client-primary);"></div>
+            <div class="swiper-button-prev" style="top: 35%; color: var(--client-primary);"></div>
+          </div>
+        </section>
+
+        <section id="trendingSection" style="display: none; margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">📈 Trending Now</h2>
+          <div class="swiper trending-swiper" style="position: relative; padding-bottom: 30px;">
+            <div class="swiper-wrapper" id="trending-events-grid"></div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-next" style="top: 35%; color: var(--client-primary);"></div>
+            <div class="swiper-button-prev" style="top: 35%; color: var(--client-primary);"></div>
+          </div>
+        </section>
+
+        <section id="hotSection" style="display: none; margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">🔥 Hot Events</h2>
+          <div class="swiper hot-swiper" style="position: relative; padding-bottom: 30px;">
+            <div class="swiper-wrapper" id="hot-events-grid"></div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-next" style="top: 35%; color: var(--client-primary);"></div>
+            <div class="swiper-button-prev" style="top: 35%; color: var(--client-primary);"></div>
+          </div>
+        </section>
+
+        <section id="upcomingSection" style="display: none; margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">📅 Upcoming Events</h2>
+          <div class="swiper upcoming-swiper" style="position: relative; padding-bottom: 30px;">
+            <div class="swiper-wrapper" id="upcoming-events-grid"></div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-next" style="top: 35%; color: var(--client-primary);"></div>
+            <div class="swiper-button-prev" style="top: 35%; color: var(--client-primary);"></div>
+          </div>
+        </section>
+
+        <section id="nearbySection" style="display: none; margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">📍 Near You</h2>
+          <div class="swiper nearby-swiper" style="position: relative; padding-bottom: 30px;">
+            <div class="swiper-wrapper" id="nearby-events-grid"></div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-next" style="top: 35%; color: var(--client-primary);"></div>
+            <div class="swiper-button-prev" style="top: 35%; color: var(--client-primary);"></div>
+          </div>
+        </section>
         <!-- Profile Update Banner -->
         <div
           id="profileUpdateBanner"

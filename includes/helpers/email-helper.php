@@ -1029,9 +1029,9 @@ PDF;
 
     // ── OTP email ─────────────────────────────────────────────────────────────
 
-    public static function sendRegistrationOTP(string $to, string $name, string $otp): array
+    public static function sendPasswordResetOTP(string $to, string $name, string $otp): array
     {
-        $subject = "=?UTF-8?B?" . base64_encode("Verify your Eventra account — OTP: {$otp}") . "?=";
+        $subject = "=?UTF-8?B?" . base64_encode("Reset your Eventra password — OTP: {$otp}") . "?=";
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $year = date('Y');
 
@@ -1042,10 +1042,10 @@ PDF;
                 <h1 style="color:#2ecc71;margin:0;font-size:28px;font-weight:800;">Eventra</h1>
                 <p style="color:#64748b;margin-top:8px;font-size:14px;">Bringing your events to life</p>
             </div>
-            <h2 style="color:#1e293b;font-size:20px;font-weight:700;margin-bottom:16px;">Confirm your email address</h2>
+            <h2 style="color:#1e293b;font-size:20px;font-weight:700;margin-bottom:16px;">Reset your password</h2>
             <p style="color:#475569;font-size:16px;line-height:1.6;margin-bottom:24px;">Hi <strong>{$safeName}</strong>,</p>
             <p style="color:#475569;font-size:16px;line-height:1.6;margin-bottom:32px;">
-                Use the code below to verify your account. It expires in 15 minutes.
+                Use the code below to reset your password. It expires in 15 minutes.
             </p>
             <div style="background:#f8fafc;padding:32px;text-align:center;border-radius:12px;
                         margin:32px 0;border:1px solid #e2e8f0;">

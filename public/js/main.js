@@ -302,6 +302,12 @@ function renderAllCategories(data = eventsData) {
   );
   renderCategory(data.hot, "hot-events-grid", "hotSection", ".hot-swiper");
   renderCategory(
+    data.upcoming,
+    "upcoming-events-grid",
+    "upcomingSection",
+    ".upcoming-swiper",
+  );
+  renderCategory(
     data.nearby,
     "nearby-events-grid",
     "nearbySection",
@@ -1313,10 +1319,13 @@ function getFilteredEvents(events, filters) {
         (event.category || event.event_type || "General").toLowerCase(),
       );
 
+    const eventPriorities = (event.priority || "")
+      .toLowerCase()
+      .split(",")
+      .map((p) => p.trim());
     const matchesPriority =
       selectedPriorities.length === 0 ||
-      (event.priority &&
-        selectedPriorities.includes(event.priority.toLowerCase()));
+      selectedPriorities.some((p) => eventPriorities.includes(p.toLowerCase()));
 
     // Fix: Force local time by appending T00:00:00 to avoid UTC midnight shift
     const eventDay = new Date((event.event_date || "") + "T00:00:00");
@@ -1394,18 +1403,21 @@ function applyFilters() {
     );
   }
 
+  // Helper to check priority tag
+  const hasPriority = (e, tag) => e.priority && e.priority.toLowerCase().split(',').map(p => p.trim()).includes(tag);
+
   // 2. Prepare categorized data (Filtered)
   const categorizedFiltered = {
     featured: getFilteredEvents(
-      allEvents.filter((e) => e.priority === "featured"),
+      allEvents.filter((e) => hasPriority(e, "featured")),
       filters,
     ),
     trending: getFilteredEvents(
-      allEvents.filter((e) => e.priority === "trending"),
+      allEvents.filter((e) => hasPriority(e, "trending")),
       filters,
     ),
     hot: getFilteredEvents(
-      allEvents.filter((e) => e.priority === "hot"),
+      allEvents.filter((e) => hasPriority(e, "hot")),
       filters,
     ),
     nearby: getFilteredEvents(
@@ -1419,7 +1431,7 @@ function applyFilters() {
         const userState = user?.state?.toLowerCase();
         const userCity = user?.city?.toLowerCase();
 
-        if (e.priority === "nearby") return true;
+        if (hasPriority(e, "nearby")) return true;
         if (userState || userCity) {
           const eventState = e.state?.toLowerCase();
           const eventCity = e.city?.toLowerCase();

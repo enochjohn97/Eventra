@@ -328,7 +328,31 @@ async function handleForgotPassword() {
                     confirmButtonText: 'Reset Password',
                     background: '#1e293b',
                     color: '#fff',
-                    confirmButtonColor: '#2ecc71'
+                    confirmButtonColor: '#2ecc71',
+                    didOpen: () => {
+                        const input = Swal.getInput();
+                        const eyeIcon = document.createElement('i');
+                        eyeIcon.className = 'fas fa-eye';
+                        eyeIcon.style.position = 'absolute';
+                        eyeIcon.style.right = '15px';
+                        eyeIcon.style.top = '50%';
+                        eyeIcon.style.transform = 'translateY(-50%)';
+                        eyeIcon.style.cursor = 'pointer';
+                        eyeIcon.style.color = '#94a3b8';
+                        
+                        input.parentNode.style.position = 'relative';
+                        input.parentNode.appendChild(eyeIcon);
+
+                        eyeIcon.addEventListener('click', () => {
+                            if (input.type === 'password') {
+                                input.type = 'text';
+                                eyeIcon.className = 'fas fa-eye-slash';
+                            } else {
+                                input.type = 'password';
+                                eyeIcon.className = 'fas fa-eye';
+                            }
+                        });
+                    }
                 });
 
                 if (!password) return;

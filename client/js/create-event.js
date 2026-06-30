@@ -85,8 +85,8 @@ function showCreateEventModal(eventToEdit = null) {
                                             <option value="Conference">Conference</option>
                                             <option value="Workshop">Workshop</option>
                                             <option value="Seminar">Seminar</option>
-                                            <option value="Entertainment">Entertainment</option>
-                                            <option value="Sport & Fitness">Sport & Fitness</option>
+                                            <option value="Entertainment">Entertainment (Music, Film, Comedy, etc)</option>
+                                            <option value="Sport & Fitness">Sports & Fitness</option>
                                             <option value="Exhibition">Exhibition</option>
                                             <option value="Networking">Networking</option>
                                             <option value="Festival">Festival</option>
@@ -95,7 +95,7 @@ function showCreateEventModal(eventToEdit = null) {
                                             <option value="Education">Education</option>
                                             <option value="Social">Social</option>
                                             <option value="Personal">Personal (Wedding, Anniversary, etc.)</option>
-                                            <option value="Community">Community</option>
+                                            <option value="Community">Community</option> 
                                             <option value="Religion">Religion</option>
                                             <option value="Cultural">Cultural</option>
                                             <option value="Technology">Technology</option>
@@ -139,7 +139,7 @@ function showCreateEventModal(eventToEdit = null) {
                                                    role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-controls="materialDatePicker" aria-label="Event date, press Enter to open calendar"
                                                    style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer;"
                                                    onclick="openMaterialDatePicker()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMaterialDatePicker();}">
-                                            <span aria-hidden="true" style="position: absolute; right: 1rem; top: 1rem; color: #9ca3af; pointer-events: none; font-size: 1.25rem;">📅</span>
+                                            <span aria-hidden="true" style="position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 1.25rem;">📅</span>
                                         </div>
                                         <input type="hidden" name="event_date" id="eventDateInput" required aria-hidden="true">
                                         
@@ -491,13 +491,11 @@ function showCreateEventModal(eventToEdit = null) {
         createEventForm.querySelector('input[name="event_date"]').value = eventToEdit.event_date || '';
 
         if (eventToEdit.event_time) {
-            const timeParts = eventToEdit.event_time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-            if (timeParts) {
-                document.getElementById('timeHour').value = timeParts[1].padStart(2, '0');
-                document.getElementById('timeMinute').value = timeParts[2].padStart(2, '0');
-                if (timeParts[3]) {
-                    document.getElementById('timeAmPm').value = timeParts[3].toUpperCase();
-                }
+            document.getElementById('eventTimeInput').value = eventToEdit.event_time;
+            const displaySpan = document.getElementById('eventTimeDisplay');
+            if (displaySpan) {
+                displaySpan.textContent = eventToEdit.event_time;
+                displaySpan.style.color = '#1f2937'; // Active color
             }
         }
 
@@ -1353,28 +1351,46 @@ function togglePerStateDateTimeFields() {
     // ── Fix 1: Lock / unlock the global Date & Time fields ────────────────────
     // When per-state dates are active, the global date/time fields should be
     // inaccessible (disabled + visually greyed out) to avoid confusion.
-    const globalDateDisplay  = document.getElementById('customDateDisplay');
-    const globalDateInput    = document.getElementById('eventDateInput');
-    const globalTimeBtn      = document.getElementById('eventTimeDisplayBtn');
-    const globalTimeInput    = document.getElementById('eventTimeInput');
+    const globalDateDisplay = document.getElementById('customDateDisplay');
+    const globalDateInput = document.getElementById('eventDateInput');
+    const globalTimeBtn = document.getElementById('eventTimeDisplayBtn');
+    const globalTimeInput = document.getElementById('eventTimeInput');
 
     const disabledStyle = 'background: #f3f4f6; cursor: not-allowed; opacity: 0.5; pointer-events: none;';
-    const enabledStyle  = '';
+    const enabledStyle = '';
 
     if (globalDateDisplay) {
-        globalDateDisplay.style.cssText  = show ? disabledStyle : enabledStyle;
-        globalDateDisplay.setAttribute('tabindex', show ? '-1' : '0');
         if (show) {
+            globalDateDisplay.style.backgroundColor = '#f3f4f6';
+            globalDateDisplay.style.cursor = 'not-allowed';
+            globalDateDisplay.style.opacity = '0.5';
+            globalDateDisplay.style.pointerEvents = 'none';
+            globalDateDisplay.setAttribute('tabindex', '-1');
             globalDateDisplay.removeAttribute('onclick');
             globalDateDisplay.removeAttribute('onkeydown');
         } else {
+            globalDateDisplay.style.backgroundColor = 'white';
+            globalDateDisplay.style.cursor = 'pointer';
+            globalDateDisplay.style.opacity = '';
+            globalDateDisplay.style.pointerEvents = '';
+            globalDateDisplay.setAttribute('tabindex', '0');
             globalDateDisplay.setAttribute('onclick', 'openMaterialDatePicker()');
             globalDateDisplay.setAttribute('onkeydown', "if(event.key==='Enter'||event.key===' '){event.preventDefault();openMaterialDatePicker();}");
         }
     }
     if (globalTimeBtn) {
-        globalTimeBtn.style.cssText    = show ? disabledStyle : enabledStyle;
-        globalTimeBtn.disabled          = show;
+        if (show) {
+            globalTimeBtn.style.backgroundColor = '#f3f4f6';
+            globalTimeBtn.style.cursor = 'not-allowed';
+            globalTimeBtn.style.opacity = '0.5';
+            globalTimeBtn.style.pointerEvents = 'none';
+        } else {
+            globalTimeBtn.style.backgroundColor = 'white';
+            globalTimeBtn.style.cursor = 'pointer';
+            globalTimeBtn.style.opacity = '';
+            globalTimeBtn.style.pointerEvents = '';
+        }
+        globalTimeBtn.disabled = show;
     }
     if (globalDateInput) globalDateInput.required = !show;
     if (globalTimeInput) globalTimeInput.required = !show;

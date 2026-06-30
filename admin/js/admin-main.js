@@ -32,6 +32,9 @@ function initInactivityMonitor() {
     let warningTimer;
     let isWarningShown = false;
 
+    let lastHeartbeatTime = Date.now();
+    const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
     function resetTimers() {
         if (isWarningShown) return;
         
@@ -43,6 +46,15 @@ function initInactivityMonitor() {
             if (window.logout) window.logout();
             else window.location.href = '../../admin/pages/adminLogin.html';
         }, SESSION_TIMEOUT);
+        
+        if (Date.now() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
+            lastHeartbeatTime = Date.now();
+            if (typeof apiFetch !== 'undefined') {
+                apiFetch('/api/utils/heartbeat.php').catch(() => {});
+            } else {
+                fetch('/api/utils/heartbeat.php').catch(() => {});
+            }
+        }
     }
 
     function showWarning() {

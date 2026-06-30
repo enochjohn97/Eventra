@@ -73,7 +73,7 @@ try {
     
     // Send OTP via Email
     require_once __DIR__ . '/../../includes/helpers/email-helper.php';
-    $emailSent = EmailHelper::sendRegistrationOTP($email, $name, $otp); // Using existing OTP template
+    $emailSent = EmailHelper::sendPasswordResetOTP($email, $name, $otp); // Using existing OTP template
 
     // Also try SMS if phone exists
     if ($phone) {
