@@ -183,8 +183,7 @@ try {
             require_once '../../api/utils/notification-helper.php';
 
             $tickets = [];
-            $pdfPaths = [];
-            $lastTicketData = [];
+            $allFreeTicketData = [];
             for ($i = 0; $i < $quantity; $i++) {
                 $ticketCustomId = generateTicketId($pdo);
                 // Generate consistent TKT- barcode even for free events
@@ -197,36 +196,38 @@ try {
                 $ticket_id = $pdo->lastInsertId();
 
                 $ticketData = [
-                    'barcode' => $barcode,
-                    'event_id' => $event_id,
-                    'user_id' => $user_id,
-                    'order_id' => $order_id,
-                    'event_name' => $event['event_name'],
-                    'event_date' => $event['event_date'],
-                    'event_time' => $event['event_time'],
-                    'location'   => $event['location'] ?? $event['state'] ?? 'Nigeria',
-                    'address'    => $event['address'] ?? '',
-                    'event_image'=> $event['image_path'] ?? '',
-                    'user_name'  => $user_name,
+                    'barcode'        => $barcode,
+                    'ticket_id'      => $barcode,
+                    'event_id'       => $event_id,
+                    'user_id'        => $user_id,
+                    'order_id'       => $order_id,
+                    'event_name'     => $event['event_name'],
+                    'event_date'     => $event['event_date'],
+                    'event_time'     => $event['event_time'],
+                    'location'       => $event['location'] ?? $event['state'] ?? 'Nigeria',
+                    'address'        => $event['address'] ?? '',
+                    'event_image'    => $event['image_path'] ?? '',
+                    'user_name'      => $user_name,
                     'payment_status' => 'paid',
-                    'amount'     => 0,
-                    'ticket_type' => $ticket_type,
-                    'quantity'   => $quantity,
-                    'selected_locs' => $selected_locs
+                    'amount'         => 0,
+                    'ticket_type'    => $ticket_type,
+                    'quantity'       => 1,
+                    'selected_locs'  => $selected_locs
                 ];
                 $qrPath = generateTicketQRCode($ticketData);
                 if ($qrPath && file_exists($qrPath)) {
                     $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
                         ->execute([toPublicRelativePath($qrPath), $ticket_id]);
                     $ticketData['qr_path'] = $qrPath;
+                    if (function_exists('base64_encode_image')) {
+                        $b64 = base64_encode_image($qrPath);
+                        if ($b64 !== '') {
+                            $ticketData['qr_base64'] = $b64;
+                        }
+                    }
                 }
 
-                $pdfPath = generateTicketPDF($ticketData);
-                if ($pdfPath && file_exists($pdfPath)) {
-                    $pdfPaths[] = $pdfPath;
-                }
-                $lastTicketData = $ticketData;
-
+                $allFreeTicketData[] = $ticketData;
                 $tickets[] = ['barcode' => $barcode, 'id' => $ticket_id];
             }
 
@@ -237,8 +238,8 @@ try {
             $pdo->commit();
 
             // 5. Notifications & Email
-            if (!empty($pdfPaths)) {
-                EmailHelper::sendTicketEmailFull($user_email, $lastTicketData, $pdfPaths);
+            foreach ($allFreeTicketData as $ftd) {
+                EmailHelper::sendTicketEmailFull($user_email, $ftd, []);
             }
             createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
             createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);

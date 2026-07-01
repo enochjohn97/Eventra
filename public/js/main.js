@@ -1187,7 +1187,7 @@ function renderPaginationUI(totalPages) {
     btn.className = `page-num ${i === currentPage ? "active" : ""}`;
     btn.onclick = () => {
       currentPage = i;
-      renderDiscovery(allEvents); // Re-render with same data
+      renderDiscovery(filteredDiscoveryEvents); // Use filtered events
       const wrapper = document.getElementById("events-grid-wrapper");
       if (wrapper) wrapper.scrollIntoView({ behavior: "smooth" });
     };
@@ -1206,7 +1206,7 @@ function initPaginationListeners() {
     prevBtn.onclick = () => {
       if (currentPage > 1) {
         currentPage--;
-        renderDiscovery(allEvents);
+        renderDiscovery(filteredDiscoveryEvents);
         document
           .getElementById("events-grid-wrapper")
           ?.scrollIntoView({ behavior: "smooth" });
@@ -1221,7 +1221,7 @@ function initPaginationListeners() {
       );
       if (currentPage < totalPages) {
         currentPage++;
-        renderDiscovery(allEvents);
+        renderDiscovery(filteredDiscoveryEvents);
         document
           .getElementById("events-grid-wrapper")
           ?.scrollIntoView({ behavior: "smooth" });
@@ -1349,7 +1349,6 @@ function getFilteredEvents(events, filters) {
       matchesSearch &&
       matchesState &&
       matchesCategory &&
-      matchesPriority &&
       matchesStatus &&
       matchesPrice
     );
@@ -1406,57 +1405,26 @@ function applyFilters() {
   // Helper to check priority tag
   const hasPriority = (e, tag) => e.priority && e.priority.toLowerCase().split(',').map(p => p.trim()).includes(tag);
 
-  // 2. Prepare categorized data (Filtered)
-  const categorizedFiltered = {
-    featured: getFilteredEvents(
-      allEvents.filter((e) => hasPriority(e, "featured")),
-      filters,
-    ),
-    trending: getFilteredEvents(
-      allEvents.filter((e) => hasPriority(e, "trending")),
-      filters,
-    ),
-    hot: getFilteredEvents(
-      allEvents.filter((e) => hasPriority(e, "hot")),
-      filters,
-    ),
-    nearby: getFilteredEvents(
-      allEvents.filter((e) => {
-        // Re-use nearby logic if user location is available
-        const keys =
-          typeof getRoleKeys === "function" ? getRoleKeys() : { user: "user" };
-        const user = window.storage
-          ? window.storage.get(keys.user) || window.storage.get("user")
-          : null;
-        const userState = user?.state?.toLowerCase();
-        const userCity = user?.city?.toLowerCase();
+  // If priority tags are selected, sort those to the top
+  if (filters.selectedPriorities.length > 0) {
+    discoveryFiltered.sort((a, b) => {
+      const aMatches = filters.selectedPriorities.some(p => hasPriority(a, p.toLowerCase()));
+      const bMatches = filters.selectedPriorities.some(p => hasPriority(b, p.toLowerCase()));
+      if (aMatches && !bMatches) return -1;
+      if (!aMatches && bMatches) return 1;
+      return 0; // If both match or neither match, retain existing sort order
+    });
+  }
 
-        if (hasPriority(e, "nearby")) return true;
-        if (userState || userCity) {
-          const eventState = e.state?.toLowerCase();
-          const eventCity = e.city?.toLowerCase();
-          return (
-            (userState &&
-              eventState &&
-              (eventState.includes(userState) ||
-                userState.includes(eventState))) ||
-            (userCity &&
-              eventCity &&
-              (eventCity.includes(userCity) || userCity.includes(eventCity)))
-          );
-        }
-        return false;
-      }),
-      filters,
-    ),
-  };
+  // Hide the category carousels to keep the homepage organized as requested by user
+  document.querySelectorAll('#featuredSection, #trendingSection, #hotSection, #upcomingSection, #nearbySection').forEach(el => {
+      if(el) el.style.display = 'none';
+  });
 
-  // 3. Render categories first (sets window.homepageSeenIds for discovery)
-  renderAllCategories(categorizedFiltered);
-
-  // 4. Render main discovery grid (respects window.homepageSeenIds)
+  // 4. Render main discovery grid
   renderDiscovery(discoveryFiltered);
 }
+
 
 // Share event function
 function shareEvent(
@@ -1825,7 +1793,7 @@ function showEventModal(eventId) {
       const mapQuery = encodeURIComponent((loc.address || '') + ', ' + loc.state);
       locationHTML += `
         <label for="locChk_${idx}" class="mloc-card" style="cursor:pointer;">
-          <input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}" checked
+          <input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}"
                  onchange="window._updateLocSelection()"
                  style="width:16px;height:16px;accent-color:var(--primary-color);flex-shrink:0;margin-top:2px;">
           <span class="mloc-pin" aria-hidden="true">📍</span>

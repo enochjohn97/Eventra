@@ -130,6 +130,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             // 2. Loop to generate multiple tickets
             $barcodes = [];
             $pdfPaths = [];
+            $ticketDataMap = [];
             for ($i = 0; $i < $quantity; $i++) {
                 // Generate consistent TKT-{UUID} barcode
                 $barcode = 'TKT-' . strtoupper(bin2hex(random_bytes(10)));
@@ -150,6 +151,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
 
                 $ticketData = [
                     'barcode'        => $barcode,
+                    'ticket_id'      => $barcode,
                     'event_id'       => $order['event_id'],
                     'user_id'        => $order['user_id'],
                     'order_id'       => $order['id'],
@@ -163,7 +165,11 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     'user_name'      => $order['user_name'],
                     'payment_status' => 'paid',
                     'event_image'    => $order['image_path'] ?? null,
+                    'ticket_type'    => $ticket_type,
+                    'amount'         => $order['amount'] / max(1, $quantity),
+                    'quantity'       => 1,
                 ];
+
 
                 try {
                     $qrCodePath = generateTicketQRCode($ticketData);
@@ -171,17 +177,14 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                         $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
                             ->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
                         $ticketData['qr_path'] = $qrCodePath;
-                    }
-
-                    $pdfPath = generateTicketPDF($ticketData);
-                    if ($pdfPath && file_exists($pdfPath)) {
-                        $pdfPaths[] = $pdfPath;
-                    } else {
-                        error_log("[Webhook] PDF missing after generation for barcode $barcode (ticket $ticket_id)");
+                        if (function_exists('base64_encode_image')) {
+                            $b64 = base64_encode_image($qrCodePath);
+                            if ($b64 !== '') {
+                                $ticketData['qr_base64'] = $b64;
+                            }
+                        }
                     }
                 } catch (\Throwable $genError) {
-                    // Log structured failure — ticket row exists in DB but PDF/QR were not generated.
-                    // Email will be suppressed for this ticket; operator must re-generate manually.
                     error_log(sprintf(
                         '[Webhook] Ticket generation FAILED | barcode=%s ticket_id=%d order=%d error=%s',
                         $barcode,
@@ -192,6 +195,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     // Continue to next ticket — don't abort the whole webhook response
                 }
 
+                $ticketDataMap[$barcode] = $ticketData;
                 $barcodes[] = $barcode;
             }
 
@@ -224,20 +228,22 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         $pdo->commit();
 
         // ── Send notifications (outside transaction) ──────────────────────────
-        // Email with PDF ticket(s)
-        if (!empty($pdfPaths)) {
-            EmailHelper::sendTicketEmailFull($order['user_email'], [
-                'barcode'    => $barcode,
-                'event_name' => $order['event_name'],
-                'event_date' => $order['event_date'],
-                'event_time' => $order['event_time'],
-                'location'   => $order['location'] ?? $order['state'] ?? 'Nigeria',
-                'address'    => $order['address'],
-                'event_image'=> $order['image_path'],
-                'user_name'  => $order['user_name'],
-                'order_id'   => $order['id'],
-                'amount'     => $order['amount'],
-            ], $pdfPaths);
+        // Send one email per ticket with its own QR code
+        foreach ($barcodes as $bc) {
+            $td = $ticketDataMap[$bc] ?? [
+                'barcode'     => $bc,
+                'ticket_id'   => $bc,
+                'event_name'  => $order['event_name'],
+                'event_date'  => $order['event_date'],
+                'event_time'  => $order['event_time'],
+                'location'    => $order['location'] ?? $order['state'] ?? 'Nigeria',
+                'address'     => $order['address'],
+                'event_image' => $order['image_path'],
+                'user_name'   => $order['user_name'],
+                'order_id'    => $order['id'],
+                'amount'      => $order['amount'],
+            ];
+            EmailHelper::sendTicketEmailFull($order['user_email'], $td, []);
         }
 
         // SMS to buyer

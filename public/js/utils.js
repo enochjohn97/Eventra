@@ -13,13 +13,14 @@ window.NIGERIA_STATES = [
   'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 
   'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa', 
   'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 
-  'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT'
+  'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT'
 ];
 
 window.EVENT_CATEGORIES = [
-  'Business', 'Conference', 'Workshop', 'Seminar', 'Entertainment', 'Sports', 'Exhibition', 
-  'Networking', 'Festival', 'Social', 'Educational', 'Personal', 'Religious', 
-  'Cultural', 'Community', 'Concert', 'Other'
+  'Conference', 'Workshop', 'Seminar', 'Entertainment (Music, Film, Comedy, etc)', 
+  'Sport & Fitness', 'Exhibition', 'Networking', 'Festival', 'Concert', 'Business', 
+  'Education', 'Social', 'Personal (Wedding, Anniversary, etc.)', 'Community', 
+  'Religion', 'Cultural', 'Other'
 ];
 
 window.PRIORITY_TAGS = ['nearby', 'hot', 'upcoming', 'trending', 'featured'];
@@ -685,7 +686,7 @@ function buildMultiLocationHTML(locs, opts = {}) {
     const items = (locs || []).map((loc, idx) => {
         const meta = [loc.date, loc.time].filter(Boolean).join(' · ');
         const chk = opts.checkbox
-            ? `<input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}" checked onchange="window._updateLocSelection && window._updateLocSelection()" style="width:16px;height:16px;accent-color:var(--primary-color);margin-top:3px;flex-shrink:0;">`
+            ? `<input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}" onchange="window._updateLocSelection && window._updateLocSelection()" style="width:16px;height:16px;accent-color:var(--primary-color);margin-top:3px;flex-shrink:0;">`
             : '';
         return `<div class="mloc-card">${chk}<span class="mloc-pin" aria-hidden="true">📍</span><div class="mloc-body">
             <div class="mloc-state">${esc(loc.state)}</div>

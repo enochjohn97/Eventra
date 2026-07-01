@@ -854,7 +854,7 @@ class EmailHelper
     <!-- Stub Section (Right ~27% -> 198px) -->
     <td width="198" valign="middle" align="center" style="padding:24px 16px;width:198px;background-color:rgba(15,23,42,0.4);">
       <div style="margin-bottom:12px;text-align:center;">
-        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">EVENTRA STUB</span>
+        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>
       <div style="display:inline-block;padding:8px;background:#ffffff;border-radius:10px;margin-bottom:10px;text-align:center;">
         {$qrHtml}
@@ -1010,7 +1010,7 @@ HTML;
     <!-- Stub Section (178pt) -->
     <td width="178" valign="middle" align="center" style="padding:18pt 12pt;width:178pt;background-color:#1e293b;">
       <div style="margin-bottom:10pt;text-align:center;">
-        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:9pt;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">EVENTRA STUB</span>
+        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:9pt;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>
       <div style="display:inline-block;padding:6pt;background:#ffffff;border-radius:8pt;margin-bottom:8pt;text-align:center;">
         {$qrHtml}
@@ -1153,10 +1153,9 @@ PDF;
                         $fresh = $stmt->fetch(\PDO::FETCH_ASSOC);
 
                         if ($fresh) {
-                            $ticketData = array_merge(
-                                $ticketData,
-                                array_filter($fresh, static fn($v) => $v !== null)
-                            );
+                            // Merge: DB values fill gaps, but caller-supplied data (e.g. qr_base64) takes priority
+                            $filteredFresh = array_filter($fresh, static fn($v) => $v !== null);
+                            $ticketData = array_merge($filteredFresh, $ticketData);
                         }
                     } catch (\Throwable $dbEx) {
                         error_log('[EmailHelper] DB sync error: ' . $dbEx->getMessage());

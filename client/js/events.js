@@ -1174,6 +1174,7 @@ async function publishEvent(eventId) {
     // ── Step 2: react to the result — UI changes ONLY on success ──
     if (publishResult.success) {
         showNotification('Event published successfully!', 'success');
+        setTimeout(() => window.location.reload(), 1500);
 
         // Safely close the preview modal (backdrop style)
         const previewBackdrop = document.querySelector('.preview-modal-backdrop');

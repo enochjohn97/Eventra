@@ -127,12 +127,14 @@ foreach ($files as $jobFile) {
             }
         }
 
-        // Send notifications after all PDFs are generated
+        // Send notifications after all QR codes are generated
         try {
-            // Send email with all ticket PDFs — prefer the last enriched ticket data if available
-            if (!empty($pdfPaths)) {
-                $emailTicketData = $lastEnrichedTicket ?? $ticketData;
-                EmailHelper::sendTicketEmailFull($user_email, $emailTicketData, $pdfPaths);
+            // Send one email per ticket with its own QR code
+            if (!empty($lastEnrichedTicket ?? null)) {
+                EmailHelper::sendTicketEmailFull($user_email, $lastEnrichedTicket, []);
+            } elseif (!empty($ticketData)) {
+                // Fallback: send with base ticket data even if QR failed
+                EmailHelper::sendTicketEmailFull($user_email, $ticketData, []);
             }
 
             // Send SMS

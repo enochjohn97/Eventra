@@ -223,6 +223,14 @@ try {
     header('Content-Type: application/json');
     header('Content-Length: ' . strlen($responsePayload));
     echo $responsePayload;
+    
+    // Ensure the script continues running in the background for email/PDF processing
+    ignore_user_abort(true);
+    set_time_limit(0);
+    if (session_id()) {
+        session_write_close();
+    }
+
     if (function_exists('fastcgi_finish_request')) {
         fastcgi_finish_request();
     } else {
@@ -244,12 +252,12 @@ try {
         return;
     }
 
-    $pdfPaths = [];
-    $lastTicketData = [];
-    
+    $allTicketData = [];
+
     foreach ($tickets_generated as $barcode) {
         $ticketData = [
             'barcode'        => $barcode,
+            'ticket_id'      => $barcode,
             'event_id'       => $event_id,
             'user_id'        => $user_id,
             'payment_id'     => $payment_id,
@@ -265,8 +273,8 @@ try {
             'payment_status' => 'paid',
             'event_image'    => $event['image_path'] ?? null,
             'ticket_type'    => $ticket_type,
-            'amount'         => $total_price,
-            'quantity'       => $quantity,
+            'amount'         => $total_price / max(1, $quantity), // per-ticket amount
+            'quantity'       => 1,
             'selected_locs'  => $selected_locs,
         ];
 
@@ -283,19 +291,20 @@ try {
                     }
                 }
             }
-
-            $pdfPath = generateTicketPDF($ticketData);
-            if ($pdfPath && file_exists($pdfPath)) {
-                $pdfPaths[] = $pdfPath;
-            }
-            $lastTicketData = $ticketData;
         } catch (\Throwable $genError) {
-            error_log("[purchase-ticket.php] Ticket generation FAILED | barcode=$barcode error=" . $genError->getMessage());
+            error_log("[purchase-ticket.php] QR generation FAILED | barcode=$barcode error=" . $genError->getMessage());
         }
+
+        $allTicketData[] = $ticketData;
     }
 
-    if (!empty($pdfPaths)) {
-        EmailHelper::sendTicketEmailFull($user['email'], $lastTicketData, $pdfPaths);
+    // Send one email per ticket (each has its own QR code)
+    foreach ($allTicketData as $ticketData) {
+        try {
+            EmailHelper::sendTicketEmailFull($user['email'], $ticketData, []);
+        } catch (\Throwable $mailErr) {
+            error_log("[purchase-ticket.php] Email FAILED | barcode={$ticketData['barcode']} error=" . $mailErr->getMessage());
+        }
     }
 
     // 8. Notifications

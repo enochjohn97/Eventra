@@ -200,6 +200,11 @@ function generateTicketQRCode(array $ticketData): string
 
         // Encode a public verification URL — substitute LAN IP if running on localhost for mobile accessibility
         $baseAppUrl = defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/');
+        if (empty($baseAppUrl)) {
+            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $baseAppUrl = $scheme . '://' . $host;
+        }
         $parsedHost = parse_url($baseAppUrl, PHP_URL_HOST) ?? '';
         if (in_array($parsedHost, ['localhost', '127.0.0.1'], true)) {
             $lanIp = gethostbyname(gethostname());
@@ -211,15 +216,21 @@ function generateTicketQRCode(array $ticketData): string
 
 
         // Render returns a data URI when imageBase64=true
-        $rendered = $qrcode->render($verificationUrl);
-
-        // Normalize output to raw PNG bytes
-        if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
-            $parts = explode(',', $rendered, 2);
-            $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
-        } else {
-            // May already be raw image bytes
-            $bin = is_string($rendered) ? $rendered : '';
+        $bin = '';
+        try {
+            $rendered = $qrcode->render($verificationUrl);
+            // Normalize output to raw PNG bytes
+            if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
+                $parts = explode(',', $rendered, 2);
+                $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
+            } else {
+                // May already be raw image bytes
+                $bin = is_string($rendered) ? $rendered : '';
+            }
+        } catch (\Throwable $e) {
+            error_log('[TicketHelper] Local QR generation failed: ' . $e->getMessage() . '. Falling back to external API.');
+            $fallbackUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($verificationUrl);
+            $bin = @file_get_contents($fallbackUrl);
         }
 
         if (empty($bin)) {

@@ -128,13 +128,11 @@ async function showPaymentSuccess(reference, barcode) {
     const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
 
     icon.innerHTML = `<div id="qrcode-container" style="display:flex;flex-direction:column;align-items:center;margin-bottom:1.5rem;pointer-events:none;user-select:none;">
-        <div id="qrcode" style="background:#fff;padding:10px;border-radius:1rem;box-shadow:var(--shadow-card);border:1px solid var(--border-light);"></div>
+        <div id="qrcode" style="background:#fff;padding:10px;border-radius:1rem;box-shadow:var(--shadow-card);border:1px solid var(--border-light);">
+            <img src="../assets/imgs/qr.png" alt="QR Code" style="width:160px;height:160px;display:block;">
+        </div>
     </div>
     <div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.75rem;">Scan to validate ticket</div>`;
-
-    try {
-        new QRCode(document.getElementById('qrcode'), { text: String(qrPayload), width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.L });
-    } catch (e) { console.error('QRCode generation failed:', e); }
 
     title.textContent = order?.amount <= 0 ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
     msg.innerHTML = `Your ticket${(order?.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? 'have been issued' : 'are ready'}.<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
@@ -392,7 +390,11 @@ function prepareTicketForDownload(order, barcode) {
     const orderAmount = parseFloat(order.amount ?? order.price ?? 0);
     const ticketType = orderAmount <= 0 ? 'FREE' : (order.ticket_type || 'regular').toUpperCase();
     const attendee = order.user_name || (order.contactInfo ? `${order.contactInfo.firstName} ${order.contactInfo.lastName}` : 'Guest');
-    const date = formatDate(order.event_date) || 'TBA';
+    let date = 'TBA';
+    if (order.event_date) {
+        const d = new Date(order.event_date);
+        date = !isNaN(d.getTime()) ? d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : order.event_date;
+    }
     const time = order.event_time || 'TBA';
     const venue = order.address || order.location || 'See event details';
     
@@ -433,21 +435,7 @@ function prepareTicketForDownload(order, barcode) {
     // Generate QR Code for the ticket
     const qrContainer = document.getElementById('ticketQR');
     if (qrContainer) {
-        qrContainer.innerHTML = ''; // Clear previous
-        const safeBarcode = (typeof barcode === 'string') ? barcode : String(barcode || '');
-        const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(safeBarcode)}`;
-        try {
-            new QRCode(qrContainer, {
-                text: String(qrPayload),
-                width: 130,
-                height: 130,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.L
-            });
-        } catch (e) {
-            console.error("Ticket QR generation failed:", e);
-        }
+        qrContainer.innerHTML = '<img src="../assets/imgs/qr.png" alt="QR Code" style="width:100%;height:100%;display:block;pointer-events:none;user-select:none;">';
     }
 }
 
