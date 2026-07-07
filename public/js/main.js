@@ -161,8 +161,11 @@ async function loadEvents() {
         (e) => parseInt(e.is_favorite) === 1,
       );
 
-      // Discovery logic
-      initDiscoveryFilters();
+      // Discovery logic — only init filters once (first load)
+      if (!window._filtersInitialized) {
+        initDiscoveryFilters();
+        window._filtersInitialized = true;
+      }
 
       // Categorized Rendering with Cross-Category Deduplication
       renderAllCategories();
@@ -951,8 +954,9 @@ function createEventCard(event, index) {
         return "";
     }
   };
-  const priorityBadge = event.priority
-    ? `<div class="card-priority-badge priority-${event.priority.toLowerCase()}">${getPriorityIcon(event.priority)} ${event.priority}</div>`
+  const priorityVal = event.priority_label || event.priority || "";
+  const priorityBadge = priorityVal
+    ? `<div class="card-priority-badge priority-${priorityVal.toLowerCase()}">${getPriorityIcon(priorityVal)} ${priorityVal}</div>`
     : "";
 
   return `
@@ -1233,7 +1237,7 @@ function initPaginationListeners() {
   }
 }
 
-// Filter Initialization
+// Filter Initialization — called once on first load
 function initDiscoveryFilters() {
   // Populate UI with hardcoded lists
   const populate = (id, items) => {
@@ -1258,19 +1262,20 @@ function initDiscoveryFilters() {
     PRIORITY_TAGS.map((p) => p.charAt(0).toUpperCase() + p.slice(1)),
   );
 
-  // Add event listeners
-  const inputs = document.querySelectorAll(
-    ".filter-sidebar input, .filter-sidebar select, #sortBy",
-  );
-  inputs.forEach((input) => {
-    input.addEventListener("change", applyFilters);
-  });
+  // Add event listeners (use named handler to avoid duplicate bindings)
+  const sidebar = document.querySelector(".filter-sidebar");
+  const sortBy = document.getElementById("sortBy");
+
+  if (sidebar) {
+    sidebar.addEventListener("change", (e) => {
+      if (e.target.matches("input[type='checkbox'], select")) applyFilters();
+    });
+  }
+  if (sortBy) sortBy.addEventListener("change", applyFilters);
 
   document.getElementById("resetFilters")?.addEventListener("click", () => {
-    inputs.forEach((i) => {
-      if (i.type === "checkbox") i.checked = false;
-      else if (i.type === "text") i.value = "";
-    });
+    document.querySelectorAll(".filter-sidebar input[type='checkbox']").forEach((i) => { i.checked = false; });
+    if (sortBy) sortBy.value = "newest";
     applyFilters();
   });
 }
@@ -1343,9 +1348,12 @@ function getFilteredEvents(events, filters) {
       (selectedStatuses.includes("passed") && isPassed) ||
       (selectedStatuses.includes("recent") && !isPassed);
 
+    const getNumPrice = (v) => parseFloat((v || "0").toString().replace(/[^0-9.]/g, "")) || 0;
     const isFree =
-      !event.price ||
-      parseFloat(event.price.toString().replace(/[^0-9.]/g, "")) === 0;
+      getNumPrice(event.price) === 0 &&
+      getNumPrice(event.regular_price) === 0 &&
+      getNumPrice(event.vip_price) === 0 &&
+      getNumPrice(event.premium_price) === 0;
     const matchesPrice = !freeOnly || isFree;
 
     return (
@@ -1673,11 +1681,11 @@ async function init() {
   if (typeof initUserLogin === "function") initUserLogin();
 
   // Real-time synchronization (60s polling for events)
+  // Preserves active filter/search state — does not re-init filters
   setInterval(() => {
     const globalSearch = document.getElementById("globalSearch");
-    if (!globalSearch || !globalSearch.value.trim()) {
-      loadEvents();
-    }
+    if (globalSearch && globalSearch.value.trim()) return; // skip during active search
+    loadEvents(); // loadEvents -> applyFilters preserves checked state since filters init only once
   }, 60000);
 }
 
@@ -1905,18 +1913,20 @@ function showEventModal(eventId) {
 
   // Priority badge
   const priorityBadge = document.getElementById("modalPriorityBadge");
-  if (event.priority) {
-    priorityBadge.textContent = event.priority.toUpperCase();
+  const modalPriorityVal = event.priority_label || event.priority || "";
+  if (modalPriorityVal) {
+    priorityBadge.textContent = modalPriorityVal.toUpperCase();
     priorityBadge.style.display = "block";
-    if (event.priority === "hot") {
+    const pv = modalPriorityVal.toLowerCase();
+    if (pv === "hot") {
       priorityBadge.style.background =
         "linear-gradient(135deg, #ff4757, #ff6348)";
       priorityBadge.style.color = "white";
-    } else if (event.priority === "trending") {
+    } else if (pv === "trending") {
       priorityBadge.style.background =
         "linear-gradient(135deg, #3742fa, #5f27cd)";
       priorityBadge.style.color = "white";
-    } else if (event.priority === "featured") {
+    } else if (pv === "featured") {
       priorityBadge.style.background =
         "linear-gradient(135deg, #2ed573, #1abc9c)";
       priorityBadge.style.color = "white";

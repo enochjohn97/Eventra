@@ -1,7 +1,7 @@
 <?php
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once '../../config/payment.php';
 require_once '../../includes/middleware/auth.php';

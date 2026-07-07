@@ -22,7 +22,7 @@ if (!$auth_id) {
 
 // Check session cache (24 hour TTL)
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    require_once __DIR__ . '/../../config.php';
+    require_once __DIR__ . '/../../server/config.php';
 }
 
 $cacheKey = 'paystack_banks_ng';

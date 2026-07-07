@@ -6,7 +6,7 @@
  * Use App\Core\Router and middleware instead for new code.
  */
 
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 // database.php is loaded lazily by functions that need DB access to avoid opening connections on every include
 // require_once __DIR__ . '/../../config/database.php';
 
@@ -159,7 +159,7 @@ function checkAuth($requiredRole = null)
 {
     // Ensure session is started
     if (session_status() === PHP_SESSION_NONE) {
-        require_once __DIR__ . '/../../config.php';
+        require_once __DIR__ . '/../../server/config.php';
     }
 
     // 1. Check if native PHP session already has the authenticated user data
@@ -318,7 +318,7 @@ function checkAuthOptional()
 {
     // Ensure session is started
     if (session_status() === PHP_SESSION_NONE) {
-        require_once __DIR__ . '/../../config.php';
+        require_once __DIR__ . '/../../server/config.php';
     }
 
     // Try Bearer token first (same logic as checkAuth but non-terminating)

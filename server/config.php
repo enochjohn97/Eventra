@@ -6,11 +6,14 @@ ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/config/env-loader.php';
+// Root is one level up from server/
+$rootDir = dirname(__DIR__);
+
+require_once $rootDir . '/config/env-loader.php';
 
 // 1. Centralized Error Reporting (logged only)
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/logs/php-errors.log');
+ini_set('error_log', $rootDir . '/logs/php-errors.log');
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
              (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
@@ -33,9 +36,9 @@ if (!$isLocalHost && session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 // Centralized session management
-require_once __DIR__ . '/config/session-config.php';
+require_once $rootDir . '/config/session-config.php';
 
 if (!defined('SITE_URL')) define('SITE_URL',   $base_url);
 if (!defined('BASE_URL')) define('BASE_URL',  SITE_URL . '/');
-if (!defined('MEDIA_PATH')) define('MEDIA_PATH', __DIR__ . '/media/');
+if (!defined('MEDIA_PATH')) define('MEDIA_PATH', $rootDir . '/media/');
 if (!defined('UPLOAD_URL')) define('UPLOAD_URL', SITE_URL . '/media/');

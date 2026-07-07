@@ -574,11 +574,16 @@ class EmailHelper
         );
 
         if (!$forPdf) {
-            // FIX: Use web-accessible URL for the static QR image to ensure it displays in Gmail or embedded image
             if (!empty($ticketData['qr_cid'])) {
+                // Embedded image via CID (PHPMailer addEmbeddedImage)
                 $qrSrc = 'cid:' . $ticketData['qr_cid'];
+            } elseif (!empty($ticketData['qr_base64'])) {
+                // Caller already provided base64
+                $b64 = $ticketData['qr_base64'];
+                $qrSrc = str_starts_with($b64, 'data:') ? $b64 : 'data:image/png;base64,' . $b64;
             } else {
-                $qrSrc = self::pathToUrl(self::getEmailQrAssetPath());
+                // Generate/resolve QR as base64 data-URI so it always displays in all email clients
+                $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, false);
             }
         } else {
             // 🔥 FIX: Use self::generateQrDataUri (which now always returns base64 or empty)

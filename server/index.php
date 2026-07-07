@@ -1,28 +1,31 @@
 <?php
+// Router for PHP built-in server — lives in server/ but serves the project root
+
+// Project root is one level up from server/
+$rootDir = dirname(__DIR__);
+
 // Handle static files for PHP built-in server
 if (php_sapi_name() === 'cli-server') {
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    $fullPath = __DIR__ . $path;
+    $fullPath = $rootDir . $path;
 
     // Serve actual static files (images, css, js, html, etc.) directly
     if (file_exists($fullPath) && is_file($fullPath)) {
-        // Let PHP serve recognized static types directly
         $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
         $staticExts = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'html', 'htm', 'webp', 'mp4', 'pdf', 'map'];
         if (in_array($ext, $staticExts)) {
             return false;
         }
     }
-    // All other requests (including directories lik/api/admin/) fall through to the router
+    // All other requests fall through to the router
 }
 
-
 // Debug logging
-file_put_contents(__DIR__ . '/logs/router.log', date('[Y-m-d H:i:s] ') . $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'] . PHP_EOL, FILE_APPEND);
+file_put_contents($rootDir . '/logs/router.log', date('[Y-m-d H:i:s] ') . $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'] . PHP_EOL, FILE_APPEND);
 
-require_once __DIR__ . '/includes/core/Autoloader.php';
-require_once __DIR__ . '/config/database.php';
-require_once __DIR__ . '/config/session-config.php';
+require_once $rootDir . '/includes/core/Autoloader.php';
+require_once $rootDir . '/config/database.php';
+require_once $rootDir . '/config/session-config.php';
 
 
 // Dispatch routing
@@ -54,7 +57,7 @@ if (isset($legacyRedirects[$uri])) {
     exit;
 }
 
-// Basic API Routing (Dynamic replacement for routes.php)
+// Basic API Routing
 if (strpos($uri, '/api/') === 0) {
     $apiPath = substr($uri, 5); // Strip /api/
     
@@ -76,7 +79,7 @@ if (strpos($uri, '/api/') === 0) {
     ];
 
     $targetFile = $mappings[$cleanPath] ?? ($cleanPath . '.php');
-    $fullPath = __DIR__ . '/api/' . $targetFile;
+    $fullPath = $rootDir . '/api/' . $targetFile;
 
     if (file_exists($fullPath) && is_file($fullPath)) {
         // API scripts use paths relative to their own directory (e.g. ../../config/).
@@ -93,11 +96,11 @@ if (strpos($uri, '/api/') === 0) {
     // Virtual Endpoints (No new files constraint)
     // =========================================================================
     
-    // 2. Refund Workflows
+    // Refund Workflows
     if (strpos($cleanPath, 'refund') === 0) {
         header('Content-Type: application/json');
-        require_once __DIR__ . '/includes/middleware/auth.php';
-        require_once __DIR__ . '/config/payment.php';
+        require_once $rootDir . '/includes/middleware/auth.php';
+        require_once $rootDir . '/config/payment.php';
         $pdo = getPDO();
         $data = json_decode(file_get_contents("php://input"), true);
         $chat_id = $data['chat_id'] ?? 0;
@@ -110,7 +113,6 @@ if (strpos($uri, '/api/') === 0) {
         }
         
         if ($action === 'approve') {
-            // Native cURL via paystackRequest
             $ref = $data['paystack_ref'] ?? '';
             $payload = ['transaction' => $ref];
             try {
@@ -141,26 +143,16 @@ if (strpos($uri, '/api/') === 0) {
         }
     }
     
-    // 3. Smile ID KYC Verification
+    // Smile ID KYC Verification
     if ($cleanPath === 'verify_kyc') {
         header('Content-Type: application/json');
-        require_once __DIR__ . '/includes/middleware/auth.php';
+        require_once $rootDir . '/includes/middleware/auth.php';
         $pdo = getPDO();
         $data = json_decode(file_get_contents("php://input"), true);
         
         $user_id = $data['user_id'] ?? 0;
         $doc_name = $data['document_name'] ?? 'Unknown';
         
-        // Emulate Smile ID Native cURL handler as per instructions
-        // In reality, this would cURL https://smileidentity.com using $data['image']
-        $smilePayload = [
-            "source_sdk" => "php_backend",
-            "source_sdk_version" => "1.0.0",
-            "partner_id" => "1234",
-            "image_links" => [ $data['image'] ?? '' ]
-        ];
-        
-        // Mocking success based on payload presence
         $success = !empty($data['image']);
         $status = $success ? 'verified' : 'failed';
         $resultText = $success ? 'Smile ID: Face matched document successfully.' : 'Smile ID: Verification failed.';
@@ -172,19 +164,19 @@ if (strpos($uri, '/api/') === 0) {
         exit;
     }
 
-    // fallback for other common paths if needed
+    // fallback
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'API Route not found: ' . $uri]);
     exit;
 }
 
 // Fallback for non-API routes (e.g. root)
-if ($uri === '/' || $uri === '/index.php') {
+if ($uri === '/' || $uri === '/index.php' || $uri === '/server/index.php') {
     header('Location: /public/pages/index.html');
     exit;
 }
 
-// If no route matches, let it fall through or 404
+// If no route matches, 404
 http_response_code(404);
 echo "404 Not Found (" . htmlspecialchars($uri) . ")";
 exit;

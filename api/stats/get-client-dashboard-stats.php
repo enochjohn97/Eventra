@@ -5,7 +5,7 @@
  */
 
 // MUST be the first two lines — no whitespace, no BOM before <?php
-require_once __DIR__ . '/../../config.php'; 
+require_once __DIR__ . '/../../server/config.php'; 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 

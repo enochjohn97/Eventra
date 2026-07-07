@@ -11,7 +11,7 @@ error_reporting(0);
  */
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 // If there's no session cookie and no Authorization header, short-circuit without DB

@@ -184,12 +184,22 @@ try {
                 $file_size = filesize($upload_path);
                 $mime_type = mime_content_type($upload_path);
 
+                // Resolve (or create) the Event Assets folder for this client
+                $ea_stmt = $pdo->prepare("SELECT id FROM media_folders WHERE client_id = ? AND name = 'Event Assets' AND is_deleted = 0 LIMIT 1");
+                $ea_stmt->execute([$event['client_id']]);
+                $ea_folder_id = $ea_stmt->fetchColumn();
+                if (!$ea_folder_id) {
+                    $pdo->prepare("INSERT INTO media_folders (client_id, name, is_deleted, created_at) VALUES (?, 'Event Assets', 0, NOW())")->execute([$event['client_id']]);
+                    $ea_folder_id = $pdo->lastInsertId();
+                }
+
                 $media_stmt = $pdo->prepare("
                     INSERT INTO media (client_id, folder_id, folder_name, file_name, file_extension, file_path, file_type, file_size, mime_type)
-                    VALUES (?, NULL, 'Event Assets', ?, ?, ?, 'image', ?, ?)
+                    VALUES (?, ?, 'Event Assets', ?, ?, ?, 'image', ?, ?)
                 ");
                 $media_stmt->execute([
                     $event['client_id'],
+                    $ea_folder_id,
                     $_FILES['event_image']['name'],
                     $file_extension,
                     $image_path,

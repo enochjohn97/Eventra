@@ -66,7 +66,7 @@ if ($channel === 'sms' && empty($user['phone'])) {
 
 // Ensure fresh verification session
 if (session_status() === PHP_SESSION_NONE) {
-    require_once __DIR__ . '/../../config.php';
+    require_once __DIR__ . '/../../server/config.php';
 }
 unset($_SESSION['otp_verified_ref']);
 unset($_SESSION['otp_verified_at']);

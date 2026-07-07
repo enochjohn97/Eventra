@@ -2,7 +2,7 @@
 
 namespace App\Core;
 
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 
 class BaseController
 {

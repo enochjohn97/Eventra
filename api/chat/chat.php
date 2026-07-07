@@ -14,7 +14,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     while (ob_get_level()) { ob_end_flush(); }
     ob_implicit_flush(1);
 
-    require_once __DIR__ . '/../../config.php';
+    require_once __DIR__ . '/../../server/config.php';
     require_once __DIR__ . '/../../config/database.php';
     require_once __DIR__ . '/../../includes/middleware/auth.php';
 
@@ -69,7 +69,7 @@ ini_set('error_log', __DIR__ . '/../logs/php-errors.log');
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 

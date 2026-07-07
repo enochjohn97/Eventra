@@ -486,6 +486,26 @@ function showCreateEventModal(eventToEdit = null) {
         createEventForm.querySelector('textarea[name="description"]').value = eventToEdit.description || '';
         createEventForm.querySelector('input[name="phone_contact_1"]').value = eventToEdit.phone_contact_1 || '';
 
+        // Secondary contact
+        const phone2Input = createEventForm.querySelector('input[name="phone_contact_2"]');
+        if (phone2Input) phone2Input.value = eventToEdit.phone_contact_2 || '';
+
+        // Visibility
+        const visibilitySelect = document.getElementById('eventVisibilitySelect');
+        if (visibilitySelect && eventToEdit.event_visibility) visibilitySelect.value = eventToEdit.event_visibility;
+
+        // Status
+        const statusSelect = createEventForm.querySelector('select[name="status"]');
+        if (statusSelect && eventToEdit.status) statusSelect.value = eventToEdit.status;
+
+        // Free event checkbox
+        const freeCheckbox = document.getElementById('freeEventCheckbox');
+        if (freeCheckbox) {
+            const basePrice = parseFloat(eventToEdit.price) || 0;
+            const isFreeEvent = basePrice === 0 && !eventToEdit.regular_price && !eventToEdit.vip_price && !eventToEdit.premium_price;
+            freeCheckbox.checked = !!eventToEdit.is_free || isFreeEvent;
+        }
+
         // Date & Time (global)
         document.getElementById('customDateDisplay').value = eventToEdit.event_date || '';
         createEventForm.querySelector('input[name="event_date"]').value = eventToEdit.event_date || '';
@@ -501,7 +521,9 @@ function showCreateEventModal(eventToEdit = null) {
 
         // Image
         if (eventToEdit.image_path) {
-            document.getElementById('eventImagePreview').src = '/' + eventToEdit.image_path;
+            document.getElementById('eventImagePreview').src = (typeof getImageUrl === 'function')
+                ? getImageUrl(eventToEdit.image_path)
+                : (eventToEdit.image_path.startsWith('/') ? eventToEdit.image_path : '/' + eventToEdit.image_path);
             document.getElementById('eventImageInput').removeAttribute('required');
         }
 
@@ -529,6 +551,14 @@ function showCreateEventModal(eventToEdit = null) {
         if (document.getElementById('vipPriceInput') && metadata.vip_price) document.getElementById('vipPriceInput').value = metadata.vip_price;
         if (document.getElementById('premiumPriceInput') && metadata.premium_price) document.getElementById('premiumPriceInput').value = metadata.premium_price;
         if (document.getElementById('allPriceInput') && eventToEdit.price) document.getElementById('allPriceInput').value = eventToEdit.price;
+
+        // Ticket quantities
+        const regularQtyInput = createEventForm.querySelector('input[name="regular_quantity"]');
+        if (regularQtyInput && metadata.regular_quantity) regularQtyInput.value = metadata.regular_quantity;
+        const vipQtyInput = createEventForm.querySelector('input[name="vip_quantity"]');
+        if (vipQtyInput && metadata.vip_quantity) vipQtyInput.value = metadata.vip_quantity;
+        const premiumQtyInput = createEventForm.querySelector('input[name="premium_quantity"]');
+        if (premiumQtyInput && metadata.premium_quantity) premiumQtyInput.value = metadata.premium_quantity;
 
         // Total Tickets
         if (eventToEdit.total_tickets) {

@@ -10,7 +10,7 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../includes/helpers/entity-resolver.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
@@ -107,7 +107,7 @@ if ($intent === 'client_login_otp') {
         // 8. Initialize session
         session_name('EVENTRA_CLIENT_SESS');
         if (session_status() === PHP_SESSION_NONE) {
-            require_once __DIR__ . '/../../config.php';
+            require_once __DIR__ . '/../../server/config.php';
         }
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);

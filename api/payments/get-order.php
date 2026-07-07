@@ -6,7 +6,7 @@
  * Supports JSON (for app) and HTML (for public receipt scan).
  */
 
-require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 
