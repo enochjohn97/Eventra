@@ -71,7 +71,8 @@ if (strpos($uri, '/api/') === 0) {
         'client/auth/check-session' => 'auth/check-session.php',
         'user/auth/google-login'   => 'auth/google-handler.php',
         'client/auth/google-login' => 'auth/google-handler.php',
-        'admin/auth/google-login'  => 'auth/google-handler.php'
+        'admin/auth/google-login'  => 'auth/google-handler.php',
+        'chat'                     => 'chat/chat.php'
     ];
 
     $targetFile = $mappings[$cleanPath] ?? ($cleanPath . '.php');
@@ -91,59 +92,6 @@ if (strpos($uri, '/api/') === 0) {
     // =========================================================================
     // Virtual Endpoints (No new files constraint)
     // =========================================================================
-    
-    // 1. Chat Engine
-    if (strpos($cleanPath, 'chat') === 0) {
-        header('Content-Type: application/json');
-        require_once __DIR__ . '/includes/middleware/auth.php';
-        $pdo = getPDO();
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            $ticket_id = $_GET['ticket_id'] ?? 0;
-            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ?");
-            $stmt->execute([$ticket_id]);
-            $chat = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$chat) {
-                echo json_encode(['success' => true, 'messages' => [], 'chat' => null]);
-                exit;
-            }
-            $mStmt = $pdo->prepare("SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY created_at ASC");
-            $mStmt->execute([$chat['id']]);
-            echo json_encode(['success' => true, 'messages' => $mStmt->fetchAll(PDO::FETCH_ASSOC), 'chat' => $chat]);
-            exit;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = json_decode(file_get_contents("php://input"), true);
-            $action = $data['action'] ?? 'send';
-            $ticket_id = $data['ticket_id'] ?? 0;
-            
-            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ?");
-            $stmt->execute([$ticket_id]);
-            $chat = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$chat) {
-                // Auto-create chat if not exists
-                $cStmt = $pdo->prepare("INSERT INTO support_chats (ticket_id, user_id, event_owner_id) VALUES (?, ?, ?)");
-                $cStmt->execute([$ticket_id, $data['user_id'] ?? 0, $data['event_owner_id'] ?? 0]);
-                $chat_id = $pdo->lastInsertId();
-            } else {
-                $chat_id = $chat['id'];
-            }
-            
-            if ($action === 'escalate') {
-                $pdo->prepare("UPDATE support_chats SET escalated_to_admin = 1 WHERE id = ?")->execute([$chat_id]);
-                echo json_encode(['success' => true, 'message' => 'Escalated to admin.']);
-                exit;
-            }
-            
-            $pdo->prepare("INSERT INTO chat_messages (chat_id, sender_role, sender_id, message_text) VALUES (?, ?, ?, ?)")
-                ->execute([$chat_id, $data['sender_role'], $data['sender_id'], $data['message']]);
-            
-            echo json_encode(['success' => true, 'message' => 'Sent']);
-            exit;
-        }
-    }
     
     // 2. Refund Workflows
     if (strpos($cleanPath, 'refund') === 0) {

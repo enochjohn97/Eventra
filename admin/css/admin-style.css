@@ -511,14 +511,14 @@ body {
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 1.75rem;
+    gap: 2rem;
+    margin-bottom: 2rem;
 }
 
 /* Stats Cards (Neutral Design) */
 .stat-card {
     background: #ffffff;
-    padding: 1.25rem 1.5rem;
+    padding: 2rem;
     border-radius: var(--admin-radius);
     border: 1px solid var(--admin-border);
     display: flex;
@@ -2598,3 +2598,17 @@ input:checked+.slider:before {
         display: block !important;
     }
 }
+
+/* Standardized Layout Padding */
+.content-wrapper, .main-content, .content-area {
+    padding: 2rem !important;
+    margin: 0 auto;
+    max-width: 1440px;
+}
+@media (max-width: 768px) {
+    .content-wrapper, .main-content, .content-area {
+        padding: 1rem !important;
+    }
+}
+/* SweetAlert2 Modal Override */
+.swal2-container { z-index: 999999999 !important; }

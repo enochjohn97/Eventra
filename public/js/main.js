@@ -99,18 +99,18 @@ async function loadEvents() {
 
       // Priority-based filtering
       eventsData.featured = sortByCreation([
-        ...publishedEvents.filter((e) => e.priority === "featured"),
+        ...publishedEvents.filter((e) => (e.priority_label || e.priority || "").toLowerCase().includes("featured")),
       ]);
       eventsData.hot = sortByCreation([
-        ...publishedEvents.filter((e) => e.priority === "hot"),
+        ...publishedEvents.filter((e) => (e.priority_label || e.priority || "").toLowerCase().includes("hot")),
       ]);
       eventsData.trending = sortByCreation([
-        ...publishedEvents.filter((e) => e.priority === "trending"),
+        ...publishedEvents.filter((e) => (e.priority_label || e.priority || "").toLowerCase().includes("trending")),
       ]);
 
       // Upcoming: strictly use priority 'upcoming' if available, otherwise fallback to future events
       const priorityUpcoming = publishedEvents.filter(
-        (e) => e.priority === "upcoming",
+        (e) => (e.priority_label || e.priority || "").toLowerCase().includes("upcoming"),
       );
       if (priorityUpcoming.length > 0) {
         eventsData.upcoming = sortByCreation([...priorityUpcoming]);
@@ -125,17 +125,20 @@ async function loadEvents() {
 
       // Nearby: strictly use priority 'nearby' if available, otherwise fallback to location matches
       const priorityNearby = publishedEvents.filter(
-        (e) => e.priority === "nearby",
+        (e) => (e.priority_label || e.priority || "").toLowerCase().includes("nearby"),
       );
 
       if (userState || userCity) {
         const locationNearby = publishedEvents.filter((e) => {
-          const eventState = e.state?.toLowerCase();
-          const eventCity = e.city?.toLowerCase();
+          const eventState = e.state?.toLowerCase() || "";
+          const eventCity = e.city?.toLowerCase() || "";
+          const isSingleState = !eventState.includes(',');
+          
           const stateMatch =
             userState &&
             eventState &&
-            (eventState.includes(userState) || userState.includes(eventState));
+            isSingleState && 
+            eventState === userState;
           const cityMatch =
             userCity &&
             eventCity &&
@@ -1319,13 +1322,13 @@ function getFilteredEvents(events, filters) {
         (event.category || event.event_type || "General").toLowerCase(),
       );
 
-    const eventPriorities = (event.priority || "")
+    const eventPriorities = (event.priority_label || event.priority || "")
       .toLowerCase()
       .split(",")
       .map((p) => p.trim());
     const matchesPriority =
       selectedPriorities.length === 0 ||
-      selectedPriorities.some((p) => eventPriorities.includes(p.toLowerCase()));
+      selectedPriorities.some((p) => eventPriorities.some(ep => ep.includes(p.toLowerCase())));
 
     // Fix: Force local time by appending T00:00:00 to avoid UTC midnight shift
     const eventDay = new Date((event.event_date || "") + "T00:00:00");
@@ -1342,7 +1345,7 @@ function getFilteredEvents(events, filters) {
 
     const isFree =
       !event.price ||
-      parseFloat(event.price.toString().replace(/[^0.00-9.99]/g, "")) === 0;
+      parseFloat(event.price.toString().replace(/[^0-9.]/g, "")) === 0;
     const matchesPrice = !freeOnly || isFree;
 
     return (
@@ -1350,6 +1353,7 @@ function getFilteredEvents(events, filters) {
       matchesState &&
       matchesCategory &&
       matchesStatus &&
+      matchesPriority &&
       matchesPrice
     );
   });

@@ -167,7 +167,13 @@ function checkAuth($requiredRole = null)
     $userId = null;
     
     if ($role) {
-        $userId = $_SESSION[$role . '_id'] ?? null;
+        // Strict Role Verification Hardening
+        if ($requiredRole && (is_array($requiredRole) ? !in_array($role, $requiredRole) : $role !== $requiredRole)) {
+            $userId = null;
+            $role = null;
+        } else {
+            $userId = $_SESSION[$role . '_id'] ?? null;
+        }
     }
 
     // 2. Fallback to Bearer token authentication only if session is missing

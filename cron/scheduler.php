@@ -76,7 +76,7 @@ try {
     // b. Auto-Publish Fallback Engine
     $autoPublishStmt = $pdo->prepare("
         UPDATE events 
-        SET status = 'offline_published' 
+        SET status = 'published' 
         WHERE status = 'scheduled' 
           AND (
                (scheduled_publish_time IS NOT NULL AND scheduled_publish_time <= NOW())

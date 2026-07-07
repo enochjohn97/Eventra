@@ -675,3 +675,6 @@ input[type="password"]::-ms-clear {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* SweetAlert2 Modal Override */
+.swal2-container { z-index: 999999999 !important; }

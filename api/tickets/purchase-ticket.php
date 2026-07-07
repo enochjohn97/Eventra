@@ -194,6 +194,7 @@ try {
     // 5. Insert tickets with full identity binding
     $stmt = $pdo->prepare("INSERT INTO tickets (user_id, event_id, payment_id, custom_id, barcode, ticket_code, ticket_type, status, used, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'valid', 0, NOW())");
     $tickets_generated = [];
+    $custom_id_map = [];
 
     for ($i = 0; $i < $quantity; $i++) {
         // Generate cryptographically secure UUID-based barcode with TKT- prefix
@@ -202,6 +203,7 @@ try {
         $customId = generateTicketId($pdo);
         $stmt->execute([$user_id, $event_id, $payment_id, $customId, $barcode, $ticket_code, $ticket_type]);
         $tickets_generated[] = $barcode;
+        $custom_id_map[$barcode] = $customId;
     }
 
     // 6. Update event attendee count
@@ -257,7 +259,7 @@ try {
     foreach ($tickets_generated as $barcode) {
         $ticketData = [
             'barcode'        => $barcode,
-            'ticket_id'      => $barcode,
+            'ticket_id'      => $custom_id_map[$barcode] ?? $barcode,
             'event_id'       => $event_id,
             'user_id'        => $user_id,
             'payment_id'     => $payment_id,

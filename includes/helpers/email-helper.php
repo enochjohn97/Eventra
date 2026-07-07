@@ -401,14 +401,7 @@ class EmailHelper
                 . " style=\"width:{$size}px;height:{$size}px;display:block;\">";
         }
 
-        return '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center"'
-            . ' style="background:#fff;padding:10px;border-radius:12px;border:1px solid #e2e8f0;">'
-            . "<div style=\"position:relative;width:{$size}px;height:{$size}px;\">"
-            . "<img id=\"qrcode\" src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
-            . " style=\"width:{$size}px;height:{$size}px;display:block;pointer-events:none;user-select:none;\">"
-            . "<div style=\"position:absolute;inset:0;z-index:5;background:transparent;\"></div>"
-            . "</div>"
-            . '</td></tr></table>';
+        return "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" style=\"width:{$size}px;height:{$size}px;display:block;\">";
     }
 
     /**
@@ -543,7 +536,7 @@ class EmailHelper
     ): string {
         /* ── Sanitise text fields ─────────────────────────── */
         $barcode = self::esc($ticketData['barcode'] ?? '');
-        $ticketId = self::esc($ticketData['ticket_id'] ?? ($ticketData['barcode'] ?? ''));
+        $ticketId = !empty($ticketData['ticket_id']) ? self::esc($ticketData['ticket_id']) : $barcode;
         $eventTitle = self::esc($ticketData['event_name'] ?? '');
         $userName = self::esc($ticketData['user_name'] ?? 'Attendee');
         $venue = self::esc($ticketData['address'] ?? '—');
@@ -580,14 +573,19 @@ class EmailHelper
             $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? ''
         );
 
-        if (!$forPdf && !empty($ticketData['qr_cid'])) {
-            $qrSrc = 'cid:' . $ticketData['qr_cid'];
+        if (!$forPdf) {
+            // FIX: Use web-accessible URL for the static QR image to ensure it displays in Gmail or embedded image
+            if (!empty($ticketData['qr_cid'])) {
+                $qrSrc = 'cid:' . $ticketData['qr_cid'];
+            } else {
+                $qrSrc = self::pathToUrl(self::getEmailQrAssetPath());
+            }
         } else {
             // 🔥 FIX: Use self::generateQrDataUri (which now always returns base64 or empty)
             $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, false);
 
             // 🛡️ Additional fallback for PDF edge cases
-            if ($qrSrc === '' && $forPdf) {
+            if ($qrSrc === '') {
                 $emailQr = self::getEmailQrAssetPath();
                 if (file_exists($emailQr) && filesize($emailQr) > 0) {
                     $data = @file_get_contents($emailQr);
@@ -860,7 +858,7 @@ class EmailHelper
         {$qrHtml}
       </div>
       <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;letter-spacing:1px;word-break:break-all;padding:0 5px;text-align:center;line-height:1.2;">
-        {$barcode}
+        {$ticketId}
       </div>
     </td>
   </tr>
@@ -1016,7 +1014,7 @@ HTML;
         {$qrHtml}
       </div>
       <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 4pt;text-align:center;width:100%;">
-        {$barcode}
+        {$ticketId}
       </div>
     </td>
   </tr>
@@ -1125,7 +1123,7 @@ PDF;
                         $stmt = $pdo->prepare("
                             SELECT
                                 t.barcode,
-                                t.barcode        AS ticket_id,
+                                t.custom_id      AS ticket_id,
                                 t.qr_code_path   AS qr_path,
                                 t.status,
                                 t.ticket_type,
@@ -1246,9 +1244,42 @@ PDF;
      */
     public static function regeneratePdf(array $ticketData, string $outputPath): bool
     {
-        // Dompdf has been removed in favor of client-side html2pdf generation.
-        // Return false to indicate no server-side generation is available.
-        return false;
+        try {
+            $autoloadPath = realpath(__DIR__ . '/../../vendor/autoload.php');
+            if ($autoloadPath && file_exists($autoloadPath)) {
+                require_once $autoloadPath;
+            }
+
+            if (!class_exists('Dompdf\Dompdf')) {
+                error_log('[EmailHelper] Dompdf class not found. Run composer require dompdf/dompdf.');
+                return false;
+            }
+
+            // Generate raw HTML for the PDF using the existing builder
+            $html = self::buildTicketHtml($ticketData, true);
+
+            // Configure Dompdf
+            $options = new \Dompdf\Options();
+            $options->set('isRemoteEnabled', true);
+            $options->set('isHtml5ParserEnabled', true);
+            $options->set('chroot', realpath(__DIR__ . '/../../'));
+            $options->set('defaultFont', 'Helvetica');
+
+            $dompdf = new \Dompdf\Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $output = $dompdf->output();
+            if ($output !== null && file_put_contents($outputPath, $output) !== false) {
+                return true;
+            }
+            
+            return false;
+        } catch (\Throwable $e) {
+            error_log('[EmailHelper] PDF regeneration error: ' . $e->getMessage());
+            return false;
+        }
     }
 }
 

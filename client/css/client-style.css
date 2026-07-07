@@ -504,13 +504,13 @@ body {
 .client-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 1.75rem;
+    gap: 2rem;
+    margin-bottom: 2rem;
     color: var(--client-text-main);
 }
 
 .client-stat-card {
-    padding: 1.25rem 1.5rem;
+    padding: 2rem;
     border-radius: var(--client-radius);
     background: #ffffff;
     color: var(--client-text-main);
@@ -580,7 +580,7 @@ body {
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1.8fr 1.2fr;
-    gap: 1.5rem;
+    gap: 2.5rem;
     align-items: start;
 }
 
@@ -2945,3 +2945,15 @@ input[type="date"]::-webkit-datetime-edit-text {
     font-size: 3rem;
 }
 
+
+/* Standardized Layout Padding */
+.content-wrapper, .main-content, .content-area {
+    padding: 2rem !important;
+    margin: 0 auto;
+    max-width: 1440px;
+}
+@media (max-width: 768px) {
+    .content-wrapper, .main-content, .content-area {
+        padding: 1rem !important;
+    }
+}

@@ -7,8 +7,8 @@
  * Cron example: (every 5 minutes) php /path/to/schedule-notification-cron.php
  */
 
-require_once '../../config/database.php';
-require_once '../utils/notification-helper.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../utils/notification-helper.php';
 
 // Set timezone to Africa/Lagos for database consistency
 date_default_timezone_set('Africa/Lagos');

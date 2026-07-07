@@ -8,18 +8,17 @@
 header('Content-Type: application/json');
 require_once '../../config/database.php';
 
+require_once '../../includes/middleware/auth.php';
+$client_id = clientMiddleware();
+
 try {
-    $user_id = $_GET['client_id'] ?? null;
     $folder_id = $_GET['folder_id'] ?? null;
     $status = $_GET['status'] ?? 'active';
 
-    if (!$user_id || !$folder_id) {
-        echo json_encode(['success' => false, 'message' => 'Client ID and Folder ID are required']);
+    if (!$folder_id) {
+        echo json_encode(['success' => false, 'message' => 'Folder ID is required']);
         exit;
     }
-
-    // Use user_id directly (it is client_id from frontend)
-    $client_id = $user_id;
 
     // Build query
     $where_clauses = ["client_id = ?", "folder_id = ?"];

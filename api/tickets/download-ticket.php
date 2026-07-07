@@ -10,6 +10,28 @@
 require_once '../../config/database.php';
 require_once '../../includes/helpers/ticket-helper.php';
 require_once '../../includes/helpers/email-helper.php';
+require_once '../../includes/middleware/auth.php';
+
+// We do not require a specific role, just any logged-in session.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$role = $_SESSION['role'] ?? null;
+$profile_id = null;
+if ($role === 'admin') {
+    $profile_id = $_SESSION['admin_id'] ?? null;
+} elseif ($role === 'client') {
+    $profile_id = $_SESSION['client_id'] ?? null;
+} elseif ($role === 'user') {
+    $profile_id = $_SESSION['user_id'] ?? null;
+}
+
+if (!$role || !$profile_id) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Unauthorized. Please log in to download this ticket.']);
+    exit;
+}
 
 $barcode = trim($_GET['code'] ?? '');
 if (empty($barcode)) {
@@ -42,6 +64,29 @@ try {
         http_response_code(404);
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Ticket not found.']);
+        exit;
+    }
+
+    // Enforce Tenant Boundaries: User must be the buyer OR Client must be the organizer OR Admin
+    $isAuthorized = false;
+    if ($role === 'admin') {
+        $isAuthorized = true;
+    } elseif ($role === 'user' && (int)$ticket['user_id'] === (int)$profile_id) {
+        $isAuthorized = true;
+    } elseif ($role === 'client') {
+        // Check if the event belongs to this client
+        $stmtAuth = $pdo->prepare("SELECT client_id FROM events WHERE id = ?");
+        $stmtAuth->execute([$ticket['event_id']]);
+        $event_client_id = $stmtAuth->fetchColumn();
+        if ((int)$event_client_id === (int)$profile_id) {
+            $isAuthorized = true;
+        }
+    }
+
+    if (!$isAuthorized) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Access denied. You do not have permission to download this ticket.']);
         exit;
     }
 

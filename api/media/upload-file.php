@@ -92,6 +92,13 @@ if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
+require_once '../../includes/helpers/file-upload-helper.php';
+$validation = FileUploadValidator::validateFile($_FILES['file']);
+if (!$validation['valid']) {
+    echo json_encode(['success' => false, 'message' => $validation['error']]);
+    exit;
+}
+
 $folder_name = $_POST['folder_name'] ?? 'event access';
 $folder_id = $_POST['folder_id'] ?? null;
 $file = $_FILES['file'];
@@ -156,7 +163,7 @@ try {
     }
 
     // Generate unique file name
-    $unique_name = uniqid('media_') . '.' . $file_extension;
+    $unique_name = FileUploadValidator::generateSafeFilename($file_name, 'media');
     $target_path = $upload_dir . $unique_name;
     $db_path = "/public/uploads/media/client_$client_id/$folder_name/$unique_name";
 

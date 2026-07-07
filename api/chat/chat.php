@@ -14,9 +14,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     while (ob_get_level()) { ob_end_flush(); }
     ob_implicit_flush(1);
 
-    require_once __DIR__ . '/../config.php';
-    require_once __DIR__ . '/../config/database.php';
-    require_once __DIR__ . '/../includes/middleware/auth.php';
+    require_once __DIR__ . '/../../config.php';
+    require_once __DIR__ . '/../../config/database.php';
+    require_once __DIR__ . '/../../includes/middleware/auth.php';
 
     $pdo = getPDO();
     $role = $_SESSION['role'] ?? 'user';
@@ -36,6 +36,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if ($role === 'admin') {
             $stmt = $pdo->prepare("SELECT m.*, c.ticket_id FROM chat_messages m JOIN support_chats c ON m.chat_id = c.id WHERE m.id > ? ORDER BY m.id ASC");
             $stmt->execute([$lastId]);
+        } elseif ($role === 'client') {
+            $stmt = $pdo->prepare("SELECT m.*, c.ticket_id FROM chat_messages m JOIN support_chats c ON m.chat_id = c.id WHERE m.id > ? AND ( (m.receiver_id = ? AND m.receiver_type = ?) OR (m.sender_id = ? AND m.sender_type = ?) OR c.event_owner_id = ? ) ORDER BY m.id ASC");
+            $stmt->execute([$lastId, $userId, $role, $userId, $role, $userId]);
         } else {
             $stmt = $pdo->prepare("SELECT m.*, c.ticket_id FROM chat_messages m JOIN support_chats c ON m.chat_id = c.id WHERE m.id > ? AND (m.receiver_id = ? AND m.receiver_type = ? OR m.sender_id = ? AND m.sender_type = ?) ORDER BY m.id ASC");
             $stmt->execute([$lastId, $userId, $role, $userId, $role]);
@@ -66,9 +69,9 @@ ini_set('error_log', __DIR__ . '/../logs/php-errors.log');
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/middleware/auth.php';
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 function jsonOut(array $data, int $code = 200): void
 {
@@ -124,6 +127,9 @@ try {
         if ($senderRole === 'admin') {
             $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ? ORDER BY id DESC LIMIT 1");
             $stmt->execute([$ticketId]);
+        } elseif ($senderRole === 'client') {
+            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ? AND ( (sender_role = 'client' AND sender_id = ?) OR event_owner_id = ? ) LIMIT 1");
+            $stmt->execute([$ticketId, $senderId, $senderId]);
         } else {
             $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ? AND sender_role = ? AND sender_id = ? LIMIT 1");
             $stmt->execute([$ticketId, $senderRole, $senderId]);
@@ -199,6 +205,27 @@ try {
                 $pdo->prepare("UPDATE support_chats SET updated_at = NOW() WHERE id = ?")->execute([$chatId]);
                 $receiverId = $chat['sender_id'];
                 $receiverType = $chat['sender_role'];
+            }
+        } elseif ($senderRole === 'client') {
+            $stmt = $pdo->prepare("SELECT id, sender_id, sender_role, event_owner_id FROM support_chats WHERE ticket_id = ? AND ( (sender_role = 'client' AND sender_id = ?) OR event_owner_id = ? ) ORDER BY id DESC LIMIT 1");
+            $stmt->execute([$ticketId, $senderId, $senderId]);
+            $chat = $stmt->fetch(PDO::FETCH_ASSOC);
+            $chatId = $chat ? $chat['id'] : null;
+
+            if (!$chatId) {
+                $pdo->prepare("INSERT INTO support_chats (ticket_id, sender_role, sender_id, event_owner_id, status) VALUES (?, ?, ?, ?, 'open')")->execute([$ticketId, $senderRole, $senderId, $ownerId]);
+                $chatId = $pdo->lastInsertId();
+                $receiverId = 0; 
+                $receiverType = 'admin';
+            } else {
+                $pdo->prepare("UPDATE support_chats SET updated_at = NOW() WHERE id = ?")->execute([$chatId]);
+                if ($chat['sender_role'] !== 'client') {
+                    $receiverId = $chat['sender_id'];
+                    $receiverType = $chat['sender_role'];
+                } else {
+                    $receiverId = 0; 
+                    $receiverType = 'admin';
+                }
             }
         } else {
             $stmt = $pdo->prepare("SELECT id FROM support_chats WHERE ticket_id = ? AND sender_role = ? AND sender_id = ? LIMIT 1");

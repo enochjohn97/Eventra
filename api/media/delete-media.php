@@ -35,8 +35,9 @@ try {
 
     if ($permanent) {
         // Permanent (hard) delete
-        $filePath = $_SERVER['DOCUMENT_ROOT'] . $media['file_path'];
-        if (file_exists($filePath) && is_file($filePath)) {
+        $relativePath = ltrim($media['file_path'], '/');
+        $filePath = realpath(__DIR__ . '/../../' . $relativePath);
+        if ($filePath && file_exists($filePath) && is_file($filePath)) {
             @unlink($filePath);
         }
         

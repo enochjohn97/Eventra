@@ -23,9 +23,9 @@ try {
     // Dynamic Priority Label Logic
     $priorityLabel = "CASE 
         WHEN e.is_boosted = 1 THEN '⭐ Featured'
-        WHEN $meritScore > 200 THEN '📈 Trending'
-        WHEN $meritScore > 100 THEN '🔥 Hot'
-        WHEN e.created_at >= DATE_SUB(NOW(), INTERVAL 2 DAY) THEN '🕒 Upcoming'
+        WHEN $meritScore > 100 THEN '📈 Trending'
+        WHEN $meritScore > 50 THEN '🔥 Hot'
+        WHEN e.event_date >= CURDATE() AND e.event_date <= DATE_ADD(CURDATE(), INTERVAL 14 DAY) THEN '🕒 Upcoming'
         ELSE '📍 Nearby'
     END";
 
