@@ -1,7 +1,8 @@
 <?php
-require_once __DIR__ . '/../../config.php';
 
 namespace App\Core;
+
+require_once __DIR__ . '/../../config.php';
 
 class BaseController
 {
