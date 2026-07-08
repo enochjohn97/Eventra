@@ -44,10 +44,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentUser = (window.storage?.get(keys.user)) || (window.storage?.get('user'));
         
         if (currentUser) {
-            document.getElementById('firstName').value = currentUser.name ? currentUser.name.split(' ')[0] : '';
-            document.getElementById('lastName').value = currentUser.name && currentUser.name.includes(' ') ? currentUser.name.split(' ').slice(1).join(' ') : '';
-            document.getElementById('emailAdd').value = currentUser.email || '';
-            document.getElementById('phoneNum').value = currentUser.phone || '';
+            const saved = JSON.parse(sessionStorage.getItem('checkout_contact') || 'null');
+            document.getElementById('firstName').value = saved?.fname || (currentUser.name ? currentUser.name.split(' ')[0] : '');
+            document.getElementById('lastName').value = saved?.lname || (currentUser.name && currentUser.name.includes(' ') ? currentUser.name.split(' ').slice(1).join(' ') : '');
+            document.getElementById('emailAdd').value = saved?.email || currentUser.email || '';
+            document.getElementById('phoneNum').value = saved?.phone || currentUser.phone || '';
         }
 
         // Fetch Event Data
@@ -137,7 +138,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // 3. Proceed to payment directly (OTP logic removed)
+            // 3. Proceed to payment directly
+            sessionStorage.setItem('checkout_contact', JSON.stringify({fname, lname, email, phone}));
             await proceedToPayment(eventId, currentQuantity, currentTicketType, fname, lname, email, phone, payBtn, eventData, null, selectedLocsParam);
 
         });
@@ -158,7 +160,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     quantity: currentQuantity,
                     ticket_type: currentTicketType,
                     otp_reference: otpReference,
-                    selected_locs: selectedLocs
+                    selected_locs: selectedLocs,
+                    contact_info: { fname, lname, email, phone }
                 })
             });
             
@@ -187,12 +190,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             } else {
                 Swal.fire('Error', result.message || 'Payment initialization failed.', 'error');
-                resetPayBtn(eventData, currentQuantity);
+                let price = parseFloat(eventData.price || 0);
+                if (currentTicketType === 'vip' && eventData.vip_price) price = parseFloat(eventData.vip_price);
+                else if (currentTicketType === 'premium' && eventData.premium_price) price = parseFloat(eventData.premium_price);
+                else if (currentTicketType === 'regular' && eventData.regular_price) price = parseFloat(eventData.regular_price);
+                resetPayBtn(price, currentQuantity);
             }
         } catch (err) {
             const errMsg = err?.message || 'Could not connect to payment server. Please check your connection and try again.';
             Swal.fire('Error', errMsg, 'error');
-            resetPayBtn(eventData, currentQuantity);
+            let price = parseFloat(eventData.price || 0);
+            if (currentTicketType === 'vip' && eventData.vip_price) price = parseFloat(eventData.vip_price);
+            else if (currentTicketType === 'premium' && eventData.premium_price) price = parseFloat(eventData.premium_price);
+            else if (currentTicketType === 'regular' && eventData.regular_price) price = parseFloat(eventData.regular_price);
+            resetPayBtn(price, currentQuantity);
         }
     }
 
@@ -306,3 +317,9 @@ function showErrorAndRedirect(msg, url) {
 
 // 5. Cleanup
 sessionStorage.removeItem('pending_order_initialized');
+
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted || (window.performance && window.performance.navigation && window.performance.navigation.type === 2)) {
+        window.location.reload();
+    }
+});

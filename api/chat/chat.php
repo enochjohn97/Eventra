@@ -23,6 +23,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     $userId = (int)($_SESSION[$role . '_id'] ?? 0);
 
     // Set timeout to prevent infinite processes
+    set_time_limit(0);
     $startTime = time();
     $lastId = isset($_SERVER['HTTP_LAST_EVENT_ID']) ? (int)$_SERVER['HTTP_LAST_EVENT_ID'] : 0;
     if (isset($_GET['last_id'])) $lastId = (int)$_GET['last_id'];

@@ -149,11 +149,12 @@ try {
     $pdo->beginTransaction();
 
     try {
-        // 0. Extract quantity and ticket_type from metadata
         $metadata = $result['data']['metadata'] ?? [];
         $quantity = max(1, (int) ($metadata['quantity'] ?? 1));
         $ticket_type = $metadata['ticket_type'] ?? 'regular';
         $selected_locs = $metadata['selected_locs'] ?? null;
+        $dbMeta = json_decode($order['metadata'], true) ?? [];
+        $ticket_user_name = $metadata['user_name'] ?? $dbMeta['user_name'] ?? $order['user_name'] ?? 'Guest';
 
         // 1. Update order status
         $pdo->prepare("
@@ -248,7 +249,7 @@ try {
                 'event_time'     => $order['event_time'],
                 'location'       => $order['location'] ?? $order['address'],
                 'address'        => $order['address'],
-                'user_name'      => $order['user_name'],
+                'user_name'      => $ticket_user_name,
                 'payment_status' => 'paid',
                 'event_image'    => $order['image_path'] ?? null,
                 'amount'         => $order['amount'],

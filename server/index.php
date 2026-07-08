@@ -12,7 +12,15 @@ if (php_sapi_name() === 'cli-server') {
     // Serve actual static files (images, css, js, html, etc.) directly
     if (file_exists($fullPath) && is_file($fullPath)) {
         $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-        $staticExts = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'html', 'htm', 'webp', 'mp4', 'pdf', 'map'];
+        
+        if ($ext === 'html' || $ext === 'htm') {
+            header("Cross-Origin-Opener-Policy: same-origin-allow-popups");
+            header('Content-Type: text/html');
+            readfile($fullPath);
+            exit;
+        }
+
+        $staticExts = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'webp', 'mp4', 'pdf', 'map'];
         if (in_array($ext, $staticExts)) {
             return false;
         }

@@ -207,7 +207,7 @@ try {
                     'location'       => $event['location'] ?? $event['state'] ?? 'Nigeria',
                     'address'        => $event['address'] ?? '',
                     'event_image'    => $event['image_path'] ?? '',
-                    'user_name'      => $user_name,
+                    'user_name'      => !empty($body['contact_info']) ? trim($body['contact_info']['fname'] . ' ' . $body['contact_info']['lname']) : $user_name,
                     'payment_status' => 'paid',
                     'amount'         => 0,
                     'ticket_type'    => $ticket_type,
@@ -285,8 +285,9 @@ try {
         'quantity'   => $quantity,
         'ticket_type'=> $ticket_type,
         'user_id'    => $user_id,
-        'user_name'  => $user_name,
-        'selected_locs' => $selected_locs
+        'user_name'  => !empty($body['contact_info']) ? trim($body['contact_info']['fname'] . ' ' . $body['contact_info']['lname']) : $user_name,
+        'selected_locs' => $selected_locs,
+        'contact_info' => $body['contact_info'] ?? null
     ];
 
     // ── Insert pending order ─────────────────────────────────────────────────

@@ -948,11 +948,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="chatRefundStatusContainer" style="padding: 10px; margin-bottom: 10px; text-align: center; display: none; font-size: 0.85rem; border-radius: 8px;"></div>
             
             <div style="display: flex; align-items: center; gap: 10px;">
-                <button style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem;">📎</button>
-                <button style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem;">💡</button>
-                <button style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem;">😊</button>
+                <button id="chatAttachmentBtn" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 1.1rem; flex-shrink: 0;">📎</button>
                 
-                <input type="text" id="globalChatInput" placeholder="Enter your message..." style="flex: 1; padding: 8px; border: none; outline: none; font-size: 0.9rem; color: #334155;">
+                <input type="text" id="globalChatInput" placeholder="Enter your message..." style="flex: 1; padding: 8px; border: 1px solid #e2e8f0; border-radius: 20px; outline: none; font-size: 0.9rem; color: #334155;">
                 
                 <button id="btnSendGlobalChat" style="width: 36px; height: 36px; border-radius: 50%; background: #0044ff; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,102,255,0.3); flex-shrink: 0;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -1008,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadGlobalMessages() {
         try {
-            const res = await fetch('/api/chat.php?ticket_id=' + encodeURIComponent(currentTicket), { credentials: 'include' });
+            const res = await fetch('/api/chat/chat.php?ticket_id=' + encodeURIComponent(currentTicket), { credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 if (data.chat) currentChatContextId = data.chat.id;
@@ -1059,14 +1057,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function startSupportChatSSE() {
         if (chatEventSource) return;
-        chatEventSource = new EventSource('/api/chat.php?action=stream');
+        chatEventSource = new EventSource('/api/chat/chat.php?action=stream');
         
         chatEventSource.onmessage = async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.ticket_id === currentTicket) {
                 await loadGlobalMessages();
                 // Mark as read immediately on server
-                fetch('/api/chat.php', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'mark_read', ticket_id: currentTicket}) });
+                fetch('/api/chat/chat.php', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'mark_read', ticket_id: currentTicket}) });
             }
             if (msg.sender_type === 'admin') {
                 try {
@@ -1100,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.storage) user = window.storage.getUser();
         
         try {
-            await apiFetch('/api/chat.php', {
+            await fetch('/api/chat/chat.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

@@ -215,7 +215,6 @@
 
       /* Prevent browser/extension hover icons on QR codes by showing canvas and hiding img */
       #qrcode canvas {
-
         width: 160px !important;
         height: 160px !important;
         display: block !important;
@@ -226,6 +225,9 @@
         height: 130px !important;
         display: block !important;
         margin: 0 auto;
+      }
+      #qrcode img, #ticketQR img {
+        display: none !important;
       }
 
       /* Responsive */

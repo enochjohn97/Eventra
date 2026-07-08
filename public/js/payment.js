@@ -125,20 +125,34 @@ async function showPaymentSuccess(reference, barcode) {
     } catch (e) {}
 
     const cleanedName = (order?.event_name || '').replace(/\s*#\d+$/, '');
-    const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
+    const finalBarcode = barcode || (order?.barcode) || (order?.tickets?.[0]?.barcode) || (order?.ticket_id) || reference || 'N/A';
+    const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(finalBarcode)}`;
 
     icon.innerHTML = `<div id="qrcode-container" style="display:flex;flex-direction:column;align-items:center;margin-bottom:1.5rem;pointer-events:none;user-select:none;">
-        <div id="qrcode" style="background:#fff;padding:10px;border-radius:1rem;box-shadow:var(--shadow-card);border:1px solid var(--border-light);">
-            <img src="../assets/imgs/qr.png" alt="QR Code" style="width:160px;height:160px;display:block;">
-        </div>
+        <div id="qrcode" style="background:#fff;padding:10px;border-radius:1rem;box-shadow:var(--shadow-card);border:1px solid var(--border-light);"></div>
     </div>
     <div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.75rem;">Scan to validate ticket</div>`;
+
+    setTimeout(() => {
+        const qrcodeEl = document.getElementById('qrcode');
+        if (qrcodeEl && typeof QRCode !== 'undefined') {
+            qrcodeEl.innerHTML = '';
+            new QRCode(qrcodeEl, {
+                text: qrPayload,
+                width: 160,
+                height: 160,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+    }, 100);
 
     title.textContent = order?.amount <= 0 ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
     msg.innerHTML = `Your ticket${(order?.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? 'have been issued' : 'are ready'}.<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
 
     if (order) renderSummary(order, order.quantity || 1, order.ticket_type || 'regular');
-    prepareTicketForDownload(order || { event_name: cleanedName, barcode }, barcode);
+    prepareTicketForDownload(order || { event_name: cleanedName, barcode: finalBarcode }, finalBarcode);
 
     if (downloadBtn) {
         downloadBtn.onclick = () => {
@@ -434,8 +448,16 @@ function prepareTicketForDownload(order, barcode) {
 
     // Generate QR Code for the ticket
     const qrContainer = document.getElementById('ticketQR');
-    if (qrContainer) {
-        qrContainer.innerHTML = '<img src="../assets/imgs/qr.png" alt="QR Code" style="width:100%;height:100%;display:block;pointer-events:none;user-select:none;">';
+    if (qrContainer && typeof QRCode !== 'undefined') {
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+            text: window.location.origin + '/api/tickets/validate-ticket.php?barcode=' + encodeURIComponent(barcode || ''),
+            width: 130,
+            height: 130,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
     }
 }
 
