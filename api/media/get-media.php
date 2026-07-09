@@ -76,6 +76,25 @@ try {
         WHERE client_id = ? AND folder_id IS NULL AND folder_name = 'Event Assets'
     ")->execute([$client_id, $client_id]);
 
+    // Sync missing event images into media table
+    $pdo->prepare("
+        INSERT INTO media (client_id, folder_id, folder_name, file_name, file_path, file_type, is_deleted)
+        SELECT e.client_id, 
+               (SELECT id FROM media_folders mf WHERE mf.client_id = e.client_id AND mf.name = 'Event Assets' AND mf.is_deleted = 0 LIMIT 1),
+               'Event Assets',
+               SUBSTRING_INDEX(e.image_path, '/', -1),
+               e.image_path,
+               'image',
+               0
+        FROM events e
+        WHERE e.image_path IS NOT NULL 
+          AND e.image_path != ''
+          AND e.client_id = ?
+          AND NOT EXISTS (
+              SELECT 1 FROM media m WHERE m.file_path = e.image_path COLLATE utf8mb4_unicode_ci
+          )
+    ")->execute([$client_id]);
+
     $folders_sql = "SELECT id, name, created_at FROM media_folders WHERE client_id = ? AND is_deleted = ?";
     $f_params = [$client_id, $is_trash];
 

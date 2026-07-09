@@ -138,6 +138,7 @@
                             <th class="sortable" data-sort="verification_status" style="border-bottom: 2px solid #f1f5f9;">VERIFICATION</th>
                             <th class="sortable" data-sort="status" style="border-bottom: 2px solid #f1f5f9;">STATUS</th>
                             <th class="sortable" data-sort="event_count" style="border-bottom: 2px solid #f1f5f9;">EVENTS CREATED</th>
+                            <th style="border-bottom: 2px solid #f1f5f9; text-align: center;">ACTION</th>
                         </tr>
                     </thead>
                     <tbody id="clientsTableBody">
@@ -197,6 +198,59 @@
         </div>
     </div>
 
+    <!-- Paystack Setup Modal -->
+    <div class="modal-backdrop" id="paystackModal">
+        <div class="modal-content" style="max-width: 500px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Paystack Setup</h2>
+                <button type="button" class="close-modal-btn" id="closePaystackModal" style="background: none; border: none; cursor: pointer; color: var(--admin-text-muted);">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="paystackSetupForm">
+                <input type="hidden" id="paystackClientId" name="client_id">
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="paystackStatus" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--admin-text-main);">Connection Status</label>
+                    <select id="paystackStatus" name="paystack_connection_status" class="form-control" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--admin-border); border-radius: 8px; font-family: inherit; font-size: 0.95rem;">
+                        <option value="disconnected">Disconnected</option>
+                        <option value="connected">Connected</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="paystackPublicKey" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--admin-text-main);">Public Key</label>
+                    <div style="position: relative;">
+                        <input type="password" id="paystackPublicKey" name="paystack_public_key" class="form-control" placeholder="pk_test_..." style="width: 100%; padding: 0.75rem 2.75rem 0.75rem 1rem; border: 1px solid var(--admin-border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box;">
+                        <button type="button" id="togglePublicKey" onclick="togglePasswordVisibility('paystackPublicKey', 'togglePublicKey')" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--admin-text-muted); display: flex; align-items: center; padding: 0;" title="Show/hide key">
+                            <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="paystackAuthToken" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--admin-text-main);">Secret Key (Auth Token)</label>
+                    <div style="position: relative;">
+                        <input type="password" id="paystackAuthToken" name="paystack_auth_token" class="form-control" placeholder="sk_test_..." style="width: 100%; padding: 0.75rem 2.75rem 0.75rem 1rem; border: 1px solid var(--admin-border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box;">
+                        <button type="button" id="toggleSecretKey" onclick="togglePasswordVisibility('paystackAuthToken', 'toggleSecretKey')" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--admin-text-muted); display: flex; align-items: center; padding: 0;" title="Show/hide key">
+                            <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label for="paystackMerchantId" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--admin-text-main);">Merchant ID (Optional)</label>
+                    <input type="text" id="paystackMerchantId" name="paystack_merchant_id" class="form-control" placeholder="Merchant ID" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--admin-border); border-radius: 8px; font-family: inherit; font-size: 0.95rem;">
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" id="cancelPaystackBtn" style="padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid var(--admin-border); background: transparent; cursor: pointer; font-weight: 600;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="savePaystackBtn" style="padding: 0.75rem 1.5rem; border-radius: 8px; border: none; background: var(--admin-primary); color: white; cursor: pointer; font-weight: 600;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../js/toast-notification.js"></script>
     <script src="../../client/js/export-manager.js"></script>
     <script src="../js/admin-auth.js"></script>
@@ -206,6 +260,20 @@
     <script src="../../public/js/pagination.js"></script>
     <script src="../js/pages/clients.js"></script>
     <script src="../../public/js/heartbeat.js"></script>
+    <script>
+        function togglePasswordVisibility(inputId, btnId) {
+            const input = document.getElementById(inputId);
+            const btn = document.getElementById(btnId);
+            if (!input || !btn) return;
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            const icon = btn.querySelector('i');
+            if (icon) {
+                icon.setAttribute('data-lucide', isHidden ? 'eye-off' : 'eye');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+    </script>
     <script src="../js/admin-main.js"></script>
     <script>lucide.createIcons(); setInterval(function(){if(document.visibilityState==='visible')location.reload();},60000);</script>
 

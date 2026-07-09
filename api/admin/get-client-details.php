@@ -31,6 +31,10 @@ try {
 
     // Remove sensitive data
     unset($client['password']);
+    
+    $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+    $client['paystack_key'] = $meta['paystack_key'] ?? '';
+
 
     // 2. Get Events by Client
     $evtStmt = $pdo->prepare("

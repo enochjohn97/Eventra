@@ -13,27 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load dashboard stats (will fetch fresh data and cache it)
     await loadDashboardStats();
 
-    // Set up polling for dashboard data (auto-population of cards) - increased to 30s to reduce database load
-    // Only refresh if the tab is visible to save resources
-    setInterval(async () => {
-        if (document.visibilityState === 'visible') {
-            await loadDashboardStats();
-        }
-    }, 30000);
-
-    // Set up faster polling for recent activities (15 seconds) to show real-time updates
-    setInterval(async () => {
-        if (document.visibilityState === 'visible') {
-            try {
-                const response = await apiFetch('/api/stats/get-admin-dashboard-stats.php');
-                const result = await response.json();
-                if (result.success && result.recent_activities) {
-                    loadRecentActivities(result.recent_activities);
-                }
-            } catch (error) {
-            }
-        }
-    }, 15000);
+    // Auto-polling removed per request
 });
 
 async function loadAdminProfile() {

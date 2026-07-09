@@ -25,7 +25,6 @@ try {
         WHEN e.is_boosted = 1 THEN '⭐ Featured'
         WHEN $meritScore > 100 THEN '📈 Trending'
         WHEN $meritScore > 50 THEN '🔥 Hot'
-        WHEN e.event_date < CURDATE() THEN '🕰️ Past'
         WHEN e.event_date >= CURDATE() AND e.event_date <= DATE_ADD(CURDATE(), INTERVAL 14 DAY) THEN '🕒 Upcoming'
         ELSE '📍 Nearby'
     END";

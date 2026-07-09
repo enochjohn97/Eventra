@@ -183,6 +183,16 @@ try {
         $stmt->execute([$event_id, $user_id, $customId, $payment_reference, $total_price, $gatewayResponse, $paystack_id, $transaction_id, $ticket_type, $quantity]);
         $payment_id = $pdo->lastInsertId();
     } else {
+        // Free ticket — check for duplicate free ticket purchase to prevent abuse
+        $dupCheck = $pdo->prepare("SELECT COUNT(*) FROM payments WHERE event_id = ? AND user_id = ? AND status = 'paid' AND amount = 0");
+        $dupCheck->execute([$event_id, $user_id]);
+        if ($dupCheck->fetchColumn() > 0) {
+            $pdo->rollBack();
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'You have already purchased a free ticket for this event. Duplicates are not permitted.']);
+            exit;
+        }
+
         // Free ticket
         $ref = 'FREE-' . strtoupper(bin2hex(random_bytes(8)));
         $customId = generatePaymentId($pdo);

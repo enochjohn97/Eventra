@@ -92,7 +92,7 @@ $client_id = checkAuth('client');
 
 try {
     // 1. Resolve actual Client name and info from clients table
-    $stmt = $pdo->prepare("SELECT id, name, verification_status FROM clients WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, name, verification_status, paystack_connection_status FROM clients WHERE id = ?");
     $stmt->execute([$client_id]);
     $client_data = $stmt->fetch();
 
@@ -273,6 +273,15 @@ try {
         $regular_price = floatval($price);
         $vip_price = floatval($price);
         $premium_price = floatval($price);
+    }
+
+    // ── Feature Gate: Paystack Connect required for paid events ─────────────
+    $isPaidEvent = ($price > 0 || $regular_price > 0 || $vip_price > 0 || $premium_price > 0);
+    $paystackStatus = $client_data['paystack_connection_status'] ?? 'disconnected';
+    if ($isPaidEvent && $paystackStatus !== 'connected') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'You must connect your Paystack account to create paid events.']);
+        exit;
     }
 
     // Compute ticket_count and total_tickets from submitted quantities

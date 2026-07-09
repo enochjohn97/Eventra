@@ -38,6 +38,7 @@ try {
             p.nin_verified, p.bvn_verified,
             p.account_name, p.account_number, p.bank_name, p.bank_code, p.subaccount_code, p.verification_status,
             p.admin_notes, p.dob, p.gender, p.address, p.city, p.country, p.job_title,
+            p.metadata,
             a.is_active, a.is_online, a.last_seen,
             IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 'active', 'inactive') as status,
             p.created_at,
@@ -58,7 +59,16 @@ try {
     $stmt->bindValue($param_idx++, $offset, PDO::PARAM_INT);
 
     $stmt->execute();
-    $clients = $stmt->fetchAll();
+    $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($clients as &$client) {
+        $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+        $client['paystack_connection_status'] = $meta['paystack_connection_status'] ?? 'disconnected';
+        $client['paystack_public_key'] = $meta['paystack_public_key'] ?? '';
+        $client['paystack_auth_token'] = $meta['paystack_auth_token'] ?? '';
+        $client['paystack_merchant_id'] = $meta['paystack_merchant_id'] ?? '';
+        unset($client['metadata']);
+    }
 
     echo json_encode([
         'success' => true,

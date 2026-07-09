@@ -74,9 +74,15 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         ]);
 
         // 0. Extract quantity and ticket_type from metadata
-        $metadata    = $psData['metadata'] ?? [];
-        $quantity    = max(1, (int)($metadata['quantity']    ?? 1));
-        $ticket_type = $metadata['ticket_type'] ?? 'regular';
+        $metadata     = $psData['metadata'] ?? [];
+        $quantity     = max(1, (int)($metadata['quantity']    ?? 1));
+        $ticket_type  = $metadata['ticket_type'] ?? 'regular';
+        $contactInfo  = $metadata['contact_info'] ?? [];
+        $buyerName    = !empty($contactInfo)
+            ? trim(($contactInfo['fname'] ?? '') . ' ' . ($contactInfo['lname'] ?? ''))
+            : ($metadata['buyer_name'] ?? $order['user_name']);
+        $buyerEmail   = !empty($contactInfo['email']) ? $contactInfo['email']
+            : ($metadata['buyer_email'] ?? $order['user_email']);
 
         // Increment event attendee count and sales count, decrement stock atomically
         $stmtStock = $pdo->prepare("
@@ -152,6 +158,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                 $ticketData = [
                     'barcode'        => $barcode,
                     'ticket_id'      => $ticketCustomId,
+                    'custom_id'      => $ticketCustomId,
                     'event_id'       => $order['event_id'],
                     'user_id'        => $order['user_id'],
                     'order_id'       => $order['id'],
@@ -162,7 +169,9 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     'address'        => $order['address'],
                     'state'          => $order['state'] ?? null,
                     'locations'      => $order['locations'] ?? null,
-                    'user_name'      => $order['user_name'],
+                    'user_name'      => $buyerName,
+                    'buyer_name'     => $buyerName,
+                    'buyer_email'    => $buyerEmail,
                     'payment_status' => 'paid',
                     'event_image'    => $order['image_path'] ?? null,
                     'ticket_type'    => $ticket_type,
@@ -233,17 +242,21 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             $td = $ticketDataMap[$bc] ?? [
                 'barcode'     => $bc,
                 'ticket_id'   => $bc,
+                'custom_id'   => $bc,
                 'event_name'  => $order['event_name'],
                 'event_date'  => $order['event_date'],
                 'event_time'  => $order['event_time'],
                 'location'    => $order['location'] ?? $order['state'] ?? 'Nigeria',
                 'address'     => $order['address'],
                 'event_image' => $order['image_path'],
-                'user_name'   => $order['user_name'],
+                'user_name'   => $buyerName,
+                'buyer_name'  => $buyerName,
+                'buyer_email' => $buyerEmail,
                 'order_id'    => $order['id'],
                 'amount'      => $order['amount'],
             ];
-            EmailHelper::sendTicketEmailFull($order['user_email'], $td, []);
+            $sendTo = $td['buyer_email'] ?? $order['user_email'];
+            EmailHelper::sendTicketEmailFull($sendTo, $td, []);
         }
 
         // SMS to buyer

@@ -792,7 +792,7 @@ window.initPreviews = function() {
                                             </div>
                                         </div>
 
-                                        <!-- Bank Details Section -->
+                                        <!-- Settlement Account / Paystack Key Section -->
                                         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;">
                                                 <div style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
@@ -800,109 +800,31 @@ window.initPreviews = function() {
                                                 </div>
                                                 <span style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">Settlement Account</span>
                                             </div>
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                                                <div>
-                                                    <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-bottom: 4px;">BANK NAME</span>
-                                                    <span style="font-weight: 600; color: #334155;">${escapeHTML(client.bank_name) || 'N/A'}</span>
-                                                </div>
-                                                <div>
-                                                    <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-bottom: 4px;">ACCOUNT NUMBER</span>
-                                                    <span style="font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #334155;">${escapeHTML(client.account_number) || 'N/A'}</span>
-                                                </div>
-                                                <div style="grid-column: span 2;">
-                                                    <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-bottom: 4px;">ACCOUNT NAME</span>
-                                                    <span style="font-weight: 600; color: #334155; display: block; padding-bottom: 8px; border-bottom: 1px dashed #e2e8f0;">${escapeHTML(client.account_name) || 'N/A'}</span>
-                                                </div>
-                                                <div style="grid-column: span 2; display: flex; align-items: center; justify-content: space-between; background: #fafafa; padding: 0.75rem; border-radius: 8px;">
-                                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                                        <img src="https://checkout.paystack.com/static/media/paystack-logo.22f16870.svg" style="height: 12px;" alt="Paystack">
-                                                        <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Subaccount</span>
+                                            ${client.paystack_key ? `
+                                                <div style="display:flex;align-items:center;gap:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:0.85rem 1rem;">
+                                                    <div style="background:#10b981;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:900;flex-shrink:0;">✓</div>
+                                                    <div style="flex:1;">
+                                                        <div style="font-weight:700;color:#15803d;font-size:0.85rem;">Paystack Key Saved</div>
+                                                        <div style="font-family:monospace;font-size:0.75rem;color:#64748b;margin-top:2px;word-break:break-all;">${escapeHTML(client.paystack_key).substring(0,8)}••••••••••••••••</div>
                                                     </div>
-                                                    <span style="font-family: monospace; font-weight: 700; color: ${client.subaccount_code ? 'var(--admin-primary)' : '#94a3b8'}; font-size: 0.85rem;">
-                                                        ${escapeHTML(client.subaccount_code) || 'NOT_LINKED'}
-                                                    </span>
+                                                    <button onclick="adminUpdatePaystackKey(${client.id})" title="Update key" style="background:transparent;border:1px solid #86efac;border-radius:8px;padding:5px 10px;font-size:0.72rem;color:#15803d;cursor:pointer;font-weight:600;flex-shrink:0;">Update</button>
                                                 </div>
-                                            </div>
+                                            ` : `
+                                                <div style="display:flex;flex-direction:column;gap:10px;">
+                                                    <p style="font-size:0.82rem;color:#64748b;margin:0;">Enter the client's Paystack secret key to link their settlement account.</p>
+                                                    <div style="display:flex;gap:8px;">
+                                                        <div style="position:relative;flex:1;">
+                                                            <input id="paystackKeyInput_${client.id}" type="password" placeholder="Enter Paystack Secret Key (sk_...)" style="width:100%;padding:0.65rem 2.5rem 0.65rem 0.85rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.85rem;outline:none;font-family:monospace;transition:border-color 0.2s;box-sizing:border-box;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+                                                            <button type="button" onclick="(function(btn){var inp=document.getElementById('paystackKeyInput_${client.id}');var isHidden=inp.type==='password';inp.type=isHidden?'text':'password';btn.innerHTML=isHidden?'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\"/><path d=\"M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\"/><line x1=\"1\" y1=\"1\" x2=\"23\" y2=\"23\"/></svg>':'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>';})(this)" title="Toggle visibility" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:color 0.2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                                        </div>
+                                                        <button onclick="adminSavePaystackKey(${client.id}, this)" style="background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;border:none;padding:0 1.1rem;border-radius:10px;font-weight:700;font-size:0.82rem;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Validate &amp; Save</button>
+                                                    </div>
+                                                    <div id="paystackKeyStatus_${client.id}" style="font-size:0.78rem;min-height:1.2em;"></div>
+                                                </div>
+                                            `}
                                         </div>
 
-                                        <!-- Profile Info vs KYC -->
-                                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
-                                            <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                                                <i data-lucide="user-check" style="width: 18px; color: #6366f1;"></i> Profile Information
-                                                <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 500; margin-left: auto;">Cross-check with KYC documents below</span>
-                                            </div>
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
-                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Full Name</div>
-                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.name) || 'N/A'}</div>
-                                                </div>
-                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Date of Birth</div>
-                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.dob) || 'N/A'}</div>
-                                                </div>
-                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Gender</div>
-                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b; text-transform: capitalize;">${escapeHTML(client.gender) || 'N/A'}</div>
-                                                </div>
-                                                <div style="background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Phone</div>
-                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${escapeHTML(client.phone) || 'N/A'}</div>
-                                                </div>
 
-                                                <div style="grid-column: span 2; background: #f8fafc; padding: 0.65rem 0.75rem; border-radius: 8px; border: 1px solid #f1f5f9;">
-                                                    <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Address</div>
-                                                    <div style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">${[escapeHTML(client.address), escapeHTML(client.city), escapeHTML(client.state), escapeHTML(client.country)].filter(Boolean).join(', ') || 'N/A'}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- KYC Documents Gallery -->
-                                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
-                                            <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                                                <i data-lucide="file-check-2" style="width: 18px; color: #10b981;"></i> KYC Documents
-                                                <span style="font-size: 0.68rem; background: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file].filter(Boolean).length > 0 ? '#dcfce7' : '#fee2e2'}; color: ${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file].filter(Boolean).length > 0 ? '#15803d' : '#b91c1c'}; padding: 2px 8px; border-radius: 20px; font-weight: 700; margin-left: 4px;">${[client.kyc_nin_file, client.kyc_bvn_file, client.kyc_voter_card_file, client.kyc_driver_license_file, client.kyc_cac_file].filter(Boolean).length}/5 uploaded</span>
-                                                <span style="font-size: 0.65rem; color: #94a3b8; margin-left: auto;">Click thumbnail to view</span>
-                                            </div>
-                                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem;">
-                                                ${[
-                                                    { key: 'kyc_nin_file', label: 'NIN Doc', icon: '🪪' },
-                                                    { key: 'kyc_bvn_file', label: 'BVN Doc', icon: '🏦' },
-                                                    { key: 'kyc_voter_card_file', label: "Voter's Card", icon: '🗳️' },
-                                                    { key: 'kyc_driver_license_file', label: "Driver's License", icon: '🚗' },
-                                                    { key: 'kyc_cac_file', label: 'CAC Certificate', icon: '🏢' }
-                                                ].map(doc => {
-                                                    const fp = client[doc.key];
-                                                    const url = fp ? '/' + fp : null;
-                                                    const isPdf = url && url.toLowerCase().endsWith('.pdf');
-                                                    if (url) {
-                                                        return `<div onclick="openKycDocument('${url}', ${!isPdf})" title="Click to view ${doc.label}" style="border: 1px solid #bbf7d0; border-radius: 10px; overflow: hidden; background: #f0fdf4; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;" onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,0.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
-                                                            <div style="height: 76px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: ${isPdf ? '#fefce8' : '#eff6ff'};">
-                                                                ${isPdf
-                                                                    ? `<div style="text-align:center;"><span style="font-size:2rem;">📄</span><div style="font-size:0.55rem;font-weight:800;color:#b45309;margin-top:2px;">PDF</div></div>`
-                                                                    : `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem;">🖼️</div>`
-                                                                }
-                                                                <div style="position:absolute;top:4px;right:4px;background:#10b981;color:white;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,0.2);">✓</div>
-                                                            </div>
-                                                            <div style="padding: 5px 8px; border-top: 1px solid #bbf7d0;">
-                                                                <div style="font-size:0.66rem;font-weight:700;color:#15803d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.icon} ${doc.label}</div>
-                                                                <div style="font-size:0.58rem;color:#64748b;margin-top:1px;">${isPdf ? 'PDF Document' : 'Image'} · tap to view</div>
-                                                            </div>
-                                                        </div>`;
-                                                    } else {
-                                                        return `<div style="border: 1px dashed #e2e8f0; border-radius: 10px; overflow: hidden; background: #f8fafc;" title="${doc.label} not uploaded">
-                                                            <div style="height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f1f5f9; gap: 4px;">
-                                                                <span style="font-size:1.6rem;opacity:0.22;">${doc.icon}</span>
-                                                                <span style="font-size:0.55rem;color:#cbd5e1;font-weight:700;text-transform:uppercase;">Missing</span>
-                                                            </div>
-                                                            <div style="padding: 5px 8px; border-top: 1px solid #f1f5f9;">
-                                                                <div style="font-size:0.66rem;font-weight:700;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.label}</div>
-                                                                <div style="font-size:0.58rem;color:#cbd5e1;margin-top:1px;">Not uploaded</div>
-                                                            </div>
-                                                        </div>`;
-                                                    }
-                                                }).join('')}
-                                            </div>
-                                        </div>
 
 
 
@@ -1122,6 +1044,82 @@ window.initPreviews = function() {
         };
     });
 }
+
+window.adminSavePaystackKey = async function(clientId, btn) {
+    const input = document.getElementById(`paystackKeyInput_${clientId}`);
+    const statusEl = document.getElementById(`paystackKeyStatus_${clientId}`);
+    const key = input ? input.value.trim() : '';
+
+    if (!key) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;">Please enter a Paystack key.</span>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Validating...';
+    if (statusEl) statusEl.innerHTML = '<span style="color:#64748b;">Validating key with Paystack...</span>';
+
+    try {
+        const response = await apiFetch('/api/admin/update-client-paystack.php', {
+            method: 'POST',
+            body: JSON.stringify({ client_id: clientId, paystack_key: key })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#10b981;font-weight:700;">✓ Key validated and saved successfully!</span>';
+            // Refresh the preview after short delay
+            setTimeout(() => {
+                const row = document.querySelector(`tr[data-id="${clientId}"]`);
+                if (row) row.click();
+            }, 1200);
+        } else {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">✗ ${escapeHTML(data.message)}</span>`;
+            btn.disabled = false;
+            btn.textContent = 'Validate & Save';
+        }
+    } catch (e) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;">✗ Connection error. Try again.</span>';
+        btn.disabled = false;
+        btn.textContent = 'Validate & Save';
+    }
+};
+
+window.adminUpdatePaystackKey = async function(clientId) {
+    const { value: newKey, isConfirmed } = await Swal.fire({
+        title: 'Update Paystack Key',
+        input: 'password',
+        inputPlaceholder: 'Enter new Paystack Secret Key (sk_...)',
+        inputAttributes: { autocomplete: 'off', style: 'font-family:monospace;' },
+        showCancelButton: true,
+        confirmButtonColor: '#3b82f6',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Validate & Update',
+        cancelButtonText: 'Cancel',
+        inputValidator: (v) => { if (!v || !v.trim()) return 'Please enter a key.'; }
+    });
+
+    if (!isConfirmed || !newKey) return;
+
+    if (window.showToast) window.showToast('Validating key...', 'info');
+
+    try {
+        const response = await apiFetch('/api/admin/update-client-paystack.php', {
+            method: 'POST',
+            body: JSON.stringify({ client_id: clientId, paystack_key: newKey.trim() })
+        });
+        const data = await response.json();
+        if (data.success) {
+            Swal.fire('Updated!', 'Paystack key updated successfully.', 'success');
+            const row = document.querySelector(`tr[data-id="${clientId}"]`);
+            if (row) setTimeout(() => row.click(), 800);
+        } else {
+            Swal.fire('Error', data.message || 'Invalid key or update failed.', 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Connection error. Please try again.', 'error');
+    }
+};
 
 window.copyToClipboard = function(text, successMsg) {
     if (!text) return;

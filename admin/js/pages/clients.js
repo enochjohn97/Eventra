@@ -88,6 +88,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><span class="status-badge status-${client.verification_status === 'verified' ? 'active' : client.verification_status === 'rejected' ? 'offline' : 'ongoing'}">${escapeHTML(client.verification_status) || 'Pending'}</span></td>
                 <td><span class="status-badge status-${client.status === 'active' ? 'active' : 'offline'}">${escapeHTML(client.status) || 'Active'}</span></td>
                 <td style="font-weight: 600; color: var(--admin-primary);">${client.event_count || 0}</td>
+                <td style="text-align: center;">
+                    <button class="btn btn-secondary setup-paystack-btn" 
+                        data-id="${client.id}" 
+                        data-status="${escapeHTML(client.paystack_connection_status || 'disconnected')}"
+                        data-public="${escapeHTML(client.paystack_public_key || '')}"
+                        data-auth="${escapeHTML(client.paystack_auth_token || '')}"
+                        data-merchant="${escapeHTML(client.paystack_merchant_id || '')}"
+                        title="Configure Paystack"
+                        style="padding: 0.4rem 0.6rem; border-radius: 6px; background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); cursor: pointer;">
+                        <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
+                    </button>
+                </td>
             </tr>
         `).join('');
 
@@ -117,6 +129,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Re-initialize previews for new rows
         if (window.initPreviews) window.initPreviews();
         
+        // Handle Paystack setup clicks
+        document.querySelectorAll('.setup-paystack-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                openPaystackModal(
+                    btn.dataset.id,
+                    btn.dataset.status,
+                    btn.dataset.public,
+                    btn.dataset.auth,
+                    btn.dataset.merchant
+                );
+            };
+        });
+
         updateSelectAllState();
     }
 
@@ -233,4 +259,77 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadStats();
         }
     }, 60000);
+
+    // Paystack Modal Logic
+    const paystackModal = document.getElementById('paystackModal');
+    const closePaystackBtn = document.getElementById('closePaystackModal');
+    const cancelPaystackBtn = document.getElementById('cancelPaystackBtn');
+    const paystackForm = document.getElementById('paystackSetupForm');
+
+    function openPaystackModal(clientId, status, publicKey, authToken, merchantId) {
+        document.getElementById('paystackClientId').value = clientId;
+        document.getElementById('paystackStatus').value = status;
+        document.getElementById('paystackPublicKey').value = publicKey;
+        document.getElementById('paystackAuthToken').value = authToken;
+        document.getElementById('paystackMerchantId').value = merchantId;
+        paystackModal.classList.add('active');
+
+        // Reset eye-toggle state: hide values by default and reset icons to 'eye'
+        ['paystackPublicKey', 'paystackAuthToken'].forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.type = 'password';
+        });
+        ['togglePublicKey', 'toggleSecretKey'].forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                const icon = btn.querySelector('i');
+                if (icon) icon.setAttribute('data-lucide', 'eye');
+            }
+        });
+        // Re-render Lucide icons for the eye buttons inside the modal
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closePaystackModal() {
+        paystackModal.classList.remove('active');
+        paystackForm.reset();
+    }
+
+    if (closePaystackBtn) closePaystackBtn.addEventListener('click', closePaystackModal);
+    if (cancelPaystackBtn) cancelPaystackBtn.addEventListener('click', closePaystackModal);
+
+    if (paystackForm) {
+        paystackForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('savePaystackBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            const formData = new FormData(paystackForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const res = await apiFetch('/api/admin/update-client-paystack.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    closePaystackModal();
+                    loadClients();
+                } else {
+                    showToast(result.message || 'Failed to update Paystack details', 'error');
+                }
+            } catch (err) {
+                showToast('An error occurred. Please try again.', 'error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    }
 });

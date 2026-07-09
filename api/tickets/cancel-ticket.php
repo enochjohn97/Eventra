@@ -38,8 +38,8 @@ try {
         throw new Exception("Ticket not found");
     }
 
-    // Role isolation check
-    if ($_SESSION['role'] !== 'admin' && $ticket['user_id'] != $user_id) {
+    // Role isolation check — use strict comparison to prevent type confusion
+    if ($_SESSION['role'] !== 'admin' && (int)$ticket['user_id'] !== (int)$user_id) {
         throw new Exception("Access denied. You do not own this ticket.");
     }
 

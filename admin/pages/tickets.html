@@ -116,7 +116,7 @@
                 .tkt-used     { background:#e0f2fe; color:#0369a1; }
                 .tkt-cancelled{ background:#fee2e2; color:#dc2626; }
 
-                /* Prevent browser/extension hover icons on QR codes by showing canvas and hiding img */
+                /* Prevent browser/extension hover icons on QR codes */
                 #adminTicketPreviewQrInner img {
                   display: none !important;
                 }
@@ -125,6 +125,12 @@
                   height: 160px !important;
                   display: block !important;
                   margin: 0 auto;
+                }
+                /* QR img rendered from canvas data URL — always visible */
+                #adminTicketQrContainer img[src^="data:"] {
+                  display: block !important;
+                  pointer-events: none;
+                  user-select: none;
                 }
             </style>
 

@@ -536,9 +536,15 @@ class EmailHelper
     ): string {
         /* ── Sanitise text fields ─────────────────────────── */
         $barcode = self::esc($ticketData['barcode'] ?? '');
-        $ticketId = !empty($ticketData['ticket_id']) ? self::esc($ticketData['ticket_id']) : $barcode;
+        $ticketIdRaw = trim((string) ($ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? ''));
+        if ($ticketIdRaw === '') {
+            $ticketIdRaw = $barcode !== '' ? $barcode : 'N/A';
+        }
+        $ticketId = self::esc($ticketIdRaw);
+        
         $eventTitle = self::esc($ticketData['event_name'] ?? '');
-        $userName = self::esc($ticketData['user_name'] ?? 'Attendee');
+        // Use buyer_name if available from checkout info, otherwise user_name
+        $userName = self::esc($ticketData['buyer_name'] ?? $ticketData['user_name'] ?? 'Attendee');
         $venue = self::esc($ticketData['address'] ?? '—');
         $organizer = self::esc($ticketData['organizer'] ?? '');
         $ticketType = self::esc($ticketData['ticket_type'] ?? '');
@@ -842,7 +848,7 @@ class EmailHelper
                 </td>
                 <td valign="bottom" width="40%" align="right">
                   <div style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:3px;">Ticket ID</div>
-                  <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;color:#ffffff;">{$ticketId}</div>
+                  <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;color:#ffffff;line-height:1.2;min-height:15px;">{$ticketId}</div>
                 </td>
               </tr>
             </table>
@@ -859,10 +865,10 @@ class EmailHelper
       <div style="margin-bottom:12px;text-align:center;">
         <span style="display:inline-block;font-family:Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>
-      <div style="display:inline-block;padding:8px;background:#ffffff;border-radius:10px;margin-bottom:10px;text-align:center;">
+      <div style="display:inline-block;padding:8px;background:#ffffff;border-radius:10px;margin-bottom:10px;text-align:center;min-width:160px;min-height:160px;">
         {$qrHtml}
       </div>
-      <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;letter-spacing:1px;word-break:break-all;padding:0 5px;text-align:center;line-height:1.2;">
+      <div style="font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;color:#ffffff;letter-spacing:1px;word-break:break-all;padding:0 5px;text-align:center;line-height:1.2;min-height:12px;">
         {$ticketId}
       </div>
     </td>
@@ -1215,23 +1221,38 @@ PDF;
         $qrPathRaw = $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? '';
         $resolvedQrPath = self::resolveLocalPath($qrPathRaw);
         if ($resolvedQrPath !== '') {
+            $uniqueQrCid = 'qr_code_' . substr(md5($barcode), 0, 8);
             $embeddedImages[] = [
                 'path' => $resolvedQrPath,
-                'cid'  => 'qr_code',
+                'cid'  => $uniqueQrCid,
                 'name' => 'qr_code.png'
             ];
-            $ticketData['qr_cid'] = 'qr_code';
+            $ticketData['qr_cid'] = $uniqueQrCid;
+        } else if (!empty($ticketData['qr_base64'])) {
+            // Write base64 to temp file and attach as CID to avoid Gmail stripping data URI
+            $tmpPath = sys_get_temp_dir() . '/qr_' . md5($barcode) . '.png';
+            $decoded = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $ticketData['qr_base64']));
+            if ($decoded && file_put_contents($tmpPath, $decoded)) {
+                $uniqueQrCid = 'qr_code_' . substr(md5($barcode), 0, 8);
+                $embeddedImages[] = [
+                    'path' => $tmpPath,
+                    'cid'  => $uniqueQrCid,
+                    'name' => 'qr_code.png'
+                ];
+                $ticketData['qr_cid'] = $uniqueQrCid;
+            }
         }
 
         $eventImgRaw = $ticketData['event_image'] ?? '';
         $resolvedEventImgPath = self::resolveLocalPath($eventImgRaw);
         if ($resolvedEventImgPath !== '') {
+            $uniqueEvtCid = 'event_image_' . substr(md5($eventImgRaw), 0, 8);
             $embeddedImages[] = [
                 'path' => $resolvedEventImgPath,
-                'cid'  => 'event_image',
+                'cid'  => $uniqueEvtCid,
                 'name' => 'event_image.png'
             ];
-            $ticketData['event_image_cid'] = 'event_image';
+            $ticketData['event_image_cid'] = $uniqueEvtCid;
         }
 
         $emailTicketData = $ticketData;

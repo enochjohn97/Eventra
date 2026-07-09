@@ -22,9 +22,9 @@ if (!$auth_id) {
     exit;
 }
 
-// Check if requesting own profile or has admin role
+// Check if requesting own profile or has admin role (use strict comparison to prevent type confusion)
 $role = $_SESSION['role'] ?? '';
-if ($user_id != $auth_id && $role !== 'admin') {
+if ((int)$user_id !== (int)$auth_id && $role !== 'admin') {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Access denied']);
     exit;

@@ -214,23 +214,57 @@ function renderAdminStyledTicketQr(container, barcode) {
     if (!container || !barcode) return;
     const payload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
 
-    if (typeof QRCode !== 'undefined') {
-        container.innerHTML = `
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;pointer-events:none;user-select:none;">
-                <div id="adminTicketPreviewQrInner" style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;"></div>
-            </div>`;
-        try {
-            new QRCode(document.getElementById('adminTicketPreviewQrInner'), {
-                text: String(payload),
-                width: 160,
-                height: 160,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.L
-            });
-        } catch (e) {
-            console.error('Admin QR generation failed', e);
-        }
+    if (typeof QRCode === 'undefined') {
+        container.innerHTML = `<div style="width:160px;height:160px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:1rem;display:flex;align-items:center;justify-content:center;font-size:10px;color:#94a3b8;text-align:center;padding:8px;box-sizing:border-box;">QR library not loaded</div>`;
+        return;
+    }
+
+    // Use a temporary off-screen container to generate QR as canvas
+    const tempDiv = document.createElement('div');
+    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:160px;height:160px;';
+    document.body.appendChild(tempDiv);
+
+    try {
+        const qr = new QRCode(tempDiv, {
+            text: String(payload),
+            width: 160,
+            height: 160,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.L
+        });
+
+        // Give QRCode.js a tick to render, then extract the canvas data URL
+        setTimeout(() => {
+            const canvas = tempDiv.querySelector('canvas');
+            if (canvas) {
+                const dataUrl = canvas.toDataURL('image/png');
+                container.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;">
+                        <div style="background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;display:inline-block;">
+                            <img src="${dataUrl}" alt="QR Code" width="160" height="160" style="display:block;width:160px;height:160px;border-radius:4px;" draggable="false">
+                        </div>
+                    </div>`;
+            } else {
+                // Fallback: show the QRCode.js output directly but hide img artifacts
+                container.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;">
+                        <div id="adminTicketPreviewQrInner" style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;"></div>
+                    </div>`;
+                new QRCode(document.getElementById('adminTicketPreviewQrInner'), {
+                    text: String(payload),
+                    width: 160,
+                    height: 160,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+            }
+            document.body.removeChild(tempDiv);
+        }, 50);
+    } catch (e) {
+        console.error('Admin QR generation failed', e);
+        document.body.removeChild(tempDiv);
     }
 }
 

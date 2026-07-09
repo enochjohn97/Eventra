@@ -122,60 +122,60 @@ CREATE TABLE admins (
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- 3.2 Client/Organizer Profiles
+-- 3.2 Client/Organizer Profiles (v2 — Paystack Connect Model)
 CREATE TABLE clients (
-    id                      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    custom_id               VARCHAR(20) DEFAULT NULL,
-    client_auth_id          BIGINT UNSIGNED NOT NULL,
-    business_name           VARCHAR(150) NOT NULL,
-    name                    VARCHAR(150) NOT NULL,
-    job_title               VARCHAR(100) DEFAULT NULL,
-    phone                   VARCHAR(20) DEFAULT NULL,
-    company                 VARCHAR(150) DEFAULT NULL,
-    dob                     DATE DEFAULT NULL,
-    gender                  ENUM('male', 'female', 'other') DEFAULT NULL,
-    
-    -- KYC & Verification
-    nin_verified            TINYINT(1) DEFAULT 0,
-    bvn_verified            TINYINT(1) DEFAULT 0,
-    verification_status     ENUM('pending', 'verified', 'rejected') DEFAULT 'pending',
-    
-    -- Banking Details
-    account_name            VARCHAR(150) DEFAULT NULL,
-    account_number          VARCHAR(50) DEFAULT NULL,
-    bank_name               VARCHAR(100) DEFAULT NULL,
-    bank_code               VARCHAR(50) DEFAULT NULL,
-    subaccount_code         VARCHAR(100) DEFAULT NULL,
-    subaccount_id           VARCHAR(100) DEFAULT NULL,
-    
+    id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    custom_id                   VARCHAR(20) DEFAULT NULL,
+    client_auth_id              BIGINT UNSIGNED NOT NULL,
+    business_name               VARCHAR(150) NOT NULL,
+    name                        VARCHAR(150) NOT NULL,
+    email                       VARCHAR(191) DEFAULT NULL,
+    job_title                   VARCHAR(100) DEFAULT NULL,
+    phone                       VARCHAR(20) DEFAULT NULL,
+    company                     VARCHAR(150) DEFAULT NULL,
+    dob                         DATE DEFAULT NULL,
+    gender                      ENUM('male', 'female', 'other') DEFAULT NULL,
+
+    -- Paystack Connect Integration (v2)
+    paystack_connection_status  ENUM('disconnected', 'connected') NOT NULL DEFAULT 'disconnected',
+    paystack_merchant_id        VARCHAR(100) DEFAULT NULL COMMENT 'Paystack merchant integration_id',
+    paystack_auth_token         VARCHAR(255) DEFAULT NULL COMMENT 'Paystack secret key for connected account',
+    paystack_public_key         VARCHAR(255) DEFAULT NULL COMMENT 'Paystack public key for connected account',
+    platform_commission_percent DECIMAL(5,2) NOT NULL DEFAULT 1.00 COMMENT 'Platform fee %',
+    paystack_connected_at       DATETIME DEFAULT NULL,
+    paystack_last_sync_at       DATETIME DEFAULT NULL,
+
+    -- Legacy Subaccount (retained for backward compatibility, deprecated)
+    subaccount_code             VARCHAR(100) DEFAULT NULL COMMENT 'Legacy Paystack subaccount — deprecated in v2',
+    verification_status         ENUM('pending', 'verified', 'rejected') DEFAULT 'pending',
+
     -- Contact & Location
-    address                 TEXT DEFAULT NULL,
-    city                    VARCHAR(100) DEFAULT NULL,
-    state                   VARCHAR(100) DEFAULT NULL,
-    country                 VARCHAR(100) DEFAULT NULL,
-    
-    -- Media & Documents
-    profile_pic             VARCHAR(255) DEFAULT NULL,
-    kyc_nin_file            VARCHAR(255) DEFAULT NULL,
-    kyc_bvn_file            VARCHAR(255) DEFAULT NULL,
-    kyc_voter_card_file     VARCHAR(255) DEFAULT NULL,
-    kyc_driver_license_file VARCHAR(255) DEFAULT NULL,
-    kyc_cac_file            VARCHAR(255) DEFAULT NULL,
-    
+    address                     TEXT DEFAULT NULL,
+    city                        VARCHAR(100) DEFAULT NULL,
+    state                       VARCHAR(100) DEFAULT NULL,
+    country                     VARCHAR(100) DEFAULT NULL,
+
+    -- Media
+    profile_pic                 VARCHAR(255) DEFAULT NULL,
+
     -- Status & Metadata
-    admin_notes             TEXT DEFAULT NULL,
-    status                  ENUM('online', 'offline', 'pending') DEFAULT 'pending',
-    metadata                JSON DEFAULT NULL,
-    created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at              DATETIME DEFAULT NULL,
-    
+    admin_status                ENUM('pending', 'approved', 'suspended', 'rejected') NOT NULL DEFAULT 'pending',
+    admin_notes                 TEXT DEFAULT NULL,
+    status                      ENUM('online', 'offline', 'pending') DEFAULT 'pending',
+    metadata                    JSON DEFAULT NULL,
+    created_at                  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at                  DATETIME DEFAULT NULL,
+
     PRIMARY KEY (id),
     UNIQUE KEY uq_client_auth (client_auth_id),
     UNIQUE KEY uq_client_custom_id (custom_id),
+    UNIQUE KEY uq_client_paystack_merchant (paystack_merchant_id),
     KEY idx_client_deleted (deleted_at),
-    CONSTRAINT fk_client_auth 
-        FOREIGN KEY (client_auth_id) REFERENCES auth_accounts (id) 
+    KEY idx_client_paystack_status (paystack_connection_status),
+    KEY idx_client_admin_status (admin_status),
+    CONSTRAINT fk_client_auth
+        FOREIGN KEY (client_auth_id) REFERENCES auth_accounts (id)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 

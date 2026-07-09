@@ -10,7 +10,7 @@ function showProfileEditModal() {
 
     const modalHTML = `
         <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
-            <div class="modal-content modal-content-animate" style="max-width: 800px; display: flex; flex-direction: column;">
+            <div class="modal-content modal-content-animate" style="max-width: 600px; display: flex; flex-direction: column;">
                 <div class="modal-header">
                     <h2>Edit Profile</h2>
                     <button type="button" class="modal-close" onclick="closeProfileEditModal()">&times;</button>
@@ -99,82 +99,46 @@ function showProfileEditModal() {
                                 </div>
                             </div>
                             <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
-                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2)">Next: Payment Info &rarr;</button>
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2)">Next: Paystack Connect &rarr;</button>
                             </div>
                         </div>
 
-                        <!-- STEP 2: Payment Information -->
+                        <!-- STEP 2: Paystack Connect -->
                         <div id="wizardStep2" class="wizard-step" style="display: none;">
-                            <div class="modal-grid">
-                                <div class="form-group modal-grid-full">
-                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Settlement Bank <span class="text-danger">*</span></label>
-                                    <select id="bankSelect" name="bank_code" class="form-control" onchange="resolveAccount()" required>
-                                        <option value="">Select Bank</option>
-                                    </select>
-                                    <input type="hidden" name="bank_name" id="bankNameInput" value="${escapeHTML(user.bank_name) || ''}">
+                            <div style="text-align:center; padding: 1.5rem 1rem;">
+                                <div style="width:72px;height:72px;background:linear-gradient(135deg,#00c3ff,#0052cc);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                                 </div>
-                                <div class="form-group modal-grid-full">
-                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                        <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
-                                        <div id="accountStatus" class="verification-status-indicator">
-                                            ${user.subaccount_code
-            ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>'
-            : ''}
+                                <h3 style="font-size:1.2rem;font-weight:700;color:#0f172a;margin-bottom:0.5rem;">Connect Your Paystack Account</h3>
+                                <p style="color:#64748b;font-size:0.9rem;margin-bottom:1.5rem;line-height:1.6;">
+                                    Link your Paystack merchant account to receive payments from ticket sales directly. Eventra does not have rights to your information since it's being handled by Paystack.
+                                </p>
+                                ${user.paystack_connection_status === 'connected' ? `
+                                <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:left;">
+                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+                                        <span style="background:#22c55e;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">&#10003;</span>
+                                        <span style="font-weight:700;color:#166534;font-size:0.95rem;">Paystack Account Connected</span>
+                                    </div>
+                                    <p style="color:#166534;font-size:0.85rem;margin:0;">Merchant ID: <code style="background:#dcfce7;padding:2px 6px;border-radius:4px;">${escapeHTML(user.paystack_merchant_id || 'N/A')}</code></p>
+                                    ${user.paystack_connected_at ? `<p style="color:#166534;font-size:0.8rem;margin:0.4rem 0 0;">Connected: ${new Date(user.paystack_connected_at).toLocaleDateString()}</p>` : ''}
+                                </div>
+                                <button type="button" id="paystackConnectBtn" onclick="window.openPaystackConnect()" style="width:100%;padding:0.75rem;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;color:#374151;font-weight:600;cursor:pointer;font-size:0.9rem;">&#8635; Re-connect / Switch Account</button>
+                                ` : `
+                                <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:left;">
+                                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                                        <span style="font-size:1.3rem;">&#9888;&#65039;</span>
+                                        <div>
+                                            <p style="font-weight:700;color:#9a3412;margin:0;font-size:0.95rem;">Account Not Connected</p>
+                                            <p style="color:#9a3412;font-size:0.82rem;margin:0;">You need to connect Paystack to create paid events.</p>
                                         </div>
-                                    </label>
-                                    <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
+                                    </div>
                                 </div>
-                                <div class="form-group modal-grid-full">
-                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Holder Name (Auto-resolved) <span class="text-danger">*</span></label>
-                                    <input type="text" id="accountNameInput" name="account_name" value="${escapeHTML(user.account_name) || ''}" class="form-control" style="font-weight: 500;" required>
-                                </div>
+                                <button type="button" id="paystackConnectBtn" onclick="window.openPaystackConnect()" style="width:100%;padding:0.85rem;background:linear-gradient(135deg,#00c3ff,#0052cc);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:1rem;letter-spacing:0.5px;">&#128279; Connect Paystack Account</button>
+                                `}
+                                <p style="color:#94a3b8;font-size:0.78rem;margin-top:1rem;">You will be redirected to Paystack to authenticate your merchant account.</p>
                             </div>
-                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(1)" style="flex: 1;">&larr; Previous</button>
-                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(3)" style="flex: 1;">Next: KYC &rarr;</button>
-                            </div>
-                        </div>
-
-                        <!-- STEP 3: KYC Verification Documents -->
-                        <div id="wizardStep3" class="wizard-step" style="display: none;">
-                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-                                ${[
-            { name: 'kyc_nin_file', label: 'NIN Document' },
-            { name: 'kyc_bvn_file', label: 'BVN Document' },
-            { name: 'kyc_voter_card_file', label: "Voter's Card" },
-            { name: 'kyc_driver_license_file', label: "Driver's License" },
-            { name: 'kyc_cac_file', label: 'CAC Certificate' }
-        ].map(field => {
-            const fileUrl = user[field.name];
-            const hasFile = !!fileUrl;
-            const isImage = fileUrl && fileUrl.match(/\.(jpeg|jpg|gif|png)$/i);
-            const displayImage = isImage ? `/${fileUrl}` : '';
-            const rawFilename = fileUrl ? fileUrl.split('/').pop() : 'Not selected file';
-            // Strip server-added prefix pattern: kyc_<number>_kyc_ → show only original filename
-            const filename = rawFilename !== 'Not selected file'
-                ? rawFilename.replace(/^kyc_\d+_kyc_/, '')
-                : rawFilename;
-            return `
-                                    <div class="kyc-upload-card" style="border: 2px dashed #93c5fd; border-radius: 8px; background: #eff6ff; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 180px; text-align: center; cursor: pointer; transition: border-color 0.3s;" onclick="document.getElementById('${field.name}_input').click()">
-                                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative;">
-                                            <div id="${field.name}_preview_container" style="display: ${hasFile ? 'flex' : 'none'}; width: 100%; height: 100%; align-items: center; justify-content: center;">
-                                                ${isImage ? `<img id="${field.name}_preview_img" src="${displayImage}" style="max-width: 100%; max-height: 120px; border-radius: 4px; object-fit: contain;">` : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`}
-                                            </div>
-                                            <div id="${field.name}_upload_prompt" style="display: ${hasFile ? 'none' : 'flex'}; flex-direction: column; align-items: center; gap: 8px;">
-                                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
-                                                <span style="font-size: 0.9rem; color: #1e3a8a; font-weight: 600;">Browse file to upload</span>
-                                            </div>
-                                            <input type="file" id="${field.name}_input" name="${field.name}" accept=".pdf,image/*" style="display: none;" onchange="window.handleKycPreview(this, '${field.name}')">
-                                        </div>
-                                        <div id="${field.name}_filename_banner" style="background: #bfdbfe; color: #1e3a8a; padding: 8px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #93c5fd;">
-                                            ${filename}
-                                        </div>
-                                        <div style="position: absolute; top: 0; left: 0; background: rgba(30, 58, 138, 0.8); color: white; padding: 4px 10px; font-size: 0.75rem; border-bottom-right-radius: 8px; font-weight: 600;">${field.label}</div>
-                                    </div>`;
-        }).join('')}
-                            </div>
-                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                                <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>
                                 <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
                             </div>
                         </div>
@@ -184,6 +148,13 @@ function showProfileEditModal() {
             </div>
         </div>
     `;
+
+    // Add window.openPaystackConnect function
+    if (!window.openPaystackConnect) {
+        window.openPaystackConnect = function() {
+            window.open('https://dashboard.paystack.com/#/login', '_blank');
+        };
+    }
 
     // Make switchWizardTab globally available
     window.switchWizardTab = function (step) {
@@ -332,9 +303,6 @@ async function handleProfileUpdate(e) {
         { name: 'company', label: 'Company' },
         { name: 'dob', label: 'Date of Birth' },
         { name: 'gender', label: 'Gender' },
-        { name: 'bank_code', label: 'Settlement Bank' },
-        { name: 'account_number', label: 'Account Number' },
-        { name: 'account_name', label: 'Account Holder Name' },
     ];
 
     let firstInvalidField = null;
@@ -360,14 +328,7 @@ async function handleProfileUpdate(e) {
         return;
     }
 
-    // ── Digit-specific validations ─────────────────────────────────────────
-
-
-    const accountNumber = formData.get('account_number');
-    if (accountNumber && !/^\d{10}$/.test(accountNumber.replace(/\D/g, ''))) {
-        Swal.fire('Error', 'Account number must be exactly 10 digits', 'error');
-        return;
-    }
+    // Account number validation removed (banking handled via Paystack Connect v2)
 
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
