@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
+    
+    // Security: Clear any pre-filled password values
+    if (passwordInput) passwordInput.value = '';
+    if (usernameInput) usernameInput.value = '';
     const rememberMeInput = document.getElementById('rememberMe');
     const togglePassword = document.getElementById('togglePassword');
     const loginButton = document.getElementById('loginButton');
