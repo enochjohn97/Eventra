@@ -612,6 +612,21 @@ function initSidebar() {
     // Re-init icons
     if (window.lucide) window.lucide.createIcons();
 }
+
+// Global toggle for Paystack secret key visibility in the client profile modal
+window.togglePaystackKeyVisibility = function(btn) {
+    const inputId = btn.dataset.toggleInput;
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    const icon = btn.querySelector('i[data-lucide]');
+    if (icon) {
+        icon.setAttribute('data-lucide', isHidden ? 'eye-off' : 'eye');
+        if (window.lucide) window.lucide.createIcons();
+    }
+};
+
 window.initPreviews = function() {
     // Create Modal Backdrop (if not exists)
     let backdrop = document.querySelector('.preview-modal-backdrop');
@@ -619,7 +634,7 @@ window.initPreviews = function() {
         backdrop = document.createElement('div');
         backdrop.className = 'preview-modal-backdrop';
         backdrop.innerHTML = `
-            <div class="preview-modal" style="width: 750px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; background: white; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative; border: 1px solid var(--admin-border); display: flex; flex-direction: column;">
+            <div class="preview-modal" style="max-height: 90vh; overflow-y: auto; overflow-x: hidden; background: white; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative; border: 1px solid var(--admin-border); display: flex; flex-direction: column;">
                 <span class="preview-close" style="position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; background: rgba(0,0,0,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 1.2rem;">&times;</span>
                 <div id="previewContent" style="flex: 1; overflow-y: auto;"></div>
             </div>
@@ -744,7 +759,6 @@ window.initPreviews = function() {
                             const events = data.events;
                             const buyers = data.buyers;
                             const isVerified = client.verification_status === 'verified';
-
                             content.innerHTML = `
                                 <div class="profile-preview modernized-preview">
                                     <div class="profile-preview-header">
@@ -755,148 +769,202 @@ window.initPreviews = function() {
                                             </span>
                                         </div>
                                     </div>
-                                    
-                                    <div class="profile-preview-cover-box" style="height: 160px;">
-                                        <div style="position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.4)); z-index: 1;"></div>
-                                        <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Cover" style="filter: blur(10px); opacity: 0.6; width: 100%; height: 100%; object-fit: cover;">
-                                        <div class="profile-preview-avatar-wrapper" style="bottom: -40px; left: 50%; transform: translateX(-50%); z-index: 2;">
-                                            <div class="avatar-wrapper">
-                                                <img src="${getProfileImg(client.profile_pic, client.business_name)}" class="profile-preview-avatar" alt="Avatar" style="width: 100px; height: 100px; border-radius: 20px; border: 4px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.1); background: white; object-fit: cover;">
-                                                <div style="position: absolute; bottom: 5px; right: 5px; scale: 1.2;">
-                                                    ${getVerificationBadge(client.verification_status)}
-                                                </div>
+                                    <!-- Cover + Avatar -->
+                                    <div class="profile-preview-cover-box" style="height: 150px; margin-bottom: 0;">
+                                        <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); opacity: 0.85; z-index: 1;"></div>
+                                        <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Cover" style="filter: blur(12px); opacity: 0.3; width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;">
+                                        <div style="position: absolute; bottom: -44px; left: 28px; z-index: 3;">
+                                            <div style="position: relative; display: inline-block;">
+                                                <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Avatar" style="width: 88px; height: 88px; border-radius: 16px; border: 4px solid white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); object-fit: cover; background: #e2e8f0; display: block;">
+                                                <div style="position: absolute; bottom: -4px; right: -4px; transform: scale(1.1);">${getVerificationBadge(client.verification_status)}</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="profile-preview-info" style="padding: 50px 24px 20px; text-align: center;">
-                                        <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 0.25rem;">${escapeHTML(client.business_name)}</h2>
-                                        <p style="color: #64748b; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                            <i data-lucide="mail" style="width: 14px;"></i> ${escapeHTML(client.email)}
-                                        </p>
+                                    <!-- Name + Meta row -->
+                                    <div style="padding: 56px 28px 20px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #f1f5f9;">
+                                        <div>
+                                            <h2 style="font-size: 1.35rem; font-weight: 800; color: #1e293b; margin: 0 0 4px;">${escapeHTML(client.business_name || client.name)}</h2>
+                                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                                <span style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 4px;"><i data-lucide="mail" style="width:13px;height:13px;"></i>${escapeHTML(client.email)}</span>
+                                                ${client.phone ? `<span style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 4px;"><i data-lucide="phone" style="width:13px;height:13px;"></i>${escapeHTML(client.phone)}</span>` : ''}
+                                                ${client.custom_id ? `<span style="font-size: 0.72rem; font-family: monospace; background: #eff6ff; color: #3b82f6; padding: 2px 8px; border-radius: 20px; font-weight: 700;">${escapeHTML(client.custom_id)}</span>` : ''}
+                                            </div>
+                                        </div>
+                                        <div style="font-size: 0.72rem; color: #94a3b8; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                            <i data-lucide="calendar-days" style="width:13px;height:13px;"></i>
+                                            Member since ${client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'}) : 'N/A'}
+                                        </div>
                                     </div>
-                                    <div id="previewLucideInit"></div>
 
-                                    <div class="profile-preview-details" style="padding: 0 24px 24px; display: grid; gap: 1.5rem;">
-                                        <!-- Basic Info Cards -->
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
-                                                <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">Contact Information</div>
-                                                <div style="font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem;">${escapeHTML(client.phone) || 'No Phone'}</div>
-                                                <div style="font-size: 0.8rem; color: #64748b;">${escapeHTML(client.state) || 'N/A'}, ${escapeHTML(client.country) || 'N/A'}</div>
+                                    <!-- Two-column body -->
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; min-height: 280px;">
+
+                                        <!-- LEFT: Personal & Professional Info -->
+                                        <div style="padding: 20px 22px; border-right: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 18px;">
+
+                                            <div>
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="user" style="width:11px;height:11px;"></i> Personal
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Full Name</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.name || client.business_name)}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Date of Birth</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${client.dob ? new Date(client.dob).toLocaleDateString('en-US', {day:'2-digit', month:'short', year:'numeric'}) : 'N/A'}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Gender</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155; text-transform: capitalize;">${escapeHTML(client.gender) || 'N/A'}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Admin Status</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155; text-transform: capitalize;">${escapeHTML(client.admin_status) || 'N/A'}</div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
-                                                <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">Company Details</div>
-                                                <div style="font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem;">${escapeHTML(client.company) || 'Private Participant'}</div>
-                                                <div style="font-size: 0.8rem; color: #64748b;">${escapeHTML(client.job_title) || 'N/A'}</div>
+
+                                            <div>
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="briefcase" style="width:11px;height:11px;"></i> Professional
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Company</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.company) || 'N/A'}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Job Title</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.job_title) || 'N/A'}</div>
+                                                    </div>
+                                                </div>
                                             </div>
+
+                                            <div>
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="map-pin" style="width:11px;height:11px;"></i> Location
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">City</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.city) || 'N/A'}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">State</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.state) || 'N/A'}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Country</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.country) || 'N/A'}</div>
+                                                    </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Address</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHTML(client.address) || ''}">${escapeHTML(client.address) || 'N/A'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                         </div>
 
-                                        <!-- Settlement Account / Paystack Key Section -->
-                                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;">
-                                                <div style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                    <i data-lucide="landmark" style="width: 18px;"></i>
+                                        <!-- RIGHT: Settlement + Approval + Events -->
+                                        <div style="padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
+
+                                            <!-- Settlement / Paystack -->
+                                            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="landmark" style="width:11px;height:11px;"></i> Settlement Account
                                                 </div>
-                                                <span style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">Settlement Account</span>
-                                            </div>
-                                            ${client.paystack_key ? `
-                                                <div style="display:flex;align-items:center;gap:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:0.85rem 1rem;">
-                                                    <div style="background:#10b981;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:900;flex-shrink:0;">✓</div>
-                                                    <div style="flex:1;">
-                                                        <div style="font-weight:700;color:#15803d;font-size:0.85rem;">Paystack Key Saved</div>
-                                                        <div style="font-family:monospace;font-size:0.75rem;color:#64748b;margin-top:2px;word-break:break-all;">${escapeHTML(client.paystack_key).substring(0,8)}••••••••••••••••</div>
-                                                    </div>
-                                                    <button onclick="adminUpdatePaystackKey(${client.id})" title="Update key" style="background:transparent;border:1px solid #86efac;border-radius:8px;padding:5px 10px;font-size:0.72rem;color:#15803d;cursor:pointer;font-weight:600;flex-shrink:0;">Update</button>
-                                                </div>
-                                            ` : `
-                                                <div style="display:flex;flex-direction:column;gap:10px;">
-                                                    <p style="font-size:0.82rem;color:#64748b;margin:0;">Enter the client's Paystack secret key to link their settlement account.</p>
-                                                    <div style="display:flex;gap:8px;">
-                                                        <div style="position:relative;flex:1;">
-                                                            <input id="paystackKeyInput_${client.id}" type="password" placeholder="Enter Paystack Secret Key (sk_...)" style="width:100%;padding:0.65rem 2.5rem 0.65rem 0.85rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.85rem;outline:none;font-family:monospace;transition:border-color 0.2s;box-sizing:border-box;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
-                                                            <button type="button" onclick="(function(btn){var inp=document.getElementById('paystackKeyInput_${client.id}');var isHidden=inp.type==='password';inp.type=isHidden?'text':'password';btn.innerHTML=isHidden?'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\"/><path d=\"M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\"/><line x1=\"1\" y1=\"1\" x2=\"23\" y2=\"23\"/></svg>':'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>';})(this)" title="Toggle visibility" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:color 0.2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                                ${client.paystack_key ? `
+                                                    <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:10px 12px;">
+                                                        <div style="background:#10b981;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:900;flex-shrink:0;">&#10003;</div>
+                                                        <div style="flex:1;min-width:0;">
+                                                            <div style="font-weight:700;color:#15803d;font-size:0.8rem;">Paystack Key Saved</div>
+                                                            <div style="font-family:monospace;font-size:0.7rem;color:#64748b;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(client.paystack_key).substring(0,8)}&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div>
                                                         </div>
-                                                        <button onclick="adminSavePaystackKey(${client.id}, this)" style="background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;border:none;padding:0 1.1rem;border-radius:10px;font-weight:700;font-size:0.82rem;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Validate &amp; Save</button>
+                                                        <button onclick="adminUpdatePaystackKey(${client.id})" style="background:transparent;border:1px solid #86efac;border-radius:7px;padding:3px 9px;font-size:0.68rem;color:#15803d;cursor:pointer;font-weight:600;flex-shrink:0;">Update</button>
                                                     </div>
-                                                    <div id="paystackKeyStatus_${client.id}" style="font-size:0.78rem;min-height:1.2em;"></div>
+                                                ` : `
+                                                    <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;">Link a Paystack secret key to enable settlement.</p>
+                                                    <div style="position:relative;margin-bottom:7px;">
+                                                        <input id="paystackKeyInput_${client.id}" type="password" placeholder="sk_live_... or sk_test_..." style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+                                                        <button type="button" data-toggle-input="paystackKeyInput_${client.id}" onclick="window.togglePaystackKeyVisibility(this)" title="Show/hide" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;padding:3px;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'">
+                                                            <i data-lucide="eye" style="width:14px;height:14px;pointer-events:none;"></i>
+                                                        </button>
+                                                    </div>
+                                                    <button onclick="adminSavePaystackKey(${client.id}, this)" style="width:100%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;border:none;padding:0.55rem;border-radius:9px;font-weight:700;font-size:0.78rem;cursor:pointer;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Validate &amp; Save</button>
+                                                    <div id="paystackKeyStatus_${client.id}" style="font-size:0.72rem;margin-top:5px;min-height:1em;"></div>
+                                                `}
+                                            </div>
+
+                                            <!-- Paystack Connection -->
+                                            <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 12px;">
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="plug" style="width:11px;height:11px;"></i> Paystack Integration
                                                 </div>
-                                            `}
-                                        </div>
-
-
-
-
-
-                                                <!-- Main Approval Buttons -->
-                                                <div class="profile-preview-actions" style="display: flex; gap: 12px; margin-top: 2rem;">
-                                                    <button class="btn btn-primary" onclick="approveClient(${client.id}, 1, this)" style="flex: 1; background: #10b981; border: none; padding: 0.8rem; border-radius: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; opacity: ${client.verification_status === 'verified' ? '0.5' : '1'};" ${client.verification_status === 'verified' ? 'disabled' : ''}>
-                                                        <i data-lucide="check-circle" style="width: 18px;"></i> Approve
-                                                    </button>
-                                                    <button class="btn btn-danger" onclick="approveClient(${client.id}, 0, this)" style="flex: 1; background: #ef4444; border: none; padding: 0.8rem; border-radius: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; opacity: ${client.verification_status === 'rejected' ? '0.5' : '1'};" ${client.verification_status === 'rejected' ? 'disabled' : ''}>
-                                                        <i data-lucide="x-circle" style="width: 18px;"></i> Reject
-                                                    </button>
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                    <div>
+                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Connection</div>
+                                                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.76rem;font-weight:700;color:${client.paystack_connection_status === 'connected' ? '#16a34a' : '#94a3b8'};">
+                                                            <span style="width:6px;height:6px;border-radius:50%;background:${client.paystack_connection_status === 'connected' ? '#16a34a' : '#d1d5db'};display:inline-block;flex-shrink:0;"></span>
+                                                            ${(client.paystack_connection_status || 'disconnected').charAt(0).toUpperCase() + (client.paystack_connection_status || 'disconnected').slice(1)}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Merchant ID</div>
+                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155; font-family: monospace;">${escapeHTML(client.paystack_merchant_id) || '—'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Events Created</div>
+                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155;">${events.length}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Ticket Buyers</div>
+                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155;">${buyers.length}</div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <!-- Conditional Display Section -->
-                                        ${isVerified ? `
-                                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem;">
-                                                <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px; color: #1e293b;">
-                                                    <div style="background: #fff7ed; color: #f97316; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                        <i data-lucide="calendar" style="width: 18px;"></i>
-                                                    </div>
-                                                    Published Events (${events.length})
-                                                </h3>
-                                                <div style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 250px; overflow-y: auto; padding-right: 5px;" class="custom-scrollbar">
-                                                    ${events.length > 0 ? events.map(ev => `
-                                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; transition: transform 0.2s;">
-                                                            <div>
-                                                                <div style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">${escapeHTML((ev.event_name || "").replace(/\s*#\d+$/, ""))}</div>
-                                                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${escapeHTML(ev.event_date)}</div>
+                                            <!-- Approve / Reject -->
+                                            <div style="display: flex; gap: 8px;">
+                                                <button onclick="approveClient(${client.id}, 1, this)" style="flex:1;background:${client.verification_status === 'verified' ? '#dcfce7' : '#10b981'};color:${client.verification_status === 'verified' ? '#16a34a' : '#fff'};border:${client.verification_status === 'verified' ? '1px solid #86efac' : 'none'};padding:0.7rem 0.5rem;border-radius:9px;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:5px;cursor:${client.verification_status === 'verified' ? 'default' : 'pointer'};" ${client.verification_status === 'verified' ? 'disabled' : ''}>
+                                                    <i data-lucide="check-circle" style="width:14px;height:14px;"></i> Approve
+                                                </button>
+                                                <button onclick="approveClient(${client.id}, 0, this)" style="flex:1;background:${client.verification_status === 'rejected' ? '#fee2e2' : '#ef4444'};color:${client.verification_status === 'rejected' ? '#dc2626' : '#fff'};border:${client.verification_status === 'rejected' ? '1px solid #fca5a5' : 'none'};padding:0.7rem 0.5rem;border-radius:9px;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:5px;cursor:${client.verification_status === 'rejected' ? 'default' : 'pointer'};" ${client.verification_status === 'rejected' ? 'disabled' : ''}>
+                                                    <i data-lucide="x-circle" style="width:14px;height:14px;"></i> Reject
+                                                </button>
+                                            </div>
+
+                                            <!-- Events (verified) -->
+                                            ${isVerified && events.length > 0 ? `
+                                            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;flex:1;overflow:hidden;">
+                                                <div style="font-size:0.63rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+                                                    <i data-lucide="calendar" style="width:11px;height:11px;"></i> Events (${events.length})
+                                                </div>
+                                                <div style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;padding-right:2px;">
+                                                    ${events.map(ev => `
+                                                        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9;">
+                                                            <div style="min-width:0;">
+                                                                <div style="font-weight:700;font-size:0.76rem;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML((ev.event_name || '').replace(/\s*#\d+$/, ''))}</div>
+                                                                <div style="font-size:0.65rem;color:#64748b;">${escapeHTML(ev.event_date || '')}</div>
                                                             </div>
-                                                            <div style="text-align: right; background: white; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">
-                                                                <div style="font-size: 0.8rem; font-weight: 800; color: var(--admin-primary);">${parseInt(ev.tickets_sold)} sold</div>
-                                                            </div>
+                                                            <div style="font-size:0.7rem;font-weight:800;color:var(--admin-primary);white-space:nowrap;background:#fff;padding:2px 8px;border-radius:18px;border:1px solid #e2e8f0;margin-left:6px;flex-shrink:0;">${parseInt(ev.tickets_sold) || 0} sold</div>
                                                         </div>
-                                                    `).join('') : '<p style="font-size: 0.9rem; color: #94a3b8; text-align: center; padding: 1rem;">No events published yet.</p>'}
+                                                    `).join('')}
                                                 </div>
                                             </div>
+                                            ` : ''}
 
-                                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem;">
-                                                <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px; color: #1e293b;">
-                                                    <div style="background: #f0fdf4; color: #16a34a; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                        <i data-lucide="users" style="width: 18px;"></i>
-                                                    </div>
-                                                    Ticket Buyers (${buyers.length})
-                                                </h3>
-                                                <div style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 250px; overflow-y: auto; padding-right: 5px;" class="custom-scrollbar">
-                                                    ${buyers.length > 0 ? buyers.map(b => `
-                                                        <div style="display: flex; align-items: center; gap: 12px; padding: 0.75rem; background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9;">
-                                                            <img src="${getProfileImg(b.profile_pic, b.name)}" style="width: 38px; height: 38px; border-radius: 10px; object-fit: cover;">
-                                                            <div style="flex: 1;">
-                                                                <div style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">${escapeHTML(b.name)}</div>
-                                                                <div style="font-size: 0.7rem; color: #64748b;">${escapeHTML(b.email)}</div>
-                                                            </div>
-                                                            <div style="font-size: 0.85rem; font-weight: 800; color: #10b981; padding: 4px 10px; background: white; border-radius: 8px;">${parseInt(b.tickets_bought)}</div>
-                                                        </div>
-                                                    `).join('') : '<p style="font-size: 0.9rem; color: #94a3b8; text-align: center; padding: 1rem;">No ticket buyers yet.</p>'}
-                                                </div>
-                                            </div>
-                                        ` : `
-                                            <div style="background: #fff7ed; border: 1px dashed #fdba74; border-radius: 16px; padding: 2rem; text-align: center;">
-                                            <div style="background: #fff7ed; padding: 1.5rem; border-radius: 12px; border: 1px dashed #fdba74; text-align: center; margin-top: 1rem;">
-                                                <i data-lucide="lock" style="width: 40px; height: 40px; color: #f97316; margin-bottom: 1rem;"></i>
-                                                <h4 style="font-weight: 800; color: #9a3412; margin-bottom: 0.5rem;">Verification Required</h4>
-                                                <p style="font-size: 0.85rem; color: #c2410c; max-width: 250px; margin: 0 auto;">Event listings and buyer analytics are locked until this client has been fully verified.</p>
-                                            </div>
-                                        `}
-                                        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
-                                            <button onclick="deleteClient(${client.client_auth_id}, '${client.email}')" style="background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
-                                                <i data-lucide="trash-2" style="width: 16px;"></i> Delete Client Account
-                                            </button>
                                         </div>
+                                    </div>
+
+                                    <!-- Footer -->
+                                    <div style="padding: 12px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+                                        <button onclick="deleteClient(${client.client_auth_id}, '${client.email}')" style="background:#fef2f2;color:#ef4444;border:1px solid #fee2e2;padding:0.45rem 0.9rem;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+                                            <i data-lucide="trash-2" style="width:13px;"></i> Delete Client Account
+                                        </button>
                                     </div>
                                 </div>
                             `;

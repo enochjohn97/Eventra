@@ -13,7 +13,8 @@ $admin_id = adminMiddleware();
 
 $data = json_decode(file_get_contents('php://input'), true);
 $client_id = $data['client_id'] ?? null;
-$paystack_key = $data['paystack_key'] ?? '';
+// Support either explicit paystack_key (used by some UI paths) or paystack_auth_token
+$paystack_key = trim($data['paystack_key'] ?? $data['paystack_auth_token'] ?? '');
 
 if (!$client_id) {
     echo json_encode(['success' => false, 'message' => 'Client ID is required']);
@@ -25,20 +26,41 @@ if (!$paystack_key) {
     exit;
 }
 
+// Basic format validation: accept only secret keys starting with sk_test_ or sk_live_
+if (!preg_match('/^sk_(test|live)_[A-Za-z0-9]{8,}$/', $paystack_key)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid Paystack Key format. Use a secret key starting with sk_test_ or sk_live_.']);
+    exit;
+}
+
+// Determine environment from prefix
+$env = strpos($paystack_key, 'sk_test_') === 0 ? 'test' : 'live';
+
 try {
-    // Validate Paystack Key by hitting Paystack API
+    // Validate Paystack Key by hitting Paystack API balance endpoint
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://api.paystack.co/balance");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer " . $paystack_key
+        "Authorization: Bearer " . $paystack_key,
+        "Accept: application/json"
     ]);
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
-    
+
+    if ($curlErr) {
+        // Network issues should be surfaced clearly
+        echo json_encode(['success' => false, 'message' => 'Could not validate key with Paystack: ' . $curlErr]);
+        exit;
+    }
+
     if ($http_code != 200) {
-        echo json_encode(['success' => false, 'message' => 'Invalid Paystack Key']);
+        // Try to extract message from Paystack response if available
+        $body = json_decode($result, true);
+        $msg = $body['message'] ?? 'Invalid Paystack Key';
+        echo json_encode(['success' => false, 'message' => $msg]);
         exit;
     }
 
@@ -54,7 +76,9 @@ try {
 
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     
+    // Save the secret and detected environment in metadata
     $meta['paystack_key'] = $paystack_key;
+    $meta['paystack_env'] = $env;
 
     $updated_metadata = json_encode($meta);
 

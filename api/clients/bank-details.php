@@ -120,14 +120,8 @@ try {
         try {
             $pdo->beginTransaction();
 
-            // Fetch client details needed for subaccount creation
-            $stmt = $pdo->prepare("
-                SELECT c.business_name, c.subaccount_code, a.email
-                FROM clients c
-                JOIN auth_accounts a ON c.client_auth_id = a.id
-                WHERE c.client_auth_id = ?
-                FOR UPDATE
-            ");
+            // Fetch existing metadata
+            $stmt = $pdo->prepare("SELECT id, metadata FROM clients WHERE client_auth_id = ? FOR UPDATE");
             $stmt->execute([$client_auth_id]);
             $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -137,49 +131,27 @@ try {
                 exit;
             }
 
-            // Create/Update subaccount on Paystack
-            $subaccountRes = ensureSubaccount(
-                $pdo, 
-                $client_auth_id, 
-                $bank_code, 
-                $account_number, 
-                $client['business_name'] ?: 'Eventra Client', 
-                $client['email'], 
-                $client['subaccount_code']
-            );
+            // Merge bank details into metadata JSON (v2 schema — no dedicated bank columns)
+            $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+            $meta['bank_code']      = $bank_code;
+            $meta['account_number'] = $account_number;
+            $meta['account_name']   = $account_name;
+            $meta['bank_name']      = $bank_name ?: $bank_code;
 
-            if (!$subaccountRes['success']) {
-                $pdo->rollBack();
-                http_response_code(400);
-                echo json_encode(['success' => false, 'message' => $subaccountRes['message']]);
-                exit;
-            }
-
-            // ensureSubaccount already updates subaccount_code and subaccount_id
-            // Now update the rest of the bank details
             $stmt = $pdo->prepare("
                 UPDATE clients
-                SET bank_code = ?,
-                    account_number = ?,
-                    account_name = ?,
-                    bank_name = ?,
+                SET metadata = ?,
                     verification_status = 'pending',
                     updated_at = NOW()
                 WHERE client_auth_id = ?
             ");
-            $stmt->execute([
-                $bank_code,
-                $account_number,
-                $account_name,
-                $bank_name ?: $bank_code,
-                $client_auth_id
-            ]);
+            $stmt->execute([json_encode($meta), $client_auth_id]);
 
             $pdo->commit();
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Bank details saved and verified with Paystack.',
+                'message' => 'Bank details saved successfully.',
                 'account_name' => $account_name
             ]);
         } catch (PDOException $e) {

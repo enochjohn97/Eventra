@@ -1707,12 +1707,18 @@ function showTicketPreviewModal(ticket) {
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Date Purchased</div><div style="font-weight:600;">${ticket.purchase_date || ticket.created_at ? new Date(ticket.purchase_date || ticket.created_at).toLocaleDateString() : '—'}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div><div style="font-weight:600;text-transform:capitalize;color:#6366f1;">${escapeHTML(typeLabel)}</div></div>
                 </div>
-                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 12px; margin: 1.25rem 0; text-align: center; border: 1px dashed #e2e8f0;">
-                    <div style="font-size: .7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; letter-spacing: 0.05em;">Ticket Barcode</div>
-                    <svg id="ticketBarcode" style="margin: 0 auto; min-width: 200px; height: 60px;"></svg>
-                    <div style="font-family: 'Courier New', monospace; font-size: .85rem; color: #1e293b; margin-top: 0.75rem; font-weight: 700; background: white; padding: 4px 12px; border-radius: 4px; display: inline-block;">${escapeHTML(ticket.custom_id || ticket.barcode || 'TKT-' + (ticket.id || Math.random().toString(36).substr(2, 9).toUpperCase()))}</div>
-
-                    <div id="ticketQrContainer" style="margin-top:12px;"></div>
+                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 12px; margin: 1.25rem 0; border: 1px dashed #e2e8f0;">
+                    <div style="font-size: .7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.05em;">Ticket</div>
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
+                            <div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase;">Ticket ID</div>
+                            <svg id="ticketBarcode" style="width:100%;max-width:280px;height:60px;"></svg>
+                            <div style="font-family: 'Courier New', monospace; font-size: .85rem; color: #1e293b; margin-top: 0.25rem; font-weight: 700; background: white; padding: 6px 10px; border-radius: 4px;">${escapeHTML(ticket.custom_id || ticket.barcode || 'TKT-' + (ticket.id || Math.random().toString(36).substr(2, 9).toUpperCase()))}</div>
+                        </div>
+                        <div id="ticketQrContainer" style="width:160px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:8px;background:white;border-radius:8px;">
+                            <!-- QR will render here -->
+                        </div>
+                    </div>
                 </div>
                 <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
                     <button onclick="closeTicketPreviewModal()" style="flex:1;padding:.75rem;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>

@@ -35,8 +35,8 @@ try {
 
     // Get clients with event count using subquery for event_count to avoid GROUP BY issues
     $sql = "SELECT p.id, p.custom_id, p.business_name as name, a.email, p.profile_pic, p.company, p.state, p.phone,
-            p.nin_verified, p.bvn_verified,
-            p.account_name, p.account_number, p.bank_name, p.bank_code, p.subaccount_code, p.verification_status,
+            p.subaccount_code, p.verification_status,
+            p.paystack_connection_status, p.paystack_public_key, p.paystack_auth_token, p.paystack_merchant_id,
             p.admin_notes, p.dob, p.gender, p.address, p.city, p.country, p.job_title,
             p.metadata,
             a.is_active, a.is_online, a.last_seen,
@@ -63,10 +63,10 @@ try {
 
     foreach ($clients as &$client) {
         $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
-        $client['paystack_connection_status'] = $meta['paystack_connection_status'] ?? 'disconnected';
-        $client['paystack_public_key'] = $meta['paystack_public_key'] ?? '';
-        $client['paystack_auth_token'] = $meta['paystack_auth_token'] ?? '';
-        $client['paystack_merchant_id'] = $meta['paystack_merchant_id'] ?? '';
+        $client['paystack_connection_status'] = $client['paystack_connection_status'] ?? $meta['paystack_connection_status'] ?? 'disconnected';
+        $client['paystack_public_key'] = $client['paystack_public_key'] ?? $meta['paystack_public_key'] ?? '';
+        $client['paystack_auth_token'] = $client['paystack_auth_token'] ?? $meta['paystack_auth_token'] ?? '';
+        $client['paystack_merchant_id'] = $client['paystack_merchant_id'] ?? $meta['paystack_merchant_id'] ?? '';
         unset($client['metadata']);
     }
 

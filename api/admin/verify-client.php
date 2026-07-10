@@ -22,10 +22,19 @@ if (!$client_id || !in_array($type, ['nin', 'bvn']) || $status === null) {
 }
 
 try {
-    $field = $type === 'nin' ? 'nin_verified' : 'bvn_verified';
+    // Fetch current metadata and update it
+    $fetchStmt = $pdo->prepare("SELECT metadata FROM clients WHERE id = ?");
+    $fetchStmt->execute([$client_id]);
+    $currentMeta = json_decode($fetchStmt->fetchColumn() ?? '{}', true) ?: [];
+    $currentMeta[$type . '_verified'] = (bool)(int)$status;
+    $currentMeta[$type . '_admin_verified_at'] = date('Y-m-d H:i:s');
 
-    $stmt = $pdo->prepare("UPDATE clients SET $field = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([(int)$status, $client_id]);
+    $stmt = $pdo->prepare("
+        UPDATE clients 
+        SET metadata = ?, updated_at = NOW() 
+        WHERE id = ?
+    ");
+    $stmt->execute([json_encode($currentMeta), $client_id]);
 
     if ($stmt->rowCount() > 0) {
         // If status is 1 (verified), also update the main verification_status ENUM

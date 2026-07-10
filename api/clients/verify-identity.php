@@ -39,8 +39,8 @@ if (!in_array($type, ['bvn', 'nin']) || empty($number)) {
 try {
     $pdo->beginTransaction();
 
-    // Fetch existing client to cross-check against account_name
-    $stmt = $pdo->prepare("SELECT id, account_name FROM clients WHERE id = ?");
+    // Fetch existing client metadata
+    $stmt = $pdo->prepare("SELECT id, metadata FROM clients WHERE id = ?");
     $stmt->execute([$client_id]);
     $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -63,18 +63,19 @@ try {
         exit;
     }
 
-    // Update client verification status
-    $col = ($type === 'bvn') ? 'bvn_verified' : 'nin_verified';
-    $valCol = ($type === 'bvn') ? 'bvn' : 'nin';
+    // Record verification in metadata (v2 schema — no dedicated nin_verified/bvn_verified columns)
+    $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+    $meta[$type . '_verified'] = true;
+    $meta[$type . '_number']   = $number;
+    $meta[$type . '_verified_at'] = date('Y-m-d H:i:s');
 
     $updateStmt = $pdo->prepare("
         UPDATE clients 
-        SET $col = 1, 
-            $valCol = ?, 
+        SET metadata = ?,
             updated_at = NOW() 
         WHERE id = ?
     ");
-    $updateStmt->execute([$number, $client_id]);
+    $updateStmt->execute([json_encode($meta), $client_id]);
 
     $pdo->commit();
 
