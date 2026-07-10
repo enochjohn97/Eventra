@@ -45,6 +45,16 @@ try {
         "Authorization: Bearer " . $paystack_key,
         "Accept: application/json"
     ]);
+        // If running on localhost (developer testing), disable strict SSL verification
+        // This avoids "unable to get local issuer certificate" when local CA bundle
+        // is not available. DO NOT disable in production.
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+        $is_local = (strpos($host, 'localhost') !== false) || $remoteAddr === '127.0.0.1' || $remoteAddr === '::1';
+        if ($is_local) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErr = curl_error($ch);

@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data-id="${client.id}" 
                         data-status="${escapeHTML(client.paystack_connection_status || 'disconnected')}"
                         data-public="${escapeHTML(client.paystack_public_key || '')}"
-                        data-auth="${escapeHTML(client.paystack_auth_token || '')}"
                         data-merchant="${escapeHTML(client.paystack_merchant_id || '')}"
                         title="Configure Paystack"
                         style="padding: 0.4rem 0.6rem; border-radius: 6px; background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); cursor: pointer;">
@@ -269,8 +268,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function openPaystackModal(clientId, status, publicKey, authToken, merchantId) {
         document.getElementById('paystackClientId').value = clientId;
         document.getElementById('paystackStatus').value = status;
-        document.getElementById('paystackPublicKey').value = publicKey;
-        document.getElementById('paystackAuthToken').value = authToken;
+        const pubInput = document.getElementById('paystackPublicKey');
+        const authInput = document.getElementById('paystackAuthToken');
+        if (pubInput) {
+            pubInput.value = '';
+            pubInput.placeholder = publicKey ? 'Saved (hidden) — enter new to replace' : 'pk_test_...';
+        }
+        if (authInput) {
+            authInput.value = '';
+            authInput.placeholder = authToken ? 'Saved (hidden) — enter new to replace' : 'sk_test_...';
+        }
         document.getElementById('paystackMerchantId').value = merchantId;
         paystackModal.classList.add('active');
 
