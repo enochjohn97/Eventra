@@ -1,262 +1,259 @@
 <?php
 /**
- * Eventra Support Chat API - Real-time SSE enabled
+ * Eventra Support Chat API
+ * Provides REST endpoints to fetch chat history, conversation lists, and context-aware metadata.
+ * Real-time messaging is handled by the Socket.IO server.
  */
 
-// We handle stream action separately since we don't want output buffering to break it
-if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    header('Content-Type: text/event-stream');
-    header('Cache-Control: no-cache, no-store, must-revalidate');
-    header('Connection: keep-alive');
-    // Disable any buffering
-    @ini_set('zlib.output_compression', 0);
-    @ini_set('implicit_flush', 1);
-    while (ob_get_level()) { ob_end_flush(); }
-    ob_implicit_flush(1);
-
-    require_once __DIR__ . '/../../server/config.php';
-    require_once __DIR__ . '/../../config/database.php';
-    require_once __DIR__ . '/../../includes/middleware/auth.php';
-
-    $pdo = getPDO();
-    $role = $_SESSION['role'] ?? 'user';
-    $userId = (int)($_SESSION[$role . '_id'] ?? 0);
-
-    // Set timeout to prevent infinite processes
-    set_time_limit(0);
-    $startTime = time();
-    $lastId = isset($_SERVER['HTTP_LAST_EVENT_ID']) ? (int)$_SERVER['HTTP_LAST_EVENT_ID'] : 0;
-    if (isset($_GET['last_id'])) $lastId = (int)$_GET['last_id'];
-    
-    // We send a ping immediately
-    echo ":" . str_repeat(" ", 2048) . "\n";
-    echo "retry: 2000\n\n";
-    flush();
-
-    while ((time() - $startTime) < 300) { 
-        if ($role === 'admin') {
-            $stmt = $pdo->prepare("SELECT m.*, c.ticket_id FROM chat_messages m JOIN support_chats c ON m.chat_id = c.id WHERE m.id > ? ORDER BY m.id ASC");
-            $stmt->execute([$lastId]);
-        } elseif ($role === 'client') {
-            $stmt = $pdo->prepare("SELECT m.*, c.ticket_id FROM chat_messages m JOIN support_chats c ON m.chat_id = c.id WHERE m.id > ? AND ( (m.receiver_id = ? AND m.receiver_type = ?) OR (m.sender_id = ? AND m.sender_type = ?) OR c.event_owner_id = ? ) ORDER BY m.id ASC");
-            $stmt->execute([$lastId, $userId, $role, $userId, $role, $userId]);
-        } else {
-            $stmt = $pdo->prepare("SELECT m.*, c.ticket_id FROM chat_messages m JOIN support_chats c ON m.chat_id = c.id WHERE m.id > ? AND (m.receiver_id = ? AND m.receiver_type = ? OR m.sender_id = ? AND m.sender_type = ?) ORDER BY m.id ASC");
-            $stmt->execute([$lastId, $userId, $role, $userId, $role]);
-        }
-        
-        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if ($messages) {
-            foreach ($messages as $msg) {
-                echo "id: " . $msg['id'] . "\n";
-                echo "data: " . json_encode($msg) . "\n\n";
-                $lastId = $msg['id'];
-            }
-            flush();
-        }
-        
-        sleep(2);
-    }
-    exit;
-}
-
-ob_start();
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/../logs/php-errors.log');
-
 header('Content-Type: application/json');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-
 require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 
-function jsonOut(array $data, int $code = 200): void
-{
-    http_response_code($code);
-    ob_clean();
-    echo json_encode($data);
-    exit;
-}
-
 try {
     $pdo = getPDO();
-
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    $role = $_SESSION['role'] ?? null;
+
+    // Support Guest Access
+    if (!$role) {
+        $role = 'guest';
+        
+        // Check if we already created a guest auth_id in this session
+        $authId = (int)($_SESSION['guest_auth_id'] ?? 0);
+        
+        if ($authId <= 0) {
+            // Create a new guest auth record
+            $guestEmail = 'guest_' . uniqid() . '@eventra.local';
+            $stmt = $pdo->prepare("INSERT INTO auth_accounts (email, username, auth_provider, role) VALUES (?, 'Guest', 'local', 'guest')");
+            $stmt->execute([$guestEmail]);
+            $authId = (int)$pdo->lastInsertId();
+            
+            // Persist the guest identity in the session
+            $_SESSION['role'] = 'guest';
+            $_SESSION['guest_auth_id'] = $authId;
+            $_SESSION['auth_id'] = $authId;
+        }
+    } else {
+        if (!in_array($role, ['admin', 'client', 'user', 'guest'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $authId = (int)($_SESSION['auth_id'] ?? 0);
+        if ($authId <= 0) {
+            // Fallback: lookup auth_id
+            $roleId = (int)($_SESSION[$role . '_id'] ?? 0);
+            if ($role === 'admin') {
+                $stmt = $pdo->prepare("SELECT admin_auth_id FROM admins WHERE id = ?");
+                $stmt->execute([$roleId]);
+                $authId = $stmt->fetchColumn();
+            } elseif ($role === 'client') {
+                $stmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ?");
+                $stmt->execute([$roleId]);
+                $authId = $stmt->fetchColumn();
+            } elseif ($role === 'user') {
+                $stmt = $pdo->prepare("SELECT user_auth_id FROM users WHERE id = ?");
+                $stmt->execute([$roleId]);
+                $authId = $stmt->fetchColumn();
+            } elseif ($role === 'guest') {
+                $authId = (int)($_SESSION['guest_auth_id'] ?? 0);
+            }
+        }
+    }
 
     if ($method === 'GET') {
-        $action   = trim($_GET['action']    ?? '');
-        $ticketId = trim($_GET['ticket_id'] ?? 'general');
-        if ($ticketId === '') $ticketId = 'general';
+        $action = trim($_GET['action'] ?? '');
 
-        if ($action === 'all') {
-            $role = $_SESSION['role'] ?? null;
-            if ($role !== 'admin') {
-                jsonOut(['success' => false, 'message' => 'Admin access required.'], 403);
+        // 1. Get all conversations for the user
+        if ($action === 'conversations') {
+            if ($role === 'admin') {
+                $stmt = $pdo->query("
+                    SELECT c.*, 
+                    (SELECT content FROM chat_messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) as last_message,
+                    (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id = c.id AND m.status != 'read') as unread_count
+                    FROM chat_conversations c 
+                    ORDER BY c.updated_at DESC LIMIT 100
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT c.*, 
+                    (SELECT content FROM chat_messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) as last_message,
+                    (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id = c.id AND m.status != 'read' AND m.sender_auth_id != ?) as unread_count
+                    FROM chat_conversations c
+                    JOIN chat_participants p ON c.id = p.conversation_id
+                    WHERE p.auth_id = ?
+                    ORDER BY c.updated_at DESC LIMIT 100
+                ");
+                $stmt->execute([$authId, $authId]);
+            }
+            $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'conversations' => $conversations]);
+            exit;
+        }
+
+        // 2. Get or create a conversation context
+        if ($action === 'context') {
+            $entityType = trim($_GET['entity_type'] ?? 'general');
+            $entityId = (int)($_GET['entity_id'] ?? 0);
+            $targetAuthId = (int)($_GET['target_auth_id'] ?? 0); // e.g., Organizer's auth ID
+
+            // Try to find existing conversation
+            $query = "
+                SELECT c.id FROM chat_conversations c
+                JOIN chat_participants p1 ON c.id = p1.conversation_id AND p1.auth_id = ?
+            ";
+            $params = [$authId];
+
+            if ($targetAuthId > 0 && $role !== 'admin') {
+                $query .= " JOIN chat_participants p2 ON c.id = p2.conversation_id AND p2.auth_id = ?";
+                $params[] = $targetAuthId;
             }
 
-            $rows = $pdo->query("
-                SELECT sc.*,
-                    (SELECT cm2.message
-                     FROM chat_messages cm2
-                     WHERE cm2.chat_id = sc.id
-                     ORDER BY cm2.id DESC LIMIT 1)           AS last_message,
-                    (SELECT COUNT(*)
-                     FROM chat_messages cm3
-                     WHERE cm3.chat_id = sc.id
-                       AND cm3.is_read    = 0
-                       AND cm3.sender_type != 'admin')       AS unread_count,
-                    COALESCE(
-                        (SELECT name FROM clients WHERE id = sc.sender_id AND sc.sender_role = 'client' LIMIT 1),
-                        (SELECT name FROM users WHERE id = sc.sender_id AND sc.sender_role = 'user' LIMIT 1),
-                        'Unknown'
-                    ) AS sender_name
-                FROM support_chats sc
-                ORDER BY sc.updated_at DESC
-                LIMIT 100
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            if ($entityId > 0) {
+                $query .= " WHERE c.entity_type = ? AND c.entity_id = ?";
+                $params[] = $entityType;
+                $params[] = $entityId;
+            } else {
+                $query .= " WHERE c.entity_type = 'general'";
+            }
 
-            jsonOut(['success' => true, 'chats' => $rows]);
+            $query .= " LIMIT 1";
+
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
+            $convId = $stmt->fetchColumn();
+
+            // Add target if exists or resolve dynamically for events
+            if ($targetAuthId === 0 && $entityType === 'event' && $entityId > 0) {
+                $stmt = $pdo->prepare("SELECT client_auth_id FROM clients JOIN events ON clients.id = events.client_id WHERE events.id = ?");
+                $stmt->execute([$entityId]);
+                $targetAuthId = (int)$stmt->fetchColumn();
+            }
+
+            if (!$convId) {
+                // Create new conversation
+                $pdo->prepare("INSERT INTO chat_conversations (entity_type, entity_id) VALUES (?, ?)")
+                    ->execute([$entityType, $entityId > 0 ? $entityId : null]);
+                $convId = $pdo->lastInsertId();
+
+                // Add self
+                $pdo->prepare("INSERT INTO chat_participants (conversation_id, auth_id, role) VALUES (?, ?, ?)")
+                    ->execute([$convId, $authId, $role]);
+
+                // Add target if exists
+                if ($targetAuthId > 0 && $targetAuthId !== $authId) {
+                    $targetRole = ($role === 'user') ? 'client' : 'user'; 
+                    $pdo->prepare("INSERT INTO chat_participants (conversation_id, auth_id, role) VALUES (?, ?, ?)")
+                        ->execute([$convId, $targetAuthId, $targetRole]);
+                }
+            }
+
+            echo json_encode(['success' => true, 'conversation_id' => $convId]);
+            exit;
         }
 
-        $senderRole = $_SESSION['role'] ?? 'user';
-        $senderId   = (int)($_SESSION[$senderRole . '_id'] ?? 0);
+        // 3. Get messages for a conversation
+        if ($action === 'messages') {
+            $convId = (int)($_GET['conversation_id'] ?? 0);
+            
+            // Validate participant
+            if ($role !== 'admin') {
+                $stmt = $pdo->prepare("SELECT id FROM chat_participants WHERE conversation_id = ? AND auth_id = ?");
+                $stmt->execute([$convId, $authId]);
+                if (!$stmt->fetchColumn()) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'Forbidden']);
+                    exit;
+                }
+            }
 
-        if ($senderRole === 'admin') {
-            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ? ORDER BY id DESC LIMIT 1");
-            $stmt->execute([$ticketId]);
-        } elseif ($senderRole === 'client') {
-            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ? AND ( (sender_role = 'client' AND sender_id = ?) OR event_owner_id = ? ) LIMIT 1");
-            $stmt->execute([$ticketId, $senderId, $senderId]);
-        } else {
-            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE ticket_id = ? AND sender_role = ? AND sender_id = ? LIMIT 1");
-            $stmt->execute([$ticketId, $senderRole, $senderId]);
+            $stmt = $pdo->prepare("
+                SELECT m.*, 
+                (SELECT JSON_ARRAYAGG(JSON_OBJECT('file_name', a.file_name, 'file_path', a.file_path, 'file_type', a.file_type, 'file_size', a.file_size)) FROM chat_attachments a WHERE a.message_id = m.id) as attachments,
+                a.username as sender_name,
+                a.role as sender_role
+                FROM chat_messages m
+                JOIN auth_accounts a ON m.sender_auth_id = a.id
+                WHERE m.conversation_id = ?
+                ORDER BY m.id ASC
+            ");
+            $stmt->execute([$convId]);
+            $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Parse attachments JSON
+            foreach ($messages as &$msg) {
+                if ($msg['attachments'] && is_string($msg['attachments'])) {
+                    $msg['attachments'] = json_decode($msg['attachments'], true);
+                } else {
+                    $msg['attachments'] = [];
+                }
+            }
+
+            echo json_encode(['success' => true, 'messages' => $messages]);
+            exit;
         }
-        $chat = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$chat) {
-            jsonOut(['success' => true, 'chat' => null, 'messages' => []]);
-        }
-
-        $pdo->prepare("UPDATE chat_messages SET is_read = 1 WHERE chat_id = ? AND sender_type != ?")->execute([$chat['id'], $senderRole]);
-
-        $msgs = $pdo->prepare("SELECT * FROM chat_messages WHERE chat_id = ? ORDER BY id ASC LIMIT 200");
-        $msgs->execute([$chat['id']]);
-
-        jsonOut(['success' => true, 'chat' => $chat, 'messages' => $msgs->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
     if ($method === 'POST') {
-        $input  = json_decode(file_get_contents('php://input'), true) ?? [];
-        $action = trim($input['action'] ?? 'send');
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $action = trim($_GET['action'] ?? $input['action'] ?? '');
 
-        if ($action === 'escalate') {
-            $ticketId = trim($input['ticket_id'] ?? 'general');
-            $pdo->prepare("UPDATE support_chats SET escalated = 1, refund_status = 'pending_admin', updated_at = NOW() WHERE ticket_id = ?")->execute([$ticketId]);
-            jsonOut(['success' => true, 'message' => 'Ticket escalated to admin.']);
+        if ($action === 'send_message') {
+            $convId = (int)($input['conversation_id'] ?? 0);
+            $content = trim($input['content'] ?? '');
+            $messageType = trim($input['message_type'] ?? 'text');
+            $attachments = $input['attachments'] ?? [];
+
+            if ($convId <= 0 || ($messageType === 'text' && empty($content))) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid message data']);
+                exit;
+            }
+
+            if ($role !== 'admin') {
+                $stmt = $pdo->prepare("SELECT id FROM chat_participants WHERE conversation_id = ? AND auth_id = ?");
+                $stmt->execute([$convId, $authId]);
+                if (!$stmt->fetchColumn()) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'Forbidden']);
+                    exit;
+                }
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO chat_messages (conversation_id, sender_auth_id, message_type, content, status) VALUES (?, ?, ?, ?, 'sent')");
+            $stmt->execute([$convId, $authId, $messageType, $content]);
+            $msgId = $pdo->lastInsertId();
+
+            if (!empty($attachments) && is_array($attachments)) {
+                $stmtAtt = $pdo->prepare("INSERT INTO chat_attachments (message_id, file_name, file_path, file_type, file_size) VALUES (?, ?, ?, ?, ?)");
+                foreach ($attachments as $att) {
+                    $stmtAtt->execute([$msgId, $att['file_name'], $att['file_path'], $att['file_type'] ?? 'other', $att['file_size'] ?? 0]);
+                }
+            }
+
+            $pdo->prepare("UPDATE chat_conversations SET updated_at = NOW() WHERE id = ?")->execute([$convId]);
+            echo json_encode(['success' => true, 'message_id' => $msgId]);
+            exit;
         }
 
         if ($action === 'mark_read') {
-            $ticketId = trim($input['ticket_id'] ?? '');
-            $senderRole = $_SESSION['role'] ?? 'user';
-            
-            $stmt = $pdo->prepare("SELECT id FROM support_chats WHERE ticket_id = ? ORDER BY id DESC LIMIT 1");
-            $stmt->execute([$ticketId]);
-            $chatId = $stmt->fetchColumn();
-            
-            if ($chatId) {
-                $pdo->prepare("UPDATE chat_messages SET is_read = 1 WHERE chat_id = ? AND sender_type != ?")->execute([$chatId, $senderRole]);
+            $convId = (int)($input['conversation_id'] ?? 0);
+            if ($convId > 0) {
+                $stmt = $pdo->prepare("UPDATE chat_messages SET status = 'read' WHERE conversation_id = ? AND sender_auth_id != ? AND status != 'read'");
+                $stmt->execute([$convId, $authId]);
+                $pdo->prepare("UPDATE chat_participants SET last_read_at = NOW() WHERE conversation_id = ? AND auth_id = ?")->execute([$convId, $authId]);
             }
-            jsonOut(['success' => true]);
+            echo json_encode(['success' => true]);
+            exit;
         }
-
-        $ticketId   = trim($input['ticket_id']   ?? 'general');
-        $message    = trim($input['message']     ?? '');
-
-        // Always derive sender from session — client-supplied IDs are auth IDs and break lookups
-        $senderRole = $_SESSION['role'] ?? null;
-        if (!in_array($senderRole, ['admin', 'client', 'user'], true)) {
-            jsonOut(['success' => false, 'message' => 'Authentication required.'], 401);
-        }
-        $senderId = (int)($_SESSION[$senderRole . '_id'] ?? 0);
-        if ($senderId <= 0) {
-            jsonOut(['success' => false, 'message' => 'Session invalid. Please log in again.'], 401);
-        }
-        $ownerId = isset($input['event_owner_id']) ? (int)$input['event_owner_id'] : null;
-
-        if ($message === '') {
-            jsonOut(['success' => false, 'message' => 'Message cannot be empty.'], 400);
-        }
-
-        if ($senderRole === 'admin') {
-            $stmt = $pdo->prepare("SELECT id, sender_id, sender_role FROM support_chats WHERE ticket_id = ? ORDER BY id DESC LIMIT 1");
-            $stmt->execute([$ticketId]);
-            $chat = $stmt->fetch(PDO::FETCH_ASSOC);
-            $chatId = $chat ? $chat['id'] : null;
-
-            if (!$chatId) {
-                $pdo->prepare("INSERT INTO support_chats (ticket_id, sender_role, sender_id, status) VALUES (?, 'admin', ?, 'open')")->execute([$ticketId, $senderId]);
-                $chatId = $pdo->lastInsertId();
-                $receiverId = 0;
-                $receiverType = 'user';
-            } else {
-                $pdo->prepare("UPDATE support_chats SET updated_at = NOW() WHERE id = ?")->execute([$chatId]);
-                $receiverId = $chat['sender_id'];
-                $receiverType = $chat['sender_role'];
-            }
-        } elseif ($senderRole === 'client') {
-            $stmt = $pdo->prepare("SELECT id, sender_id, sender_role, event_owner_id FROM support_chats WHERE ticket_id = ? AND ( (sender_role = 'client' AND sender_id = ?) OR event_owner_id = ? ) ORDER BY id DESC LIMIT 1");
-            $stmt->execute([$ticketId, $senderId, $senderId]);
-            $chat = $stmt->fetch(PDO::FETCH_ASSOC);
-            $chatId = $chat ? $chat['id'] : null;
-
-            if (!$chatId) {
-                $pdo->prepare("INSERT INTO support_chats (ticket_id, sender_role, sender_id, event_owner_id, status) VALUES (?, ?, ?, ?, 'open')")->execute([$ticketId, $senderRole, $senderId, $ownerId]);
-                $chatId = $pdo->lastInsertId();
-                $receiverId = 0; 
-                $receiverType = 'admin';
-            } else {
-                $pdo->prepare("UPDATE support_chats SET updated_at = NOW() WHERE id = ?")->execute([$chatId]);
-                if ($chat['sender_role'] !== 'client') {
-                    $receiverId = $chat['sender_id'];
-                    $receiverType = $chat['sender_role'];
-                } else {
-                    $receiverId = 0; 
-                    $receiverType = 'admin';
-                }
-            }
-        } else {
-            $stmt = $pdo->prepare("SELECT id FROM support_chats WHERE ticket_id = ? AND sender_role = ? AND sender_id = ? LIMIT 1");
-            $stmt->execute([$ticketId, $senderRole, $senderId]);
-            $chatId = $stmt->fetchColumn();
-
-            if (!$chatId) {
-                $pdo->prepare("INSERT INTO support_chats (ticket_id, sender_role, sender_id, event_owner_id, status) VALUES (?, ?, ?, ?, 'open')")->execute([$ticketId, $senderRole, $senderId, $ownerId]);
-                $chatId = $pdo->lastInsertId();
-            } else {
-                $pdo->prepare("UPDATE support_chats SET updated_at = NOW() WHERE id = ?")->execute([$chatId]);
-            }
-            $receiverId = 0; 
-            $receiverType = 'admin';
-        }
-
-        $pdo->prepare(
-            "INSERT INTO chat_messages (chat_id, sender_type, sender_id, receiver_id, receiver_type, message)
-             VALUES (?, ?, ?, ?, ?, ?)"
-        )->execute([$chatId, $senderRole, $senderId, $receiverId, $receiverType, $message]);
-
-        jsonOut(['success' => true, 'message' => 'Sent.', 'chat_id' => (int)$chatId]);
     }
 
-    jsonOut(['success' => false, 'message' => 'Method not allowed.'], 405);
+    echo json_encode(['success' => false, 'message' => 'Invalid action']);
 
-} catch (PDOException $e) {
-    error_log('[chat.php] DB: ' . $e->getMessage());
-    jsonOut(['success' => false, 'message' => 'A database error occurred.'], 500);
-} catch (Exception $e) {
-    error_log('[chat.php] Error: ' . $e->getMessage());
-    jsonOut(['success' => false, 'message' => 'An unexpected error occurred.'], 500);
+} catch (Throwable $e) {
+    error_log('[chat.php] Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Internal server error: ' . $e->getMessage()]);
 }
