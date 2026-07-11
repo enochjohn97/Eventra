@@ -12,6 +12,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const successMessage = document.getElementById('successMessage');
     const forgotPasswordLink = document.querySelector('.forgot-password');
 
+    function clearStoredLoginState() {
+        const keys = [
+            'admin_user', 'admin_auth_token',
+            'client_user', 'client_auth_token',
+            'user', 'auth_token',
+            'redirect_after_login'
+        ];
+        keys.forEach(key => {
+            try { localStorage.removeItem(key); } catch (e) {}
+        });
+        try { sessionStorage.removeItem('just_logged_in'); } catch (e) {}
+        try { sessionStorage.removeItem('skip_auth_redirect'); } catch (e) {}
+    }
+    clearStoredLoginState();
+
     // Role Context (Detected from URL role/intent or body data-intent)
     const urlParams = new URLSearchParams(window.location.search);
     const roleParam = urlParams.get('role');
@@ -99,6 +114,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     const basePath = getBasePath();
+    const redirectAfterLogin = (redirectUrl) => {
+        const doRedirect = () => { window.location.href = redirectUrl; };
+        fetch('/api/auth/check-session.php', {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
+            headers: { 'X-Eventra-Portal': 'admin', 'Accept': 'application/json' }
+        }).then(async (res) => {
+            try {
+                const data = await res.json();
+                if (res.ok && data?.success) {
+                    doRedirect();
+                    return;
+                }
+            } catch (e) {}
+            setTimeout(doRedirect, 400);
+        }).catch(() => setTimeout(doRedirect, 400));
+    };
 
     async function handleLogin() {
         const originalBtnText = loginButton.innerHTML;
@@ -148,6 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                try {
+                    sessionStorage.setItem('just_logged_in', 'true');
+                } catch (e) {}
+
                 // Premium Feedback
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
@@ -167,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 setTimeout(() => {
                     const redirectUrl = result.redirect || '/admin/pages/adminDashboard.html';
-                    window.location.href = redirectUrl;
-                }, 1600);
+                    redirectAfterLogin(redirectUrl);
+                }, 800);
             } else {
                 // Clear any stale state on failure
                 if (window.authController) window.authController.clearLocalState();

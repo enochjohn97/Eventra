@@ -364,7 +364,7 @@ class EmailHelper
      */
     private static function buildVerificationUrl(array $ticketData): string
     {
-        $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? ''));
+        $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? ''));
         $appUrl  = rtrim(defined('APP_URL') ? APP_URL : ($_ENV['APP_URL'] ?? ''), '/');
 
         // Substitute LAN IP for localhost/127.0.0.1 so mobile devices can resolve the URL
@@ -535,8 +535,8 @@ class EmailHelper
         bool $forPdf = false
     ): string {
         /* ── Sanitise text fields ─────────────────────────── */
-        $barcode = self::esc($ticketData['barcode'] ?? '');
-        $ticketIdRaw = trim((string) ($ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? ''));
+        $barcode = self::esc($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? '');
+        $ticketIdRaw = trim((string) ($ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? $ticketData['barcode'] ?? ''));
         if ($ticketIdRaw === '') {
             $ticketIdRaw = $barcode !== '' ? $barcode : 'N/A';
         }
@@ -1121,7 +1121,10 @@ PDF;
         string|array $pdfPath = ''
     ): array {
         /* ── 1. DB sync ──────────────────────────────────────────── */
-        $barcode = trim((string) ($ticketData['barcode'] ?? ''));
+        $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? ''));
+        if ($barcode !== '' && empty($ticketData['ticket_id']) && empty($ticketData['custom_id'])) {
+            $ticketData['ticket_id'] = $barcode;
+        }
 
         if ($barcode !== '') {
             $dbConfigPath = __DIR__ . '/../../config/database.php';

@@ -11,6 +11,8 @@ header('X-Accel-Buffering: no'); // Disable NGINX buffering
 
 require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../config/database.php';
+@set_time_limit(10);
+ignore_user_abort(true);
 // Session config is already included via server/config.php -> session-config.php
 
 try {
@@ -77,7 +79,7 @@ try {
     ob_flush();
     flush();
 
-    $maxCycles = 600; // Run for up to 10 minutes (600 seconds)
+    $maxCycles = 15; // Keep streaming short-lived so admin UI does not stall
     $cycles = 0;
 
     // Get the initial last_id if none provided

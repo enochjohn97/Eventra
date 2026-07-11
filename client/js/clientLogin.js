@@ -14,6 +14,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleParam = urlParams.get('role');
     const intentParam = urlParams.get('intent');
     const trigger = urlParams.get('trigger');
+
+    function clearStoredLoginState() {
+        const keys = [
+            'admin_user', 'admin_auth_token',
+            'client_user', 'client_auth_token',
+            'user', 'auth_token',
+            'redirect_after_login'
+        ];
+        keys.forEach(key => {
+            try { localStorage.removeItem(key); } catch (e) {}
+        });
+        try { sessionStorage.removeItem('just_logged_in'); } catch (e) {}
+        try { sessionStorage.removeItem('skip_auth_redirect'); } catch (e) {}
+    }
+    clearStoredLoginState();
     
     // Final intent resolution
     let intent = roleParam || intentParam || document.body.getAttribute('data-intent') || 'client';
