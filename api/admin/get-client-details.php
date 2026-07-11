@@ -33,7 +33,15 @@ try {
     unset($client['password']);
     
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
-    $client['paystack_key'] = $meta['paystack_key'] ?? '';
+    // Do not expose raw secret keys in API responses. Return a masked version for UI display.
+    $rawKey = $meta['paystack_key'] ?? '';
+    if ($rawKey) {
+        $prefix = substr($rawKey, 0, 4);
+        $masked = $prefix . str_repeat('•', max(8, strlen($rawKey) - 4));
+        $client['paystack_key'] = $masked;
+    } else {
+        $client['paystack_key'] = '';
+    }
 
 
     // 2. Get Events by Client

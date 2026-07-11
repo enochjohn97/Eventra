@@ -7,7 +7,6 @@
 
 header('Content-Type: application/json');
 require_once '../../config/database.php';
-require_once '../../config/payment.php';
 require_once '../../includes/middleware/auth.php';
 
 // Unified admin middleware (consistent with other admin APIs)
@@ -26,10 +25,10 @@ if (!$client_id || !in_array($status, [0, 1], true)) {
 try {
     $verification_status = $status ? 'verified' : 'rejected';
 
-    // 1. If approving, check that client has payment setup (bank details + subaccount code)
+    // 1. If approving, check that client has Paystack connected (v2 model)
     if ($status) {
         $checkPaymentStmt = $pdo->prepare("
-            SELECT c.account_number, c.bank_code, c.subaccount_code, c.name, c.business_name, c.client_auth_id, a.email
+            SELECT c.paystack_connection_status, c.name, c.business_name, c.client_auth_id, a.email
             FROM clients c
             JOIN auth_accounts a ON c.client_auth_id = a.id
             WHERE c.id = ? AND c.deleted_at IS NULL
@@ -45,52 +44,22 @@ try {
             exit;
         }
 
-        // Ensure payment setup is complete before approving
-        if (empty($paymentInfo['account_number']) || empty($paymentInfo['bank_code'])) {
+        // Ensure Paystack Connect is active before approving
+        if (($paymentInfo['paystack_connection_status'] ?? 'disconnected') !== 'connected') {
             echo json_encode([
                 'success' => false,
-                'message' => 'Cannot approve: Client has not completed payment setup. Ensure they have valid bank details and a Paystack subaccount.'
+                'message' => 'Cannot approve: Client has not connected their Paystack account. Ask them to complete Paystack Connect setup first.'
             ]);
             exit;
-        }
-
-        // If no subaccount_code, create one now using the payment helper
-        if (empty($paymentInfo['subaccount_code'])) {
-            $subResult = ensureSubaccount(
-                $pdo,
-                $paymentInfo['client_auth_id'],
-                $paymentInfo['bank_code'],
-                $paymentInfo['account_number'],
-                $paymentInfo['business_name'] ?: $paymentInfo['name'],
-                $paymentInfo['email']
-            );
-
-            if (!$subResult['success']) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Cannot approve: Paystack subaccount creation failed. ' . $subResult['message']
-                ]);
-                exit;
-            } else {
-                error_log("[approve-client.php] Subaccount created/linked for Client {$client_id}: " . $subResult['subaccount_code']);
-            }
         }
     }
 
     // 2. Update verification_status and persist admin_notes
-    if ($status) {
-        $stmt = $pdo->prepare("
-            UPDATE clients 
-            SET verification_status = ?, admin_notes = ?, nin_verified = 1, bvn_verified = 1, updated_at = NOW() 
-            WHERE id = ?
-        ");
-    } else {
-        $stmt = $pdo->prepare("
-            UPDATE clients 
-            SET verification_status = ?, admin_notes = ?, updated_at = NOW() 
-            WHERE id = ?
-        ");
-    }
+    $stmt = $pdo->prepare("
+        UPDATE clients 
+        SET verification_status = ?, admin_notes = ?, updated_at = NOW() 
+        WHERE id = ?
+    ");
     $stmt->execute([$verification_status, $admin_notes ?: null, $client_id]);
 
     $stmtStatusCheck = $pdo->prepare("SELECT verification_status FROM clients WHERE id = ?");

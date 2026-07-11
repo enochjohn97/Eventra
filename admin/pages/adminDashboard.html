@@ -455,8 +455,7 @@
     <script src="../js/admin-main.js"></script>
     <script>
         lucide.createIcons();
-        // Auto-refresh every 60 seconds when tab is visible
-        setInterval(function () { if (document.visibilityState === 'visible' && document.getElementById('financialApprovalsOverlay').style.display === 'none') location.reload(); }, 60000);
+        // Auto-refresh disabled — page reload was closing open modals
 
         // --- Financial Approvals Logic ---
         let currentFinancialChatId = null;
