@@ -38,7 +38,7 @@ CREATE TABLE auth_accounts (
     password            VARCHAR(255) DEFAULT NULL,
     auth_provider       ENUM('local', 'google') NOT NULL DEFAULT 'local',
     provider_id         VARCHAR(191) DEFAULT NULL,
-    role                ENUM('admin', 'client', 'user') NOT NULL,
+    role                ENUM('admin', 'client', 'user', 'guest') NOT NULL,
     role_locked         TINYINT(1) NOT NULL DEFAULT 1,
     is_active           TINYINT(1) NOT NULL DEFAULT 1,
     is_online           TINYINT(1) DEFAULT 0,
@@ -553,42 +553,74 @@ CREATE TABLE sms_logs (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- 8.2 Support Chat System
-CREATE TABLE support_chats (
-    id              INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    ticket_id       VARCHAR(100) NOT NULL DEFAULT 'general',
-    sender_role     ENUM('admin', 'client', 'user') NOT NULL DEFAULT 'user',
-    sender_id       BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    event_owner_id  BIGINT UNSIGNED DEFAULT NULL,
-    refund_status   ENUM('none', 'pending_admin', 'approved', 'declined') NOT NULL DEFAULT 'none',
-    escalated       TINYINT(1) NOT NULL DEFAULT 0,
-    status          ENUM('open', 'closed') NOT NULL DEFAULT 'open',
-    paystack_ref    VARCHAR(255) DEFAULT NULL,
+-- 8.2 Chat Conversations (Rooms)
+CREATE TABLE chat_conversations (
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    entity_type     ENUM('event', 'order', 'ticket', 'general') NOT NULL DEFAULT 'general',
+    entity_id       BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the related event/order/ticket',
+    status          ENUM('active', 'archived', 'closed') NOT NULL DEFAULT 'active',
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    KEY idx_sc_ticket (ticket_id),
-    KEY idx_sc_sender (sender_role, sender_id)
+    KEY idx_cc_entity (entity_type, entity_id),
+    KEY idx_cc_status (status)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- 8.3 Chat Messages
-CREATE TABLE chat_messages (
-    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    chat_id         INT NOT NULL,
-    sender_id       BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    sender_type     ENUM('admin', 'client', 'user') NOT NULL DEFAULT 'user',
-    receiver_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    receiver_type   ENUM('admin', 'client', 'user') NOT NULL DEFAULT 'admin',
-    message         TEXT NOT NULL,
-    is_read         TINYINT(1) NOT NULL DEFAULT 0,
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+-- 8.3 Chat Participants
+CREATE TABLE chat_participants (
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    conversation_id   BIGINT UNSIGNED NOT NULL,
+    auth_id           BIGINT UNSIGNED NOT NULL,
+    role              ENUM('admin', 'client', 'user', 'guest') NOT NULL,
+    joined_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_read_at      DATETIME DEFAULT NULL,
     
-    KEY idx_cm_chat (chat_id),
-    KEY idx_cm_sender (sender_id),
-    KEY idx_cm_receiver (receiver_id),
-    KEY idx_cm_created (created_at),
-    CONSTRAINT fk_cm_chat 
-        FOREIGN KEY (chat_id) REFERENCES support_chats (id) 
+    UNIQUE KEY uq_participant (conversation_id, auth_id),
+    KEY idx_cp_auth (auth_id),
+    CONSTRAINT fk_cp_conversation 
+        FOREIGN KEY (conversation_id) REFERENCES chat_conversations (id) 
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_cp_auth
+        FOREIGN KEY (auth_id) REFERENCES auth_accounts (id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 8.4 Chat Messages
+CREATE TABLE chat_messages (
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    conversation_id   BIGINT UNSIGNED NOT NULL,
+    sender_auth_id    BIGINT UNSIGNED NOT NULL,
+    message_type      ENUM('text', 'image', 'pdf', 'word', 'excel', 'archive', 'system') NOT NULL DEFAULT 'text',
+    content           TEXT NOT NULL,
+    status            ENUM('sent', 'delivered', 'read') NOT NULL DEFAULT 'sent',
+    is_edited         TINYINT(1) NOT NULL DEFAULT 0,
+    deleted_at        DATETIME DEFAULT NULL,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    KEY idx_cm_conversation (conversation_id, created_at),
+    KEY idx_cm_sender (sender_auth_id),
+    CONSTRAINT fk_cm_conversation 
+        FOREIGN KEY (conversation_id) REFERENCES chat_conversations (id) 
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_cm_sender
+        FOREIGN KEY (sender_auth_id) REFERENCES auth_accounts (id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 8.5 Chat Attachments
+CREATE TABLE chat_attachments (
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    message_id        BIGINT UNSIGNED NOT NULL,
+    file_name         VARCHAR(255) NOT NULL,
+    file_path         VARCHAR(500) NOT NULL,
+    file_type         VARCHAR(50) NOT NULL,
+    file_size         BIGINT UNSIGNED NOT NULL,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    KEY idx_ca_message (message_id),
+    CONSTRAINT fk_ca_message 
+        FOREIGN KEY (message_id) REFERENCES chat_messages (id) 
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
