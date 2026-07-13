@@ -8,9 +8,78 @@
 header('Content-Type: application/json');
 require_once '../../config/database.php';
 require_once '../../config/env-loader.php';
+require_once '../utils/notification-helper.php';
+
+$isWebhookRequest = $_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && !isset($_FILES['event_image']) && !empty($_SERVER['HTTP_X_GOOG_CHANNEL_TOKEN'] ?? '');
+
+if ($isWebhookRequest) {
+    $token = $_SERVER['HTTP_X_GOOG_CHANNEL_TOKEN'] ?? '';
+    $expectedToken = $_ENV['GOOGLE_WEBHOOK_SECRET'] ?? getenv('GOOGLE_WEBHOOK_SECRET') ?: '';
+    if ($expectedToken !== '' && $token !== $expectedToken) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Invalid webhook token']);
+        exit;
+    }
+
+    $input = file_get_contents('php://input');
+    $payload = json_decode($input, true);
+    if (!is_array($payload)) {
+        echo json_encode(['success' => true, 'message' => 'Webhook received']);
+        exit;
+    }
+
+    $eventId = $payload['event']['id'] ?? null;
+    if (empty($eventId)) {
+        echo json_encode(['success' => true, 'message' => 'No event id provided']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT id, event_name, event_date, event_time, client_id, status, metadata FROM events WHERE metadata LIKE ? OR metadata LIKE ? LIMIT 1");
+    $stmt->execute(["%google_calendar_event_id%", "%$eventId%"]);
+    $event = $stmt->fetch();
+    if (!$event) {
+        echo json_encode(['success' => true, 'message' => 'Event not found']);
+        exit;
+    }
+
+    $eventDateTime = strtotime($event['event_date'] . ' ' . $event['event_time']);
+    $now = time();
+    $oneDayBefore = $eventDateTime - 86400;
+    $tenMinutesBefore = $eventDateTime - 600;
+
+    if ($event['status'] === 'draft' && $now >= $oneDayBefore && $now < $oneDayBefore + 1800) {
+        $clientAuthId = null;
+        $clientStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
+        $clientStmt->execute([$event['client_id']]);
+        $clientAuthId = $clientStmt->fetchColumn();
+        if ($clientAuthId) {
+            createNotification($clientAuthId, "Please return to Eventra and publish '{$event['event_name']}' for the upcoming event.", 'event_publish_reminder', null, 'client', 'client');
+        }
+    }
+
+    if ($now >= $tenMinutesBefore && $now < $tenMinutesBefore + 600) {
+        $clientAuthId = null;
+        $clientStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
+        $clientStmt->execute([$event['client_id']]);
+        $clientAuthId = $clientStmt->fetchColumn();
+        if ($clientAuthId) {
+            createNotification($clientAuthId, "Your event '{$event['event_name']}' is starting soon. Please prepare for the live session.", 'event_live_reminder', null, 'client', 'client');
+        }
+
+        $userStmt = $pdo->prepare("SELECT DISTINCT u.user_auth_id FROM tickets t JOIN users u ON u.id = t.user_id WHERE t.event_id = ?");
+        $userStmt->execute([$event['id']]);
+        while ($userAuthId = $userStmt->fetchColumn()) {
+            createNotification($userAuthId, "Live now: {$event['event_name']} is underway.", 'event_live_now', null, 'user', 'user');
+        }
+    }
+
+    echo json_encode(['success' => true, 'message' => 'Webhook processed']);
+    exit;
+}
 
 require_once '../../includes/middleware/auth.php';
 require_once '../../includes/helpers/email-helper.php'; // Included to ensure autoloader guard is active globally
+require_once '../utils/notification-helper.php';
 
 // Force error reporting to be caught by Throwable if needed, but in production we rely on try-catch
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
@@ -181,6 +250,10 @@ try {
     $custom_id = generateEventId($pdo);
 
     $scheduled_publish_time = $_POST['scheduled_publish_time'] ?? null;
+    $access_token = $_POST['access_token'] ?? '';
+    $google_event_id = null;
+    $google_event_start = $_POST['event_start'] ?? null;
+    $google_event_end = $_POST['event_end'] ?? null;
 
     $event_name = $_POST['event_name'] ?? '';
     $description = $_POST['description'] ?? '';
@@ -294,31 +367,14 @@ try {
     }
     $ticket_count = $total_tickets; // Start at full capacity on creation
 
-    // Determine status - Default to 'draft', but allow 'scheduled' if requested
-    $status = $_POST['status'] ?? 'draft';
-    
-    // Validate status
-    if (!in_array($status, ['draft', 'scheduled'])) {
-        $status = 'draft'; // Safety fallback
+    // Determine status - default to draft for Google Calendar workflow
+    $status = 'draft';
+    if (!empty($_POST['status']) && $_POST['status'] === 'published') {
+        $status = 'published';
     }
 
-    // Validation for scheduled events
-    if ($status === 'scheduled') {
-        if (empty($scheduled_publish_time)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Scheduled publish time is required for scheduled events.']);
-            exit;
-        }
-        if (strtotime($scheduled_publish_time) <= time()) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Scheduled publish time must be in the future.']);
-            exit;
-        }
-    } else {
-        // For draft, ensure it's null if not explicitly provided or just allow what's sent
-        if (empty($scheduled_publish_time)) {
-            $scheduled_publish_time = null;
-        }
+    if (empty($scheduled_publish_time)) {
+        $scheduled_publish_time = null;
     }
 
     // Nigerian State Centroid Mapping (Approximate coordinates)
@@ -400,7 +456,50 @@ try {
     $tag = strtolower(str_replace(' ', '-', preg_replace('/[^A-Za-z0-9 ]/', '', $event_name)));
 
     $base_url = $_ENV['APP_URL'] ?? 'http://localhost:8000';
+    $dashboard_link = $base_url . '/client/pages/events.html';
     $external_link = $base_url . '/public/pages/event-details.html?event=' . $tag . '&client=' . $client_name;
+
+    if (!empty($access_token) && !empty($google_event_start) && !empty($google_event_end)) {
+        $calendar_payload = [
+            'summary' => $event_name,
+            'description' => trim($description . "\n\nView App Dashboard: {$dashboard_link}"),
+            'start' => [
+                'dateTime' => $google_event_start,
+                'timeZone' => 'UTC'
+            ],
+            'end' => [
+                'dateTime' => $google_event_end,
+                'timeZone' => 'UTC'
+            ],
+            'source' => [
+                'title' => 'View App Dashboard',
+                'url' => $dashboard_link
+            ],
+            'location' => $address
+        ];
+
+        $calendar_headers = [
+            'Authorization: Bearer ' . $access_token,
+            'Content-Type: application/json'
+        ];
+
+        $calendar_ch = curl_init('https://www.googleapis.com/calendar/v3/calendars/primary/events');
+        curl_setopt($calendar_ch, CURLOPT_POST, true);
+        curl_setopt($calendar_ch, CURLOPT_POSTFIELDS, json_encode($calendar_payload));
+        curl_setopt($calendar_ch, CURLOPT_HTTPHEADER, $calendar_headers);
+        curl_setopt($calendar_ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($calendar_ch, CURLOPT_TIMEOUT, 30);
+        $calendar_response = curl_exec($calendar_ch);
+        $calendar_http_code = curl_getinfo($calendar_ch, CURLINFO_HTTP_CODE);
+        curl_close($calendar_ch);
+
+        if ($calendar_http_code >= 200 && $calendar_http_code < 300) {
+            $calendar_data = json_decode($calendar_response, true);
+            if (!empty($calendar_data['id'])) {
+                $google_event_id = $calendar_data['id'];
+            }
+        }
+    }
 
     // Prepare metadata - store pricing fields that don't have dedicated columns
     $metadata = [
@@ -410,7 +509,9 @@ try {
         'regular_quantity' => $regular_quantity,
         'vip_quantity' => $vip_quantity,
         'premium_quantity' => $premium_quantity,
-        'ticket_type_mode' => $ticket_type_mode
+        'ticket_type_mode' => $ticket_type_mode,
+        'google_calendar_event_id' => $google_event_id,
+        'google_calendar_status' => $google_event_id ? 'scheduled' : 'pending'
     ];
     $metadata_json = json_encode($metadata);
 
@@ -462,8 +563,6 @@ try {
     $event_id = $pdo->lastInsertId();
 
     // Create notifications using helper functions
-    require_once '../utils/notification-helper.php';
-
     $auth_id = getAuthId();
 
     // Notify admin about event creation
@@ -491,7 +590,8 @@ try {
             'event_name' => $event_name,
             'tag' => $tag,
             'external_link' => $external_link,
-            'status' => $status
+            'status' => $status,
+            'google_event_id' => $google_event_id
         ]
     ]);
 } catch (Throwable $e) {

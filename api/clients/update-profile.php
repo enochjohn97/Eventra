@@ -81,12 +81,12 @@ try {
 
     // ── Build UPDATE query ───────────────────────────────────────────────
     $query = "UPDATE clients SET
-        custom_id = ?, name = ?, business_name = ?, phone = ?, address = ?, city = ?,
+        custom_id = ?, name = ?, business_name = ?, email = ?, phone = ?, address = ?, city = ?,
         state = ?, country = ?, job_title = ?, company = ?, dob = ?, gender = ?,
         updated_at = NOW()";
 
     $params = [
-        $customId, $name, $business_name, $phone, $address, $city,
+        $customId, $name, $business_name, $existing['email'] ?? null, $phone, $address, $city,
         $state, $country, $job_title, $company,
         ($dob !== '' ? $dob : null), ($gender !== '' ? $gender : null)
     ];

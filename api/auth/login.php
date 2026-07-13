@@ -101,58 +101,34 @@ try {
             exit;
         }
 
-        // --- CLIENT LOGIN OTP FLOW (with fault‑tolerant email helper) ---
+        // --- CLIENT LOGIN OTP FLOW ---
         if ($userRole === 'client') {
             $otp = sprintf("%06d", random_int(0, 999999));
-            $otp_hash = password_hash($otp, PASSWORD_DEFAULT);
+            $otp_hash = hash_hmac('sha256', $otp, 'eventra-login-otp-' . $user['id']);
             $otp_expires_at = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
             $pdo = getPDO();
+            $pdo->prepare("UPDATE clients SET email = ? WHERE client_auth_id = ?")->execute([$user['email'], $user['id']]);
             $pdo->prepare("DELETE FROM auth_tokens WHERE auth_id = ? AND type = 'otp'")->execute([$user['id']]);
             $stmt = $pdo->prepare("INSERT INTO auth_tokens (auth_id, token, expires_at, type) VALUES (?, ?, ?, 'otp')");
             $stmt->execute([$user['id'], $otp_hash, $otp_expires_at]);
 
-            // Load email helper (new version is fault‑tolerant)
-            $emailSent = false;
-            $emailMessage = 'Email service unavailable (check logs).';
-            $emailHelperLoaded = false;
+            require_once __DIR__ . '/../../includes/helpers/email-helper.php';
+            require_once __DIR__ . '/../../includes/helpers/response-helper.php';
 
-            try {
-                $emailHelperPath = __DIR__ . '/../../includes/helpers/email-helper.php';
-                if (file_exists($emailHelperPath)) {
-                    include_once $emailHelperPath;
-                }
-            } catch (Throwable $e) {
-                error_log('[AUTH] EmailHelper load failed: ' . $e->getMessage());
-                echo json_encode(['success' => false, 'message' => 'Login service temporarily unavailable. Please try again.']);
-                exit;
-            }
+            $userEmail = $user['email'];
+            $userName = $user['name'] ?? 'Client';
 
-            if (class_exists('EmailHelper')) {
-                $emailHelperLoaded = true;
-                $subject = "Your Eventra Client Login Code";
-                $message = "Your one-time login verification code is: <strong>$otp</strong><br>It expires in 10 minutes.";
-                $emailResult = EmailHelper::sendEmail($user['email'], $subject, "<h2>Login Verification</h2><p>$message</p>");
-                $emailSent = $emailResult['success'];
-                if (!$emailSent) {
-                    error_log("OTP for client {$user['email']} (Auth ID: {$user['id']}): $otp (Email delivery failed: {$emailResult['message']})");
-                } else {
-                    error_log("OTP for client {$user['email']} sent successfully.");
-                }
-                $emailMessage = $emailResult['message'];
-            } else {
-                error_log("OTP for client {$user['email']} (Auth ID: {$user['id']}): $otp (EmailHelper class not available)");
-            }
-
-            // Return explicit next_step for frontend
-            echo json_encode([
+            finishResponseThen(json_encode([
                 'success' => true,
                 'otp_required' => true,
                 'next_step' => 'otp_verification',
-                'message' => $emailHelperLoaded ? ($emailSent ? 'A verification code has been sent to your email.' : 'A verification code has been generated (email delivery issue).') : 'A verification code has been generated (check logs).',
-                'user_email' => $user['email'], // optional: to display on OTP modal
-                'auth_id' => $user['id']        // optional: for resend OTP functionality
-            ]);
+                'message' => 'A verification code has been sent to your email.',
+                'user_email' => $userEmail,
+                'auth_id' => $user['id']
+            ]), function () use ($userEmail, $userName, $otp) {
+                EmailHelper::sendVerificationOTP($userEmail, $userName, $otp, 'complete your sign in', 10);
+            });
             exit;
         }
 
@@ -233,8 +209,8 @@ try {
                 $_SESSION['client_id'] = $clientId;
                 $profileId = (int)$clientId;
             } else {
-                $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, name, business_name) VALUES (?, ?, ?)");
-                $stmt->execute([$user['id'], $user['name'] ?? 'Client', $user['business_name'] ?? '']);
+                $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, name, business_name, email) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$user['id'], $user['name'] ?? 'Client', $user['business_name'] ?? '', $user['email'] ?? null]);
                 $_SESSION['client_id'] = $pdo->lastInsertId();
                 $profileId = (int)$_SESSION['client_id'];
             }

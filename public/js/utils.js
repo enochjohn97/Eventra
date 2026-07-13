@@ -893,13 +893,3 @@ window.selectMinute = selectMinute;
 window.selectAmPm = selectAmPm;
 window.updateTimeValue = updateTimeValue;
 window.setTimePickerValue = setTimePickerValue;
-
-// Map old support chat toggle to the new EventraChat widget
-window.toggleSupportChat = function(ticketId = 'general') {
-    if (window.EventraChat) {
-        window.EventraChat.toggle();
-    } else {
-        console.warn('EventraChat is not loaded.');
-    }
-};
-window.openSupportChat = window.toggleSupportChat;

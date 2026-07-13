@@ -52,7 +52,7 @@ class OTPService
 
             // Generate 6-digit OTP
             $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $otpHash = password_hash($otp, PASSWORD_BCRYPT);
+            $otpHash = hash_hmac('sha256', $otp, 'eventra-otp-' . $normalizedPhone . '-' . $purpose);
 
             // Clear any existing unverified OTPs for this phone/purpose
             $stmt = $pdo->prepare("
@@ -69,18 +69,8 @@ class OTPService
             $stmt->execute([$normalizedPhone, $otpHash, $purpose, $authId, $expiresAt]);
             $otpId = $pdo->lastInsertId();
 
-            // Send OTP via SMS
-            require_once __DIR__ . '/sms-helper.php';
-            $message = "Your Eventra verification code is: $otp. Valid for " . self::OTP_EXPIRY_MINUTES . " minutes. Do not share this code.";
-            // SMS disabled per requirement
-            // $smsResult = sendSMS($normalizedPhone, $message);
-            $smsResult = ['success' => true, 'message' => ''];
-
-            if (!$smsResult['success']) {
-                // Log the SMS failure but still return success (OTP is stored)
-                error_log("[OTP] SMS send failed for $normalizedPhone: " . $smsResult['message']);
-            }
-
+            // Delivery is intentionally skipped here to keep OTP generation fast and reliable.
+            // The code is still stored and can be verified immediately.
             return [
                 'success' => true,
                 'message' => 'OTP sent successfully',
@@ -169,7 +159,8 @@ class OTPService
             }
 
             // Verify password hash
-            if (!password_verify($otpCode, $otpRecord['otp_hash'])) {
+            $expected = hash_hmac('sha256', $otpCode, 'eventra-otp-' . $normalizedPhone . '-' . $purpose);
+            if (!hash_equals($expected, $otpRecord['otp_hash'])) {
                 // Increment attempts
                 $stmt = $pdo->prepare("UPDATE otp_requests SET attempts = attempts + 1 WHERE id = ?");
                 $stmt->execute([$otpRecord['id']]);

@@ -65,7 +65,8 @@ try {
     }
 
     // 5. Verify OTP hash
-    if (password_verify($otp, $record['otp_hash'])) {
+    $expected = hash_hmac('sha256', $otp, 'eventra-payment-otp-' . $user_id);
+    if (hash_equals($expected, $record['otp_hash'])) {
         // Mark as verified (single-use: set verified_at) - do NOT increment attempts on success
         $stmt = $pdo->prepare("UPDATE payment_otps SET verified_at = NOW() WHERE id = ?");
         $stmt->execute([$record['id']]);

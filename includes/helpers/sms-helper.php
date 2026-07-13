@@ -50,6 +50,8 @@ function sendSMS($phoneNumber, $message)
         'Accept: application/json',
         'Authorization: Bearer ' . SENDCHAMP_SECRET_KEY
     ]);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 
     if (($_ENV['APP_ENV'] ?? '') === 'local') {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

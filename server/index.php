@@ -82,8 +82,7 @@ if (strpos($uri, '/api/') === 0) {
         'client/auth/check-session' => 'auth/check-session.php',
         'user/auth/google-login'   => 'auth/google-handler.php',
         'client/auth/google-login' => 'auth/google-handler.php',
-        'admin/auth/google-login'  => 'auth/google-handler.php',
-        'chat'                     => 'chat/chat.php'
+        'admin/auth/google-login'  => 'auth/google-handler.php'
     ];
 
     $targetFile = $mappings[$cleanPath] ?? ($cleanPath . '.php');
@@ -103,54 +102,7 @@ if (strpos($uri, '/api/') === 0) {
     // =========================================================================
     // Virtual Endpoints (No new files constraint)
     // =========================================================================
-    
-    // Refund Workflows
-    if (strpos($cleanPath, 'refund') === 0) {
-        header('Content-Type: application/json');
-        require_once $rootDir . '/includes/middleware/auth.php';
-        require_once $rootDir . '/config/payment.php';
-        $pdo = getPDO();
-        $data = json_decode(file_get_contents("php://input"), true);
-        $chat_id = $data['chat_id'] ?? 0;
-        $action = $data['action'] ?? '';
-        
-        if ($action === 'request') {
-            $pdo->prepare("UPDATE support_chats SET refund_status = 'pending_admin', escalated_to_admin = 1 WHERE id = ?")->execute([$chat_id]);
-            echo json_encode(['success' => true, 'message' => 'Refund requested.']);
-            exit;
-        }
-        
-        if ($action === 'approve') {
-            $ref = $data['paystack_ref'] ?? '';
-            $payload = ['transaction' => $ref];
-            try {
-                $res = paystackRequest('POST', '/refund', $payload);
-                if ($res['status']) {
-                    $pdo->prepare("UPDATE support_chats SET refund_status = 'approved' WHERE id = ?")->execute([$chat_id]);
-                    echo json_encode(['success' => true, 'message' => 'Refund approved and processed via Paystack.']);
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'Paystack Error: ' . $res['message']]);
-                }
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-            }
-            exit;
-        }
-        
-        if ($action === 'decline') {
-            $pdo->prepare("UPDATE support_chats SET refund_status = 'declined' WHERE id = ?")->execute([$chat_id]);
-            echo json_encode(['success' => true, 'message' => 'Refund declined.']);
-            exit;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            $stmt = $pdo->prepare("SELECT * FROM support_chats WHERE escalated_to_admin = 1");
-            $stmt->execute();
-            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-            exit;
-        }
-    }
-    
+
     // Smile ID KYC Verification
     if ($cleanPath === 'verify_kyc') {
         header('Content-Type: application/json');

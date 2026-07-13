@@ -227,15 +227,6 @@ function createFolderCreatedNotification($client_id, $folder_name)
 }
 
 /**
- * Create a scheduled event due notification (with action buttons)
- */
-function createScheduledEventDueNotification($client_id, $event_id, $event_name)
-{
-    $message = "Event '{$event_name}' is ready to be published. Click to publish or cancel.";
-    return createNotification($client_id, $message, 'scheduled_event_due', $client_id, 'client', 'client');
-}
-
-/**
  * Get unread notification count for a user
  */
 function getUnreadNotificationCount($user_id, $role = 'user')

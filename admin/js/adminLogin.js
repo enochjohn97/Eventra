@@ -2,10 +2,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
-    // Security: Clear any pre-filled password values
-    if (passwordInput) passwordInput.value = '';
-    if (usernameInput) usernameInput.value = '';
+
+    function preventAutofill(inputs) {
+        inputs.forEach((input) => {
+            if (!input) return;
+            input.value = '';
+            input.setAttribute('readonly', 'readonly');
+            const unlock = () => input.removeAttribute('readonly');
+            input.addEventListener('focus', unlock, { once: true });
+            input.addEventListener('click', unlock, { once: true });
+        });
+        [100, 500, 1000].forEach((delay) => {
+            setTimeout(() => {
+                inputs.forEach((input) => {
+                    if (input && document.activeElement !== input) input.value = '';
+                });
+            }, delay);
+        });
+    }
+    preventAutofill([usernameInput, passwordInput]);
     const rememberMeInput = document.getElementById('rememberMe');
     const togglePassword = document.getElementById('togglePassword');
     const loginButton = document.getElementById('loginButton');

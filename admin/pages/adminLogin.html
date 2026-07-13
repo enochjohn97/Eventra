@@ -33,12 +33,12 @@
                     <p style="color: #fff; margin-top: 0.5rem;">Access the Elite Management Panel</p>
                 </header>
 
-                <form id="loginForm" class="login-form">
+                <form id="loginForm" class="login-form" autocomplete="off">
                     <!-- Username Field -->
                     <div class="form-group">
                         <label for="username" class="form-label">Username</label>
                         <div class="input-wrapper">
-                            <input type="text" id="username" name="username" class="form-input" placeholder="Enter username" autocomplete="new-password" required>
+                            <input type="text" id="username" name="admin_identity_field" class="form-input" placeholder="Enter username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly required>
                             <span class="input-icon"><i data-lucide="user" style="width: 18px; height: 18px;"></i></span>
                         </div>
                         <div id="usernameError" class="error-message"></div>
@@ -48,7 +48,7 @@
                     <div class="form-group">
                         <label for="password" class="form-label">Password</label>
                         <div class="input-wrapper">
-                            <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" autocomplete="off" required>
+                            <input type="password" id="password" name="admin_secret_field" class="form-input" placeholder="••••••••" autocomplete="new-password" data-lpignore="true" readonly required>
                             <span id="togglePassword" class="toggle-password"><i data-lucide="eye" style="width: 18px; height: 18px; color: #fff;"></i></span>
                         </div>
                         <div id="passwordError" class="error-message"></div>

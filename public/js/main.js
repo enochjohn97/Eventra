@@ -2372,9 +2372,3 @@ window._updateLocSelection = function() {
   });
   window.selectedEventLocations = checked;
 };
-// Load Chat Widget
-(function() {
-    const chatScript = document.createElement('script');
-    chatScript.src = '/public/js/chat.js';
-    document.head.appendChild(chatScript);
-})();

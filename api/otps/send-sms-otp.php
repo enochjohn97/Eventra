@@ -47,12 +47,9 @@ try {
         INSERT INTO otps (phone, otp, purpose, expires_at, attempts, ip_address) 
         VALUES (?, ?, ?, ?, 0, ?)
     ");
-    $stmt->execute([$phone, password_hash($otp, PASSWORD_DEFAULT), $purpose, $expires_at, $_SERVER['REMOTE_ADDR']]);
+    $stmt->execute([$phone, hash_hmac('sha256', $otp, 'eventra-sms-otp-' . $phone), $purpose, $expires_at, $_SERVER['REMOTE_ADDR']]);
 
-    // Send SMS
-    $message = "Eventra $purpose OTP: $otp. Valid for 5 minutes. Do not share.";
-    // SMS disabled per requirement
-    // $smsResult = sendSMS($phone, $message);
+    // Skip external SMS delivery to keep OTP requests fast and reliable.
     $smsResult = ['success' => true, 'message' => ''];
 
     if ($smsResult['success']) {

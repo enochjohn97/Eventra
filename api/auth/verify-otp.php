@@ -67,7 +67,8 @@ if ($intent === 'client_login_otp') {
         }
 
         // 3. Verify OTP
-        if (!password_verify($otp, $record['token'])) {
+        $expected = hash_hmac('sha256', $otp, 'eventra-login-otp-' . $auth_id);
+        if (!hash_equals($expected, $record['token'])) {
             echo json_encode(['success' => false, 'message' => 'Invalid verification code.']);
             exit;
         }
@@ -93,6 +94,7 @@ if ($intent === 'client_login_otp') {
 
         // 6. Reset failed attempts and update last login
         $pdo->prepare("UPDATE auth_accounts SET failed_attempts = 0, last_login_at = NOW(), is_online = 1 WHERE id = ?")->execute([$auth_id]);
+        $pdo->prepare("UPDATE clients SET email = ? WHERE client_auth_id = ?")->execute([$user['email'], $auth_id]);
 
         // 7. Create session and access token
         $expires_at = date('Y-m-d H:i:s', strtotime('+30 minutes')); // or use remember_me
@@ -240,8 +242,8 @@ try {
             if ($role === 'client') {
                 $customId = generateClientId($pdo);
                 $business_name = $pending['business_name'] ?? $name;
-                $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, custom_id, business_name, name, verification_status) VALUES (?, ?, ?, ?, 'pending')");
-                $stmt->execute([$auth_id, $customId, $business_name, $name]);
+                $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, custom_id, business_name, name, email, verification_status) VALUES (?, ?, ?, ?, ?, 'pending')");
+                $stmt->execute([$auth_id, $customId, $business_name, $name, $email]);
             } elseif ($role === 'admin') {
                 $stmt = $pdo->prepare("INSERT INTO admins (admin_auth_id, name) VALUES (?, ?)");
                 $stmt->execute([$auth_id, $name]);

@@ -618,8 +618,9 @@ window.togglePaystackKeyVisibility = function(btn) {
     const inputId = btn.dataset.toggleInput;
     const input = document.getElementById(inputId);
     if (!input) return;
-    const isHidden = input.type === 'password';
-    input.type = isHidden ? 'text' : 'password';
+    const isHidden = input.style.webkitTextSecurity !== 'none';
+    input.style.webkitTextSecurity = isHidden ? 'none' : 'disc';
+    input.style.textSecurity = isHidden ? 'none' : 'disc';
     const icon = btn.querySelector('i[data-lucide]');
     if (icon) {
         icon.setAttribute('data-lucide', isHidden ? 'eye-off' : 'eye');
@@ -879,7 +880,7 @@ window.initPreviews = function() {
                                                 </div>
                                                 <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;">Enter or update the Paystack secret key to enable settlement.</p>
                                                 <div style="position:relative;margin-bottom:7px;">
-                                                    <input id="paystackKeyInput_${client.id}" type="password" placeholder="sk_live_... or sk_test_..." style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+                                                    <input id="paystackKeyInput_${client.id}" type="text" name="paystack_secret_key_${client.id}" placeholder="sk_live_... or sk_test_..." autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" readonly style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;-webkit-text-security:disc;text-security:disc;" onfocus="this.removeAttribute('readonly');this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
                                                     <button type="button" data-toggle-input="paystackKeyInput_${client.id}" onclick="window.togglePaystackKeyVisibility(this)" title="Show/hide" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;padding:3px;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'">
                                                         <i data-lucide="eye" style="width:14px;height:14px;pointer-events:none;"></i>
                                                     </button>
@@ -958,6 +959,17 @@ window.initPreviews = function() {
                                 </div>
                             `;
                             lucide.createIcons();
+                            const paystackInput = document.getElementById(`paystackKeyInput_${client.id}`);
+                            if (paystackInput) {
+                                paystackInput.value = '';
+                                paystackInput.setAttribute('readonly', 'readonly');
+                                const unlockPaystack = () => paystackInput.removeAttribute('readonly');
+                                paystackInput.addEventListener('focus', unlockPaystack, { once: true });
+                                paystackInput.addEventListener('click', unlockPaystack, { once: true });
+                                [100, 500].forEach((delay) => setTimeout(() => {
+                                    if (document.activeElement !== paystackInput) paystackInput.value = '';
+                                }, delay));
+                            }
                         } else {
                             content.innerHTML = `<div style="padding: 2rem; text-align: center; color: #ef4444;">Failed to load details: ${escapeHTML(data.message)}</div>`;
                         }

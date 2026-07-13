@@ -81,26 +81,6 @@ function renderEvent(event) {
         clientNameContainer.insertAdjacentHTML('beforeend', verificationBadge);
     }
     
-    // Support Chat - Contact Organizer context
-    const contactBtnHtml = `
-        <button id="contactOrganizerBtn" style="margin-left: 15px; background: #4F46E5; color: white; border: none; padding: 5px 12px; border-radius: 8px; font-size: 0.8rem; cursor: pointer;">
-            <i class="fas fa-comment-dots"></i> Contact Organizer
-        </button>
-    `;
-    clientNameContainer.insertAdjacentHTML('afterend', contactBtnHtml);
-    document.getElementById('contactOrganizerBtn').onclick = () => {
-        if (window.EventraChat) {
-            // we pass 'event' as entity type, event.id as entity id, and we need the organizer's auth ID. 
-            // the event data might not have client_auth_id directly, but the API will resolve it if we pass event.client_id, wait, the API accepts target_auth_id.
-            // Let's pass event.client_id, the PHP API handles finding the correct auth ID if we tweak it.
-            // Actually, we modified PHP API to expect `target_auth_id`. If we only pass entity_id, the API can look it up.
-            // Let's pass targetAuthId = 0 and let backend resolve if needed, or we just pass the event_id and let the backend figure out the participants.
-            window.EventraChat.openContext('event', event.id, 0);
-        } else {
-            showNotification('Chat system is loading, please try again.', 'info');
-        }
-    };
-    
     // Handle pricing - robust multi-tier logic
     let priceText = 'Free';
     const regPrice = parseFloat(event.regular_price || 0);

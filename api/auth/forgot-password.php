@@ -9,6 +9,8 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/helpers/otp-service.php';
 require_once __DIR__ . '/../../includes/helpers/validation.php';
+require_once __DIR__ . '/../../includes/helpers/email-helper.php';
+require_once __DIR__ . '/../../includes/helpers/response-helper.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 $email = $data['email'] ?? $data['identity'] ?? null;
@@ -68,25 +70,17 @@ try {
         INSERT INTO auth_tokens (auth_id, token, type, expires_at)
         VALUES (?, ?, 'otp', DATE_ADD(NOW(), INTERVAL 15 MINUTE))
     ");
-    $stmt->execute([$authId, $otp]); // Storing plaintext as requested by the verification logic? 
+    $stmt->execute([$authId, $otp]); // Storing plaintext as requested by the verification logic?
     // Wait, verify-password-reset-otp.php (line 31) uses token = ? (plaintext).
-    
-    // Send OTP via Email
-    require_once __DIR__ . '/../../includes/helpers/email-helper.php';
-    $emailSent = EmailHelper::sendPasswordResetOTP($email, $name, $otp); // Using existing OTP template
 
-    // Also try SMS if phone exists
-    if ($phone) {
-        require_once __DIR__ . '/../../includes/helpers/sms-helper.php';
-        $message = "Your Eventra password reset code is: $otp. Valid for 15 minutes.";
-        // @sendSMS($phone, $message); // SMS disabled per requirement
-    }
-
-    echo json_encode([
+    $userEmail = $account['email'];
+    finishResponseThen(json_encode([
         'success' => true,
         'message' => 'An OTP has been sent to your email.',
         'otp_purpose' => 'password_reset'
-    ]);
+    ]), function () use ($userEmail, $name, $otp) {
+        EmailHelper::sendPasswordResetOTP($userEmail, $name, $otp);
+    });
 
 } catch (PDOException $e) {
     error_log("Forgot password error: " . $e->getMessage());

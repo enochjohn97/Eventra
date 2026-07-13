@@ -157,10 +157,10 @@ try {
         case 'client':
             $customId = generateClientId($pdo);
             $stmt = $pdo->prepare("
-                INSERT INTO clients (client_auth_id, custom_id, name, business_name, created_at)
-                VALUES (?, ?, ?, ?, NOW())
+                INSERT INTO clients (client_auth_id, custom_id, name, business_name, email, created_at)
+                VALUES (?, ?, ?, ?, ?, NOW())
             ");
-            $stmt->execute([$authId, $customId, $name, $business_name]);
+            $stmt->execute([$authId, $customId, $name, $business_name, $email]);
             break;
         case 'user':
             $customId = generateUserId($pdo);

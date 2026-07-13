@@ -192,6 +192,8 @@ try {
         $existingTickets = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $barcode = null;
+        $ticketJobReady = false;
+        $processorPath = '';
         if (empty($existingTickets)) {
             require_once '../../api/utils/id-generator.php';
             $paymentCustomId = generatePaymentId($pdo);
@@ -285,39 +287,14 @@ try {
             $jobFile = $jobDir . 'ticket_' . $reference . '.json';
             file_put_contents($jobFile, json_encode($jobData));
 
-            // Spawning background process
             $processorPath = __DIR__ . '/../utils/process-ticket-queue.php';
-            $asyncSuccess = false;
-
-            if (function_exists('shell_exec') && !in_array('shell_exec', array_map('trim', explode(',', ini_get('disable_functions'))))) {
-                try {
-                    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                        $p = popen("start /B php " . escapeshellarg($processorPath) . " > nul 2>&1", "r");
-                        if ($p !== false) {
-                            pclose($p);
-                            $asyncSuccess = true;
-                        }
-                    } else {
-                        shell_exec("php " . escapeshellarg($processorPath) . " > /dev/null 2>&1 &");
-                        $asyncSuccess = true;
-                    }
-                } catch (\Throwable $t) {
-                    error_log("[verify-payment.php] Background execution failed: " . $t->getMessage());
-                }
-            }
-
-            // Robust inline fallback
-            if (!$asyncSuccess) {
-                error_log("[verify-payment.php] Background trigger unavailable. Running inline synchronously.");
-                define('RUNNING_INLINE', true);
-                include_once $processorPath;
-            }
+            $ticketJobReady = true;
         } else {
             $pdo->commit();
             $barcode = $existingTickets[0]['barcode']; 
         }
 
-        echo json_encode([
+        $responsePayload = json_encode([
             'success' => true,
             'status' => 'success',
             'message' => 'Payment verified successfully.',
@@ -326,6 +303,16 @@ try {
             'event_name' => $order['event_name'],
             'barcode' => $barcode,
         ]);
+
+        if (!empty($ticketJobReady ?? false)) {
+            require_once __DIR__ . '/../../includes/helpers/response-helper.php';
+            finishResponseThen($responsePayload, function () use ($processorPath) {
+                define('RUNNING_INLINE', true);
+                include_once $processorPath;
+            });
+        } else {
+            echo $responsePayload;
+        }
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

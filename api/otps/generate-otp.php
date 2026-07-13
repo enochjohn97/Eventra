@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 require_once __DIR__ . '/../../includes/helpers/email-helper.php';
 require_once __DIR__ . '/../../includes/helpers/sms-helper.php';
+require_once __DIR__ . '/../../includes/helpers/response-helper.php';
 
 // Ensure user is authenticated
 checkAuth('user');
@@ -86,7 +87,7 @@ try {
 
     // 3. Generate cryptographically secure 6-digit OTP
     $otp = sprintf("%06d", random_int(0, 999999));
-    $otp_hash = password_hash($otp, PASSWORD_DEFAULT);
+    $otp_hash = hash_hmac('sha256', $otp, 'eventra-payment-otp-' . $user_id);
     // Requirement: 5-minute maximum expiry
     $expires_at = date('Y-m-d H:i:s', strtotime('+5 minutes'));
     $expires_human = date('H:i', strtotime('+5 minutes'));
@@ -95,57 +96,32 @@ try {
     $stmt = $pdo->prepare("INSERT INTO payment_otps (user_id, payment_reference, otp_hash, channel, expires_at) VALUES (?, ?, ?, ?, ?)");
     $stmt->execute([$user_id, $payment_reference, $otp_hash, $channel, $expires_at]);
 
-    // 5. Send OTP
-    $sent = false;
-    $error_msg = '';
+    $maskedDestination = ($channel === 'email')
+        ? preg_replace('/(?<=.{2}).(?=.*@)/u', '*', $user['email'])
+        : preg_replace('/\d(?=\d{4})/', '*', $user['phone']);
 
-    if ($channel === 'email') {
-        $subject = "Your Eventra Payment Verification Code";
-        $body = "
-            <div style='font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
-                <h2 style='color: #2ecc71; margin-bottom: 0;'>Verify Your Payment</h2>
-                <p style='color: #6b7280; font-size: 14px;'>Eventra Payment Security</p>
-                <hr style='border: 0; border-top: 1px solid #eee; margin: 16px 0;'>
-                <p>Hello <strong>{$user['name']}</strong>,</p>
-                <p>Your one-time verification code for payment reference <strong>{$payment_reference}</strong> is:</p>
-                <div style='font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #2ecc71; text-align: center; background: #f5f3ff; padding: 20px; border-radius: 10px; margin: 20px 0;'>{$otp}</div>
-                <p><strong>⏱ This code expires at {$expires_human} (in 5 minutes).</strong></p>
-                <p style='color: #ef4444; font-size: 13px;'>Do not share this code with anyone. Eventra will never ask for your OTP.</p>
-                <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
-                <p style='font-size: 12px; color: #9ca3af; text-align: center;'>If you did not request this, please ignore this email. &copy; " . date('Y') . " Eventra.</p>
-            </div>
-        ";
-        $emailResult = EmailHelper::sendEmail($user['email'], $subject, $body);
-        $sent = $emailResult['success'];
-        $error_msg = $emailResult['message'];
-    } else {
-        // SMS channel
-        if (empty($user['phone'])) {
-            echo json_encode(['success' => false, 'message' => 'No phone number found on your profile. Please update your profile or use email OTP.']);
-            exit;
+    $deliveryChannel = $channel;
+    $deliveryUser = $user;
+    $deliveryOtp = $otp;
+
+    finishResponseThen(json_encode([
+        'success' => true,
+        'message' => "OTP sent to {$maskedDestination}. It expires in 5 minutes.",
+        'payment_reference' => $payment_reference,
+        'expires_in_minutes' => 5
+    ]), function () use ($deliveryChannel, $deliveryUser, $deliveryOtp) {
+        if ($deliveryChannel === 'email') {
+            EmailHelper::sendVerificationOTP(
+                $deliveryUser['email'],
+                $deliveryUser['name'] ?? 'User',
+                $deliveryOtp,
+                'complete your payment',
+                5
+            );
+        } else {
+            sendSMS($deliveryUser['phone'], "Your Eventra payment verification code is {$deliveryOtp}. It expires in 5 minutes.");
         }
-        $message = "Your Eventra payment verification code is: {$otp}\nExpires at {$expires_human} (5 minutes).\nDo not share this code.";
-        // SMS disabled per requirement
-        // $smsResult = sendSMS($user['phone'], $message);
-        $smsResult = ['success' => true, 'message' => ''];
-        $sent = $smsResult['success'];
-        $error_msg = $smsResult['message'];
-    }
-
-    if ($sent) {
-        $maskedDestination = ($channel === 'email')
-            ? preg_replace('/(?<=.{2}).(?=.*@)/u', '*', $user['email'])
-            : preg_replace('/\d(?=\d{4})/', '*', $user['phone']);
-
-        echo json_encode([
-            'success' => true,
-            'message' => "OTP sent to {$maskedDestination}. It expires in 5 minutes.",
-            'payment_reference' => $payment_reference,
-            'expires_in_minutes' => 5
-        ]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to send OTP: ' . $error_msg]);
-    }
+    });
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }
