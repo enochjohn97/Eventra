@@ -35,6 +35,12 @@ try {
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     // Never expose any stored Paystack secret key to the UI.
     $client['paystack_key'] = '';
+    $client['bank_code'] = $meta['bank_code'] ?? $client['bank_code'] ?? '';
+    $client['bank_name'] = $meta['bank_name'] ?? $client['bank_name'] ?? '';
+    $client['account_number'] = $meta['account_number'] ?? $client['account_number'] ?? '';
+    $client['account_name'] = $meta['account_name'] ?? $client['account_name'] ?? '';
+    $client['paystack_account_status'] = $meta['paystack_account_status'] ?? 'not_created';
+    unset($client['metadata']);
 
 
     // 2. Get Events by Client

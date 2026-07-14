@@ -613,6 +613,54 @@ function initSidebar() {
     if (window.lucide) window.lucide.createIcons();
 }
 
+// Admin client modal helpers
+window.adminRenderCopyField = function(label, value, fallback) {
+    const display = value || fallback || '—';
+    const canCopy = !!(value && value !== '—' && value !== 'Not verified');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="min-width:0;flex:1;">
+            <div style="font-size:0.58rem;color:#94a3b8;text-transform:uppercase;font-weight:700;margin-bottom:2px;">${escapeHTML(label)}</div>
+            <div style="font-size:0.78rem;font-weight:600;color:#334155;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(display)}">${escapeHTML(display)}</div>
+        </div>
+        ${canCopy ? `<button type="button" onclick="copyToClipboard('${String(value).replace(/'/g, "\\'")}', '${escapeHTML(label)} copied')" title="Copy" style="background:#f1f5f9;border:none;border-radius:6px;padding:5px 7px;cursor:pointer;color:#64748b;display:flex;align-items:center;flex-shrink:0;"><i data-lucide="copy" style="width:13px;height:13px;"></i></button>` : ''}
+    </div>`;
+};
+
+window.adminRenderKycRow = function(label, filePath) {
+    if (!filePath) {
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#94a3b8;font-size:0.76rem;"><i data-lucide="file-x" style="width:14px;height:14px;flex-shrink:0;"></i><span style="flex:1;">${escapeHTML(label)}</span><span>Not uploaded</span></div>`;
+    }
+    const fname = filePath.split('/').pop();
+    const url = '/' + String(filePath).replace(/^\//, '');
+    const isPdf = /\.pdf$/i.test(fname);
+    const isImg = /\.(png|jpe?g|gif|webp)$/i.test(fname);
+    const preview = isImg
+        ? `<img src="${url}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;flex-shrink:0;">`
+        : `<div style="width:40px;height:40px;border-radius:6px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="${isPdf ? 'file-text' : 'file'}" style="width:18px;height:18px;color:#ef4444;"></i></div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+        ${preview}
+        <div style="min-width:0;flex:1;">
+            <div style="font-size:0.72rem;font-weight:700;color:#334155;">${escapeHTML(label)}</div>
+            <div style="font-size:0.65rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(fname)}">${escapeHTML(fname)}</div>
+        </div>
+        <a href="${url}" download="${escapeHTML(fname)}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:700;color:#3b82f6;text-decoration:none;white-space:nowrap;flex-shrink:0;"><i data-lucide="download" style="width:13px;height:13px;"></i>Download</a>
+    </div>`;
+};
+
+window.adminSavePaystackAccountStatus = async function(clientId, status) {
+    try {
+        const res = await apiFetch('/api/admin/update-client-paystack.php', {
+            method: 'POST',
+            body: JSON.stringify({ client_id: clientId, paystack_account_status: status })
+        });
+        const data = await res.json();
+        if (data.success && window.showToast) window.showToast('Paystack account status updated', 'success');
+        else if (!data.success && window.showToast) window.showToast(data.message || 'Update failed', 'error');
+    } catch (e) {
+        if (window.showToast) window.showToast('Connection error', 'error');
+    }
+};
+
 // Global toggle for Paystack secret key visibility in the client profile modal
 window.togglePaystackKeyVisibility = function(btn) {
     const inputId = btn.dataset.toggleInput;
@@ -870,15 +918,44 @@ window.initPreviews = function() {
 
                                         </div>
 
-                                        <!-- RIGHT: Settlement + Approval + Events -->
+                                        <!-- RIGHT: Settlement + KYC + Approval + Events -->
                                         <div style="padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
 
-                                            <!-- Settlement / Paystack -->
+                                            <button type="button" onclick="window.open('https://paystack.com/','_blank')" style="width:100%;background:linear-gradient(135deg,#0ba4db,#011b33);color:white;border:none;padding:0.65rem;border-radius:9px;font-weight:700;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                                <i data-lucide="external-link" style="width:14px;height:14px;"></i> Create Paystack Account
+                                            </button>
+
+                                            <!-- Settlement Account (read-only) -->
+                                            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 5px;">
+                                                    <span style="display:flex;align-items:center;gap:5px;"><i data-lucide="landmark" style="width:11px;height:11px;"></i> Settlement Account</span>
+                                                    <button type="button" onclick="copyToClipboard('Bank: ${(client.bank_name || '').replace(/'/g, "\\'")}\\nCode: ${(client.bank_code || '').replace(/'/g, "\\'")}\\nAccount: ${(client.account_number || '').replace(/'/g, "\\'")}\\nName: ${(client.account_name || 'Not verified').replace(/'/g, "\\'")}', 'Bank details copied')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;"><i data-lucide="copy" style="width:11px;height:11px;"></i>Copy All</button>
+                                                </div>
+                                                ${adminRenderCopyField('Bank Name', client.bank_name)}
+                                                ${adminRenderCopyField('Bank Code', client.bank_code)}
+                                                ${adminRenderCopyField('Account Number', client.account_number)}
+                                                ${adminRenderCopyField('Account Name', client.account_name, 'Not verified')}
+                                                <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                                                </div>
+                                            </div>
+
+                                            <!-- KYC Documents -->
+                                            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="folder-open" style="width:11px;height:11px;"></i> KYC Documents
+                                                </div>
+                                                ${adminRenderKycRow('BVN', client.kyc_bvn_file)}
+                                                ${adminRenderKycRow('NIN', client.kyc_nin_file)}
+                                                ${adminRenderKycRow('CAC', client.kyc_cac_file)}
+                                                ${adminRenderKycRow("Voter's Card", client.kyc_voter_card_file)}
+                                            </div>
+
+                                            <!-- API Key (post-registration) -->
                                             <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
                                                 <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                                                    <i data-lucide="landmark" style="width:11px;height:11px;"></i> Settlement Account
+                                                    <i data-lucide="key" style="width:11px;height:11px;"></i> Paystack Secret Key
                                                 </div>
-                                                <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;">Enter or update the Paystack secret key to enable settlement.</p>
+                                                <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;">Enter or update the Paystack secret key after account creation.</p>
                                                 <div style="position:relative;margin-bottom:7px;">
                                                     <input id="paystackKeyInput_${client.id}" type="text" name="paystack_secret_key_${client.id}" placeholder="sk_live_... or sk_test_..." autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" readonly style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;-webkit-text-security:disc;text-security:disc;" onfocus="this.removeAttribute('readonly');this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
                                                     <button type="button" data-toggle-input="paystackKeyInput_${client.id}" onclick="window.togglePaystackKeyVisibility(this)" title="Show/hide" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;padding:3px;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'">

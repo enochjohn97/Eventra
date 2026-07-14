@@ -614,16 +614,17 @@ input[type="password"]::-ms-clear {
 
 .otp-input {
   width: 100%;
-  max-width: 200px;
+  max-width: 300px;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   font-size: 2rem;
   font-weight: 800;
   color: white;
   text-align: center;
-  letter-spacing: 0.5rem;
+  letter-spacing: 0.35rem;
+  box-sizing: border-box;
   outline: none;
   transition: all 0.3s ease;
 }

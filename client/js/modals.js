@@ -44,7 +44,7 @@ function showProfileEditModal() {
                                     <input type="text" name="name" value="${escapeHTML(user.name)}" required class="form-control">
                                 </div>
                                 <div class="form-group">
-                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Business/Organization Name <span class="text-danger">*</span></label>
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Business Name <span class="text-danger" >*</span></label>
                                     <input type="text" name="business_name" value="${escapeHTML(user.business_name) || ''}" placeholder="Eventra Inc." class="form-control" required>
                                 </div>
                                 <div class="form-group">
@@ -99,47 +99,124 @@ function showProfileEditModal() {
                                 </div>
                             </div>
                             <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
-                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2)">Next: Paystack Connect &rarr;</button>
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2)">Next:&rarr;</button>
                             </div>
                         </div>
 
-                        <!-- STEP 2: Paystack Connect -->
+
+                         <!-- STEP 2: Payment Information -->
                         <div id="wizardStep2" class="wizard-step" style="display: none;">
-                            <div style="text-align:center; padding: 1.5rem 1rem;">
-                                <div style="width:72px;height:72px;background:linear-gradient(135deg,#00c3ff,#0052cc);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
-                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                            <div class="modal-grid">
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Settlement Bank <span class="text-danger">*</span></label>
+                                    <select id="bankSelect" name="bank_code" class="form-control" onchange="resolveAccount()" required>
+                                        <option value="">Select Bank</option>
+                                    </select>
+                                    <input type="hidden" name="bank_name" id="bankNameInput" value="${escapeHTML(user.bank_name) || ''}">
                                 </div>
-                                <h3 style="font-size:1.2rem;font-weight:700;color:#0f172a;margin-bottom:0.5rem;">Connect Your Paystack Account</h3>
-                                <p style="color:#64748b;font-size:0.9rem;margin-bottom:1.5rem;line-height:1.6;">
-                                    Link your Paystack merchant account to receive payments from ticket sales directly. Eventra does not have rights to your information since it's being handled by Paystack.
-                                </p>
-                                ${user.paystack_connection_status === 'connected' ? `
-                                <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:left;">
-                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
-                                        <span style="background:#22c55e;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">&#10003;</span>
-                                        <span style="font-weight:700;color:#166534;font-size:0.95rem;">Paystack Account Connected</span>
-                                    </div>
-                                    <p style="color:#166534;font-size:0.85rem;margin:0;">Merchant ID: <code style="background:#dcfce7;padding:2px 6px;border-radius:4px;">${escapeHTML(user.paystack_merchant_id || 'N/A')}</code></p>
-                                    ${user.paystack_connected_at ? `<p style="color:#166534;font-size:0.8rem;margin:0.4rem 0 0;">Connected: ${new Date(user.paystack_connected_at).toLocaleDateString()}</p>` : ''}
-                                </div>
-                                <button type="button" id="paystackConnectBtn" onclick="window.openPaystackConnect()" style="width:100%;padding:0.75rem;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;color:#374151;font-weight:600;cursor:pointer;font-size:0.9rem;">&#8635; Re-connect / Switch Account</button>
-                                ` : `
-                                <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:left;">
-                                    <div style="display:flex;align-items:center;gap:0.75rem;">
-                                        <span style="font-size:1.3rem;">&#9888;&#65039;</span>
-                                        <div>
-                                            <p style="font-weight:700;color:#9a3412;margin:0;font-size:0.95rem;">Account Not Connected</p>
-                                            <p style="color:#9a3412;font-size:0.82rem;margin:0;">You need to connect Paystack to create paid events.</p>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                        <span>Account Number (10 Digits) <span class="text-danger">*</span></span>
+                                        <div id="accountStatus" class="verification-status-indicator">
+                                            ${user.subaccount_code
+            ? '<span style="color:#722f37; font-weight: bold;" title="Verified Subaccount">✓ Verified</span>'
+            : ''}
                                         </div>
-                                    </div>
+                                    </label>
+                                    <input type="text" id="accountNumberInput" name="account_number" value="${(user.account_number && !/^[0]*$/.test(user.account_number)) ? escapeHTML(user.account_number) : ''}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
                                 </div>
-                                <button type="button" id="paystackConnectBtn" onclick="window.openPaystackConnect()" style="width:100%;padding:0.85rem;background:linear-gradient(135deg,#00c3ff,#0052cc);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:1rem;letter-spacing:0.5px;">&#128279; Connect Paystack Account</button>
-                                `}
-                                <p style="color:#94a3b8;font-size:0.78rem;margin-top:1rem;">You will be redirected to Paystack to authenticate your merchant account.</p>
+                                <div class="form-group modal-grid-full">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Holder Name (Auto-resolved) <span class="text-danger">*</span></label>
+                                    <input type="text" id="accountNameInput" name="account_name" value="${escapeHTML(user.account_name) || ''}" class="form-control" style="font-weight: 500;" required>
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(1)" style="flex: 1;">&larr; Previous</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                                <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(3)" style="flex: 1;">Next: KYC &rarr;</button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: KYC Verification Documents -->
+                        <div id="wizardStep3" class="wizard-step" style="display: none;">
+                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <!-- NIN File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>NIN Document</span>
+                                        ${user.kyc_nin_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_nin_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_nin_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_nin_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- BVN File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>BVN Document</span>
+                                        ${user.kyc_bvn_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_bvn_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_bvn_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_bvn_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Voter Card File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Voter's Card</span>
+                                        ${user.kyc_voter_card_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_voter_card_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_voter_card_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_voter_card_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- Driver License File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>Driver's License</span>
+                                        ${user.kyc_driver_license_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_driver_license_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_driver_license_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_driver_license_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+
+                                <!-- CAC File -->
+                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+                                        <span>CAC Certificate</span>
+                                        ${user.kyc_cac_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
+                                    </label>
+                                    <input type="file" name="kyc_cac_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    ${user.kyc_cac_file ? `
+                                    <div style="margin-top: 4px;">
+                                        <a href="/${user.kyc_cac_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                            📄 View Document
+                                        </a>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2)" style="flex: 1;">&larr; Previous</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Submit</button>
                             </div>
                         </div>
 
