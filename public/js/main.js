@@ -1,4 +1,10 @@
 // Event data - will be loaded from API
+window.openSupportCenter = function () {
+  document.dispatchEvent(new CustomEvent('EventraOpenSupportCenter', { detail: { role: 'user' } }));
+  if (typeof window.showSupportCenter === 'function') return window.showSupportCenter();
+  window.location.assign('/public/pages/tickets.html?support=1');
+};
+
 let eventsData = {
   hot: [],
   trending: [],

@@ -158,6 +158,20 @@ CREATE TABLE clients (
     -- Media
     profile_pic                 VARCHAR(255) DEFAULT NULL,
 
+    -- Uploaded KYC evidence (verification provider results remain in metadata)
+    kyc_nin_file                VARCHAR(255) DEFAULT NULL,
+    kyc_bvn_file                VARCHAR(255) DEFAULT NULL,
+    kyc_voter_card_file         VARCHAR(255) DEFAULT NULL,
+    kyc_driver_license_file     VARCHAR(255) DEFAULT NULL,
+    kyc_cac_file                VARCHAR(255) DEFAULT NULL,
+
+    -- Settlement account (kept outside JSON metadata for reliable admin reads)
+    settlement_bank_name         VARCHAR(150) DEFAULT NULL,
+    settlement_bank_code         VARCHAR(30) DEFAULT NULL,
+    settlement_account_number    VARCHAR(32) DEFAULT NULL,
+    settlement_account_name      VARCHAR(150) DEFAULT NULL,
+    settlement_verification_status ENUM('pending', 'verified', 'failed') NOT NULL DEFAULT 'pending',
+
     -- Status & Metadata
     admin_status                ENUM('pending', 'approved', 'suspended', 'rejected') NOT NULL DEFAULT 'pending',
     admin_notes                 TEXT DEFAULT NULL,

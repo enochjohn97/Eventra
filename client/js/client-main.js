@@ -2,6 +2,11 @@
  * Shared Client JavaScript
  * Common functionality across all client pages
  */
+window.openSupportCenter = function () {
+  document.dispatchEvent(new CustomEvent('EventraOpenSupportCenter', { detail: { role: 'client' } }));
+  if (typeof window.showDisputeCenter === 'function') return window.showDisputeCenter();
+  window.location.assign('/client/pages/payments.html?tab=refunds');
+};
 
 // Track all active interval IDs to clear on logout
 (function () {
@@ -195,17 +200,8 @@ function updateGlobalAvatar(user) {
     avatar.style.backgroundSize = "cover";
     avatar.style.backgroundPosition = "center";
 
-    // Add/Update Verification Badge
-    if (parent && typeof getVerificationBadge === "function") {
-      const existingBadge = parent.querySelector(".verification-badge");
-      if (existingBadge) existingBadge.remove();
-      parent.insertAdjacentHTML(
-        "afterbegin",
-        getVerificationBadge(user.verification_status),
-      );
-      // Re-init icons
-      if (window.lucide) window.lucide.createIcons();
-    }
+    // Client avatars deliberately have no verification overlay.
+    if (parent) parent.querySelector(".verification-badge")?.remove();
   });
 
   // Populate the inline dropdown (built by initProfileClick) with user data
@@ -408,7 +404,9 @@ function initProfileClick() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 Profile
             </a>
-          
+             <a href="#" onclick="if(typeof window.openSupportCenter==='function')window.openSupportCenter();else alert('Support Center is loading. Please try again.');return false;"
+               style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:.88rem;font-weight:600;"> Support Center</a>
+
             <div style="border-top:1px solid #f1f5f9;"></div>
             <a href="#" onclick="logout();return false;"
                style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#ef4444;text-decoration:none;font-size:0.88rem;font-weight:600;transition:background 0.15s;"

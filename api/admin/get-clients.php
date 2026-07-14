@@ -36,6 +36,9 @@ try {
     // Get clients with event count using subquery for event_count to avoid GROUP BY issues
     $sql = "SELECT p.id, p.custom_id, p.business_name as name, a.email, p.profile_pic, p.company, p.state, p.phone,
             p.subaccount_code, p.verification_status,
+            p.settlement_bank_name AS bank_name, p.settlement_bank_code AS bank_code,
+            p.settlement_account_number AS account_number, p.settlement_account_name AS account_name,
+            p.settlement_verification_status,
             p.paystack_connection_status, p.paystack_public_key, p.paystack_auth_token, p.paystack_merchant_id,
             p.admin_notes, p.dob, p.gender, p.address, p.city, p.country, p.job_title,
             p.metadata,

@@ -35,11 +35,27 @@ try {
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     // Never expose any stored Paystack secret key to the UI.
     $client['paystack_key'] = '';
-    $client['bank_code'] = $meta['bank_code'] ?? $client['bank_code'] ?? '';
-    $client['bank_name'] = $meta['bank_name'] ?? $client['bank_name'] ?? '';
-    $client['account_number'] = $meta['account_number'] ?? $client['account_number'] ?? '';
-    $client['account_name'] = $meta['account_name'] ?? $client['account_name'] ?? '';
+    $client['bank_code'] = $client['settlement_bank_code'] ?? $meta['bank_code'] ?? '';
+    $client['bank_name'] = $client['settlement_bank_name'] ?? $meta['bank_name'] ?? '';
+    $client['account_number'] = $client['settlement_account_number'] ?? $meta['account_number'] ?? '';
+    $client['account_name'] = $client['settlement_account_name'] ?? $meta['account_name'] ?? '';
     $client['paystack_account_status'] = $meta['paystack_account_status'] ?? 'not_created';
+    // Stable modal contract. Keep flat fields too for existing dashboard code.
+    $client['settlement_account'] = [
+        'bank_name' => $client['bank_name'],
+        'bank_code' => $client['bank_code'],
+        'account_number' => $client['account_number'],
+        'account_name' => $client['account_name'],
+        'verification_status' => $client['settlement_verification_status'] ?? 'pending',
+        'status' => $client['settlement_verification_status'] ?? 'pending',
+    ];
+    $client['kyc_documents'] = [
+        'bvn' => ['url' => $client['kyc_bvn_file'] ?? null, 'status' => !empty($client['kyc_bvn_file']) ? 'uploaded' : 'missing'],
+        'nin' => ['url' => $client['kyc_nin_file'] ?? null, 'status' => !empty($client['kyc_nin_file']) ? 'uploaded' : 'missing'],
+        'cac' => ['url' => $client['kyc_cac_file'] ?? null, 'status' => !empty($client['kyc_cac_file']) ? 'uploaded' : 'missing'],
+        'voters_card' => ['url' => $client['kyc_voter_card_file'] ?? null, 'status' => !empty($client['kyc_voter_card_file']) ? 'uploaded' : 'missing'],
+        'drivers_license' => ['url' => $client['kyc_driver_license_file'] ?? null, 'status' => !empty($client['kyc_driver_license_file']) ? 'uploaded' : 'missing'],
+    ];
     unset($client['metadata']);
 
 

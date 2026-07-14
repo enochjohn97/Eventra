@@ -141,11 +141,14 @@ try {
             $stmt = $pdo->prepare("
                 UPDATE clients
                 SET metadata = ?,
+                    settlement_bank_name = ?, settlement_bank_code = ?,
+                    settlement_account_number = ?, settlement_account_name = ?,
+                    settlement_verification_status = 'verified',
                     verification_status = 'pending',
                     updated_at = NOW()
                 WHERE client_auth_id = ?
             ");
-            $stmt->execute([json_encode($meta), $client_auth_id]);
+            $stmt->execute([json_encode($meta), $meta['bank_name'], $bank_code, $account_number, $account_name, $client_auth_id]);
 
             $pdo->commit();
 

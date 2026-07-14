@@ -44,6 +44,21 @@ $job_title      = isset($_POST['job_title']) && trim($_POST['job_title']) !== ''
 $company        = isset($_POST['company']) && trim($_POST['company']) !== '' ? trim($_POST['company']) : ($existing['company'] ?? '');
 $dob            = isset($_POST['dob']) && trim($_POST['dob']) !== '' ? trim($_POST['dob']) : ($existing['dob'] ?? '');
 $gender         = isset($_POST['gender']) && trim($_POST['gender']) !== '' ? trim($_POST['gender']) : ($existing['gender'] ?? '');
+$settlementFields = [];
+if (isset($_POST['bank_code'], $_POST['account_number']) && trim($_POST['bank_code']) !== '' && trim($_POST['account_number']) !== '') {
+    $accountNumber = preg_replace('/\D/', '', trim($_POST['account_number']));
+    if (strlen($accountNumber) !== 10) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Settlement account number must be 10 digits.']);
+        exit;
+    }
+    $settlementFields = [
+        'settlement_bank_name' => trim($_POST['bank_name'] ?? ''),
+        'settlement_bank_code' => trim($_POST['bank_code']),
+        'settlement_account_number' => $accountNumber,
+        'settlement_account_name' => trim($_POST['account_name'] ?? ''),
+    ];
+}
 
 try {
     $pdo->beginTransaction();
@@ -72,6 +87,36 @@ try {
         }
     }
 
+    // KYC files are stored separately from profile media. Only PDFs and common
+    // image formats are accepted; the generated name prevents path traversal
+    // and filename collisions. Verification is queued/handled separately.
+    $kycFiles = [
+        'kyc_nin_file', 'kyc_bvn_file', 'kyc_voter_card_file',
+        'kyc_driver_license_file', 'kyc_cac_file'
+    ];
+    $kycUpdates = [];
+    $allowedKycExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+    $kycDir = '../../uploads/kyc/';
+    foreach ($kycFiles as $field) {
+        if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) continue;
+        $file = $_FILES[$field];
+        if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 10 * 1024 * 1024) {
+            throw new RuntimeException('Each KYC document must be a file no larger than 10 MB.');
+        }
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, $allowedKycExtensions, true)) {
+            throw new RuntimeException('KYC documents must be PDFs or images.');
+        }
+        if (!is_dir($kycDir) && !mkdir($kycDir, 0755, true) && !is_dir($kycDir)) {
+            throw new RuntimeException('KYC upload directory is unavailable.');
+        }
+        $filename = $field . '_' . $client_id . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+        if (!move_uploaded_file($file['tmp_name'], $kycDir . $filename)) {
+            throw new RuntimeException('Could not save a KYC document.');
+        }
+        $kycUpdates[$field] = 'uploads/kyc/' . $filename;
+    }
+
     // ── Custom ID ────────────────────────────────────────────────────────────
     $customId = $existing['custom_id'] ?? null;
     if (empty($customId)) {
@@ -94,6 +139,20 @@ try {
     if ($profile_pic) {
         $query   .= ', profile_pic = ?';
         $params[] = $profile_pic;
+    }
+    foreach ($kycUpdates as $column => $path) {
+        $query .= ", {$column} = ?";
+        $params[] = $path;
+    }
+    if ($kycUpdates) {
+        $query .= ", verification_status = 'pending'";
+    }
+    if ($settlementFields) {
+        foreach ($settlementFields as $column => $value) {
+            $query .= ", {$column} = ?";
+            $params[] = $value;
+        }
+        $query .= ", settlement_verification_status = 'pending'";
     }
 
     $query   .= ' WHERE client_auth_id = ?';
@@ -144,7 +203,7 @@ try {
         'user'    => $updated_client,
     ]);
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

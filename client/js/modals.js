@@ -4,9 +4,21 @@
  */
 
 // Profile Edit Modal
-function showProfileEditModal() {
-    const user = storage.get('client_user') || storage.get('user');
+async function showProfileEditModal() {
+    let user = storage.get('client_user') || storage.get('user');
     if (!user) return;
+
+    // Always hydrate from the database before rendering. Cached storage is only
+    // a fast fallback while the request is unavailable.
+    try {
+        const response = await apiFetch('/api/users/get-profile.php');
+        const result = await response.json();
+        if (result.success && result.user) {
+            user = result.user;
+            storage.set('client_user', user);
+            if (window.storage) window.storage.set('user', user);
+        }
+    } catch (_) { /* render the available cached profile */ }
 
     const modalHTML = `
         <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
@@ -25,7 +37,6 @@ function showProfileEditModal() {
                                     <div class="avatar-wrapper">
                                         <img id="profilePreview" class="profile-preview-img"
                                              src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}">
-                                        ${getVerificationBadge(user.verification_status)}
                                         
                                         <label for="profilePicInput" class="avatar-upload-label">
                                             📷
@@ -324,6 +335,10 @@ function showProfileEditModal() {
     // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
+    // Rich local previews are intentionally client-side only. The selected file
+    // remains in the form and is uploaded when the profile is saved.
+    initKycUploadPreviews(document.getElementById('profileEditForm'));
+
     // Populate Banks
     const bankSelect = document.getElementById('bankSelect');
     if (bankSelect && window.PaystackBanks) {
@@ -335,15 +350,105 @@ function showProfileEditModal() {
     profileEditForm.addEventListener('submit', handleProfileUpdate);
 
     // Add persistence: save on input
-    profileEditForm.addEventListener('input', () => saveFormState('profileEditForm'));
-    profileEditForm.addEventListener('change', () => saveFormState('profileEditForm'));
+    profileEditForm.addEventListener('input', () => saveFormState('client_draft_profile_data', 'profileEditForm'));
+    profileEditForm.addEventListener('change', () => saveFormState('client_draft_profile_data', 'profileEditForm'));
 
     // Restore saved state
-    restoreFormState('profileEditForm');
+    restoreFormState('client_draft_profile_data', 'profileEditForm');
 
     // Initialize verification statuses
     if (user.nin_verified == 1) updateFieldStatus('nin', 'success');
     if (user.bvn_verified == 1) updateFieldStatus('bvn', 'success');
+}
+
+/**
+ * Turns each KYC file input into a preview card without retaining file data in
+ * application state. Object URLs are revoked when replaced or when the card is
+ * cleared, preventing leaked browser memory in a long-lived dashboard.
+ */
+function initKycUploadPreviews(form) {
+    if (!form) return;
+
+    form.querySelectorAll('input[type="file"][name^="kyc_"]').forEach((input) => {
+        const card = input.closest('.kyc-upload-card');
+        if (!card || card.dataset.previewReady) return;
+        card.dataset.previewReady = '1';
+        input.style.display = 'none';
+
+        const label = card.querySelector('label span')?.textContent || 'KYC document';
+        const picker = document.createElement('button');
+        picker.type = 'button';
+        picker.textContent = 'Choose file';
+        picker.style.cssText = 'align-self:flex-start;border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:6px;padding:6px 10px;font-size:.76rem;font-weight:600;cursor:pointer;';
+        picker.addEventListener('click', () => input.click());
+
+        const preview = document.createElement('div');
+        preview.style.cssText = 'display:none;align-items:center;gap:9px;padding:8px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;min-width:0;';
+        card.append(picker, preview);
+
+        let objectUrl = null;
+        const clear = () => {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+            input.value = '';
+            preview.style.display = 'none';
+            preview.replaceChildren();
+            picker.style.display = '';
+        };
+        input.addEventListener('change', () => {
+            const file = input.files && input.files[0];
+            if (!file) return clear();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            objectUrl = URL.createObjectURL(file);
+            const isImage = /^image\//.test(file.type);
+            const size = file.size < 1024 * 1024
+                ? `${Math.max(1, Math.round(file.size / 1024))} KB`
+                : `${(file.size / 1024 / 1024).toFixed(1)} MB`;
+            const safeName = file.name.length > 30 ? `${file.name.slice(0, 27)}...` : file.name;
+            const escapedName = safeName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const escapedTitle = file.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            preview.innerHTML = `${isImage
+                ? `<img src="${objectUrl}" alt="${label} preview" style="width:72px;height:72px;max-height:120px;object-fit:cover;border-radius:6px;flex-shrink:0;">`
+                : '<div aria-label="PDF document" style="width:52px;height:64px;display:grid;place-items:center;background:#fef2f2;color:#dc2626;border-radius:6px;font-size:1.45rem;font-weight:800;flex-shrink:0;">PDF</div>'}
+                <div style="min-width:0;flex:1;"><div title="${escapedTitle}" style="font-size:.76rem;font-weight:700;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapedName}</div><div style="font-size:.7rem;color:#64748b;margin-top:3px;">${size}</div></div>`;
+            const change = document.createElement('button');
+            change.type = 'button'; change.textContent = 'Change';
+            change.style.cssText = 'border:0;background:transparent;color:#2563eb;font-size:.72rem;font-weight:700;cursor:pointer;';
+            change.addEventListener('click', () => input.click());
+            const remove = document.createElement('button');
+            remove.type = 'button'; remove.textContent = 'Remove';
+            remove.style.cssText = 'border:0;background:transparent;color:#dc2626;font-size:.72rem;font-weight:700;cursor:pointer;';
+            remove.addEventListener('click', clear);
+            preview.append(change, remove);
+            preview.style.display = 'flex';
+            picker.style.display = 'none';
+
+            // Persist the document independently of the rest of the form. This
+            // keeps the selected KYC file available after a refresh/close while
+            // text fields continue to use the local draft cache until submit.
+            const saving = document.createElement('span');
+            saving.textContent = 'Saving…';
+            saving.style.cssText = 'font-size:.68rem;color:#64748b;white-space:nowrap;';
+            preview.append(saving);
+            const upload = new FormData();
+            upload.append(input.name, file);
+            apiFetch('/api/clients/update-profile.php', { method: 'POST', body: upload })
+                .then(response => response.json())
+                .then(result => {
+                    if (!result.success) throw new Error(result.message || 'Upload failed');
+                    saving.textContent = 'Saved';
+                    saving.style.color = '#15803d';
+                    if (result.user && window.storage) {
+                        storage.set('client_user', result.user);
+                        storage.set('user', result.user);
+                    }
+                })
+                .catch(() => {
+                    saving.textContent = 'Not saved';
+                    saving.style.color = '#dc2626';
+                });
+        });
+    });
 }
 
 function closeProfileEditModal() {
@@ -427,10 +532,31 @@ async function handleProfileUpdate(e) {
         const profileResult = await response.json();
 
         if (profileResult.success) {
+            // Verify and persist settlement data through its dedicated endpoint.
+            // This runs after the partial profile save so its verified status is
+            // the final database state for the selected account.
+            const bankCode = formData.get('bank_code');
+            const accountNumber = String(formData.get('account_number') || '').replace(/\D/g, '');
+            if (bankCode && accountNumber.length === 10) {
+                const bankResponse = await apiFetch('/api/clients/bank-details.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bank_code: bankCode,
+                        bank_name: formData.get('bank_name') || '',
+                        account_number: accountNumber,
+                        account_name: formData.get('account_name') || ''
+                    })
+                });
+                const bankResult = await bankResponse.json();
+                if (!bankResult.success) {
+                    showNotification(bankResult.message || 'Profile saved, but settlement account could not be verified.', 'warning');
+                }
+            }
             showNotification('Profile updated successfully!', 'success');
 
             // Clear saved form state
-            if (typeof clearFormState === 'function') clearFormState('profileEditForm');
+            if (typeof clearFormState === 'function') clearFormState('client_draft_profile_data');
 
             // Update stored user data
             storage.set('client_user', profileResult.user);
@@ -582,18 +708,8 @@ function updateFieldStatus(type, status, message = '') {
 }
 
 function updateVerificationBadge() {
-    const user = storage.get('client_user') || storage.get('user');
     const container = document.querySelector('.avatar-wrapper');
-    if (!container || !user) return;
-
-    // Replace existing badge
-    const oldBadge = container.querySelector('.verification-badge');
-    if (oldBadge) oldBadge.remove();
-
-    container.insertAdjacentHTML('beforeend', getVerificationBadge(user.verification_status));
-
-    // Re-initialize icons if using Lucide
-    if (window.lucide) window.lucide.createIcons();
+    if (container) container.querySelector('.verification-badge')?.remove();
 }
 
 // Add CSS for spin animation
@@ -1033,7 +1149,6 @@ function showEditEventModal(event) {
                                     <div class="avatar-wrapper">
                                         <img id="profilePreview" class="profile-preview-img"
                                              src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}">
-                                        ${getVerificationBadge(user.verification_status)}
                                         
                                         <label for="profilePicInput" class="avatar-upload-label">
                                             📷

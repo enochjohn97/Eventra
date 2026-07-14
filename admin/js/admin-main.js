@@ -1,3 +1,9 @@
+window.openSupportCenter = function () {
+    document.dispatchEvent(new CustomEvent('EventraOpenSupportCenter', { detail: { role: 'admin' } }));
+    if (typeof window.showGlobalSupportPanel === 'function') return window.showGlobalSupportPanel();
+    window.location.assign('/admin/pages/payments.html?tab=refunds');
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initExportModal();
     initSidebar();
@@ -643,7 +649,7 @@ window.adminRenderKycRow = function(label, filePath) {
             <div style="font-size:0.72rem;font-weight:700;color:#334155;">${escapeHTML(label)}</div>
             <div style="font-size:0.65rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(fname)}">${escapeHTML(fname)}</div>
         </div>
-        <a href="${url}" download="${escapeHTML(fname)}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:700;color:#3b82f6;text-decoration:none;white-space:nowrap;flex-shrink:0;"><i data-lucide="download" style="width:13px;height:13px;"></i>Download</a>
+        <a href="${url}" download="${escapeHTML(fname)}" title="Download ${escapeHTML(label)}" aria-label="Download ${escapeHTML(label)}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:700;color:#3b82f6;text-decoration:none;white-space:nowrap;flex-shrink:0;"><i data-lucide="download" style="width:15px;height:15px;"></i></a>
     </div>`;
 };
 
@@ -805,6 +811,13 @@ window.initPreviews = function() {
                     .then(data => {
                         if (data.success) {
                             const client = data.client;
+                            const settlement = client.settlement_account || {};
+                            // The detailed endpoint owns this data contract; map it
+                            // once so old records with flat fields still render.
+                            client.bank_name = settlement.bank_name || client.bank_name || '';
+                            client.bank_code = settlement.bank_code || client.bank_code || '';
+                            client.account_number = settlement.account_number || client.account_number || '';
+                            client.account_name = settlement.account_name || client.account_name || '';
                             const events = data.events;
                             const buyers = data.buyers;
                             const isVerified = client.verification_status === 'verified';
@@ -929,13 +942,14 @@ window.initPreviews = function() {
                                             <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
                                                 <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 5px;">
                                                     <span style="display:flex;align-items:center;gap:5px;"><i data-lucide="landmark" style="width:11px;height:11px;"></i> Settlement Account</span>
-                                                    <button type="button" onclick="copyToClipboard('Bank: ${(client.bank_name || '').replace(/'/g, "\\'")}\\nCode: ${(client.bank_code || '').replace(/'/g, "\\'")}\\nAccount: ${(client.account_number || '').replace(/'/g, "\\'")}\\nName: ${(client.account_name || 'Not verified').replace(/'/g, "\\'")}', 'Bank details copied')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;"><i data-lucide="copy" style="width:11px;height:11px;"></i>Copy All</button>
+                                                    <button type="button" onclick="copyToClipboard('Bank: ${(client.bank_name || '').replace(/'/g, "\\'")} | Code: ${(client.bank_code || '').replace(/'/g, "\\'")} | Acc No: ${(client.account_number || '').replace(/'/g, "\\'")} | Name: ${(client.account_name || 'Not verified').replace(/'/g, "\\'")}', 'Bank details copied')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;"><i data-lucide="copy" style="width:11px;height:11px;"></i>Copy All</button>
                                                 </div>
                                                 ${adminRenderCopyField('Bank Name', client.bank_name)}
                                                 ${adminRenderCopyField('Bank Code', client.bank_code)}
                                                 ${adminRenderCopyField('Account Number', client.account_number)}
                                                 ${adminRenderCopyField('Account Name', client.account_name, 'Not verified')}
                                                 <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                                                    <span style="font-size:.68rem;font-weight:800;padding:4px 8px;border-radius:999px;color:${['verified','active'].includes(String(settlement.status || '').toLowerCase()) ? '#15803d' : '#b45309'};background:${['verified','active'].includes(String(settlement.status || '').toLowerCase()) ? '#dcfce7' : '#fef3c7'};">${escapeHTML(String(settlement.status || 'unverified').replace(/_/g, ' ').toUpperCase())}</span>
                                                 </div>
                                             </div>
 
@@ -944,10 +958,11 @@ window.initPreviews = function() {
                                                 <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
                                                     <i data-lucide="folder-open" style="width:11px;height:11px;"></i> KYC Documents
                                                 </div>
-                                                ${adminRenderKycRow('BVN', client.kyc_bvn_file)}
-                                                ${adminRenderKycRow('NIN', client.kyc_nin_file)}
-                                                ${adminRenderKycRow('CAC', client.kyc_cac_file)}
-                                                ${adminRenderKycRow("Voter's Card", client.kyc_voter_card_file)}
+                                                ${adminRenderKycRow('BVN', client.kyc_documents?.bvn?.url || client.kyc_bvn_file)}
+                                                ${adminRenderKycRow('NIN', client.kyc_documents?.nin?.url || client.kyc_nin_file)}
+                                                ${adminRenderKycRow('CAC', client.kyc_documents?.cac?.url || client.kyc_cac_file)}
+                                                ${adminRenderKycRow("Voter's Card", client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file)}
+                                                ${adminRenderKycRow("Driver's License", client.kyc_documents?.drivers_license?.url || client.kyc_driver_license_file)}
                                             </div>
 
                                             <!-- API Key (post-registration) -->

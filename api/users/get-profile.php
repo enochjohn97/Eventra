@@ -80,6 +80,23 @@ try {
         $user['profile_pic'] = '/' . $user['profile_pic'];
     }
 
+    // Client bank details live in metadata in the current schema. Expose one
+    // stable object so every client/admin UI reads the same source of truth.
+    if ($userRole === 'client') {
+        $metadata = json_decode($user['metadata'] ?? '{}', true) ?: [];
+        $user['settlement_account'] = [
+            'bank_name' => $user['settlement_bank_name'] ?? $metadata['bank_name'] ?? '',
+            'bank_code' => $user['settlement_bank_code'] ?? $metadata['bank_code'] ?? '',
+            'account_number' => $user['settlement_account_number'] ?? $metadata['account_number'] ?? '',
+            'account_name' => $user['settlement_account_name'] ?? $metadata['account_name'] ?? '',
+            'status' => $user['settlement_verification_status'] ?? 'pending',
+        ];
+        foreach ($user['settlement_account'] as $key => $value) {
+            if ($key !== 'status') $user[$key] = $value;
+        }
+        unset($user['metadata']);
+    }
+
     echo json_encode([
         'success' => true,
         'user' => $user
