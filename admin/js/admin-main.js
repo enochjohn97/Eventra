@@ -837,7 +837,7 @@ window.initPreviews = function() {
                                         <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Cover" style="filter: blur(12px); opacity: 0.3; width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;">
                                         <div style="position: absolute; bottom: -44px; left: 28px; z-index: 3;">
                                             <div style="position: relative; display: inline-block;">
-                                                <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Avatar" style="width: 88px; height: 88px; border-radius: 16px; border: 4px solid white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); object-fit: cover; background: #e2e8f0; display: block;">
+                                                <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Avatar" style="width: 88px; height: 88px; border-radius: 50%; border: 4px solid white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); object-fit: cover; background: #e2e8f0; display: block;">
                                                 <div style="position: absolute; bottom: -4px; right: -4px; transform: scale(1.1);">${getVerificationBadge(client.verification_status)}</div>
                                             </div>
                                         </div>
@@ -948,15 +948,19 @@ window.initPreviews = function() {
                                                 ${adminRenderCopyField('Bank Code', client.bank_code)}
                                                 ${adminRenderCopyField('Account Number', client.account_number)}
                                                 ${adminRenderCopyField('Account Name', client.account_name, 'Not verified')}
-                                                <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-                                                    <span style="font-size:.68rem;font-weight:800;padding:4px 8px;border-radius:999px;color:${['verified','active'].includes(String(settlement.status || '').toLowerCase()) ? '#15803d' : '#b45309'};background:${['verified','active'].includes(String(settlement.status || '').toLowerCase()) ? '#dcfce7' : '#fef3c7'};">${escapeHTML(String(settlement.status || 'unverified').replace(/_/g, ' ').toUpperCase())}</span>
-                                                </div>
                                             </div>
 
                                             <!-- KYC Documents -->
                                             <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
-                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                                                    <i data-lucide="folder-open" style="width:11px;height:11px;"></i> KYC Documents
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 5px;">
+                                                    <span style="display:flex;align-items:center;gap:5px;"><i data-lucide="folder-open" style="width:11px;height:11px;"></i> KYC Documents</span>
+                                                    <button type="button" data-kyc-files='${JSON.stringify({
+                                                        'BVN': client.kyc_documents?.bvn?.url || client.kyc_bvn_file || '',
+                                                        'NIN': client.kyc_documents?.nin?.url || client.kyc_nin_file || '',
+                                                        'CAC': client.kyc_documents?.cac?.url || client.kyc_cac_file || '',
+                                                        'Voters_Card': client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file || '',
+                                                        'Drivers_License': client.kyc_documents?.drivers_license?.url || client.kyc_driver_license_file || ''
+                                                    }).replace(/'/g, "&#39;")}' onclick="downloadAllKYC(this, '${escapeHTML(client.business_name || client.name || 'Client').replace(/'/g, "\\'")}')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><i data-lucide="download" style="width:11px;height:11px;"></i>Download All</button>
                                                 </div>
                                                 ${adminRenderKycRow('BVN', client.kyc_documents?.bvn?.url || client.kyc_bvn_file)}
                                                 ${adminRenderKycRow('NIN', client.kyc_documents?.nin?.url || client.kyc_nin_file)}
@@ -1541,3 +1545,87 @@ function initSettings() {
         });
     }
 }
+
+window.downloadAllKYC = async function(btn, clientName) {
+    const filesStr = btn.getAttribute('data-kyc-files');
+    if (!filesStr) return;
+    
+    // Parse the injected file URLs
+    const files = JSON.parse(filesStr);
+    const urlsToDownload = Object.entries(files).filter(([name, url]) => url && url.trim() !== '');
+    
+    if (urlsToDownload.length === 0) {
+        if (window.showNotification) {
+            window.showNotification('No KYC documents available to download.', 'warning');
+        } else {
+            alert('No KYC documents available to download.');
+        }
+        return;
+    }
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;height:11px;animation:spin 1s linear infinite;"></i> Zipping...';
+    btn.disabled = true;
+
+    try {
+        // Dynamically load JSZip if not present
+        if (typeof JSZip === 'undefined') {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        const zip = new JSZip();
+        // Format the folder name safely
+        const safeFolderName = clientName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'Client';
+        const folderName = `${safeFolderName}_KYC_Documents`;
+        const folder = zip.folder(folderName);
+
+        // Fetch each valid file
+        const fetchPromises = urlsToDownload.map(async ([name, url]) => {
+            try {
+                // Approximate extension from URL or fallback
+                let ext = url.split('.').pop().split(/#|\\?/)[0];
+                if (!['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext.toLowerCase())) {
+                    ext = 'pdf'; 
+                }
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Network error');
+                const blob = await response.blob();
+                folder.file(`${name}.${ext}`, blob);
+            } catch (err) {
+                console.warn(`Failed to fetch ${name} at ${url}`, err);
+            }
+        });
+
+        await Promise.all(fetchPromises);
+
+        // Generate and download zip
+        const content = await zip.generateAsync({ type: 'blob' });
+        const downloadUrl = URL.createObjectURL(content);
+        
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${folderName}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+
+    } catch (error) {
+        console.error('Zip generation failed', error);
+        if (window.showNotification) {
+            window.showNotification('Failed to generate zip file.', 'error');
+        } else {
+            alert('Failed to generate zip file.');
+        }
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        if (window.lucide) window.lucide.createIcons();
+    }
+};
