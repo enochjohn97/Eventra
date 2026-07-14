@@ -112,7 +112,7 @@ try {
     if ($paystack_connection_status !== null) { $sets[] = 'paystack_connection_status = ?'; $params[] = $paystack_connection_status; }
     if ($paystack_public_key !== '') { $sets[] = 'paystack_public_key = ?'; $params[] = $paystack_public_key; }
     if ($paystack_merchant_id !== '') { $sets[] = 'paystack_merchant_id = ?'; $params[] = $paystack_merchant_id; }
-    if ($paystack_key) { $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key; }
+    if ($paystack_key) { $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key; $sets[] = "settlement_verification_status = 'verified'"; }
     $params[] = $client_id;
 
     $updateStmt = $pdo->prepare("UPDATE clients SET " . implode(', ', $sets) . " WHERE id = ?");

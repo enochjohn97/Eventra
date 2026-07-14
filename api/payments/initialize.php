@@ -114,7 +114,9 @@ try {
         $unit_price = (float)$event['regular_price'];
     }
     
-    $total = $unit_price * $quantity;
+    $base_total = $unit_price * $quantity;
+    $surcharge = $base_total * 0.10;
+    $total = $base_total + $surcharge;
     $amount_kobo = (int)round($total * 100);
 
     // ── OTP VERIFICATION FOR PAID EVENTS (CRITICAL SECURITY) ────────────────
@@ -340,16 +342,14 @@ try {
         ],
     ];
 
-    // ── Split Payment: Apply 1% platform commission via transaction_charge ─────
-    $commissionPct = (float) ($event['platform_commission_percent'] ?? 1.00);
-    $commissionKobo = (int) round($amount_kobo * ($commissionPct / 100));
+    $commissionKobo = (int) round($surcharge * 100);
     if ($isOrganizerConnected && $commissionKobo > 0) {
         // transaction_charge: flat amount charged for platform, remainder to organizer
         $paystackPayload['transaction_charge'] = $commissionKobo;
         $paystackPayload['bearer']             = 'account'; // platform bears the charge, deducts from platform share
         error_log(sprintf(
-            '[initialize.php] Split: total=%d kobo, platform_commission=%d kobo (%.2f%%)',
-            $amount_kobo, $commissionKobo, $commissionPct
+            '[initialize.php] Split: total=%d kobo, platform_commission=%d kobo',
+            $amount_kobo, $commissionKobo
         ));
     } elseif (!$isOrganizerConnected && !empty($event['subaccount_code'])
         && !str_starts_with($event['subaccount_code'], 'SETTLE_MOCK_')

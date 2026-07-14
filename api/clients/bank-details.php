@@ -143,7 +143,7 @@ try {
                 SET metadata = ?,
                     settlement_bank_name = ?, settlement_bank_code = ?,
                     settlement_account_number = ?, settlement_account_name = ?,
-                    settlement_verification_status = 'verified',
+                    settlement_verification_status = 'pending',
                     verification_status = 'pending',
                     updated_at = NOW()
                 WHERE client_auth_id = ?

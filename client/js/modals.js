@@ -22,7 +22,7 @@ async function showProfileEditModal() {
 
     const modalHTML = `
         <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
-            <div class="modal-content modal-content-animate" style="max-width: 600px; display: flex; flex-direction: column;">
+            <div class="modal-content modal-content-animate" style="max-width: 750px; display: flex; flex-direction: column;">
                 <div class="modal-header">
                     <h2>Edit Profile</h2>
                     <button type="button" class="modal-close" onclick="closeProfileEditModal()">&times;</button>
@@ -149,7 +149,7 @@ async function showProfileEditModal() {
 
                         <!-- STEP 3: KYC Verification Documents -->
                         <div id="wizardStep3" class="wizard-step" style="display: none;">
-                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="kyc-upload-grid" style="margin-bottom: 1.5rem;">
                                 <!-- NIN File -->
                                 <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
                                     <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
@@ -1260,7 +1260,7 @@ function showEditEventModal(event) {
 
                         <!-- STEP 3: KYC Verification Documents -->
                         <div id="wizardStep3" class="wizard-step" style="display: none;">
-                            <div class="modal-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="kyc-upload-grid" style="margin-bottom: 1.5rem;">
                                 <!-- NIN File -->
                                 <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
                                     <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">

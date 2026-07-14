@@ -192,7 +192,7 @@
               </div>
               <hr />
               <a href="#" id="viewProfile">Profile</a>
-              <a href="#" onclick="if(typeof window.openSupportCenter==='function')window.openSupportCenter();else alert('Support Center is loading. Please try again.');return false;">❓ Support</a>
+              <a href="#" onclick="if(typeof window.showSupportCenter==='function')window.showSupportCenter();else window.location.assign('/public/pages/tickets.html?support=1');return false;">❓ Support</a>
               <hr />
               <a href="#" id="logoutBtn">Logout</a>
             </div>
