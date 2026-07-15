@@ -1,15 +1,15 @@
 /**
  * Heartbeat & Session Timeout Component
  *
- * 1. Tracks user interaction timestamps to detect 30-minute inactivity.
+ * 1. Tracks user interaction timestamps to detect 1-hour inactivity.
  * 2. Calls the server heartbeat API every 60 seconds to keep is_online fresh.
- * 3. On 30-minute inactivity, calls logout API and redirects to login.
+ * 3. On 1-hour inactivity, calls logout API and redirects to login.
  */
 (function () {
     'use strict';
 
     // ── Configuration ──────────────────────────────────────────────────────────
-    const INACTIVITY_LIMIT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (Matches SESSION_LIFETIME)
+    const INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour
     const HEARTBEAT_INTERVAL_MS = 60 * 1000;     // 60 seconds
     const CHECK_INTERVAL_MS = 60 * 1000;         // check every 60 s
 
@@ -80,7 +80,7 @@
             await Swal.fire({
                 icon: 'warning',
                 title: 'Session Expired',
-                text: 'You have been logged out due to 7 days of inactivity.',
+                text: 'You have been logged out due to 1 hour of inactivity.',
                 confirmButtonColor: '#6366f1',
                 timer: 5000,
                 timerProgressBar: true

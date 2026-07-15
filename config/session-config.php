@@ -26,7 +26,7 @@ ini_set('session.cookie_path', '/');
     }
 
 // Default timeout (can be overridden by roles)
-$timeout_duration = 604800; // 7 days (Increased to prevent frequent logouts)
+$timeout_duration = 3600; // 1 hour inactivity timeout
 
 ini_set('session.cookie_lifetime', $timeout_duration); // Set cookie lifetime to match timeout
 ini_set('session.gc_maxlifetime', $timeout_duration);
@@ -82,7 +82,7 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// The $timeout_duration is 7 days. Only logout if truly exceeded.
+// The $timeout_duration is 1 hour. Only logout if truly exceeded.
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout_duration)) {
     // Session expired due to inactivity
     if (session_status() === PHP_SESSION_ACTIVE) {

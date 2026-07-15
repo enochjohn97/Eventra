@@ -29,11 +29,8 @@ async function showProfileEditModal() {
                 </div>
 
                 <div class="modal-body" style="overflow-y: auto; padding-top: 0;">
-                    <form id="profileEditForm" enctype="multipart/form-data">
-                        
-                        <!-- STEP 1: Personal Information -->
-                        <div id="wizardStep1" class="wizard-step" style="display: block;">
-                            <div class="profile-edit-avatar-container">
+                    <div class="profile-edit-avatar-container">
+
                                     <div class="avatar-wrapper">
                                         <img id="profilePreview" class="profile-preview-img"
                                              src="${user.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=160`}">
@@ -42,8 +39,13 @@ async function showProfileEditModal() {
                                             📷
                                         </label>
                                     </div>
-                                    <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePic(event)">
-                            </div>
+                                    <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePic(event)" form="profileEditForm">
+                            
+                    </div>
+                    <form id="profileEditForm" enctype="multipart/form-data">
+                        
+                        <!-- STEP 1: Personal Information -->
+                        <div id="wizardStep1" class="wizard-step" style="display: block;">
 
                             <div class="modal-grid">
                                 <div class="form-group modal-grid-full">

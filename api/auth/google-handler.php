@@ -156,7 +156,7 @@ try {
 
         // Consistent URL formatting for the response
         if (isset($user['profile_pic']) && $user['profile_pic']) {
-            if (!preg_match('/^https?:\/\//i', $user['profile_pic'])) {
+            if (!preg_match('/^(https?:\/\/|data:)/i', $user['profile_pic'])) {
                 $user['profile_pic'] = '/' . ltrim($user['profile_pic'], '/');
             }
         }
@@ -343,7 +343,7 @@ try {
                 if (!$pic) {
                     return null;
                 }
-                if (preg_match('/^https?:\/\//i', $pic)) {
+                if (preg_match('/^(https?:\/\/|data:)/i', $pic)) {
                     return $pic;
                 }
                 return '/' . ltrim($pic, '/');
@@ -352,7 +352,7 @@ try {
                 if (!$pic) {
                     return null;
                 }
-                if (preg_match('/^https?:\/\//i', $pic)) {
+                if (preg_match('/^(https?:\/\/|data:)/i', $pic)) {
                     return $pic;
                 }
                 return '/' . ltrim($pic, '/');

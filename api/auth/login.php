@@ -279,7 +279,7 @@ try {
                     if (!$pic) {
                         return null;
                     }
-                    if (preg_match('/^https?:\/\//i', $pic)) {
+                    if (preg_match('/^(https?:\/\/|data:)/i', $pic)) {
                         return $pic;
                     }
                     return '/' . ltrim($pic, '/');
@@ -288,7 +288,7 @@ try {
                     if (!$pic) {
                         return null;
                     }
-                    if (preg_match('/^https?:\/\//i', $pic)) {
+                    if (preg_match('/^(https?:\/\/|data:)/i', $pic)) {
                         return $pic;
                     }
                     return '/' . ltrim($pic, '/');

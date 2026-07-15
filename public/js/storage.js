@@ -70,6 +70,8 @@ if (typeof window.storage === 'undefined' || !window.storage) {
             if (userData && userData.token) {
                 this.set(keys.token, userData.token);
             }
+            // Stamp login time so auth-controller can trust local auth within 1-hour window
+            localStorage.setItem('login_timestamp', Date.now().toString());
             return this.set(keys.user, userData);
         },
 
@@ -87,6 +89,7 @@ if (typeof window.storage === 'undefined' || !window.storage) {
              const keys = this.getRoleKeys();
              this.remove(keys.user);
              this.remove(keys.token);
+             localStorage.removeItem('login_timestamp');
         }
     };
 }

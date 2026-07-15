@@ -149,12 +149,12 @@ if ($intent === 'client_login_otp') {
                 'business_name' => $user['business_name'] ?? '',
                 'profile_pic' => (function ($pic) {
                     if (!$pic) return null;
-                    if (preg_match('/^https?:\/\//i', $pic)) return $pic;
+                    if (preg_match('/^(https?:\/\/|data:)/i', $pic)) return $pic;
                     return '/' . ltrim($pic, '/');
                 })($user['profile_pic'] ?? null),
                 'profile_image' => (function ($pic) {
                     if (!$pic) return null;
-                    if (preg_match('/^https?:\/\//i', $pic)) return $pic;
+                    if (preg_match('/^(https?:\/\/|data:)/i', $pic)) return $pic;
                     return '/' . ltrim($pic, '/');
                 })($user['profile_pic'] ?? null),
                 'token' => $token

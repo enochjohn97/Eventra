@@ -86,8 +86,15 @@ class AuthController {
             });
             
             if (!response) {
-                this.clearLocalState();
-                this.setState(this.states.UNAUTHENTICATED);
+                // No response – trust local auth if still within 1-hour session window
+                const loginTs = parseInt(localStorage.getItem('login_timestamp') || '0', 10);
+                const withinWindow = (Date.now() - loginTs) < 60 * 60 * 1000;
+                if (window.storage?.getToken() && withinWindow) {
+                    this.setState(this.states.AUTHENTICATED);
+                } else {
+                    this.clearLocalState();
+                    this.setState(this.states.UNAUTHENTICATED);
+                }
                 return;
             }
 
@@ -102,28 +109,33 @@ class AuthController {
                 this.setState(this.states.AUTHENTICATED);
                 window.dispatchEvent(new CustomEvent('auth:sync', { detail: { success: true, user: updatedUser } }));
             } else {
-                // If the message is "Not authenticated", it's expected for guests.
-                // We only "clear" if we actually thought we were logged in.
+                // Server says not authenticated.
+                const justLoggedIn = sessionStorage.getItem('just_logged_in');
+                const loginTs = parseInt(localStorage.getItem('login_timestamp') || '0', 10);
+                const withinWindow = (Date.now() - loginTs) < 60 * 60 * 1000;
+                
                 if (this.state !== this.states.UNAUTHENTICATED && this.state !== this.states.INITIALIZING) {
-                    
-                    // Resiliency: if we have local auth and just logged in, don't clear it yet.
-                    // This allows the page to load while the session might still be propagating.
-                    if (justLoggedIn || window.storage?.getToken()) {
-                        this.setState(this.states.AUTHENTICATED); // Force authenticated state to avoid redirect
+                    // Keep session alive if we have a local token within the 1-hour window
+                    if (justLoggedIn || (window.storage?.getToken() && withinWindow)) {
+                        this.setState(this.states.AUTHENTICATED);
                     } else {
                         this.clearLocalState();
                     }
                 } else if (this.state === this.states.INITIALIZING) {
-                    // First load as guest, just set state
-                    this.setState(this.states.UNAUTHENTICATED);
+                    if (window.storage?.getToken() && withinWindow) {
+                        this.setState(this.states.AUTHENTICATED);
+                    } else {
+                        this.setState(this.states.UNAUTHENTICATED);
+                    }
                 }
             }
         } catch (error) {
-            
-            // On hard failure (network, syntax), only clear if not just_logged_in
+            // On hard failure, trust local auth if still within 1-hour session window
             const justLoggedIn = sessionStorage.getItem('just_logged_in');
-            if (justLoggedIn) {
-                this.setState(this.states.AUTHENTICATED); // Optimistic keep-alive
+            const loginTs = parseInt(localStorage.getItem('login_timestamp') || '0', 10);
+            const withinWindow = (Date.now() - loginTs) < 60 * 60 * 1000;
+            if (justLoggedIn || (window.storage?.getToken() && withinWindow)) {
+                this.setState(this.states.AUTHENTICATED);
             } else {
                 this.clearLocalState();
             }

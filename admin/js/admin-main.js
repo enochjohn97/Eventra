@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initLogout();
     initPreviews();
     initSettings();
-    
+
     // Initialize admin authentication and profile
     if (window.adminAuth) {
         window.adminAuth.loadAdminProfile();
     }
-    
+
     // Initialize notification system
     if (window.notificationManager) {
         window.notificationManager.startPolling();
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof initHeartbeat === 'function') {
         initHeartbeat();
     }
-    
+
     // Initialize inactivity monitor
     initInactivityMonitor();
 });
@@ -43,7 +43,7 @@ function initInactivityMonitor() {
 
     function resetTimers() {
         if (isWarningShown) return;
-        
+
         clearTimeout(inactivityTimer);
         clearTimeout(warningTimer);
 
@@ -52,13 +52,13 @@ function initInactivityMonitor() {
             if (window.logout) window.logout();
             else window.location.href = '../../admin/pages/adminLogin.html';
         }, SESSION_TIMEOUT);
-        
+
         if (Date.now() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
             lastHeartbeatTime = Date.now();
             if (typeof apiFetch !== 'undefined') {
-                apiFetch('/api/utils/heartbeat.php').catch(() => {});
+                apiFetch('/api/utils/heartbeat.php').catch(() => { });
             } else {
-                fetch('/api/utils/heartbeat.php').catch(() => {});
+                fetch('/api/utils/heartbeat.php').catch(() => { });
             }
         }
     }
@@ -66,9 +66,9 @@ function initInactivityMonitor() {
     function showWarning() {
         if (isWarningShown) return;
         isWarningShown = true;
-        
+
         let timeLeft = 120; // 2 minutes
-        
+
         Swal.fire({
             title: 'Session Expiring Soon',
             html: `You will be logged out in <strong style="color: #ef4444; font-size: 1.2rem;">${timeLeft}</strong> seconds due to inactivity.`,
@@ -165,7 +165,7 @@ function initDrawers() {
             }
         };
     }
-    
+
     if (profileBtn) {
         profileBtn.onclick = (e) => {
             e.preventDefault();
@@ -219,14 +219,14 @@ async function logout() {
             const response = await apiFetch('/api/auth/logout.php', {
                 method: 'POST'
             });
-            
+
             const resultData = await response.json();
-            
+
             if (resultData.success) {
                 // Clear local storage (namespaced)
                 storage.remove('admin_user');
                 storage.remove('admin_auth_token');
-                
+
                 // Redirect to login
                 window.location.href = '../../admin/pages/adminLogin.html';
             } else {
@@ -251,7 +251,7 @@ function initLogout() {
         // or just ensure the inline one calls the global function we just defined.
         // If they use onclick="logout()", it calls window.logout, which matches our function.
         // So we mainly need to handle elements that rely on listeners.
-        
+
         // Ensure pointer cursor
         link.style.cursor = 'pointer';
     });
@@ -268,7 +268,7 @@ function initLogout() {
 
 function initExportModal() {
     const modalBackdrop = document.getElementById('exportModal');
-    
+
     // Use event delegation for naturally occurring and dynamic export buttons
     document.addEventListener('click', (e) => {
         const exportBtn = e.target.closest('.btn-export, #headerExportBtn');
@@ -276,7 +276,7 @@ function initExportModal() {
             // Check if there's a table on the current page
             const hasTable = document.querySelector('table tbody tr');
             const hasCheckedRows = document.querySelector('table tbody tr input[type="checkbox"]:checked');
-            
+
             if (!hasTable || hasTable.innerText.includes('Loading') || hasTable.innerText.includes('No data')) {
                 Swal.fire({
                     icon: 'warning',
@@ -296,18 +296,18 @@ function initExportModal() {
                 });
                 return;
             }
-            
+
             modalBackdrop.style.display = 'flex';
         }
     });
-    
+
     if (modalBackdrop) {
         modalBackdrop.addEventListener('click', (e) => {
             if (e.target === modalBackdrop) {
                 modalBackdrop.style.display = 'none';
             }
         });
-        
+
         // Handle option clicks
         const options = document.querySelectorAll('.export-option');
         options.forEach(opt => {
@@ -338,12 +338,12 @@ function exportCurrentTableToPDF() {
 
         // Get page title
         const pageTitle = document.querySelector('.page-title h1')?.innerText || 'Eventra Export';
-        
+
         // Add title
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
         doc.text(pageTitle, 14, 15);
-        
+
         // Add export date
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
@@ -353,18 +353,18 @@ function exportCurrentTableToPDF() {
         const headers = [];
         const rows = [];
         const hasCheckboxes = table.querySelector('thead th input[type="checkbox"]');
-        
+
         // Get headers (skip first column if it's a checkbox)
         const headerCells = table.querySelectorAll('thead th');
         headerCells.forEach((cell, index) => {
             if (index === 0 && hasCheckboxes) return;
             headers.push(cell.innerText.replace(/↕/g, '').trim());
         });
-        
+
         // Get rows
         const bodyRows = table.querySelectorAll('tbody tr');
         const checkedRows = table.querySelectorAll('tbody tr input[type="checkbox"]:checked');
-        const rowsToExport = checkedRows.length > 0 
+        const rowsToExport = checkedRows.length > 0
             ? Array.from(checkedRows).map(cb => cb.closest('tr'))
             : Array.from(bodyRows);
 
@@ -424,7 +424,7 @@ function exportCurrentTableToExcel() {
         const workbook = XLSX.utils.book_new();
         const worksheet_data = [];
         const hasCheckboxes = table.querySelector('thead th input[type="checkbox"]');
-        
+
         // Get headers
         const headers = [];
         const headerCells = table.querySelectorAll('thead th');
@@ -433,11 +433,11 @@ function exportCurrentTableToExcel() {
             headers.push(cell.innerText.replace(/↕/g, '').trim());
         });
         worksheet_data.push(headers);
-        
+
         // Get rows
         const bodyRows = table.querySelectorAll('tbody tr');
         const checkedRows = table.querySelectorAll('tbody tr input[type="checkbox"]:checked');
-        const rowsToExport = checkedRows.length > 0 
+        const rowsToExport = checkedRows.length > 0
             ? Array.from(checkedRows).map(cb => cb.closest('tr'))
             : Array.from(bodyRows);
 
@@ -456,7 +456,7 @@ function exportCurrentTableToExcel() {
 
         // Create worksheet
         const worksheet = XLSX.utils.aoa_to_sheet(worksheet_data);
-        
+
         // Set column widths
         const colWidths = headers.map(() => ({ wch: 20 }));
         worksheet['!cols'] = colWidths;
@@ -485,7 +485,7 @@ function exportCurrentTableToCSV() {
     const headerRow = table.querySelector('thead tr');
     const bodyRows = table.querySelectorAll('tbody tr');
     const checkedRows = table.querySelectorAll('tbody tr input[type="checkbox"]:checked');
-    const rowsToExport = checkedRows.length > 0 
+    const rowsToExport = checkedRows.length > 0
         ? Array.from(checkedRows).map(cb => cb.closest('tr'))
         : Array.from(bodyRows);
 
@@ -494,21 +494,21 @@ function exportCurrentTableToCSV() {
     const csvContent = exportRows.map(row => {
         const cells = Array.from(row.querySelectorAll('th, td'));
         return cells.filter((_, index) => !(index === 0 && hasCheckboxes))
-        .map(cell => {
-            // Clean up the text: remove extra whitespace, handle quotes
-            let text = cell.innerText.trim().replace(/\n/g, ' ').replace(/↕/g, '');
-            if (text.includes(',') || text.includes('"')) {
-                text = `"${text.replace(/"/g, '""')}"`;
-            }
-            if (text === 'Loading...' || text === 'No data found') return null;
-            return text;
-        }).filter(t => t !== null).join(',');
+            .map(cell => {
+                // Clean up the text: remove extra whitespace, handle quotes
+                let text = cell.innerText.trim().replace(/\n/g, ' ').replace(/↕/g, '');
+                if (text.includes(',') || text.includes('"')) {
+                    text = `"${text.replace(/"/g, '""')}"`;
+                }
+                if (text === 'Loading...' || text === 'No data found') return null;
+                return text;
+            }).filter(t => t !== null).join(',');
     }).filter(row => row.length > 0).join('\n');
 
     const filename = `eventra-export-${new Date().toISOString().split('T')[0]}.csv`;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
+
     if (navigator.msSaveBlob) { // IE 10+
         navigator.msSaveBlob(blob, filename);
     } else {
@@ -584,7 +584,7 @@ function initSidebar() {
         const nowCollapsed = sidebar.classList.toggle('sidebar-collapsed');
         mainLayout.classList.toggle('collapsed');
         localStorage.setItem('eventra_sidebar_collapsed', nowCollapsed);
-        
+
         // Swap icon direction
         toggleBtn.innerHTML = nowCollapsed ? '<i data-lucide="chevron-right"></i>' : '<i data-lucide="chevron-left"></i>';
         if (window.lucide) window.lucide.createIcons();
@@ -602,11 +602,11 @@ function initSidebar() {
     // 5. Active State Highlighting
     const currentPath = window.location.pathname;
     const menuItems = document.querySelectorAll('.sidebar-menu .menu-item a');
-    
+
     menuItems.forEach(item => {
         item.addEventListener('click', (e) => {
-            try { sessionStorage.setItem('skip_auth_redirect', '1'); } catch (err) {}
-            try { localStorage.setItem('skip_auth_redirect', Date.now().toString()); } catch (err) {}
+            try { sessionStorage.setItem('skip_auth_redirect', '1'); } catch (err) { }
+            try { localStorage.setItem('skip_auth_redirect', Date.now().toString()); } catch (err) { }
         });
 
         const href = item.getAttribute('href');
@@ -620,7 +620,7 @@ function initSidebar() {
 }
 
 // Admin client modal helpers
-window.adminRenderCopyField = function(label, value, fallback) {
+window.adminRenderCopyField = function (label, value, fallback) {
     const display = value || fallback || '—';
     const canCopy = !!(value && value !== '—' && value !== 'Not verified');
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
@@ -632,7 +632,7 @@ window.adminRenderCopyField = function(label, value, fallback) {
     </div>`;
 };
 
-window.adminRenderKycRow = function(label, filePath) {
+window.adminRenderKycRow = function (label, filePath) {
     if (!filePath) {
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#94a3b8;font-size:0.76rem;"><i data-lucide="file-x" style="width:14px;height:14px;flex-shrink:0;"></i><span style="flex:1;">${escapeHTML(label)}</span><span>Not uploaded</span></div>`;
     }
@@ -654,7 +654,7 @@ window.adminRenderKycRow = function(label, filePath) {
     </div>`;
 };
 
-window.adminSavePaystackAccountStatus = async function(clientId, status) {
+window.adminSavePaystackAccountStatus = async function (clientId, status) {
     try {
         const res = await apiFetch('/api/admin/update-client-paystack.php', {
             method: 'POST',
@@ -669,7 +669,7 @@ window.adminSavePaystackAccountStatus = async function(clientId, status) {
 };
 
 // Global toggle for Paystack secret key visibility in the client profile modal
-window.togglePaystackKeyVisibility = function(btn) {
+window.togglePaystackKeyVisibility = function (btn) {
     const inputId = btn.dataset.toggleInput;
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -683,7 +683,7 @@ window.togglePaystackKeyVisibility = function(btn) {
     }
 };
 
-window.initPreviews = function() {
+window.initPreviews = function () {
     // Create Modal Backdrop (if not exists)
     let backdrop = document.querySelector('.preview-modal-backdrop');
     if (!backdrop) {
@@ -737,7 +737,7 @@ window.initPreviews = function() {
                 const email = cells[3].innerText;
                 const status = cells[4].innerText;
                 const contact = cells[5].innerText;
-                
+
                 // Fetch details for user to get full metadata
                 html = `
                     <div class="profile-preview">
@@ -794,7 +794,7 @@ window.initPreviews = function() {
                 const clientId = row.dataset.id;
                 const name = row.cells[1].innerText;
                 const profilePic = getProfileImg(row.dataset.profilePic, name);
-                
+
                 // Show loading state
                 html = `
                     <div class="profile-preview">
@@ -860,7 +860,7 @@ window.initPreviews = function() {
                                         </div>
                                         <div style="font-size: 0.72rem; color: #94a3b8; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
                                             <i data-lucide="calendar-days" style="width:13px;height:13px;"></i>
-                                            Member since ${client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', {month:'short', year:'numeric'}) : 'N/A'}
+                                            Member since ${client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
                                         </div>
                                     </div>
 
@@ -881,7 +881,7 @@ window.initPreviews = function() {
                                                     </div>
                                                     <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
                                                         <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Date of Birth</div>
-                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${client.dob ? new Date(client.dob).toLocaleDateString('en-US', {day:'2-digit', month:'short', year:'numeric'}) : 'N/A'}</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${client.dob ? new Date(client.dob).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</div>
                                                     </div>
                                                     <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
                                                         <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Gender</div>
@@ -939,7 +939,7 @@ window.initPreviews = function() {
                                         <!-- RIGHT: Settlement + KYC + Approval + Events -->
                                         <div style="padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
 
-                                            <button type="button" onclick="window.open('https://paystack.com/','_blank')" style="width:100%;background:linear-gradient(135deg,#0ba4db,#011b33);color:white;border:none;padding:0.65rem;border-radius:9px;font-weight:700;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                            <button type="button" onclick="window.open('https://dashboard.paystack.com/#/signup','_blank')" style="width:100%;background:linear-gradient(135deg,#0ba4db,#011b33);color:white;border:none;padding:0.65rem;border-radius:9px;font-weight:700;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
                                                 <i data-lucide="external-link" style="width:14px;height:14px;"></i> Create Paystack Account
                                             </button>
 
@@ -960,12 +960,12 @@ window.initPreviews = function() {
                                                 <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 5px;">
                                                     <span style="display:flex;align-items:center;gap:5px;"><i data-lucide="folder-open" style="width:11px;height:11px;"></i> KYC Documents</span>
                                                     <button type="button" data-kyc-files='${JSON.stringify({
-                                                        'BVN': client.kyc_documents?.bvn?.url || client.kyc_bvn_file || '',
-                                                        'NIN': client.kyc_documents?.nin?.url || client.kyc_nin_file || '',
-                                                        'CAC': client.kyc_documents?.cac?.url || client.kyc_cac_file || '',
-                                                        'Voters_Card': client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file || '',
-                                                        'Drivers_License': client.kyc_documents?.drivers_license?.url || client.kyc_driver_license_file || ''
-                                                    }).replace(/'/g, "&#39;")}' onclick="downloadAllKYC(this, '${escapeHTML(client.business_name || client.name || 'Client').replace(/'/g, "\\'")}')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><i data-lucide="download" style="width:11px;height:11px;"></i>Download All</button>
+                                'BVN': client.kyc_documents?.bvn?.url || client.kyc_bvn_file || '',
+                                'NIN': client.kyc_documents?.nin?.url || client.kyc_nin_file || '',
+                                'CAC': client.kyc_documents?.cac?.url || client.kyc_cac_file || '',
+                                'Voters_Card': client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file || '',
+                                'Drivers_License': client.kyc_documents?.drivers_license?.url || client.kyc_driver_license_file || ''
+                            }).replace(/'/g, "&#39;")}' onclick="downloadAllKYC(this, '${escapeHTML(client.business_name || client.name || 'Client').replace(/'/g, "\\'")}')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><i data-lucide="download" style="width:11px;height:11px;"></i>Download All</button>
                                                 </div>
                                                 ${adminRenderKycRow('BVN', client.kyc_documents?.bvn?.url || client.kyc_bvn_file)}
                                                 ${adminRenderKycRow('NIN', client.kyc_documents?.nin?.url || client.kyc_nin_file)}
@@ -1084,9 +1084,9 @@ window.initPreviews = function() {
                 const price = cells[2].innerText;
                 const attendees = cells[3].innerText;
                 const category = cells[4].innerText;
-                
+
                 const rawImage = row.dataset.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop';
-                
+
                 // Proper image path resolution
                 let eventImage = '';
                 if (rawImage.startsWith('http') || rawImage.startsWith('data:')) {
@@ -1097,7 +1097,7 @@ window.initPreviews = function() {
                 } else {
                     eventImage = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop';
                 }
-                
+
                 html = `
                     <div class="ticket-preview">
                         <div class="ticket-card-preview" style="background: linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.7) 100%), url('${eventImage}') no-repeat center center; background-size: cover;">
@@ -1151,7 +1151,7 @@ window.initPreviews = function() {
 
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 6) return;
-                
+
                 // Adjust indices for events table: [0:cb, 1:ID, 2:Name, 3:Priority, 4:Date, 5:Time, 6:Category, ...]
                 const eventId = cells[1].innerText;
                 const rawName = cells[2].querySelector('div:first-child')?.innerText || cells[2].innerText;
@@ -1163,12 +1163,12 @@ window.initPreviews = function() {
                 const phone = cells[7].innerText;
                 const price = cells[8].innerText;
                 const attendees = cells[9].innerText;
-                
+
                 const rawImage = row.dataset.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop';
-                const eventImage = (rawImage.startsWith('http') || rawImage.startsWith('data:')) 
-                    ? rawImage 
+                const eventImage = (rawImage.startsWith('http') || rawImage.startsWith('data:'))
+                    ? rawImage
                     : (rawImage.startsWith('/') ? '../../' + rawImage.substring(1) : (rawImage.startsWith('public') ? '../../' + rawImage : (rawImage === '' ? 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop' : '../../' + rawImage)));
-                
+
                 html = `
                     <div class="event-preview">
                         <div class="event-preview-image-box" style="height: 250px; overflow: hidden; position: relative;">
@@ -1215,7 +1215,7 @@ window.initPreviews = function() {
     });
 }
 
-window.adminSavePaystackKey = async function(clientId, btn) {
+window.adminSavePaystackKey = async function (clientId, btn) {
     const input = document.getElementById(`paystackKeyInput_${clientId}`);
     const statusEl = document.getElementById(`paystackKeyStatus_${clientId}`);
     const key = input ? input.value.trim() : '';
@@ -1255,7 +1255,7 @@ window.adminSavePaystackKey = async function(clientId, btn) {
     }
 };
 
-window.adminUpdatePaystackKey = async function(clientId) {
+window.adminUpdatePaystackKey = async function (clientId) {
     const { value: newKey, isConfirmed } = await Swal.fire({
         title: 'Update Paystack Key',
         input: 'password',
@@ -1291,7 +1291,7 @@ window.adminUpdatePaystackKey = async function(clientId) {
     }
 };
 
-window.copyToClipboard = function(text, successMsg) {
+window.copyToClipboard = function (text, successMsg) {
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
         if (window.showToast) {
@@ -1311,7 +1311,7 @@ window.copyToClipboard = function(text, successMsg) {
     });
 };
 
-window.approveClient = async function(clientId, status, btnElement) {
+window.approveClient = async function (clientId, status, btnElement) {
     const action = status ? 'approve' : 'reject';
     const actionLabel = status ? 'Approve' : 'Reject';
 
@@ -1321,8 +1321,8 @@ window.approveClient = async function(clientId, status, btnElement) {
         html: `
             <p style="margin-bottom:1rem;color:#64748b;font-size:0.9rem;">
                 ${status
-                    ? 'You are about to <strong>approve</strong> this client. They will receive full access to create events and collect payments.'
-                    : 'You are about to <strong>decline</strong> this client. They will be notified with your reason.'}
+                ? 'You are about to <strong>approve</strong> this client. They will receive full access to create events and collect payments.'
+                : 'You are about to <strong>decline</strong> this client. They will be notified with your reason.'}
             </p>
             <textarea id="adminNotesInput" class="swal2-textarea" placeholder="Optional: Add a note for the client (reason, next steps, etc.)" style="min-height:100px;font-size:0.9rem;"></textarea>
         `,
@@ -1369,7 +1369,7 @@ window.approveClient = async function(clientId, status, btnElement) {
     }
 };
 
-window.deleteClient = async function(clientId, email) {
+window.deleteClient = async function (clientId, email) {
     const { value: confirmEmail } = await Swal.fire({
         title: 'Are you absolutely sure?',
         html: `
@@ -1404,7 +1404,7 @@ window.deleteClient = async function(clientId, email) {
             // Need to get the auth_id of the client first, or pass client_id to a modified delete-profile
             // For now, let's assume we pass target_auth_id (which we'll need to fetch)
             // Strategy: Update delete-profile.php to accept client_id too
-            
+
             const response = await apiFetch(`/api/clients/delete-profile.php?target_auth_id=${clientId}`, {
                 method: 'DELETE'
             });
@@ -1428,15 +1428,15 @@ window.deleteClient = async function(clientId, email) {
 };
 
 
-window.toggleVerification = async function(clientId, type, status) {
+window.toggleVerification = async function (clientId, type, status) {
     if (!clientId || !type) return;
-    
+
     try {
         const response = await apiFetch('/api/admin/verify-client.php', {
             method: 'POST',
             body: JSON.stringify({ client_id: clientId, type: type, status: status })
         });
-        
+
         const result = await response.json();
         if (result.success) {
             if (window.showToast) {
@@ -1451,14 +1451,14 @@ window.toggleVerification = async function(clientId, type, status) {
                     timer: 2000
                 });
             }
-            
+
             // Re-open the modal to refresh the data
             const row = document.querySelector(`tr[data-id="${clientId}"]`);
             if (row) {
                 // remove dataset attached to force unbind is hard, let's just trigger the click on the backdrop close and then row click
                 const backdrop = document.querySelector('.preview-modal-backdrop');
                 if (backdrop) backdrop.classList.remove('active');
-                
+
                 // Fetch data again manually or just let row click handle it
                 setTimeout(() => row.click(), 300);
             }
@@ -1473,7 +1473,7 @@ window.toggleVerification = async function(clientId, type, status) {
 /**
  * Open a KYC document — images open in a lightbox, PDFs open in a new tab.
  */
-window.openKycDocument = function(url, isImage) {
+window.openKycDocument = function (url, isImage) {
     if (!url) return;
     if (!isImage) {
         window.open(url, '_blank');
@@ -1551,14 +1551,14 @@ function initSettings() {
     }
 }
 
-window.downloadAllKYC = async function(btn, clientName) {
+window.downloadAllKYC = async function (btn, clientName) {
     const filesStr = btn.getAttribute('data-kyc-files');
     if (!filesStr) return;
-    
+
     // Parse the injected file URLs
     const files = JSON.parse(filesStr);
     const urlsToDownload = Object.entries(files).filter(([name, url]) => url && url.trim() !== '');
-    
+
     if (urlsToDownload.length === 0) {
         if (window.showNotification) {
             window.showNotification('No KYC documents available to download.', 'warning');
@@ -1602,7 +1602,7 @@ window.downloadAllKYC = async function(btn, clientName) {
                 } else {
                     ext = url.split('.').pop().split(/#|\?/)[0];
                     if (!['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext.toLowerCase())) {
-                        ext = 'pdf'; 
+                        ext = 'pdf';
                     }
                 }
                 const response = await fetch(url);
@@ -1619,7 +1619,7 @@ window.downloadAllKYC = async function(btn, clientName) {
         // Generate and download zip
         const content = await zip.generateAsync({ type: 'blob' });
         const downloadUrl = URL.createObjectURL(content);
-        
+
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.download = `${folderName}.zip`;

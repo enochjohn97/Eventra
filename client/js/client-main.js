@@ -183,11 +183,7 @@ document.addEventListener("auth:sync", (e) => {
 function updateGlobalAvatar(user) {
   const avatars = document.querySelectorAll(".user-avatar");
   avatars.forEach((avatar) => {
-    // Ensure parent has avatar-wrapper class for absolute positioning of badge
     const parent = avatar.parentElement;
-    if (parent && !parent.classList.contains("avatar-wrapper")) {
-      parent.classList.add("avatar-wrapper");
-    }
 
     const name = user.name || user.business_name || "User";
     const profileUrl =
@@ -404,8 +400,7 @@ function initProfileClick() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 Profile
             </a>
-             <a href="#" onclick="if(typeof window.showDisputeCenter==='function')window.showDisputeCenter();else window.location.assign('/client/pages/payments.html?tab=refunds');return false;"
-               style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:.88rem;font-weight:600;"> Support Center</a>
+             
 
             <div style="border-top:1px solid #f1f5f9;"></div>
             <a href="#" onclick="logout();return false;"
@@ -416,6 +411,9 @@ function initProfileClick() {
             </a>`;
     userProfile.appendChild(drop);
   }
+
+  // <a href="#" onclick="if(typeof window.showDisputeCenter==='function')window.showDisputeCenter();else window.location.assign('/client/pages/payments.html?tab=refunds');return false;"
+  //              style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:.88rem;font-weight:600;"> Support Center</a>
 
   // Toggle open/close
   userProfile.addEventListener("click", function (e) {

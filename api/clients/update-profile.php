@@ -78,7 +78,7 @@ try {
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
         $file_ext = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
         if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif'])) {
-            $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
+            $mime = function_exists('mime_content_type') ? mime_content_type($_FILES['profile_pic']['tmp_name']) : $_FILES['profile_pic']['type'];
             $base64 = base64_encode(file_get_contents($_FILES['profile_pic']['tmp_name']));
             $profile_pic = 'data:' . $mime . ';base64,' . $base64;
         }
@@ -103,7 +103,7 @@ try {
         if (!in_array($extension, $allowedKycExtensions, true)) {
             throw new RuntimeException('KYC documents must be PDFs or images.');
         }
-        $mime = mime_content_type($file['tmp_name']);
+        $mime = function_exists('mime_content_type') ? mime_content_type($file['tmp_name']) : $file['type'];
         $base64 = base64_encode(file_get_contents($file['tmp_name']));
         $kycUpdates[$field] = 'data:' . $mime . ';base64,' . $base64;
     }
