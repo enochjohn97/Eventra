@@ -88,17 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><span class="status-badge status-${client.verification_status === 'verified' ? 'active' : client.verification_status === 'rejected' ? 'offline' : 'ongoing'}">${escapeHTML(client.verification_status) || 'Pending'}</span></td>
                 <td><span class="status-badge status-${client.status === 'active' ? 'active' : 'offline'}">${escapeHTML(client.status) || 'Active'}</span></td>
                 <td style="font-weight: 600; color: var(--admin-primary);">${client.event_count || 0}</td>
-                <td style="text-align: center;">
-                    <button class="btn btn-secondary setup-paystack-btn" 
-                        data-id="${client.id}" 
-                        data-status="${escapeHTML(client.paystack_connection_status || 'disconnected')}"
-                        data-public="${escapeHTML(client.paystack_public_key || '')}"
-                        data-merchant="${escapeHTML(client.paystack_merchant_id || '')}"
-                        title="Configure Paystack"
-                        style="padding: 0.4rem 0.6rem; border-radius: 6px; background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); cursor: pointer;">
-                        <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
-                    </button>
-                </td>
+                <td></td>
             </tr>
         `).join('');
 
