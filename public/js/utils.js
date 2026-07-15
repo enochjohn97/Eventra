@@ -200,8 +200,8 @@ function getProfileImg(path, name = '') {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
   }
 
-  // Handle external URLs (like Google profile pics)
-  if (path.startsWith('http')) {
+  // Handle external URLs (like Google profile pics) or data URIs
+  if (path.startsWith('http') || path.startsWith('data:')) {
     // Avoid adding timestamp to external URLs to prevent 429 Too Many Requests
     return path;
   }

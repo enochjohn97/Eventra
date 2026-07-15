@@ -76,14 +76,11 @@ try {
     // ── Profile Picture Upload ───────────────────────────────────────────
     $profile_pic = null;
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../../uploads/profiles/';
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         $file_ext = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
         if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif'])) {
-            $new_filename = 'client_' . $client_id . '_' . time() . '.' . $file_ext;
-            if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $upload_dir . $new_filename)) {
-                $profile_pic = 'uploads/profiles/' . $new_filename;
-            }
+            $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
+            $base64 = base64_encode(file_get_contents($_FILES['profile_pic']['tmp_name']));
+            $profile_pic = 'data:' . $mime . ';base64,' . $base64;
         }
     }
 
@@ -96,7 +93,6 @@ try {
     ];
     $kycUpdates = [];
     $allowedKycExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
-    $kycDir = '../../uploads/kyc/';
     foreach ($kycFiles as $field) {
         if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) continue;
         $file = $_FILES[$field];
@@ -107,14 +103,9 @@ try {
         if (!in_array($extension, $allowedKycExtensions, true)) {
             throw new RuntimeException('KYC documents must be PDFs or images.');
         }
-        if (!is_dir($kycDir) && !mkdir($kycDir, 0755, true) && !is_dir($kycDir)) {
-            throw new RuntimeException('KYC upload directory is unavailable.');
-        }
-        $filename = $field . '_' . $client_id . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
-        if (!move_uploaded_file($file['tmp_name'], $kycDir . $filename)) {
-            throw new RuntimeException('Could not save a KYC document.');
-        }
-        $kycUpdates[$field] = 'uploads/kyc/' . $filename;
+        $mime = mime_content_type($file['tmp_name']);
+        $base64 = base64_encode(file_get_contents($file['tmp_name']));
+        $kycUpdates[$field] = 'data:' . $mime . ';base64,' . $base64;
     }
 
     // ── Custom ID ────────────────────────────────────────────────────────────
@@ -177,7 +168,7 @@ try {
         $updated_client['client_id'] = $profileId;
         $updated_client['id'] = (int)$client_auth_id;
         $updated_client['role'] = 'client';
-        if (!empty($updated_client['profile_pic'])) {
+        if (!empty($updated_client['profile_pic']) && !preg_match('/^(https?:\/\/|data:)/i', $updated_client['profile_pic'])) {
             $updated_client['profile_pic'] = '/' . ltrim($updated_client['profile_pic'], '/');
         }
     }

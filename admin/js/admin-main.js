@@ -636,10 +636,11 @@ window.adminRenderKycRow = function(label, filePath) {
     if (!filePath) {
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#94a3b8;font-size:0.76rem;"><i data-lucide="file-x" style="width:14px;height:14px;flex-shrink:0;"></i><span style="flex:1;">${escapeHTML(label)}</span><span>Not uploaded</span></div>`;
     }
-    const fname = filePath.split('/').pop();
-    const url = '/' + String(filePath).replace(/^\//, '');
-    const isPdf = /\.pdf$/i.test(fname);
-    const isImg = /\.(png|jpe?g|gif|webp)$/i.test(fname);
+    const isDataUrl = String(filePath).startsWith('data:');
+    const isPdf = isDataUrl ? filePath.startsWith('data:application/pdf') : /\.pdf$/i.test(filePath);
+    const isImg = isDataUrl ? filePath.startsWith('data:image/') : /\.(png|jpe?g|gif|webp)$/i.test(filePath);
+    const fname = isDataUrl ? `${label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_file.${isPdf ? 'pdf' : 'png'}` : filePath.split('/').pop();
+    const url = isDataUrl ? filePath : (String(filePath).startsWith('http') ? filePath : '/' + String(filePath).replace(/^\//, ''));
     const preview = isImg
         ? `<img src="${url}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;flex-shrink:0;">`
         : `<div style="width:40px;height:40px;border-radius:6px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="${isPdf ? 'file-text' : 'file'}" style="width:18px;height:18px;color:#ef4444;"></i></div>`;
@@ -760,8 +761,10 @@ window.initPreviews = function() {
                             content.innerHTML = `
                                 <div class="profile-preview">
                                     <div class="profile-preview-header">User Profile</div>
-                                    <div class="profile-preview-cover-box">
-                                        <img src="${profilePic}" alt="Cover" style="filter: blur(5px); opacity: 0.5;">
+                                    <div style="position: relative; margin-bottom: 60px;">
+                                        <div class="profile-preview-cover-box" style="margin-bottom: 0;">
+                                            <img src="${profilePic}" alt="Cover" style="filter: blur(5px); opacity: 0.5;">
+                                        </div>
                                         <div class="profile-preview-avatar-wrapper">
                                             <div class="avatar-wrapper">
                                                 <img src="${profilePic}" class="profile-preview-avatar" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid white;">
@@ -832,9 +835,11 @@ window.initPreviews = function() {
                                         </div>
                                     </div>
                                     <!-- Cover + Avatar -->
-                                    <div class="profile-preview-cover-box" style="height: 150px; margin-bottom: 0;">
-                                        <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); opacity: 0.85; z-index: 1;"></div>
-                                        <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Cover" style="filter: blur(12px); opacity: 0.3; width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;">
+                                    <div style="position: relative; margin-bottom: 44px;">
+                                        <div class="profile-preview-cover-box" style="height: 150px; margin-bottom: 0;">
+                                            <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); opacity: 0.85; z-index: 1;"></div>
+                                            <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Cover" style="filter: blur(12px); opacity: 0.3; width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;">
+                                        </div>
                                         <div style="position: absolute; bottom: -44px; left: 28px; z-index: 3;">
                                             <div style="position: relative; display: inline-block;">
                                                 <img src="${getProfileImg(client.profile_pic, client.business_name)}" alt="Avatar" style="width: 88px; height: 88px; border-radius: 50%; border: 4px solid white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); object-fit: cover; background: #e2e8f0; display: block;">
@@ -976,7 +981,7 @@ window.initPreviews = function() {
                                                 </div>
                                                 <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;">Enter or update the Paystack secret key after account creation.</p>
                                                 <div style="position:relative;margin-bottom:7px;">
-                                                    <input id="paystackKeyInput_${client.id}" type="text" name="paystack_secret_key_${client.id}" placeholder="sk_live_... or sk_test_..." autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" readonly style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;-webkit-text-security:disc;text-security:disc;" onfocus="this.removeAttribute('readonly');this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
+                                                    <input id="paystackKeyInput_${client.id}" type="text" name="paystack_secret_key_${client.id}" placeholder="Enter Paystack Secret Key" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" readonly style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;-webkit-text-security:disc;text-security:disc;" onfocus="this.removeAttribute('readonly');this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
                                                     <button type="button" data-toggle-input="paystackKeyInput_${client.id}" onclick="window.togglePaystackKeyVisibility(this)" title="Show/hide" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;padding:3px;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'">
                                                         <i data-lucide="eye" style="width:14px;height:14px;pointer-events:none;"></i>
                                                     </button>
@@ -1588,10 +1593,17 @@ window.downloadAllKYC = async function(btn, clientName) {
         // Fetch each valid file
         const fetchPromises = urlsToDownload.map(async ([name, url]) => {
             try {
-                // Approximate extension from URL or fallback
-                let ext = url.split('.').pop().split(/#|\\?/)[0];
-                if (!['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext.toLowerCase())) {
-                    ext = 'pdf'; 
+                let ext = 'pdf';
+                if (url.startsWith('data:')) {
+                    if (url.startsWith('data:image/jpeg')) ext = 'jpg';
+                    else if (url.startsWith('data:image/png')) ext = 'png';
+                    else if (url.startsWith('data:image/gif')) ext = 'gif';
+                    else if (url.startsWith('data:image/webp')) ext = 'webp';
+                } else {
+                    ext = url.split('.').pop().split(/#|\?/)[0];
+                    if (!['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext.toLowerCase())) {
+                        ext = 'pdf'; 
+                    }
                 }
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Network error');

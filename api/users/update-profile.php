@@ -48,21 +48,13 @@ try {
 
     $profile_pic = null;
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../../uploads/profiles/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-
         $file_ext = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
         if (in_array($file_ext, $allowed_exts)) {
-            $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_ext;
-            $upload_path = $upload_dir . $new_filename;
-
-            if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $upload_path)) {
-                $profile_pic = 'uploads/profiles/' . $new_filename;
-            }
+            $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
+            $base64 = base64_encode(file_get_contents($_FILES['profile_pic']['tmp_name']));
+            $profile_pic = 'data:' . $mime . ';base64,' . $base64;
         }
     }
 
@@ -103,7 +95,7 @@ try {
         $updated_user['profile_id'] = $profileId;
         $updated_user['id'] = (int)$user_auth_id;
         $updated_user['role'] = 'user';
-        if (!empty($updated_user['profile_pic']) && !preg_match('/^https?:\/\//i', $updated_user['profile_pic'])) {
+        if (!empty($updated_user['profile_pic']) && !preg_match('/^(https?:\/\/|data:)/i', $updated_user['profile_pic'])) {
             $updated_user['profile_pic'] = '/' . ltrim($updated_user['profile_pic'], '/');
         }
         unset($updated_user['password']);

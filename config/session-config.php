@@ -19,23 +19,11 @@ ini_set('session.cookie_httponly', '1');
 ini_set('session.cookie_samesite', 'Lax');
 ini_set('session.cookie_path', '/');
 
-// Set session save path to a project-local directory for reliability
-$session_path = __DIR__ . '/../sessions';
-if (!is_dir($session_path)) {
-    @mkdir($session_path, 0700, true);
-}
-
 // Try to use project session path, fallback to system temp if permissions denied
-if (is_writable($session_path)) {
-    ini_set('session.save_path', $session_path);
-} else {
-    // Fallback to system default or temp directory for shared hosting
     $temp_path = sys_get_temp_dir();
     if (is_writable($temp_path)) {
         ini_set('session.save_path', $temp_path);
     }
-    // If even temp is not writable, PHP will use its default configuration
-}
 
 // Default timeout (can be overridden by roles)
 $timeout_duration = 604800; // 7 days (Increased to prevent frequent logouts)

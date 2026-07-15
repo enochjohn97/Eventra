@@ -25,10 +25,10 @@ if (!$client_id || !in_array($status, [0, 1], true)) {
 try {
     $verification_status = $status ? 'verified' : 'rejected';
 
-    // 1. If approving, check that client has Paystack connected (v2 model)
+    // 1. If approving, check that client has Paystack connected (v2 model) or has a valid secret key
     if ($status) {
         $checkPaymentStmt = $pdo->prepare("
-            SELECT c.paystack_connection_status, c.name, c.business_name, c.client_auth_id, a.email
+            SELECT c.paystack_connection_status, c.paystack_auth_token, c.name, c.business_name, c.client_auth_id, a.email
             FROM clients c
             JOIN auth_accounts a ON c.client_auth_id = a.id
             WHERE c.id = ? AND c.deleted_at IS NULL
@@ -44,11 +44,14 @@ try {
             exit;
         }
 
-        // Ensure Paystack Connect is active before approving
-        if (($paymentInfo['paystack_connection_status'] ?? 'disconnected') !== 'connected') {
+        // Ensure Paystack Connect is active OR a valid secret key is provided before approving
+        $isConnected = ($paymentInfo['paystack_connection_status'] ?? 'disconnected') === 'connected';
+        $hasSecretKey = !empty($paymentInfo['paystack_auth_token']);
+        
+        if (!$isConnected && !$hasSecretKey) {
             echo json_encode([
                 'success' => false,
-                'message' => 'Cannot approve: Client has not connected their Paystack account. Ask them to complete Paystack Connect setup first.'
+                'message' => 'Cannot approve: Client has not connected their Paystack account or no valid Paystack Secret Key was found.'
             ]);
             exit;
         }
