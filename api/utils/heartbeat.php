@@ -56,6 +56,24 @@ try {
     $stmt = $pdo->prepare("UPDATE auth_accounts SET last_seen = NOW(), is_online = 1 WHERE id = ?");
     $stmt->execute([$auth_id]);
 
+    // Rate-limit global cron triggering to 5 minutes
+    $cron_lock_file = sys_get_temp_dir() . '/eventra_cron_last_run.txt';
+    $last_cron_run = 0;
+    if (file_exists($cron_lock_file)) {
+        $last_cron_run = filemtime($cron_lock_file);
+    }
+    if (($now - $last_cron_run) >= 300) { // 5 minutes
+        touch($cron_lock_file);
+        // Trigger run-cron.php asynchronously
+        $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]/api/utils/run-cron.php";
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_exec($ch);
+        curl_close($ch);
+    }
+
     ob_clean();
     echo json_encode(['success' => true, 'ts' => $now]);
 } catch (PDOException $e) {

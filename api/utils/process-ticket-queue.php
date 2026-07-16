@@ -74,8 +74,7 @@ foreach ($files as $jobFile) {
 
         error_log("[process-ticket-queue.php] Processing job for reference: $reference");
 
-        // Generate QR codes and PDFs for all tickets
-        $pdfPaths = [];
+        // Generate QR codes and PDFs and send emails for all tickets
         foreach ($barcodes as $index => $barcode) {
             try {
                 $ticketDataForLoop = array_merge($ticketData, ['barcode' => $barcode]);
@@ -93,28 +92,33 @@ foreach ($files as $jobFile) {
 
                 // Generate PDF
                 $pdfPath = generateTicketPDF($ticketDataForLoop);
-                // Only add to pdfPaths if BOTH QR and PDF succeeded
+                $currentPdf = [];
                 if ($pdfPath && file_exists($pdfPath)) {
-                    $pdfPaths[] = $pdfPath;
-
-                    // Enrich per-ticket data so emails can render the QR correctly
-                    $sendData = $ticketDataForLoop;
-                    if (!empty($qrCodePath) && file_exists($qrCodePath)) {
-                        $sendData['qr_path'] = $qrCodePath;
-                        // Use ticket helper's base64 encoder
-                        if (function_exists('base64_encode_image')) {
-                            $b64 = base64_encode_image($qrCodePath);
-                            if ($b64 !== '') {
-                                $sendData['qr_base64'] = $b64;
-                            }
-                        }
-                    }
-
-                    // Track last enriched ticket data for final email render
-                    $lastEnrichedTicket = $sendData;
+                    $currentPdf = [$pdfPath];
                 } else {
                     error_log("[process-ticket-queue.php] PDF missing after generation for barcode $barcode (ticket $ticket_id)");
                 }
+
+                // Enrich per-ticket data so emails can render the QR correctly
+                $sendData = $ticketDataForLoop;
+                if (!empty($qrCodePath) && file_exists($qrCodePath)) {
+                    $sendData['qr_path'] = $qrCodePath;
+                    // Use ticket helper's base64 encoder
+                    if (function_exists('base64_encode_image')) {
+                        $b64 = base64_encode_image($qrCodePath);
+                        if ($b64 !== '') {
+                            $sendData['qr_base64'] = $b64;
+                        }
+                    }
+                }
+
+                // Send one email per ticket with its own QR code and PDF
+                try {
+                    EmailHelper::sendTicketEmailFull($user_email, $sendData, $currentPdf);
+                } catch (Exception $e) {
+                    error_log("[process-ticket-queue.php] Email send failed for barcode $barcode: " . $e->getMessage());
+                }
+
             } catch (\Throwable $genError) {
                 // Log structured failure
                 error_log(sprintf(
@@ -129,14 +133,6 @@ foreach ($files as $jobFile) {
 
         // Send notifications after all QR codes are generated
         try {
-            // Send one email per ticket with its own QR code
-            if (!empty($lastEnrichedTicket ?? null)) {
-                EmailHelper::sendTicketEmailFull($user_email, $lastEnrichedTicket, []);
-            } elseif (!empty($ticketData)) {
-                // Fallback: send with base ticket data even if QR failed
-                EmailHelper::sendTicketEmailFull($user_email, $ticketData, []);
-            }
-
             // Send SMS
             if (!empty($user_phone) && !empty($ticketData['user_name']) && !empty($ticketData['event_name'])) {
                 // SMS disabled per requirement
