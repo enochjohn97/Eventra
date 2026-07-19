@@ -388,7 +388,7 @@ try {
     // Auto-generate tag from event name (lowercase, hyphenated)
     $tag = strtolower(str_replace(' ', '-', preg_replace('/[^A-Za-z0-9 ]/', '', $event_name)));
 
-    $base_url = $_ENV['APP_URL'] ?? 'http://localhost:8000';
+    $base_url = $_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com';
     $dashboard_link = $base_url . '/client/pages/events.html';
     $external_link = $base_url . '/public/pages/event-details.html?event=' . $tag . '&client=' . $client_name;
 

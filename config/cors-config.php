@@ -5,8 +5,6 @@ header("Cross-Origin-Embedder-Policy: unsafe-none");
 
 // --- CORS Configuration ---
 $allowed_origins = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
     'https://eventra-website.liveblog365.com',
 ];
 

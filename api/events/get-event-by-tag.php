@@ -22,7 +22,7 @@ try {
 
     if ($event) {
         // Sanitize and enhance event data
-        $baseUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000/', '/');
+        $baseUrl = rtrim($_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com', '/');
         if (!empty($event['image_path'])) {
             $path = '/' . ltrim($event['image_path'], '/');
             $event['image_path'] = $path;

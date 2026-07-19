@@ -117,7 +117,7 @@ function resolveAppUrl(): string
         return rtrim($detectProtocol() . $host, '/');
     }
 
-    return rtrim($fromEnv !== '' ? $fromEnv : 'http://localhost:8000', '/');
+    return rtrim($fromEnv !== '' ? $fromEnv : 'https://eventra-website.liveblog365.com', '/');
 }
 
 $_ENV['APP_URL'] = resolveAppUrl();

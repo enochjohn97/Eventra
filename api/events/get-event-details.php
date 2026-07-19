@@ -57,7 +57,7 @@ try {
     }
 
     // Sanitize and enhance event data for checkout
-    $baseUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000/', '/');
+    $baseUrl = rtrim($_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com', '/');
 
     if (!empty($event['image_path'])) {
         // Ensure path starts with a slash

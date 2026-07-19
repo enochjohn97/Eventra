@@ -18,6 +18,6 @@ if (!defined('APP_URL')) {
     } elseif (defined('SITE_URL')) {
         define('APP_URL', SITE_URL);
     } else {
-        define('APP_URL', rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000', '/'));
+        define('APP_URL', rtrim($_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com', '/'));
     }
 }
