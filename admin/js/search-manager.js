@@ -122,7 +122,8 @@ class SearchManager {
         resultItem.href = link;
 
         // Use profile pic if available, otherwise default icon
-        const iconSrc = item.profile_pic ? `<img src="${item.profile_pic}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : defaultIcon;
+        const _picSrc = typeof getProfileImg === 'function' ? getProfileImg(item.profile_pic, item.name) : (item.profile_pic || null);
+        const iconSrc = _picSrc ? `<img src="${_picSrc}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : defaultIcon;
 
         resultItem.innerHTML = `
             <div class="search-result-icon">${iconSrc}</div>

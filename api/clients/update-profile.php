@@ -76,6 +76,13 @@ try {
     // ── Profile Picture Upload ───────────────────────────────────────────
     $profile_pic = null;
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+        if ($_FILES['profile_pic']['size'] > 512 * 1024) {
+            // File too large — return clean error instead of crashing the server
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Profile picture must be under 512 KB. Please compress the image before uploading.']);
+            exit;
+        }
         $file_ext = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
         if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif'])) {
             $mime = function_exists('mime_content_type') ? mime_content_type($_FILES['profile_pic']['tmp_name']) : $_FILES['profile_pic']['type'];
@@ -96,8 +103,9 @@ try {
     foreach ($kycFiles as $field) {
         if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) continue;
         $file = $_FILES[$field];
-        if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 10 * 1024 * 1024) {
-            throw new RuntimeException('Each KYC document must be a file no larger than 10 MB.');
+        if ($file['error'] !== UPLOAD_ERR_OK) continue;
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new RuntimeException('Each KYC document must be under 5 MB.');
         }
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($extension, $allowedKycExtensions, true)) {

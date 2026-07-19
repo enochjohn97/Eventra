@@ -203,7 +203,20 @@ function getProfileImg(path, name = '') {
   // Handle external URLs (like Google profile pics) or data URIs
   if (path.startsWith('http') || path.startsWith('data:')) {
     // Avoid adding timestamp to external URLs to prevent 429 Too Many Requests
+    // For data URIs, validate they are complete (contain a comma separator)
+    if (path.startsWith('data:') && !path.includes(',')) {
+      // Truncated/malformed data URI — fall back to avatar
+      const fallbackName = name || 'User';
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
+    }
     return path;
+  }
+
+  // Detect partial/truncated base64 that looks like a data URI fragment
+  // (e.g., "iVBORw0..." or "data:image/..." without proper data: prefix)
+  if (/^[A-Za-z0-9+/]{20,}={0,2}$/.test(path.trim()) || path.includes('iVBORw0') || path.includes('R0lGOD')) {
+    const fallbackName = name || 'User';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
   }
 
   let finalPath = path;
@@ -506,11 +519,18 @@ async function apiFetch(url, options = {}) {
 
     if (!response.ok) {
       if (isJson) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Server error: ${response.status}`);
+        try {
+          const text = await response.text();
+          const errorData = text ? JSON.parse(text) : {};
+          throw new Error(errorData.message || `Server error: ${response.status}`);
+        } catch (jsonErr) {
+          if (jsonErr.message && !jsonErr.message.includes('JSON')) throw jsonErr;
+          throw new Error(`Server error: ${response.status}`);
+        }
       } else {
-        const text = await response.text();
-        throw new Error(`Server returned ${response.status} (HTML/Text). This usually means a routing error or a crash.`);
+        // Consume body to prevent resource leaks
+        try { await response.text(); } catch (_) {}
+        throw new Error(`Server returned ${response.status}. This usually means a routing error or a crash.`);
       }
     }
 
