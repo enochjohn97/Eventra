@@ -13,6 +13,7 @@ class _ClientSignupScreenState extends State<ClientSignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _businessname = TextEditingController();
 
   void _signup() {
     if (_formKey.currentState!.validate()) {
@@ -25,6 +26,7 @@ class _ClientSignupScreenState extends State<ClientSignupScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _businessname.dispose();
     super.dispose();
   }
 
@@ -50,6 +52,13 @@ class _ClientSignupScreenState extends State<ClientSignupScreen> {
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person)),
                   validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _businessname,
+                  decoration: const InputDecoration(labelText: 'Business Name', prefixIcon: Icon(Icons.business)),
+                  keyboardType: TextInputType.text,
+                  validator: (value) => value!.isEmpty ? 'Please enter your business name' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
