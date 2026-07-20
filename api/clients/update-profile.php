@@ -76,18 +76,30 @@ try {
     // ── Profile Picture Upload ───────────────────────────────────────────
     $profile_pic = null;
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-        if ($_FILES['profile_pic']['size'] > 512 * 1024) {
-            // File too large — return clean error instead of crashing the server
+        if ($_FILES['profile_pic']['size'] > 2 * 1024 * 1024) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(422);
-            echo json_encode(['success' => false, 'message' => 'Profile picture must be under 512 KB. Please compress the image before uploading.']);
+            echo json_encode(['success' => false, 'message' => 'Profile picture must be under 2 MB. Please compress the image before uploading.']);
             exit;
         }
         $file_ext = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
-        if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif'])) {
-            $mime = function_exists('mime_content_type') ? mime_content_type($_FILES['profile_pic']['tmp_name']) : $_FILES['profile_pic']['type'];
-            $base64 = base64_encode(file_get_contents($_FILES['profile_pic']['tmp_name']));
-            $profile_pic = 'data:' . $mime . ';base64,' . $base64;
+        if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+            $upload_dir = __DIR__ . '/../../uploads/profiles/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0775, true);
+            }
+            // Delete old profile pic file if it exists on disk
+            if (!empty($existing['profile_pic']) && !preg_match('/^(https?:\/\/|data:)/i', $existing['profile_pic'])) {
+                $old_file = __DIR__ . '/../../' . ltrim($existing['profile_pic'], '/');
+                if (file_exists($old_file)) {
+                    @unlink($old_file);
+                }
+            }
+            $safe_name = 'profile_' . $client_id . '_' . time() . '.' . $file_ext;
+            $target_path = $upload_dir . $safe_name;
+            if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $target_path)) {
+                $profile_pic = '/uploads/profiles/' . $safe_name;
+            }
         }
     }
 
@@ -111,9 +123,22 @@ try {
         if (!in_array($extension, $allowedKycExtensions, true)) {
             throw new RuntimeException('KYC documents must be PDFs or images.');
         }
-        $mime = function_exists('mime_content_type') ? mime_content_type($file['tmp_name']) : $file['type'];
-        $base64 = base64_encode(file_get_contents($file['tmp_name']));
-        $kycUpdates[$field] = 'data:' . $mime . ';base64,' . $base64;
+        $kyc_dir = __DIR__ . '/../../uploads/kyc/';
+        if (!is_dir($kyc_dir)) {
+            mkdir($kyc_dir, 0775, true);
+        }
+        // Delete old KYC file if it exists on disk
+        if (!empty($existing[$field]) && !preg_match('/^(https?:\/\/|data:)/i', $existing[$field])) {
+            $old_kyc = __DIR__ . '/../../' . ltrim($existing[$field], '/');
+            if (file_exists($old_kyc)) {
+                @unlink($old_kyc);
+            }
+        }
+        $safe_kyc_name = $field . '_' . $client_id . '_' . time() . '.' . $extension;
+        $kyc_target = $kyc_dir . $safe_kyc_name;
+        if (move_uploaded_file($file['tmp_name'], $kyc_target)) {
+            $kycUpdates[$field] = '/uploads/kyc/' . $safe_kyc_name;
+        }
     }
 
     // ── Custom ID ────────────────────────────────────────────────────────────
