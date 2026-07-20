@@ -5,6 +5,13 @@
  */
 function finishResponseThen(string $body, ?callable $after = null, int $statusCode = 200): void
 {
+    // Discard any buffered PHP warnings/notices to prevent response corruption.
+    // database.php calls ob_start() early; if any notice leaked into the buffer
+    // it would inflate the body beyond Content-Length and break the connection.
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
     http_response_code($statusCode);
 
     if (!headers_sent()) {
@@ -25,9 +32,6 @@ function finishResponseThen(string $body, ?callable $after = null, int $statusCo
     if (function_exists('fastcgi_finish_request')) {
         fastcgi_finish_request();
     } else {
-        while (ob_get_level() > 0) {
-            ob_end_flush();
-        }
         flush();
     }
 
