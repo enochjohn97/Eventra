@@ -97,6 +97,29 @@ try {
         unset($user['metadata']);
     }
 
+    // Silent migration: clean up corrupt data URIs for this specific client
+    if ($userRole === 'client' && isset($user['profile_id'])) {
+        $fieldsToClean = ['profile_pic', 'kyc_nin_file', 'kyc_bvn_file', 'kyc_voter_card_file', 'kyc_driver_license_file', 'kyc_cac_file'];
+        $needsUpdate = false;
+        $updateQuery = "UPDATE clients SET ";
+        $params = [];
+        
+        foreach ($fieldsToClean as $field) {
+            if (isset($user[$field]) && strpos($user[$field], 'data:') === 0) {
+                $user[$field] = null; // Clean it in the response
+                $updateQuery .= "$field = NULL, ";
+                $needsUpdate = true;
+            }
+        }
+        
+        if ($needsUpdate) {
+            $updateQuery = rtrim($updateQuery, ', ') . " WHERE id = ?";
+            $params[] = $user['profile_id'];
+            $stmt = $pdo->prepare($updateQuery);
+            $stmt->execute($params);
+        }
+    }
+
     echo json_encode([
         'success' => true,
         'user' => $user

@@ -65,11 +65,24 @@ try {
     $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($clients as &$client) {
-        $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+        $metaStr = isset($client['metadata']) ? $client['metadata'] : null;
+        $meta = !empty($metaStr) ? json_decode($metaStr, true) : [];
+        if (!is_array($meta)) {
+            $meta = [];
+        }
         $client['paystack_connection_status'] = $client['paystack_connection_status'] ?? $meta['paystack_connection_status'] ?? 'disconnected';
         $client['paystack_public_key'] = $client['paystack_public_key'] ?? $meta['paystack_public_key'] ?? '';
         $client['paystack_auth_token'] = $client['paystack_auth_token'] ?? $meta['paystack_auth_token'] ?? '';
         $client['paystack_merchant_id'] = $client['paystack_merchant_id'] ?? $meta['paystack_merchant_id'] ?? '';
+        
+        // Sanitize corrupt data URIs on the fly for the admin UI
+        $fieldsToClean = ['profile_pic', 'kyc_nin_file', 'kyc_bvn_file', 'kyc_voter_card_file', 'kyc_driver_license_file', 'kyc_cac_file'];
+        foreach ($fieldsToClean as $field) {
+            if (isset($client[$field]) && strpos($client[$field], 'data:') === 0) {
+                $client[$field] = null;
+            }
+        }
+        
         unset($client['metadata']);
     }
 
