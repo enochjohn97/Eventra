@@ -49,6 +49,14 @@ try {
         'verification_status' => $client['settlement_verification_status'] ?? 'pending',
         'status' => $client['settlement_verification_status'] ?? 'pending',
     ];
+    // Sanitize corrupt data URIs on the fly for the admin UI
+    $fieldsToClean = ['profile_pic', 'kyc_nin_file', 'kyc_bvn_file', 'kyc_voter_card_file', 'kyc_driver_license_file', 'kyc_cac_file'];
+    foreach ($fieldsToClean as $field) {
+        if (isset($client[$field]) && strpos($client[$field], 'data:') === 0) {
+            $client[$field] = null;
+        }
+    }
+
     $client['kyc_documents'] = [
         'bvn' => ['url' => $client['kyc_bvn_file'] ?? null, 'status' => !empty($client['kyc_bvn_file']) ? 'uploaded' : 'missing'],
         'nin' => ['url' => $client['kyc_nin_file'] ?? null, 'status' => !empty($client['kyc_nin_file']) ? 'uploaded' : 'missing'],
