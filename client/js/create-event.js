@@ -130,6 +130,21 @@ function showCreateEventModal(eventToEdit = null) {
                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); font-family: inherit;"></textarea>
                                 </div>
 
+                                <!-- Date & Time Row -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                    <div class="form-group">
+                                        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Date <span style="color: #ef4444">*</span></label>
+                                        <input type="date" name="event_date" id="customDateDisplay" required
+                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Time <span style="color: #ef4444">*</span></label>
+                                        <input type="time" name="event_time" id="eventTimeInput" required
+                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                                        <span id="eventTimeDisplay" style="display: none;"></span>
+                                    </div>
+                                </div>
+
                                 <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
                                     <div class="form-group" style="position: relative;">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Google Calendar Scheduling</label>
@@ -139,8 +154,6 @@ function showCreateEventModal(eventToEdit = null) {
                                             <button type="submit" form="createEventForm" style="width: 100%; padding: 0.85rem; font-size: 1rem; font-weight: 700; background: #722f37; border: none; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s;">Schedule via Google Calendar</button>
                                         </div>
                                         <input type="hidden" name="status" value="draft">
-                                        <input type="hidden" name="event_date" id="eventDateInput" value="">
-                                        <input type="hidden" name="event_time" id="eventTimeInput" value="">
                                         <input type="hidden" name="event_start" id="eventStartInput" value="">
                                         <input type="hidden" name="event_end" id="eventEndInput" value="">
                                     </div>
