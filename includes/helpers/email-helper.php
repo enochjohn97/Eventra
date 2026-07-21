@@ -1046,7 +1046,9 @@ PDF;
         string $actionText = 'complete your sign in',
         int $expiryMinutes = 10
     ): array {
-        $subject = "=?UTF-8?B?" . base64_encode("Your Eventra verification code: {$otp}") . "?=";
+        $isPasswordReset = stripos($actionText, 'reset') !== false;
+        $subjectText = $isPasswordReset ? "Reset password verification code: {$otp}" : "Your Eventra verification code: {$otp}";
+        $subject = "=?UTF-8?B?" . base64_encode($subjectText) . "?=";
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $safeAction = htmlspecialchars($actionText, ENT_QUOTES, 'UTF-8');
         $year = date('Y');

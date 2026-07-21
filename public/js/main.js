@@ -929,7 +929,9 @@ function createEventCard(event, index) {
   const cleanEventName = event.event_name.replace(/\s*#\d+$/, "");
   const eventName = escapeHTML(cleanEventName);
   const category = escapeHTML(event.category || event.event_type) || "Event";
-  const desc = escapeHTML(event.description || "");
+  const rawDesc = event.description || "";
+  const descPreview = rawDesc.length > 150 ? rawDesc.substring(0, 150).trim() + "....." : rawDesc;
+  const desc = escapeHTML(descPreview);
   const organizer = escapeHTML(
     event.organizer_name || event.client_name || "Eventra",
   );

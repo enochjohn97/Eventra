@@ -780,16 +780,19 @@ function generateEventTagAndLink() {
 async function handleGoogleCalendarSchedule(e) {
     e.preventDefault();
 
+    const isGoogleCalendar = e.submitter && e.submitter.textContent.includes('Schedule via Google Calendar');
     const formData = new FormData(e.target);
-    formData.set('status', 'draft');
 
-    const now = new Date();
-    const startDateTime = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
-    const endDateTime = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
-    formData.set('event_start', startDateTime);
-    formData.set('event_end', endDateTime);
-    formData.set('event_date', startDateTime.slice(0, 10));
-    formData.set('event_time', startDateTime.slice(11, 16));
+    if (isGoogleCalendar) {
+        formData.set('status', 'draft');
+        const now = new Date();
+        const startDateTime = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+        const endDateTime = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
+        formData.set('event_start', startDateTime);
+        formData.set('event_end', endDateTime);
+        formData.set('event_date', startDateTime.slice(0, 10));
+        formData.set('event_time', startDateTime.slice(11, 16));
+    }
 
     const perStateTextareas = document.querySelectorAll('#perStateAddressContainer textarea[data-state]');
     if (perStateTextareas.length > 0) {
@@ -823,75 +826,99 @@ async function handleGoogleCalendarSchedule(e) {
     }
 
     const endpoint = '/api/events/create-event.php';
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const submitBtn = e.submitter || e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Connecting to Google...';
+    submitBtn.textContent = isGoogleCalendar ? 'Connecting to Google...' : 'Saving...';
     submitBtn.disabled = true;
 
-    try {
-        const configResponse = await apiFetch('/api/config/get-google-config.php');
-        const configResult = await configResponse.json();
-        if (!configResult.success || !configResult.client_id) {
-            throw new Error(configResult.message || 'Google Calendar is not configured');
-        }
+    if (isGoogleCalendar) {
+        try {
+            const configResponse = await apiFetch('/api/config/get-google-config.php');
+            const configResult = await configResponse.json();
+            if (!configResult.success || !configResult.client_id) {
+                throw new Error(configResult.message || 'Google Calendar is not configured');
+            }
 
-        if (!window.google?.accounts?.oauth2) {
-            await new Promise((resolve, reject) => {
-                if (document.getElementById('google-gsi-script')) {
-                    const check = () => {
-                        if (window.google?.accounts?.oauth2) resolve(); else setTimeout(check, 200);
-                    };
-                    check();
-                    return;
-                }
-                const script = document.createElement('script');
-                script.id = 'google-gsi-script';
-                script.src = 'https://accounts.google.com/gsi/client';
-                script.async = true;
-                script.defer = true;
-                script.onload = () => resolve();
-                script.onerror = () => reject(new Error('Google SDK failed to load'));
-                document.head.appendChild(script);
-            });
-        }
-
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: configResult.client_id,
-            scope: 'https://www.googleapis.com/auth/calendar.events',
-            callback: async (tokenResponse) => {
-                try {
-                    if (tokenResponse.error) {
-                        throw new Error(tokenResponse.error_description || 'Google authorization was cancelled');
+            if (!window.google?.accounts?.oauth2) {
+                await new Promise((resolve, reject) => {
+                    if (document.getElementById('google-gsi-script')) {
+                        const check = () => {
+                            if (window.google?.accounts?.oauth2) resolve(); else setTimeout(check, 200);
+                        };
+                        check();
+                        return;
                     }
-                    formData.set('access_token', tokenResponse.access_token);
-                    const response = await apiFetch(endpoint, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const result = await response.json();
-                    if (result.success) {
-                        showNotification(eventId ? 'Event updated successfully!' : 'Event created successfully and queued in Google Calendar.', 'success');
-                        clearFormState('createEventForm');
-                        closeCreateEventModal();
-                        setTimeout(() => window.location.reload(), 1000);
-                    } else {
-                        showNotification((eventId ? 'Failed to update event: ' : 'Failed to create event: ') + result.message, 'error');
+                    const script = document.createElement('script');
+                    script.id = 'google-gsi-script';
+                    script.src = 'https://accounts.google.com/gsi/client';
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Google SDK failed to load'));
+                    document.head.appendChild(script);
+                });
+            }
+
+            const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: configResult.client_id,
+                scope: 'https://www.googleapis.com/auth/calendar.events',
+                callback: async (tokenResponse) => {
+                    try {
+                        if (tokenResponse.error) {
+                            throw new Error(tokenResponse.error_description || 'Google authorization was cancelled');
+                        }
+                        formData.set('access_token', tokenResponse.access_token);
+                        const response = await apiFetch(endpoint, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            showNotification(eventId ? 'Event updated successfully!' : 'Event created successfully and queued in Google Calendar.', 'success');
+                            clearFormState('createEventForm');
+                            closeCreateEventModal();
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showNotification((eventId ? 'Failed to update event: ' : 'Failed to create event: ') + result.message, 'error');
+                            submitBtn.textContent = originalText;
+                            submitBtn.disabled = false;
+                        }
+                    } catch (error) {
+                        showNotification(error.message || (eventId ? 'An error occurred while updating event' : 'An error occurred while creating event'), 'error');
                         submitBtn.textContent = originalText;
                         submitBtn.disabled = false;
                     }
-                } catch (error) {
-                    showNotification(error.message || (eventId ? 'An error occurred while updating event' : 'An error occurred while creating event'), 'error');
-                    submitBtn.textContent = originalText;
-                    submitBtn.disabled = false;
                 }
-            }
-        });
+            });
 
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-    } catch (error) {
-        showNotification(error.message || 'Unable to connect Google Calendar right now.', 'error');
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        } catch (error) {
+            showNotification(error.message || 'Unable to connect Google Calendar right now.', 'error');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    } else {
+        try {
+            const response = await apiFetch(endpoint, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                showNotification(eventId ? 'Event updated successfully!' : 'Event created successfully!', 'success');
+                clearFormState('createEventForm');
+                closeCreateEventModal();
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showNotification((eventId ? 'Failed to update event: ' : 'Failed to create event: ') + result.message, 'error');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        } catch (error) {
+            showNotification(error.message || (eventId ? 'An error occurred while updating event' : 'An error occurred while creating event'), 'error');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
     }
 }
 

@@ -821,8 +821,9 @@ window.initPreviews = function () {
                             client.bank_code = settlement.bank_code || client.bank_code || '';
                             client.account_number = settlement.account_number || client.account_number || '';
                             client.account_name = settlement.account_name || client.account_name || '';
-                            const events = data.events;
-                            const buyers = data.buyers;
+                            const events = data.events || [];
+                            const buyers = data.buyers || [];
+                            const totalTicketsSold = events.reduce((sum, ev) => sum + (parseInt(ev.tickets_sold) || 0), 0);
                             const isVerified = client.verification_status === 'verified';
                             content.innerHTML = `
                                 <div class="profile-preview modernized-preview">
@@ -886,10 +887,6 @@ window.initPreviews = function () {
                                                     <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
                                                         <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Gender</div>
                                                         <div style="font-size: 0.8rem; font-weight: 600; color: #334155; text-transform: capitalize;">${escapeHTML(client.gender) || 'N/A'}</div>
-                                                    </div>
-                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
-                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Admin Status</div>
-                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155; text-transform: capitalize;">${escapeHTML(client.admin_status) || 'N/A'}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -976,40 +973,33 @@ window.initPreviews = function () {
 
 
 
-                                            <!-- Paystack Connection -->
+                                            <!-- Events Information -->
                                             <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 12px;">
                                                 <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                                                    <i data-lucide="plug" style="width:11px;height:11px;"></i> Paystack Integration
+                                                    <i data-lucide="plug" style="width:11px;height:11px;"></i> Events Information
                                                 </div>
                                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                                     <div>
-                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Connection</div>
-                                                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.76rem;font-weight:700;color:${client.paystack_connection_status === 'connected' ? '#16a34a' : '#94a3b8'};">
-                                                            <span style="width:6px;height:6px;border-radius:50%;background:${client.paystack_connection_status === 'connected' ? '#16a34a' : '#d1d5db'};display:inline-block;flex-shrink:0;"></span>
-                                                            ${(client.paystack_connection_status || 'disconnected').charAt(0).toUpperCase() + (client.paystack_connection_status || 'disconnected').slice(1)}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Merchant ID</div>
-                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155; font-family: monospace;">${escapeHTML(client.paystack_merchant_id) || '—'}</div>
-                                                    </div>
-                                                    <div>
                                                         <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Events Created</div>
-                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155;">${events.length}</div>
+                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155;">${events.length || '0'}</div>
+                                                    </div>  
+                                                    <div>
+                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Tickets Sold</div>
+                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155;">${totalTicketsSold}</div>
                                                     </div>
                                                     <div>
-                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Ticket Buyers</div>
-                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155;">${buyers.length}</div>
+                                                        <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 2px; font-weight: 700; text-transform: uppercase;">Total Buyers</div>
+                                                        <div style="font-size: 0.76rem; font-weight: 600; color: #334155; font-family: monospace;">${buyers.length || '0'}</div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Approve / Reject -->
                                             <div style="display: flex; gap: 8px;">
-                                                <button onclick="approveClient(${client.id}, 1, this)" style="flex:1;background:${client.verification_status === 'verified' ? '#dcfce7' : '#10b981'};color:${client.verification_status === 'verified' ? '#16a34a' : '#fff'};border:${client.verification_status === 'verified' ? '1px solid #86efac' : 'none'};padding:0.7rem 0.5rem;border-radius:9px;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:5px;cursor:${client.verification_status === 'verified' ? 'default' : 'pointer'};" ${client.verification_status === 'verified' ? 'disabled' : ''}>
+                                                <button onclick="approveClient(${client.id}, 1, this)" style="flex:1;background:${client.verification_status === 'verified' ? '#dcfce7' : (client.verification_status === 'rejected' ? '#f1f5f9' : '#10b981')};color:${client.verification_status === 'verified' ? '#16a34a' : (client.verification_status === 'rejected' ? '#94a3b8' : '#fff')};border:${client.verification_status === 'verified' ? '1px solid #86efac' : (client.verification_status === 'rejected' ? '1px solid #e2e8f0' : 'none')};padding:0.7rem 0.5rem;border-radius:9px;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:5px;cursor:${(client.verification_status === 'verified' || client.verification_status === 'rejected') ? 'not-allowed' : 'pointer'};opacity:${client.verification_status === 'rejected' ? '0.5' : '1'};" ${(client.verification_status === 'verified' || client.verification_status === 'rejected') ? 'disabled' : ''}>
                                                     <i data-lucide="check-circle" style="width:14px;height:14px;"></i> Approve
                                                 </button>
-                                                <button onclick="approveClient(${client.id}, 0, this)" style="flex:1;background:${client.verification_status === 'rejected' ? '#fee2e2' : '#ef4444'};color:${client.verification_status === 'rejected' ? '#dc2626' : '#fff'};border:${client.verification_status === 'rejected' ? '1px solid #fca5a5' : 'none'};padding:0.7rem 0.5rem;border-radius:9px;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:5px;cursor:${client.verification_status === 'rejected' ? 'default' : 'pointer'};" ${client.verification_status === 'rejected' ? 'disabled' : ''}>
+                                                <button onclick="approveClient(${client.id}, 0, this)" style="flex:1;background:${client.verification_status === 'rejected' ? '#fee2e2' : (client.verification_status === 'verified' ? '#f1f5f9' : '#ef4444')};color:${client.verification_status === 'rejected' ? '#dc2626' : (client.verification_status === 'verified' ? '#94a3b8' : '#fff')};border:${client.verification_status === 'rejected' ? '1px solid #fca5a5' : (client.verification_status === 'verified' ? '1px solid #e2e8f0' : 'none')};padding:0.7rem 0.5rem;border-radius:9px;font-weight:700;font-size:0.8rem;display:flex;align-items:center;justify-content:center;gap:5px;cursor:${(client.verification_status === 'rejected' || client.verification_status === 'verified') ? 'not-allowed' : 'pointer'};opacity:${client.verification_status === 'verified' ? '0.5' : '1'};" ${(client.verification_status === 'rejected' || client.verification_status === 'verified') ? 'disabled' : ''}>
                                                     <i data-lucide="x-circle" style="width:14px;height:14px;"></i> Reject
                                                 </button>
                                             </div>
