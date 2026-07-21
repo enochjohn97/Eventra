@@ -284,11 +284,11 @@ try {
     // ── Feature Gate: Paystack Connect required for paid events ─────────────
     $isPaidEvent = ($price > 0 || $regular_price > 0 || $vip_price > 0 || $premium_price > 0);
     $paystackStatus = $client_data['paystack_connection_status'] ?? 'disconnected';
-    if ($isPaidEvent && $paystackStatus !== 'connected') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'You must connect your Paystack account to create paid events.']);
-        exit;
-    }
+    // if ($isPaidEvent && $paystackStatus !== 'connected') {
+    //     http_response_code(403);
+    //     echo json_encode(['success' => false, 'message' => 'You must connect your Paystack account to create paid events.']);
+    //     exit;
+    // }
 
     // Compute ticket_count and total_tickets from submitted quantities
     $total_tickets = null;
