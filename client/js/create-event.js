@@ -1403,7 +1403,20 @@ function togglePerStateDateTimeFields() {
         globalTimeBtn.disabled = show;
     }
     if (globalDateInput) globalDateInput.required = !show;
-    if (globalTimeInput) globalTimeInput.required = !show;
+    if (globalTimeInput) {
+        globalTimeInput.required = !show;
+        if (show) {
+            globalTimeInput.style.backgroundColor = '#f3f4f6';
+            globalTimeInput.style.cursor = 'not-allowed';
+            globalTimeInput.style.opacity = '0.5';
+            globalTimeInput.style.pointerEvents = 'none';
+        } else {
+            globalTimeInput.style.backgroundColor = '';
+            globalTimeInput.style.cursor = '';
+            globalTimeInput.style.opacity = '';
+            globalTimeInput.style.pointerEvents = '';
+        }
+    }
 }
 
 // Expose per-state container placeholder in the form HTML (injected once the form opens)

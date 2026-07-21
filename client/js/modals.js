@@ -1636,45 +1636,121 @@ function renderPerStateEditAddressFields(selectedStates) {
     });
 
     if (selectedStates.length > 1) {
+        // Ensure time-picker CSS is loaded
+        if (!document.getElementById('timepicker-css-link')) {
+            const tpLink = document.createElement('link');
+            tpLink.id = 'timepicker-css-link';
+            tpLink.rel = 'stylesheet';
+            tpLink.href = '../../public/css/time-picker.css';
+            document.head.appendChild(tpLink);
+        }
+
         container.style.display = 'block';
         const mainAddressGroup = document.getElementById('editMainAddressGroup');
         if (mainAddressGroup) mainAddressGroup.style.display = 'none';
         if (helpText) helpText.style.display = 'block';
 
         container.innerHTML = `
-            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:0.75rem; cursor:pointer; padding:0.5rem 0.75rem; background:#fff7ed; border-radius:8px; border:1px solid #fed7aa;">
-                <input type="checkbox" id="editCustomizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="toggleEditPerStateDateTimeFields()" style="width:15px;height:15px;cursor:pointer;accent-color:#f97316;">
+            <label class="per-state-toggle" style="margin-bottom:0.75rem;">
+                <input type="checkbox" id="editCustomizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="toggleEditPerStateDateTimeFields()">
                 <span>📅 Use different dates &amp; times for each state</span>
             </label>
-            ${selectedStates.map(state => `
-                <div style="margin-bottom:0.75rem; background:#fff; padding:0.75rem; border-radius:8px; border:1px solid #e2e8f0;">
-                    <label style="display:block; font-size:0.7rem; font-weight:700; color:#475569; margin-bottom:0.3rem;">📍 Venue for ${state}</label>
+            ${selectedStates.map(state => {
+                const sid = state.replace(/\s+/g, '_');
+                return `
+                <div class="per-state-card" style="margin-bottom:0.75rem;">
+                    <div class="per-state-card-head">
+                        <span class="per-state-badge">📍 ${state}</span>
+                        <span class="per-state-required">Required</span>
+                    </div>
                     <textarea
                         data-state="${state}"
                         placeholder="Address for ${state}..."
-                        style="width:100%; padding:0.6rem; border:1px solid #e2e8f0; border-radius:8px; font-size:0.85rem; margin-bottom:0.4rem;"
-                        onfocus="this.style.borderColor='#0f172a';"
-                        onblur="this.style.borderColor='#e2e8f0';"
+                        class="per-state-address-input"
+                        style="margin-bottom:0.4rem;"
                     >${existingValues[state] || ''}</textarea>
-                    <div class="edit-per-state-datetime" style="display:${customizeDatesWasChecked ? 'flex' : 'none'}; gap:0.6rem; flex-wrap:wrap;">
-                        <div style="flex:1; min-width:120px;">
-                            <label style="display:block; font-size:0.68rem; font-weight:600; color:#6b7280; margin-bottom:0.2rem; text-transform:uppercase;">Date</label>
-                            <input type="date"
-                                data-date-state="${state}"
-                                value="${existingDates[state] || ''}"
-                                style="width:100%; padding:0.45rem 0.6rem; border:1px solid #e2e8f0; border-radius:6px; font-size:0.82rem; box-sizing:border-box;">
+                    <div class="edit-per-state-datetime per-state-datetime" style="display:${customizeDatesWasChecked ? 'grid' : 'none'};">
+                        <div class="per-state-field">
+                            <label for="editPsDateDisp_${sid}">Date</label>
+                            <div class="per-state-date-wrap">
+                                <input type="text" id="editPsDateDisp_${sid}" readonly placeholder="Select date"
+                                    role="button" tabindex="0" aria-haspopup="dialog"
+                                    onclick="openPerStateDatePicker('edit_${sid}')"
+                                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPerStateDatePicker('edit_${sid}');}"
+                                    value="${existingDates[state] || ''}"
+                                    class="per-state-date-display">
+                                <span aria-hidden="true">📅</span>
+                            </div>
+                            <input type="hidden" data-date-state="${state}" id="editPsDateVal_${sid}" value="${existingDates[state] || ''}">
+                            <div id="psMDP_edit_${sid}" class="per-state-mdp" role="dialog" aria-modal="true">
+                                <div class="per-state-mdp-head">
+                                    <div id="psMDPYear_edit_${sid}"></div>
+                                    <div id="psMDPDate_edit_${sid}"></div>
+                                </div>
+                                <div class="per-state-mdp-body">
+                                    <div class="per-state-mdp-nav">
+                                        <button type="button" onclick="psChangeMonth('edit_${sid}',-1)">&#10094;</button>
+                                        <span id="psMDPMY_edit_${sid}"></span>
+                                        <button type="button" onclick="psChangeMonth('edit_${sid}',1)">&#10095;</button>
+                                    </div>
+                                    <div id="psMDPGrid_edit_${sid}" class="per-state-mdp-grid"></div>
+                                </div>
+                                <div class="per-state-mdp-foot">
+                                    <button type="button" onclick="closePsDatePicker('edit_${sid}')">Cancel</button>
+                                    <button type="button" onclick="confirmEditPsDate('edit_${sid}','${state}')">OK</button>
+                                </div>
+                            </div>
                         </div>
-                        <div style="flex:1; min-width:100px;">
-                            <label style="display:block; font-size:0.68rem; font-weight:600; color:#6b7280; margin-bottom:0.2rem; text-transform:uppercase;">Time</label>
-                            <input type="time"
-                                data-time-state="${state}"
-                                value="${existingTimes[state] || ''}"
-                                style="width:100%; padding:0.45rem 0.6rem; border:1px solid #e2e8f0; border-radius:6px; font-size:0.82rem; box-sizing:border-box;">
+                        <div class="per-state-field">
+                            <span>Time</span>
+                            <div id="editPsTC_${sid}" class="time-picker-container">
+                                <button type="button" class="time-picker-display per-state-time-btn" aria-haspopup="listbox" onclick="toggleTimePicker('editPsTD_${sid}')">
+                                    <span class="ps-time-text">${existingTimes[state] || 'Select Time'}</span>
+                                    <span aria-hidden="true">🕒</span>
+                                </button>
+                                <div id="editPsTD_${sid}" class="time-picker-dropdown">
+                                    <div class="time-picker-section">
+                                        <span class="time-picker-label">Hours</span>
+                                        <div class="time-picker-grid hours">${[1,2,3,4,5,6,7,8,9,10,11,12].map(h=>`<button type="button" class="time-btn" onclick="selectHour('${h}','editPsTC_${sid}')">${h}</button>`).join('')}</div>
+                                    </div>
+                                    <div class="time-picker-section">
+                                        <span class="time-picker-label">Minutes</span>
+                                        <div class="time-picker-grid minutes">${['00','05','10','15','20','25','30','35','40','45','50','55'].map(m=>`<button type="button" class="time-btn" onclick="selectMinute('${m}','editPsTC_${sid}')">${m}</button>`).join('')}</div>
+                                    </div>
+                                    <div class="time-picker-section">
+                                        <div class="time-picker-ampm">
+                                            <button type="button" class="time-btn ampm-btn" onclick="selectAmPm('am','editPsTC_${sid}')">am</button>
+                                            <button type="button" class="time-btn ampm-btn" onclick="selectAmPm('pm','editPsTC_${sid}')">pm</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" data-time-state="${state}" id="editPsTimeVal_${sid}" value="${existingTimes[state] || ''}">
+                            </div>
                         </div>
                     </div>
                 </div>
-            `).join('')}
+                `;
+            }).join('')}
         `;
+
+        // Initialise per-state mini date pickers for edit modal
+        if (!window._psDPState) window._psDPState = {};
+        selectedStates.forEach(state => {
+            const sid = 'edit_' + state.replace(/\s+/g, '_');
+            const existDate = existingDates[state] || null;
+            const now = existDate ? new Date(existDate + 'T00:00:00') : new Date();
+            window._psDPState[sid] = { month: now.getMonth(), year: now.getFullYear(), selected: existDate, temp: existDate };
+            renderPsDatePicker(sid);
+            if (existDate) {
+                const d = new Date(existDate + 'T00:00:00');
+                const dispEl = document.getElementById('editPsDateDisp_' + state.replace(/\s+/g, '_'));
+                const yearEl = document.getElementById('psMDPYear_' + sid);
+                const dateEl = document.getElementById('psMDPDate_' + sid);
+                if (dispEl) dispEl.value = existDate;
+                if (yearEl) yearEl.textContent = d.getFullYear();
+                if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+        });
 
         // Re-inject locations_json hidden input
         const hiddenLocations = document.createElement('input');
@@ -1699,10 +1775,11 @@ function renderPerStateEditAddressFields(selectedStates) {
             hiddenLocations.value = JSON.stringify(locs);
         };
 
-        container.querySelectorAll('textarea, input[type="date"], input[type="time"]').forEach(el => {
+        container.querySelectorAll('textarea').forEach(el => {
             el.addEventListener('input', updateJson);
             el.addEventListener('change', updateJson);
         });
+        container.addEventListener('input', updateJson);
         updateJson();
     } else {
         container.style.display = 'none';
@@ -1746,13 +1823,27 @@ function toggleEditPerStateDateTimeFields() {
     const checkbox = document.getElementById('editCustomizeDatesPerStateCheckbox');
     const fields = document.querySelectorAll('#perStateEditAddressContainer .edit-per-state-datetime');
     const show = checkbox ? checkbox.checked : false;
-    fields.forEach(f => { f.style.display = show ? 'flex' : 'none'; });
+    fields.forEach(f => { f.style.display = show ? 'grid' : 'none'; });
+}
+
+function confirmEditPsDate(sid, state) {
+    const s = window._psDPState && window._psDPState[sid];
+    if (s && s.temp) {
+        s.selected = s.temp;
+        const rawSid = state.replace(/\s+/g, '_');
+        const valEl = document.getElementById('editPsDateVal_' + rawSid);
+        const dispEl = document.getElementById('editPsDateDisp_' + rawSid);
+        if (valEl) valEl.value = s.selected;
+        if (dispEl) dispEl.value = s.selected;
+    }
+    closePsDatePicker(sid);
 }
 
 window.toggleEditStateSelect = toggleEditStateSelect;
 window.updateEditSelectedStates = updateEditSelectedStates;
 window.previewEditEventImage = previewEditEventImage;
 window.toggleEditPerStateDateTimeFields = toggleEditPerStateDateTimeFields;
+window.confirmEditPsDate = confirmEditPsDate;
 
 function closeEditEventModal() {
     const modal = document.getElementById('editEventModal');
