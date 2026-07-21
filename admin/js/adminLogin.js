@@ -249,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const showFallback = () => {
             sliderContainer.innerHTML = `
                 <img src="" 
-                     alt="Eventra Admin"
                      class="slider-img active">
             `;
         };

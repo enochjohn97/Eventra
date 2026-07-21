@@ -17,10 +17,12 @@ window.NIGERIA_STATES = [
 ];
 
 window.EVENT_CATEGORIES = [
-  'Conference', 'Workshop', 'Seminar', 'Entertainment (Music, Film, Comedy, etc)', 
-  'Sport & Fitness', 'Exhibition', 'Networking', 'Festival', 'Concert', 'Business', 
-  'Education', 'Social', 'Personal (Wedding, Anniversary, etc.)', 'Community', 
-  'Religion', 'Cultural', 'Other'
+  'Conference', 'Workshop', 'Seminar', 'Entertainment',
+  'Sport & Fitness', 'Exhibition', 'Networking', 'Festival', 'Concert', 'Business',
+  'Education', 'Social', 'Personal', 'Community',
+  'Religion', 'Cultural', 'Technology', 'Art', 'Health', 'Food',
+  'Agriculture', 'Tourism', 'Fashion', 'Real Estate', 'Awards',
+  'Charity', 'Finance', 'Gaming', 'Political', 'Other'
 ];
 
 window.PRIORITY_TAGS = ['nearby', 'hot', 'upcoming', 'trending', 'featured'];

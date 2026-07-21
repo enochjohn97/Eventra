@@ -95,7 +95,7 @@ function showCreateEventModal(eventToEdit = null) {
                                             <option value="Education">Education</option>
                                             <option value="Social">Social</option>
                                             <option value="Personal">Personal (Wedding, Anniversary, etc.)</option>
-                                            <option value="Community">Community</option> 
+                                            <option value="Community">Community</option>
                                             <option value="Religion">Religion</option>
                                             <option value="Cultural">Cultural</option>
                                             <option value="Technology">Technology</option>
@@ -135,7 +135,8 @@ function showCreateEventModal(eventToEdit = null) {
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Google Calendar Scheduling</label>
                                         <div style="background: linear-gradient(135deg, rgba(114, 47, 55, 0.08), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(114, 47, 55, 0.12); border-radius: 16px; padding: 1.25rem;">
                                             <div style="font-weight: 700; color: #1f2937; margin-bottom: 0.4rem;">Schedule in Google Calendar and keep the event in Draft until you publish it from the app.</div>
-                                            <div style="font-size: 0.95rem; color: #4b5563; line-height: 1.6;">The calendar entry will include a clickable “View App Dashboard” link so you can return to Eventra and publish it when ready.</div>
+                                            <div style="font-size: 0.95rem; color: #4b5563; line-height: 1.6; margin-bottom: 1rem;">The calendar entry will include a clickable “View App Dashboard” link so you can return to Eventra and publish it when ready.</div>
+                                            <button type="submit" form="createEventForm" style="width: 100%; padding: 0.85rem; font-size: 1rem; font-weight: 700; background: #722f37; border: none; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s;">Schedule via Google Calendar</button>
                                         </div>
                                         <input type="hidden" name="status" value="draft">
                                         <input type="hidden" name="event_date" id="eventDateInput" value="">
@@ -276,7 +277,7 @@ function showCreateEventModal(eventToEdit = null) {
                                 <!-- Submit Buttons -->
                                 <div style="display: flex; gap: 1.25rem; margin-top: 1rem;">
                                     <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1.25rem; font-size: 1.125rem; font-weight: 700; justify-content: center; background: #722f37; border: none; border-radius: 14px; color: white; cursor: pointer; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3); transition: all 0.3s;">
-                                        Schedule via Google Calendar
+                                        Create Event
                                     </button>
                                     <button type="button" class="btn btn-secondary" onclick="closeCreateEventModal()" style="flex: 1; padding: 1.25rem; font-size: 1.125rem; justify-content: center; background: white; border: 2px solid #e5e7eb; border-radius: 14px; color: #6b7280; cursor: pointer; font-weight: 600; transition: all 0.3s;">
                                         Cancel

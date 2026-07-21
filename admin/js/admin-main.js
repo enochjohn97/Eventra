@@ -974,21 +974,7 @@ window.initPreviews = function () {
                                                 ${adminRenderKycRow("Driver's License", client.kyc_documents?.drivers_license?.url || client.kyc_driver_license_file)}
                                             </div>
 
-                                            <!-- API Key (post-registration) -->
-                                            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
-                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                                                    <i data-lucide="key" style="width:11px;height:11px;"></i> Paystack Secret Key
-                                                </div>
-                                                <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;">Enter or update the Paystack secret key after account creation.</p>
-                                                <div style="position:relative;margin-bottom:7px;">
-                                                    <input id="paystackKeyInput_${client.id}" type="text" name="paystack_secret_key_${client.id}" placeholder="Enter Paystack Secret Key" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" readonly style="width:100%;padding:0.55rem 2.4rem 0.55rem 0.8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.8rem;outline:none;font-family:monospace;box-sizing:border-box;transition:border-color 0.2s;-webkit-text-security:disc;text-security:disc;" onfocus="this.removeAttribute('readonly');this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
-                                                    <button type="button" data-toggle-input="paystackKeyInput_${client.id}" onclick="window.togglePaystackKeyVisibility(this)" title="Show/hide" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;padding:3px;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#94a3b8'">
-                                                        <i data-lucide="eye" style="width:14px;height:14px;pointer-events:none;"></i>
-                                                    </button>
-                                                </div>
-                                                <button onclick="adminSavePaystackKey(${client.id}, this)" style="width:100%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;border:none;padding:0.55rem;border-radius:9px;font-weight:700;font-size:0.78rem;cursor:pointer;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Validate &amp; Save</button>
-                                                <div id="paystackKeyStatus_${client.id}" style="font-size:0.72rem;margin-top:5px;min-height:1em;"></div>
-                                            </div>
+
 
                                             <!-- Paystack Connection -->
                                             <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 12px;">

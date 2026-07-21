@@ -57,13 +57,14 @@ try {
         }
     }
 
-    // 2. Update verification_status and persist admin_notes
+    // 2. Update verification_status, admin_status and persist admin_notes
+    $admin_status_value = $status ? 'approved' : 'rejected';
     $stmt = $pdo->prepare("
         UPDATE clients 
-        SET verification_status = ?, admin_notes = ?, updated_at = NOW() 
+        SET verification_status = ?, admin_status = ?, admin_notes = ?, updated_at = NOW() 
         WHERE id = ?
     ");
-    $stmt->execute([$verification_status, $admin_notes ?: null, $client_id]);
+    $stmt->execute([$verification_status, $admin_status_value, $admin_notes ?: null, $client_id]);
 
     $stmtStatusCheck = $pdo->prepare("SELECT verification_status FROM clients WHERE id = ?");
     $stmtStatusCheck->execute([$client_id]);
