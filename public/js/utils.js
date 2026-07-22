@@ -46,9 +46,10 @@ function timeAgo(date, shortForm = false) {
         if (isNaN(timestamp) && !validDateString.includes('Z')) {
             timestamp = new Date(validDateString + 'Z').getTime();
         }
-        // Always append Z to MySQL datetime without timezone so they are parsed as UTC
+        // Removing the 'Z' append fixes the timezone offset bug when the server and browser are not in UTC.
+        // It allows the browser to parse it as local time.
         if (!validDateString.includes('Z') && !validDateString.includes('+') && validDateString.length > 10) {
-            timestamp = new Date(validDateString + 'Z').getTime();
+            timestamp = new Date(validDateString.replace(' ', 'T')).getTime();
         }
     } else if (date instanceof Date) {
         timestamp = date.getTime();

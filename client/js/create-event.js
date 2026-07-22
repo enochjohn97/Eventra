@@ -134,15 +134,39 @@ function showCreateEventModal(eventToEdit = null) {
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Date <span style="color: #ef4444">*</span></label>
-                                        <input type="date" name="event_date" id="customDateDisplay" required
-                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #6b7280; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"
-                                               onchange="this.style.color='#1f2937'">
+                                        <div style="position: relative;">
+                                            <input type="text" id="customDateDisplay" readonly placeholder="Select date..." required
+                                                onclick="openMaterialDatePicker()"
+                                                style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #1f2937; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer;">
+                                            <span style="position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); pointer-events: none;">📅</span>
+                                            <input type="hidden" name="event_date" id="eventDateInput" required>
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Time <span style="color: #ef4444">*</span></label>
-                                        <input type="time" name="event_time" id="eventTimeInput" required
-                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #6b7280; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"
-                                               onchange="this.style.color='#1f2937'">
+                                        <div id="eventTimePickerContainer" class="time-picker-container" style="position: relative;">
+                                            <button type="button" class="time-picker-display" aria-haspopup="listbox" onclick="toggleTimePicker('eventTimePickerDropdown')" style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #1f2937; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                                                <span id="eventTimeDisplay">Select time...</span>
+                                                <span>🕒</span>
+                                            </button>
+                                            <div id="eventTimePickerDropdown" class="time-picker-dropdown">
+                                                <div class="time-picker-section">
+                                                    <span class="time-picker-label">Hours</span>
+                                                    <div class="time-picker-grid hours">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => `<button type="button" class="time-btn" onclick="selectHour('${h}','eventTimePickerContainer')">${h}</button>`).join('')}</div>
+                                                </div>
+                                                <div class="time-picker-section">
+                                                    <span class="time-picker-label">Minutes</span>
+                                                    <div class="time-picker-grid minutes">${['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => `<button type="button" class="time-btn" onclick="selectMinute('${m}','eventTimePickerContainer')">${m}</button>`).join('')}</div>
+                                                </div>
+                                                <div class="time-picker-section">
+                                                    <div class="time-picker-ampm">
+                                                        <button type="button" class="ampm-btn active" onclick="selectAmPm('AM','eventTimePickerContainer')">AM</button>
+                                                        <button type="button" class="ampm-btn" onclick="selectAmPm('PM','eventTimePickerContainer')">PM</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" name="event_time" id="eventTimeInput" required>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -434,6 +458,29 @@ function showCreateEventModal(eventToEdit = null) {
         const phone2Input = createEventForm.querySelector('input[name="phone_contact_2"]');
         if (phone2Input) phone2Input.value = eventToEdit.phone_contact_2 || '';
 
+        // Address
+        const addressInput = createEventForm.querySelector('textarea[name="address"]');
+        if (addressInput) addressInput.value = eventToEdit.address || '';
+
+        // States
+        if (eventToEdit.state) {
+            const stateInput = document.getElementById('eventStateInput');
+            if (stateInput) stateInput.value = eventToEdit.state;
+            
+            const stateNames = eventToEdit.state.split(',').map(s => s.trim()).filter(Boolean);
+            const stateDisplayText = document.getElementById('selectedStatesText');
+            if (stateDisplayText) {
+                stateDisplayText.textContent = stateNames.length > 0 ? stateNames.join(', ') : 'Select State(s)';
+            }
+            
+            // Check the corresponding checkboxes
+            document.querySelectorAll('.state-checkbox').forEach(cb => {
+                if (stateNames.includes(cb.value)) {
+                    cb.checked = true;
+                }
+            });
+        }
+
         // Visibility
         const visibilitySelect = document.getElementById('eventVisibilitySelect');
         if (visibilitySelect && eventToEdit.event_visibility) visibilitySelect.value = eventToEdit.event_visibility;
@@ -451,8 +498,12 @@ function showCreateEventModal(eventToEdit = null) {
         }
 
         // Date & Time (global)
-        document.getElementById('customDateDisplay').value = eventToEdit.event_date || '';
-        createEventForm.querySelector('input[name="event_date"]').value = eventToEdit.event_date || '';
+        const displayDate = document.getElementById('customDateDisplay');
+        const hiddenDate = document.getElementById('eventDateInput');
+        if (displayDate && hiddenDate) {
+            hiddenDate.value = eventToEdit.event_date || '';
+            displayDate.value = eventToEdit.event_date || '';
+        }
 
         if (eventToEdit.event_time) {
             document.getElementById('eventTimeInput').value = eventToEdit.event_time;
@@ -461,7 +512,18 @@ function showCreateEventModal(eventToEdit = null) {
                 displaySpan.textContent = eventToEdit.event_time;
                 displaySpan.style.color = '#1f2937'; // Active color
             }
+            if (typeof setTimePickerValue === 'function') {
+                setTimePickerValue('eventTimePickerContainer', eventToEdit.event_time);
+            }
         }
+
+        // Generate Event Tag and Link
+        setTimeout(() => {
+            const eventNameInput = document.getElementById('eventNameInput');
+            if (eventNameInput && typeof generateEventTagAndLink === 'function') {
+                generateEventTagAndLink();
+            }
+        }, 100);
 
         // Image
         if (eventToEdit.image_path) {
