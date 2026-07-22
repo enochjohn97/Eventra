@@ -31,7 +31,7 @@ try {
         $stmt->execute([$id, $client_id]);
 
         // Restore all contents
-        $stmt2 = $pdo->prepare("UPDATE media SET is_deleted = 0, restoration_count = restoration_count + 1 WHERE folder_id = ? AND client_id = ?");
+        $stmt2 = $pdo->prepare("UPDATE media SET is_deleted = 0 WHERE folder_id = ? AND client_id = ?");
         $stmt2->execute([$id, $client_id]);
     } else {
         // Get file name before update
@@ -40,7 +40,7 @@ try {
         $item_name = $stmt_name->fetchColumn();
 
         // Restore file
-        $stmt = $pdo->prepare("UPDATE media SET is_deleted = 0, restoration_count = restoration_count + 1 WHERE id = ? AND client_id = ?");
+        $stmt = $pdo->prepare("UPDATE media SET is_deleted = 0 WHERE id = ? AND client_id = ?");
         $stmt->execute([$id, $client_id]);
 
         // Auto-restore parent folder if missing

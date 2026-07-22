@@ -1103,17 +1103,13 @@ async function previewEvent(eventId) {
                             </div>
                             
                             <div style="height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; margin-bottom: 2rem;">
-                                <div style="width: 65%; height: 100%; background: var(--client-primary); border-radius: 10px;"></div>
+                                <div style="width: ${attendees === 0 ? '0%' : Math.min(100, Math.max(5, attendees * 2)) + '%'}; height: 100%; background: var(--client-primary); border-radius: 10px;"></div>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 12px;">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
                                     <span style="color: #64748b; font-weight: 600;">Priority</span>
                                     <span style="color: #1e293b; font-weight: 700; text-transform: uppercase;">${escapeHTML(event.priority || 'Normal')}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
-                                    <span style="color: #64748b; font-weight: 600;">Type</span>
-                                    <span style="color: #1e293b; font-weight: 700;">${escapeHTML(tag) || 'Standard'}</span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
                                     <span style="color: #64748b; font-weight: 600;">Contact</span>

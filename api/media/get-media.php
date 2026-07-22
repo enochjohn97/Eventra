@@ -121,9 +121,9 @@ try {
             (SELECT COUNT(*) FROM media_folders WHERE client_id = ? AND is_deleted = 0) as folders_total,
             (SELECT COUNT(*) FROM media WHERE client_id = ? AND is_deleted = 0) as files_total,
             (SELECT SUM(file_size) FROM media WHERE client_id = ? AND is_deleted = 0) as storage_total,
-            (SELECT COUNT(*) FROM media WHERE client_id = ? AND is_deleted = 1) + 
-            (SELECT COUNT(*) FROM media_folders WHERE client_id = ? AND is_deleted = 1) as deleted_total,
-            (SELECT COALESCE(SUM(restoration_count), 0) FROM media_folders WHERE client_id = ?) as restored_total
+            (SELECT COUNT(*) FROM media WHERE client_id = ? AND is_deleted = 1) as deleted_media,
+            (SELECT COUNT(*) FROM media_folders WHERE client_id = ? AND is_deleted = 1) as deleted_folders,
+            (SELECT COALESCE(SUM(restoration_count), 0) FROM media_folders WHERE client_id = ?) as restored_folders
     ");
     $ds_stmt->execute([$client_id, $client_id, $client_id, $client_id, $client_id, $client_id]);
     $ds = $ds_stmt->fetch(PDO::FETCH_ASSOC);
@@ -135,8 +135,9 @@ try {
             'total_folders' => (int)($ds['folders_total'] ?? 0),
             'total_files' => (int)($ds['files_total'] ?? 0),
             'total_size' => (float)($ds['storage_total'] ?? 0),
-            'total_deleted' => (int)($ds['deleted_total'] ?? 0),
-            'total_restored' => (int)($ds['restored_total'] ?? 0)
+            'total_deleted' => (int)($ds['deleted_media'] ?? 0),
+            'total_deleted_folders' => (int)($ds['deleted_folders'] ?? 0),
+            'total_restored_folders' => (int)($ds['restored_folders'] ?? 0)
         ],
         'folders' => $folders
     ]);

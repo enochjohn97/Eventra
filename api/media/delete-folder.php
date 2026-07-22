@@ -20,6 +20,7 @@ if (!$folder_id) {
     echo json_encode(['success' => false, 'message' => 'Folder ID is required']);
     exit;
 }
+$permanent = $data['permanent'] ?? false;
 
 try {
     $pdo->beginTransaction();
@@ -29,6 +30,22 @@ try {
     $stmt->execute([$folder_id, $client_id]);
     if (!$stmt->fetch()) {
         echo json_encode(['success' => false, 'message' => 'Folder not found']);
+        exit;
+    }
+
+    if ($permanent) {
+        $stmt_media = $pdo->prepare("SELECT file_path FROM media WHERE folder_id = ? AND client_id = ?");
+        $stmt_media->execute([$folder_id, $client_id]);
+        while($file = $stmt_media->fetch()) {
+            $filePath = realpath(__DIR__ . '/../../' . ltrim($file['file_path'], '/'));
+            if ($filePath && file_exists($filePath) && is_file($filePath)) {
+                @unlink($filePath);
+            }
+        }
+        $pdo->prepare("DELETE FROM media WHERE folder_id = ? AND client_id = ?")->execute([$folder_id, $client_id]);
+        $pdo->prepare("DELETE FROM media_folders WHERE id = ? AND client_id = ?")->execute([$folder_id, $client_id]);
+        $pdo->commit();
+        echo json_encode(['success' => true, 'message' => 'Folder and contents permanently deleted']);
         exit;
     }
 

@@ -135,13 +135,14 @@ function showCreateEventModal(eventToEdit = null) {
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Date <span style="color: #ef4444">*</span></label>
                                         <input type="date" name="event_date" id="customDateDisplay" required
-                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #6b7280; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"
+                                               onchange="this.style.color='#1f2937'">
                                     </div>
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Time <span style="color: #ef4444">*</span></label>
                                         <input type="time" name="event_time" id="eventTimeInput" required
-                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                                        <span id="eventTimeDisplay" style="display: none;"></span>
+                                               style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #6b7280; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"
+                                               onchange="this.style.color='#1f2937'">
                                     </div>
                                 </div>
 
@@ -1358,34 +1359,40 @@ function togglePerStateDateTimeFields() {
     const show = checkbox ? checkbox.checked : false;
     fields.forEach(f => { f.style.display = show ? 'grid' : 'none'; });
 
-    // ── Fix 1: Lock / unlock the global Date & Time fields ────────────────────
     // When per-state dates are active, the global date/time fields should be
     // inaccessible (disabled + visually greyed out) to avoid confusion.
-    const globalDateDisplay = document.getElementById('customDateDisplay');
-    const globalDateInput = document.getElementById('eventDateInput');
-    const globalTimeBtn = document.getElementById('eventTimeDisplayBtn');
+    const globalDateInput = document.getElementById('customDateDisplay');
     const globalTimeInput = document.getElementById('eventTimeInput');
+    const globalTimeBtn = document.getElementById('eventTimeDisplayBtn');
 
-    const disabledStyle = 'background: #f3f4f6; cursor: not-allowed; opacity: 0.5; pointer-events: none;';
-    const enabledStyle = '';
-
-    if (globalDateDisplay) {
+    if (globalDateInput) {
         if (show) {
-            globalDateDisplay.style.backgroundColor = '#f3f4f6';
-            globalDateDisplay.style.cursor = 'not-allowed';
-            globalDateDisplay.style.opacity = '0.5';
-            globalDateDisplay.style.pointerEvents = 'none';
-            globalDateDisplay.setAttribute('tabindex', '-1');
-            globalDateDisplay.removeAttribute('onclick');
-            globalDateDisplay.removeAttribute('onkeydown');
+            globalDateInput.style.backgroundColor = '#f3f4f6';
+            globalDateInput.style.cursor = 'not-allowed';
+            globalDateInput.style.opacity = '0.5';
+            globalDateInput.style.pointerEvents = 'none';
+            globalDateInput.disabled = true;
         } else {
-            globalDateDisplay.style.backgroundColor = 'white';
-            globalDateDisplay.style.cursor = 'pointer';
-            globalDateDisplay.style.opacity = '';
-            globalDateDisplay.style.pointerEvents = '';
-            globalDateDisplay.setAttribute('tabindex', '0');
-            globalDateDisplay.setAttribute('onclick', 'openMaterialDatePicker()');
-            globalDateDisplay.setAttribute('onkeydown', "if(event.key==='Enter'||event.key===' '){event.preventDefault();openMaterialDatePicker();}");
+            globalDateInput.style.backgroundColor = 'white';
+            globalDateInput.style.cursor = '';
+            globalDateInput.style.opacity = '';
+            globalDateInput.style.pointerEvents = '';
+            globalDateInput.disabled = false;
+        }
+    }
+    if (globalTimeInput) {
+        if (show) {
+            globalTimeInput.style.backgroundColor = '#f3f4f6';
+            globalTimeInput.style.cursor = 'not-allowed';
+            globalTimeInput.style.opacity = '0.5';
+            globalTimeInput.style.pointerEvents = 'none';
+            globalTimeInput.disabled = true;
+        } else {
+            globalTimeInput.style.backgroundColor = 'white';
+            globalTimeInput.style.cursor = '';
+            globalTimeInput.style.opacity = '';
+            globalTimeInput.style.pointerEvents = '';
+            globalTimeInput.disabled = false;
         }
     }
     if (globalTimeBtn) {

@@ -135,6 +135,12 @@ function displayMediaGrid(media, stats) {
         
         const restoredEl = document.getElementById('restoredFilesCount');
         if (restoredEl) restoredEl.textContent = stats.total_restored || 0;
+
+        const foldersDeletedEl = document.getElementById('foldersDeletedCount');
+        if (foldersDeletedEl) foldersDeletedEl.textContent = stats.total_deleted_folders || 0;
+        
+        const foldersRestoredEl = document.getElementById('foldersRestoredCount');
+        if (foldersRestoredEl) foldersRestoredEl.textContent = stats.total_restored_folders || 0;
     }
 
     const mediaGrid = document.getElementById('mediaGrid');

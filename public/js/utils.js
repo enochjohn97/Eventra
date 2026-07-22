@@ -46,6 +46,10 @@ function timeAgo(date, shortForm = false) {
         if (isNaN(timestamp) && !validDateString.includes('Z')) {
             timestamp = new Date(validDateString + 'Z').getTime();
         }
+        // Always append Z to MySQL datetime without timezone so they are parsed as UTC
+        if (!validDateString.includes('Z') && !validDateString.includes('+') && validDateString.length > 10) {
+            timestamp = new Date(validDateString + 'Z').getTime();
+        }
     } else if (date instanceof Date) {
         timestamp = date.getTime();
     } else {
@@ -366,11 +370,12 @@ function showNotification(message, type = 'info') {
       color: '#000000',
       customClass: {
         container: 'eventra-toast-container'
-      },
-      didOpen: (toast) => {
-        toast.style.zIndex = '999999'; // Ensure above Google iframe
       }
     });
+    // Ensure container has high z-index
+    const style = document.createElement('style');
+    style.innerHTML = '.eventra-toast-container { z-index: 999999 !important; } .swal2-container { z-index: 999999 !important; }';
+    document.head.appendChild(style);
     return;
   }
 
