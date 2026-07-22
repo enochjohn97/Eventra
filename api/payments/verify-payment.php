@@ -64,7 +64,7 @@ try {
 
     // ── Check existing order ─────────────────────────────────────────────────
     $oStmt = $pdo->prepare("
-        SELECT o.id, o.payment_status, o.amount, o.event_id, o.user_id, o.organizer_id,
+        SELECT o.id, o.payment_status, o.amount, o.event_id, o.user_id, o.organizer_id, o.metadata,
                e.event_name, e.event_date, e.event_time, e.address, e.location, e.image_path,
                u.name AS user_name, u.phone AS user_phone,
                a.id AS user_auth_accounts_id, a.email AS user_email,
@@ -153,7 +153,7 @@ try {
         $quantity = max(1, (int) ($metadata['quantity'] ?? 1));
         $ticket_type = $metadata['ticket_type'] ?? 'regular';
         $selected_locs = $metadata['selected_locs'] ?? null;
-        $dbMeta = json_decode($order['metadata'], true) ?? [];
+        $dbMeta = json_decode($order['metadata'] ?? '{}', true) ?? [];
         $ticket_user_name = $metadata['user_name'] ?? $dbMeta['user_name'] ?? $order['user_name'] ?? 'Guest';
 
         // 1. Update order status

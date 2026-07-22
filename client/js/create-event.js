@@ -1014,6 +1014,7 @@ window.mdpToday.setHours(0, 0, 0, 0);
 function openMaterialDatePicker() {
     const dp = document.getElementById('materialDatePicker');
     const display = document.getElementById('customDateDisplay');
+    if (!dp) return;
     dp.classList.add('active');
     if (display) display.setAttribute('aria-expanded', 'true');
     if (!window.mdpSelectedDate) window.mdpSelectedDate = new Date();
