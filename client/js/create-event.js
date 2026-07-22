@@ -138,8 +138,25 @@ function showCreateEventModal(eventToEdit = null) {
                                             <input type="text" id="customDateDisplay" readonly placeholder="Select date..." required
                                                 onclick="openMaterialDatePicker()"
                                                 style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #1f2937; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer;">
-                                            <span style="position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); pointer-events: none;">📅</span>
+                                            <span style="position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); pointer-events: none; cursor: pointer; font-size: 1.1rem;" onclick="openMaterialDatePicker()">📅</span>
                                             <input type="hidden" name="event_date" id="eventDateInput" required>
+                                            <div id="materialDatePicker" class="material-datepicker">
+                                                <div class="mdp-header">
+                                                    <div class="mdp-year" id="mdpYear"></div>
+                                                    <div class="mdp-date" id="mdpDateDisplay"></div>
+                                                </div>
+                                                <div class="mdp-body">
+                                                    <div class="mdp-month-nav">
+                                                        <button type="button" class="mdp-nav-btn" onclick="mdpChangeMonth(-1)">&#8249;</button>
+                                                        <span id="mdpMonthYear"></span>
+                                                        <button type="button" class="mdp-nav-btn" onclick="mdpChangeMonth(1)">&#8250;</button>
+                                                    </div>
+                                                    <div class="mdp-days-grid" id="mdpDaysGrid"></div>
+                                                </div>
+                                                <div class="mdp-footer">
+                                                    <button type="button" class="mdp-btn" onclick="closeMaterialDatePicker()">Cancel</button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="form-group">
@@ -1127,6 +1144,95 @@ window.closeMaterialDatePicker = closeMaterialDatePicker;
 window.mdpChangeMonth = mdpChangeMonth;
 window.selectMdpDate = selectMdpDate;
 window.confirmMaterialDatePicker = confirmMaterialDatePicker;
+
+// ── Time Picker Functions ────────────────────────────────────────────────────
+function toggleTimePicker(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    const isOpen = dropdown.classList.contains('active');
+    // close all time dropdowns first
+    document.querySelectorAll('.time-picker-dropdown.active').forEach(d => d.classList.remove('active'));
+    if (!isOpen) {
+        dropdown.classList.add('active');
+        const closeOnOutside = (e) => {
+            if (!dropdown.closest('.time-picker-container').contains(e.target)) {
+                dropdown.classList.remove('active');
+                document.removeEventListener('click', closeOnOutside);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeOnOutside), 10);
+    }
+}
+
+function _getTimeState(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return {};
+    return {
+        container,
+        display: container.querySelector('[id$="TimeDisplay"]') || container.querySelector('.time-picker-display span'),
+        hiddenInput: container.querySelector('input[type="hidden"]'),
+        hour: container.dataset.hour || null,
+        minute: container.dataset.minute || '00',
+        ampm: container.dataset.ampm || 'AM'
+    };
+}
+
+function _updateTimeDisplay(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const h = container.dataset.hour;
+    const m = container.dataset.minute || '00';
+    const ap = container.dataset.ampm || 'AM';
+    const displayEl = container.querySelector('[id$="TimeDisplay"]') ||
+                      container.querySelector('.time-picker-display > span:first-child');
+    const hiddenInput = container.querySelector('input[type="hidden"]');
+    if (h) {
+        const text = `${h}:${m} ${ap}`;
+        if (displayEl) displayEl.textContent = text;
+        if (hiddenInput) {
+            // store as 24h for backend
+            let h24 = parseInt(h);
+            if (ap.toUpperCase() === 'AM' && h24 === 12) h24 = 0;
+            if (ap.toUpperCase() === 'PM' && h24 !== 12) h24 += 12;
+            hiddenInput.value = `${String(h24).padStart(2,'0')}:${m}`;
+        }
+    }
+}
+
+function selectHour(h, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.dataset.hour = h;
+    container.querySelectorAll('.time-picker-grid.hours .time-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() == h);
+    });
+    _updateTimeDisplay(containerId);
+}
+
+function selectMinute(m, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.dataset.minute = m;
+    container.querySelectorAll('.time-picker-grid.minutes .time-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() == m);
+    });
+    _updateTimeDisplay(containerId);
+}
+
+function selectAmPm(val, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.dataset.ampm = val.toUpperCase();
+    container.querySelectorAll('.ampm-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim().toUpperCase() === val.toUpperCase());
+    });
+    _updateTimeDisplay(containerId);
+}
+
+window.toggleTimePicker = toggleTimePicker;
+window.selectHour = selectHour;
+window.selectMinute = selectMinute;
+window.selectAmPm = selectAmPm;
 
 /**
  * Multi-select State Logic
