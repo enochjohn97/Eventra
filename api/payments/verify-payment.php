@@ -9,13 +9,13 @@
  */
 
 header('Content-Type: application/json');
-require_once '../../config/database.php';
-require_once '../../config/payment.php';
-require_once '../../includes/middleware/auth.php';
-require_once '../../includes/helpers/ticket-helper.php';
-require_once '../../includes/helpers/email-helper.php';
-require_once '../../includes/helpers/sms-helper.php';
-require_once '../../api/utils/notification-helper.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/payment.php';
+require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../includes/helpers/ticket-helper.php';
+require_once __DIR__ . '/../../includes/helpers/email-helper.php';
+require_once __DIR__ . '/../../includes/helpers/sms-helper.php';
+require_once __DIR__ . '/../../api/utils/notification-helper.php';
 
 // Load shared webhook helper (processSuccessfulPayment is defined there)
 // We replicate it inline here to keep the file self-contained.
@@ -195,7 +195,7 @@ try {
         $ticketJobReady = false;
         $processorPath = '';
         if (empty($existingTickets)) {
-            require_once '../../api/utils/id-generator.php';
+            require_once __DIR__ . '/../../api/utils/id-generator.php';
             $paymentCustomId = generatePaymentId($pdo);
 
             // Save to payments table
