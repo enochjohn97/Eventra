@@ -50,8 +50,8 @@ try {
     }
 
     // Soft delete folder
-    $upd_folder = $pdo->prepare("UPDATE media_folders SET is_deleted = 1 WHERE id = ?");
-    $upd_folder->execute([$folder_id]);
+    $upd_folder = $pdo->prepare("UPDATE media_folders SET is_deleted = 1 WHERE id = ? AND client_id = ?");
+    $upd_folder->execute([$folder_id, $client_id]);
 
     // Soft delete contained media
     $upd_media = $pdo->prepare("UPDATE media SET is_deleted = 1 WHERE folder_id = ? AND client_id = ?");

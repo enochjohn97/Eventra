@@ -11,6 +11,10 @@ require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 // Then immediately set JSON response header
 header('Content-Type: application/json');
+// Dynamic per-user data must never be browser-cached
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Handle CORS preflight — must come before any logic
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

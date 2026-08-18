@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         webPath = 'public/' + cleanPath;
                     }
 
-                    const imgUrl = event.image_path.startsWith('http') ? event.image_path : basePath + webPath;
+                    const imgUrl = event.image_path.startsWith('http') ? event.image_path : '/' + webPath;
 
                     return `
                         <img src="${imgUrl}" 

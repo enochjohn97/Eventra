@@ -71,7 +71,7 @@ try {
         SELECT e.id, e.event_name, e.price, e.status, e.max_capacity, e.attendee_count,
                e.event_date, e.event_time, e.state, e.address, e.location, e.image_path,
                e.metadata, e.client_id AS organizer_id,
-               c.subaccount_code, c.verification_status,
+               c.subaccount_code, c.verification_status, c.business_name AS organizer_business_name, c.name AS organizer_name,
                c.paystack_connection_status, c.paystack_auth_token, c.paystack_public_key,
                c.paystack_merchant_id, c.platform_commission_percent, c.admin_status AS organizer_admin_status
         FROM events e
@@ -322,39 +322,52 @@ try {
         ? $event['paystack_auth_token']
         : PAYSTACK_SECRET_KEY;
 
+    $contactInfo  = $body['contact_info'] ?? [];
+    $buyerFname   = trim($contactInfo['fname'] ?? '');
+    $buyerLname   = trim($contactInfo['lname'] ?? '');
+    $buyerEmail   = !empty($contactInfo['email'])  ? $contactInfo['email']  : $user_email;
+    $buyerPhone   = !empty($contactInfo['phone'])  ? $contactInfo['phone']  : null;
+
     $paystackPayload = [
-        'email'         => $user_email,
+        'email'         => $buyerEmail,
         'amount'        => $amount_kobo,
         'reference'     => $reference,
         'callback_url'  => $callbackUrl,
+        'first_name'    => $buyerFname ?: $user_name,
+        'last_name'     => $buyerLname ?: '',
+        'phone'         => $buyerPhone,
         'metadata'      => [
-            'order_id'    => $order_id,
-            'event_id'    => $event_id,
-            'event_name'  => $event['event_name'],
-            'quantity'    => $quantity,
-            'ticket_type' => $ticket_type,
-            'user_id'     => $user_id,
-            'user_name'   => $order_metadata['user_name'],
-            'buyer_name'  => $order_metadata['user_name'],
-            'buyer_email' => !empty($body['contact_info']['email']) ? $body['contact_info']['email'] : $user_email,
-            'contact_info'=> $body['contact_info'] ?? null,
-            'selected_locs' => $selected_locs
+            'order_id'        => $order_id,
+            'event_id'        => $event_id,
+            'event_name'      => $event['event_name'],
+            'quantity'        => $quantity,
+            'ticket_type'     => $ticket_type,
+            'user_id'         => $user_id,
+            'user_name'       => $order_metadata['user_name'],
+            'buyer_name'      => $order_metadata['user_name'],
+            'buyer_email'     => $buyerEmail,
+            'contact_info'    => $body['contact_info'] ?? null,
+            'selected_locs'   => $selected_locs,
+            // Organizer display name shown on Paystack checkout page
+            'organizer_name'  => $event['organizer_business_name'] ?: $event['organizer_name'] ?: 'Event Organizer',
         ],
     ];
 
     $commissionKobo = (int) round($surcharge * 100);
     if ($isOrganizerConnected && $commissionKobo > 0) {
-        // transaction_charge: flat amount charged for platform, remainder to organizer
+        // Organizer's own Paystack account is used as primary key;
+        // Eventra's platform share is charged as a split.
         $paystackPayload['transaction_charge'] = $commissionKobo;
-        $paystackPayload['bearer']             = 'account'; // platform bears the charge, deducts from platform share
+        $paystackPayload['bearer']             = 'account';
         error_log(sprintf(
             '[initialize.php] Split: total=%d kobo, platform_commission=%d kobo',
             $amount_kobo, $commissionKobo
         ));
     } elseif (!$isOrganizerConnected && !empty($event['subaccount_code'])
-        && !str_starts_with($event['subaccount_code'], 'SETTLE_MOCK_')
-        && !str_starts_with(PAYSTACK_SECRET_KEY, 'sk_test')) {
-        // Legacy fallback: subaccount split for old connected organizers
+        && !str_starts_with($event['subaccount_code'], 'SETTLE_MOCK_')) {
+        // Subaccount split: organizer receives funds via their subaccount;
+        // Eventra is the main account (platform) and earns the commission.
+        // Works in both test and live mode.
         $paystackPayload['subaccount'] = $event['subaccount_code'];
         $paystackPayload['bearer']     = 'subaccount';
     }

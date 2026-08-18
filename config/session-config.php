@@ -18,6 +18,10 @@ ini_set('session.use_only_cookies', '1');
 ini_set('session.cookie_httponly', '1');
 ini_set('session.cookie_samesite', 'Lax');
 ini_set('session.cookie_path', '/');
+$_isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+    || (($_SERVER['SERVER_PORT'] ?? 80) == 443);
+ini_set('session.cookie_secure', $_isHttps ? '1' : '0');
 
 // Try to use project session path, fallback to system temp if permissions denied
     $temp_path = sys_get_temp_dir();

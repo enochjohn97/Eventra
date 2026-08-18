@@ -41,8 +41,8 @@ try {
             @unlink($filePath);
         }
         
-        $stmt = $pdo->prepare("DELETE FROM media WHERE id = ?");
-        $stmt->execute([$media_id]);
+        $stmt = $pdo->prepare("DELETE FROM media WHERE id = ? AND client_id = ?");
+        $stmt->execute([$media_id, $client_id]);
         
         $msg = 'Media permanently deleted from disk and database';
     } else {

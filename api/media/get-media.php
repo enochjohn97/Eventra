@@ -104,8 +104,8 @@ try {
 
     $folders = [];
     foreach ($db_folders as $f) {
-        $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM media WHERE folder_id = ? AND is_deleted = ?");
-        $count_stmt->execute([$f['id'], $is_trash]);
+        $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM media WHERE folder_id = ? AND client_id = ? AND is_deleted = ?");
+        $count_stmt->execute([$f['id'], $client_id, $is_trash]);
         $folders[] = [
             'id' => $f['id'],
             'type' => 'folder',

@@ -8,7 +8,10 @@
  * ticket ID, and an embedded QR code image.
  */
 
-require_once __DIR__ . '/../../vendor/autoload.php';
+$autoloadPath = __DIR__ . '/../../vendor/autoload.php';
+if (file_exists($autoloadPath)) {
+    require_once $autoloadPath;
+}
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/email-helper.php';
 

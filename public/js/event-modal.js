@@ -164,7 +164,13 @@ function renderModalContent(container, eventData) {
     <div style="position: relative; height: 320px; overflow: hidden; border-radius: 20px 20px 0 0; margin: -2rem -2rem 2rem -2rem;">
       <img src="${eventImage}" onerror="this.src='../assets/default-event.jpg'" style="width: 100%; height: 100%; object-fit: cover;" alt="${eventData.event_name}">
       <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);"></div>
-      ${eventData.priority ? `<div class="card-priority-badge priority-${eventData.priority.toLowerCase()}">${eventData.priority}</div>` : ''}
+      
+      <div style="position: absolute; top: 1rem; left: 1rem; display: flex; gap: 0.5rem; z-index: 5;">
+        ${eventData.priority ? `<div style="background: white; color: #722f37; padding: 0.4rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 0.4rem;">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#722f37;"></span>
+          ${escapeHTML(eventData.priority.replace(/UD83DUDD52/ig, '').replace(/\\\\ud83d\\\\udd52/ig, '').trim())}
+        </div>` : ''}
+      </div>
     </div>
     
     <div style="padding: 0 1rem;">
@@ -289,15 +295,11 @@ function renderModalContent(container, eventData) {
         
         <h4 style="font-size: 0.95rem; color: #111827; margin-bottom: 0.5rem; font-weight: 600;">Share with friends</h4>
         <div style="display: flex; align-items: center; gap: 0.5rem; background: #f3f4f6; padding: 0.5rem; border-radius: 8px;">
-          <input type="text" readonly value="${window.location.origin}/pages/checkout.html?id=${eventData.id}" style="flex: 1; background: transparent; border: none; outline: none; color: #4b5563; font-size: 0.9rem; padding: 0.25rem 0.5rem;" id="eventShareLink_${eventData.id}">
+          <input type="text" readonly value="${window.location.origin}/public/pages/index.html?event_id=${eventData.id}" style="flex: 1; background: transparent; border: none; outline: none; color: #4b5563; font-size: 0.9rem; padding: 0.25rem 0.5rem;" id="eventShareLink_${eventData.id}">
           <button onclick="copyEventLink('eventShareLink_${eventData.id}')" style="background: white; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'" title="Copy link">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           </button>
         </div>
-      </div>
-      
-      <div style="margin-bottom: 2rem;">
-        <div style="display: inline-block; background: #f3f4f6; color: #374151; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem;">${eventData.category || eventData.event_type || 'General'}</div>
       </div>
       
       <!-- Sticky-like Buy Button Container -->
@@ -342,11 +344,11 @@ function shareEventFromModal(id, title, organizer) {
     navigator.share({
       title: shareTitle,
       text: shareText,
-      url: window.location.origin + '/pages/checkout.html?id=' + id
+      url: window.location.origin + '/public/pages/index.html?event_id=' + id
     }).catch(console.error);
   } else {
     // Fallback to copy to clipboard
-    const url = window.location.origin + '/pages/checkout.html?id=' + id;
+    const url = window.location.origin + '/public/pages/index.html?event_id=' + id;
     navigator.clipboard.writeText(url).then(() => {
       if (typeof showNotification === 'function') {
         showNotification('Link copied to clipboard!', 'success');

@@ -205,10 +205,6 @@ function displayMediaGrid(media, stats) {
                         <div class="media-meta">
                             <span style="text-transform: capitalize;">${item.file_type || 'File'}</span>
                             <span>${formatFileSize(item.file_size)}</span>
-                        </div>
-                        <div class="media-date">
-                            <span data-timestamp="${item.uploaded_at}" data-short-time="true">${window.timeAgo(item.uploaded_at, true)}</span> • ${item.event_association || 'Unassigned'}
-                        </div>
                     </div>
                 </div>
             `;
@@ -357,6 +353,15 @@ function triggerFileUpload() {
         const files = e.target.files;
         if (!files.length) return;
 
+        // Frontend UX validation: reject files exceeding 5MB before any network request
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        for (let file of files) {
+            if (file.size > MAX_FILE_SIZE) {
+                showNotification(`"${file.name}" exceeds the 5MB file size limit and was not uploaded.`, 'error');
+                return;
+            }
+        }
+
         // Show upload progress notification
         showNotification(`Uploading ${files.length} file(s) to ${currentFolderName}...`, 'info');
 
@@ -405,6 +410,15 @@ function uploadToFolder(folderId, folderName, e) {
     input.onchange = async (ev) => {
         const files = ev.target.files;
         if (!files.length) return;
+
+        // Frontend UX validation: reject files exceeding 5MB before any network request
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        for (let file of files) {
+            if (file.size > MAX_FILE_SIZE) {
+                showNotification(`"${file.name}" exceeds the 5MB file size limit and was not uploaded.`, 'error');
+                return;
+            }
+        }
 
         showNotification(`Uploading ${files.length} file(s) to ${folderName}...`, 'info');
 
@@ -675,10 +689,10 @@ function populateFolderModal(files) {
                         <div class="media-name" title="${item.name}">${item.name}</div>
                         <div class="media-meta">
                             <span>${formatFileSize(item.file_size || 0)}</span>
-                            <span data-timestamp="${item.uploaded_at}" data-short-time="true">${window.timeAgo(item.uploaded_at, true)}</span>
+                            <span>${new Date(item.uploaded_at).toLocaleString()}</span>
                         </div>
                         <div class="media-date">
-                            Associated: ${item.event_association || 'Unassigned'}
+                            ${item.event_association || ''}
                         </div>
                     </div>
                 </div>

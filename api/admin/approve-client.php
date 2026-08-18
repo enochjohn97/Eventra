@@ -75,8 +75,9 @@ try {
 
         // Send notification to client with decision + notes
         require_once '../utils/notification-helper.php';
+        require_once '../../includes/helpers/email-helper.php';
 
-        $clientStmt = $pdo->prepare("SELECT id, client_auth_id, name, business_name FROM clients WHERE id = ?");
+        $clientStmt = $pdo->prepare("SELECT c.id, c.client_auth_id, c.name, c.business_name, a.email FROM clients c JOIN auth_accounts a ON c.client_auth_id = a.id WHERE c.id = ?");
         $clientStmt->execute([$client_id]);
         $client = $clientStmt->fetch();
 
@@ -87,9 +88,6 @@ try {
 
             if ($status) {
                 $msg = "🎉 Congratulations, {$display_name}! Your Event Planner account has been verified and approved. You can now create unlimited events and receive payments from ticket sales.";
-                if (!empty($admin_notes)) {
-                    $msg .= " Admin note: {$admin_notes}";
-                }
                 $type = 'account_approved';
             } else {
                 $msg = "Your Event Planner account verification has been declined.";
@@ -101,6 +99,38 @@ try {
                 $type = 'account_declined';
             }
 
+            // Create HTML message for Email
+            $msg_html = "
+            <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; border-radius: 8px; background: #ffffff;'>
+                <div style='margin-bottom: 20px; font-size: 15px;'>
+                    <p style='margin-top: 0;'>{$msg}</p>
+                </div>
+                <div style='border-top: 1px solid #eaeaea; margin: 30px 0 20px;'></div>
+                <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom: 30px;'>
+                    <tr>
+                        <td width='50%' style='vertical-align: top; font-size: 14px; color: #555;'>
+                            Kind regards,<br>
+                            <a href='#' style='color: #3b82f6; text-decoration: none;'>Eventra</a>
+                        </td>
+                        <td width='50%' style='vertical-align: top; text-align: right; font-size: 14px; color: #555;'>
+                            Have any questions?<br>
+                            <a href='mailto:testalive57@gmail.com' style='color: #3b82f6; text-decoration: none;'>Contact support</a>
+                        </td>
+                    </tr>
+                </table>
+                <div style='margin-bottom: 20px; text-align: left;'>
+                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>in</a>
+                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>X</a>
+                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>ig</a>
+                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>fb</a>
+                    <a href='#' style='text-decoration: none; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>tg</a>
+                </div>
+                <div style='font-size: 10px; color: #999; line-height: 1.5; text-align: justify;'>
+                    <p>Legal Information. Eventra is a company providing event management and ticketing solutions. Services are provided in accordance with our terms and conditions.</p>
+                    <p>Notice to the recipient. This message and any attachments are confidential and intended only for the use of the addressee(s) herein. If you are not the intended recipient, please notify the sender immediately and delete the original message.</p>
+                </div>
+            </div>";
+
             createNotification(
                 $recipient_auth_id,
                 $msg,
@@ -110,6 +140,9 @@ try {
                 'admin',
                 ['admin_notes' => $admin_notes, 'decision' => $verification_status]
             );
+            
+            // Send email notification
+            EmailHelper::sendEmail($client['email'], $status ? 'Account Approved' : 'Account Declined', $msg_html);
         }
 
         echo json_encode([

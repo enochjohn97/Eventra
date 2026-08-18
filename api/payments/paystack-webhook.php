@@ -15,10 +15,34 @@ require_once '../../includes/helpers/sms-helper.php';
 require_once '../../api/utils/notification-helper.php';
 
 $input = file_get_contents('php://input');
-
-// ── Signature Verification ───────────────────────────────────────────────────
 $signature = $_SERVER['HTTP_X_PAYSTACK_SIGNATURE'] ?? '';
-if (!verifyPaystackSignature($input, $signature)) {
+
+// ── Dynamic Signature Verification ───────────────────────────────────────────
+// We need to know which key signed this payload. We parse the unverified payload
+// just to extract the reference, look up the order, and get the organizer's key.
+$unverified_event = json_decode($input, true);
+$reference = $unverified_event['data']['reference'] ?? '';
+
+$activeSecretKey = !empty(PAYSTACK_WEBHOOK_SECRET) ? PAYSTACK_WEBHOOK_SECRET : PAYSTACK_SECRET_KEY;
+
+if ($reference) {
+    // Shared helper fetchOrder is defined below, but we need it here.
+    // Let's do a quick inline query just for the key.
+    $keyStmt = $pdo->prepare("
+        SELECT c.paystack_connection_status, c.paystack_auth_token 
+        FROM orders o 
+        JOIN clients c ON o.organizer_id = c.id 
+        WHERE o.transaction_reference = ? 
+        LIMIT 1
+    ");
+    $keyStmt->execute([$reference]);
+    $orgPaystack = $keyStmt->fetch(PDO::FETCH_ASSOC);
+    if ($orgPaystack && ($orgPaystack['paystack_connection_status'] ?? '') === 'connected' && !empty($orgPaystack['paystack_auth_token'])) {
+        $activeSecretKey = $orgPaystack['paystack_auth_token'];
+    }
+}
+
+if (!hash_equals(hash_hmac('sha512', $input, $activeSecretKey), $signature)) {
     http_response_code(401);
     exit;
 }
@@ -256,7 +280,11 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                 'amount'      => $order['amount'],
             ];
             $sendTo = $td['buyer_email'] ?? $order['user_email'];
-            EmailHelper::sendTicketEmailFull($sendTo, $td, []);
+            
+            $pdfPath = generateTicketPDF($td);
+            $currentPdf = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
+            
+            EmailHelper::sendTicketEmailFull($sendTo, $td, $currentPdf);
         }
 
         // SMS to buyer

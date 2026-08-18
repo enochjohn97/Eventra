@@ -6,7 +6,7 @@
     <title>Events - Eventra Admin</title>
     <link rel="stylesheet" href="../css/admin-style.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../public/js/storage.js"></script>
     <script src="../../public/js/utils.js"></script>
     <script src="../../public/js/auth-controller.js"></script>
@@ -83,6 +83,13 @@
         </header>
 
         <main class="content-area">
+            <!-- Page header with title -->
+            <div class="page-header">
+                <div class="page-title">
+                    <h1 style="font-size: 1.75rem; font-weight: 800;">Events Management</h1>
+                </div>
+            </div>
+            
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-header">
@@ -220,10 +227,12 @@
 
     <!-- Export Modal -->
     <div class="modal-backdrop" id="exportModal">
-        <div class="modal" style="padding: 2.5rem; border-radius: 20px;">
-            <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Export Data</h2>
-            <ul class="export-options" style="margin: 0;">
-                <li class="export-option" data-format="CSV"><i data-lucide="file-text" style="color: #4CAF50;"></i> Export as CSV</li>
+        <div class="modal-content" style="max-width: 400px; padding: 2rem; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 9999;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1.5rem; font-weight: 700; color: #1e293b;">Export Options</h2>
+            <ul class="export-options" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                <li class="export-option" data-format="CSV" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; color: #3b82f6; transition: all 0.2s;" onmouseover="this.style.background='#eff6ff'; this.style.borderColor='#3b82f6'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e2e8f0'">
+                    <i data-lucide="file-text"></i> CSV Spreadsheet
+                </li>
             </ul>
         </div>
     </div>

@@ -201,7 +201,7 @@ function updateTicketsTable(tickets) {
             <td><span style="font-size: 0.85rem; color: #0f172a; font-weight:700; text-transform: capitalize;">${ticketTypeDisplay}</span></td>
             <td><span style="font-size: 0.85rem; color: #64748b; text-transform: capitalize;">${eventCategoryDisplay}</span></td>
             <td>${ticket.purchase_date || ticket.created_at || 'N/A'}</td>
-            <td><span class="status-badge ${ticket.status === 'valid' ? 'status-paid' : ticket.status === 'used' ? 'status-refunded' : 'status-failed'}">${(ticket.status || 'N/A').toUpperCase()}</span></td>
+            <td><span class="status-badge ${ticket.status === 'valid' ? 'status-paid' : ticket.status === 'used' ? 'status-refunded' : ticket.status === 'pending' ? 'status-pending' : 'status-failed'}">${(ticket.status || 'N/A').toUpperCase()}</span></td>
         </tr>`;
     }).join('');
 

@@ -118,6 +118,17 @@ try {
     $stmt->execute([$real_client_id]);
     $event_breakdown = $stmt->fetchAll();
 
+    foreach ($event_breakdown as &$ev) {
+        if (!empty($ev['image_path'])) {
+            $img = str_replace('\\', '/', $ev['image_path']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $ev['image_path'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $ev['image_path'] = '/' . $m[1];
+            }
+        }
+    }
+
     // 8. Total Media Items
     $stmt = $pdo->prepare("
         SELECT 

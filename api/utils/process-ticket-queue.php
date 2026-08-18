@@ -20,29 +20,39 @@ $jobDir = __DIR__ . '/../../jobs/';
 $maxJobsPerRun = 5;
 $jobCount = 0;
 
-if (!is_dir($jobDir)) {
-    if (defined('RUNNING_INLINE')) { return; } else { exit(0); }
-}
+if (!isset($globalJobData)) {
+    if (!is_dir($jobDir)) {
+        if (defined('RUNNING_INLINE')) { return; } else { exit(0); }
+    }
 
-// Find and process pending jobs
-$files = glob($jobDir . 'ticket_*.json');
-if (empty($files)) {
-    if (defined('RUNNING_INLINE')) { return; } else { exit(0); }
-}
+    // Find and process pending jobs
+    $files = glob($jobDir . 'ticket_*.json');
+    if (empty($files)) {
+        if (defined('RUNNING_INLINE')) { return; } else { exit(0); }
+    }
 
-sort($files); // Process oldest first
+    sort($files); // Process oldest first
+} else {
+    $files = ['memory'];
+}
 
 foreach ($files as $jobFile) {
     if ($jobCount >= $maxJobsPerRun) {
         break;
     }
 
-    if (!file_exists($jobFile)) {
+    if (!file_exists($jobFile) && !isset($globalJobData)) {
         continue;
     }
 
     try {
-        $jobData = json_decode(file_get_contents($jobFile), true);
+        if (isset($globalJobData)) {
+            $jobData = $globalJobData;
+            $files = ['memory']; // only run once
+        } else {
+            $jobData = json_decode(file_get_contents($jobFile), true);
+        }
+        
         if (!$jobData || $jobData['type'] !== 'generate_tickets_and_notify') {
             @unlink($jobFile);
             continue;

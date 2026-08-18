@@ -8,13 +8,34 @@
  * If not (webhook delay), verifies with Paystack and runs post-payment processing.
  */
 
+// ── Shutdown handler: catch fatal errors before any require can output ────────
+// Must be registered BEFORE any require_once so fatal errors always return JSON.
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+        }
+        $msg = $err['message'] . ' in ' . $err['file'] . ':' . $err['line'];
+        error_log('[verify-payment.php] FATAL shutdown: ' . $msg);
+        // Only emit body if nothing has been sent yet (Content-Length:0 scenario)
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        echo json_encode(['success' => false, 'message' => 'Internal server error. Please try again or contact support.']);
+    }
+});
+
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/payment.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
-require_once __DIR__ . '/../../includes/helpers/ticket-helper.php';
-require_once __DIR__ . '/../../includes/helpers/email-helper.php';
-require_once __DIR__ . '/../../includes/helpers/sms-helper.php';
+// ticket-helper, email-helper, sms-helper are ONLY needed inside the background
+// job processor — NOT during the synchronous verify flow. Loading them here
+// causes a fatal error on live servers where the chillerlan/QRCode vendor
+// package is absent, which kills the script before the try-catch runs.
+// They are require_once'd lazily inside the try block, only when needed.
 require_once __DIR__ . '/../../api/utils/notification-helper.php';
 
 // Load shared webhook helper (processSuccessfulPayment is defined there)
@@ -99,30 +120,73 @@ try {
         exit;
     }
 
-    // ── Verify with Paystack ─────────────────────────────────────────────────
-    $url = 'https://api.paystack.co/transaction/verify/' . rawurlencode($reference);
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . PAYSTACK_SECRET_KEY,
-            'Cache-Control: no-cache',
-        ],
-    ]);
-
-    if (($_ENV['APP_ENV'] ?? '') === 'local') {
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    // ── Determine which Paystack key to use for verification ────────────────
+    // If organizer used their own connected key to initialize, we must verify with the same key.
+    $verifyKeyStmt = $pdo->prepare("
+        SELECT c.paystack_connection_status, c.paystack_auth_token
+        FROM orders o
+        JOIN clients c ON o.organizer_id = c.id
+        WHERE o.transaction_reference = ?
+        LIMIT 1
+    ");
+    $verifyKeyStmt->execute([$reference]);
+    $orgPaystack = $verifyKeyStmt->fetch(PDO::FETCH_ASSOC);
+    $activeVerifyKey = PAYSTACK_SECRET_KEY;
+    if ($orgPaystack
+        && ($orgPaystack['paystack_connection_status'] ?? '') === 'connected'
+        && !empty($orgPaystack['paystack_auth_token'])) {
+        $activeVerifyKey = $orgPaystack['paystack_auth_token'];
     }
 
-    $response = curl_exec($ch);
-    $curlError = curl_error($ch);
+    // ── Verify with Paystack ─────────────────────────────────────────────────
+    $url = 'https://api.paystack.co/transaction/verify/' . rawurlencode($reference);
+    $response = false;
+    $curlError = '';
 
-    if ($curlError || !$response) {
-        http_response_code(502);
-        echo json_encode(['success' => false, 'message' => 'Could not reach payment gateway. Please try again.']);
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $activeVerifyKey,
+                'Cache-Control: no-cache',
+            ],
+        ]);
+
+        if (($_ENV['APP_ENV'] ?? '') === 'local') {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        }
+
+        $response = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+    }
+
+    if (!$response) {
+        // Fallback to file_get_contents if cURL fails or is disabled
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => [
+                    'Authorization: Bearer ' . $activeVerifyKey,
+                    'Cache-Control: no-cache'
+                ],
+                'timeout' => 15,
+                'ignore_errors' => true
+            ]
+        ]);
+        $response = @file_get_contents($url, false, $context);
+    }
+
+    if (!$response) {
+        http_response_code(400); // Treat as 400 to prevent shared hosts from intercepting 500 and serving HTML
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to connect to Paystack API. Please try again later. ' . $curlError
+        ]);
         exit;
     }
 
@@ -263,10 +327,12 @@ try {
             $barcode = $barcodes[0]; 
             $pdo->commit();
 
-            // Write job file
             $jobDir = __DIR__ . '/../../jobs/';
             if (!is_dir($jobDir)) {
-                @mkdir($jobDir, 0777, true);
+                if (!@mkdir($jobDir, 0775, true) && !is_dir($jobDir)) {
+                    error_log('[verify-payment.php] Failed to create jobs directory: ' . $jobDir);
+                    // We will fall back to passing data in-memory without a job file.
+                }
             }
 
             $jobData = [
@@ -284,8 +350,10 @@ try {
                 'quantity' => $quantity
             ];
 
-            $jobFile = $jobDir . 'ticket_' . $reference . '.json';
-            file_put_contents($jobFile, json_encode($jobData));
+            if (is_dir($jobDir)) {
+                $jobFile = $jobDir . 'ticket_' . $reference . '.json';
+                file_put_contents($jobFile, json_encode($jobData));
+            }
 
             $processorPath = __DIR__ . '/../utils/process-ticket-queue.php';
             $ticketJobReady = true;
@@ -304,14 +372,18 @@ try {
             'barcode' => $barcode,
         ]);
 
+        echo $responsePayload;
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+
         if (!empty($ticketJobReady ?? false)) {
-            require_once __DIR__ . '/../../includes/helpers/response-helper.php';
-            finishResponseThen($responsePayload, function () use ($processorPath) {
+            if (!defined('RUNNING_INLINE')) {
                 define('RUNNING_INLINE', true);
-                include_once $processorPath;
-            });
-        } else {
-            echo $responsePayload;
+            }
+            global $globalJobData;
+            $globalJobData = $jobData;
+            include_once $processorPath;
         }
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
@@ -324,10 +396,9 @@ try {
         $pdo->rollBack();
     }
     error_log('[verify-payment.php] Fatal error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    http_response_code(500);
+    http_response_code(400); // 400 to ensure client gets JSON instead of intercept HTML
     echo json_encode([
         'success' => false,
-        'message' => 'Verification failed: ' . $e->getMessage(),
-        'error_info' => $e->getFile() . ':' . $e->getLine()
+        'message' => 'Verification failed. Please contact support if the issue persists.'
     ]);
 }

@@ -71,14 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Form submission
     if (signupForm) {
-        // Add persistence: save on input
-        signupForm.addEventListener('input', () => saveFormState('signupForm'));
-        signupForm.addEventListener('change', () => saveFormState('signupForm'));
-
-        // Restore saved state
-        restoreFormState('signupForm');
-
-        // NO AUTO-SYNC between full name and business name – they are separate fields
+        // Clear any previously saved signup form state so the page is always fresh
+        try { localStorage.removeItem('form_state_signupForm'); } catch (e) {}
 
         signupForm.addEventListener('submit', (e) => {
             e.preventDefault();

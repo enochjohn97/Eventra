@@ -673,9 +673,8 @@ window.togglePaystackKeyVisibility = function (btn) {
     const inputId = btn.dataset.toggleInput;
     const input = document.getElementById(inputId);
     if (!input) return;
-    const isHidden = input.style.webkitTextSecurity !== 'none';
-    input.style.webkitTextSecurity = isHidden ? 'none' : 'disc';
-    input.style.textSecurity = isHidden ? 'none' : 'disc';
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
     const icon = btn.querySelector('i[data-lucide]');
     if (icon) {
         icon.setAttribute('data-lucide', isHidden ? 'eye-off' : 'eye');
@@ -904,6 +903,10 @@ window.initPreviews = function () {
                                                         <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Job Title</div>
                                                         <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${escapeHTML(client.job_title) || 'N/A'}</div>
                                                     </div>
+                                                    <div style="background: #f8fafc; padding: 9px 11px; border-radius: 9px; border: 1px solid #f1f5f9;">
+                                                        <div style="font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px;">Business Name</div>
+                                                        <div style="font-size: 0.8rem; font-weight: 600; color: #334155;">${client.business_name ? escapeHTML(client.business_name) : 'N/A'}</div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -939,6 +942,23 @@ window.initPreviews = function () {
                                             <button type="button" onclick="window.open('https://dashboard.paystack.com/#/signup','_blank')" style="width:100%;background:linear-gradient(135deg,#0ba4db,#011b33);color:white;border:none;padding:0.65rem;border-radius:9px;font-weight:700;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
                                                 <i data-lucide="external-link" style="width:14px;height:14px;"></i> Create Paystack Account
                                             </button>
+
+                                            <!-- Paystack Key Override -->
+                                            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                                                <div style="font-size: 0.63rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
+                                                    <i data-lucide="key" style="width:11px;height:11px;"></i> Paystack Secret Key
+                                                </div>
+                                                <div style="display:flex; flex-direction:column; gap:8px;">
+                                                    <div style="position:relative; width:100%;">
+                                                        <input type="password" id="paystackKeyInput_${client.id}" placeholder="${client.paystack_auth_token ? '••••••••••••••••••••••••' : 'Enter Secret Key (sk_...)'}" style="width:100%; padding:0.65rem 2.5rem 0.65rem 0.65rem; border:1px solid #e2e8f0; border-radius:8px; font-size:0.8rem; font-family:monospace; box-sizing:border-box;">
+                                                        <button type="button" data-toggle-input="paystackKeyInput_${client.id}" onclick="togglePaystackKeyVisibility(this)" style="position:absolute; right:0.65rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#94a3b8; display:flex; align-items:center; padding:0;" title="Show/hide key">
+                                                            <i data-lucide="eye" style="width:16px; height:16px;"></i>
+                                                        </button>
+                                                    </div>
+                                                    <button onclick="adminSavePaystackKey(${client.id}, this)" style="background:#3b82f6;color:#fff;border:none;padding:0.6rem;border-radius:8px;font-weight:700;font-size:0.75rem;cursor:pointer;">Validate & Save</button>
+                                                    <div id="paystackKeyStatus_${client.id}" style="font-size:0.7rem;margin-top:2px;"></div>
+                                                </div>
+                                            </div>
 
                                             <!-- Settlement Account (read-only) -->
                                             <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">

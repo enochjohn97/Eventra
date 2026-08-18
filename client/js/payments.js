@@ -214,8 +214,8 @@ function renderPaymentsTable(payments) {
             <td><input type="checkbox" class="payment-checkbox" data-id="${p.id}"></td>
             <td style="font-family:monospace;font-size:0.85rem;color:#635bff;font-weight:700;">${p.custom_id || p.id}</td>
             <td>
-                <div style="font-weight:600;color:#1e293b;font-size:0.9rem;">${p.relative_time}</div>
-                <div style="font-size:0.78rem;color:#94a3b8;">${new Date(p.created_at).toLocaleString()}</div>
+                <div style="font-weight:600;font-size:.88rem;">${escapeHtml(p.formatted_date || new Date(p.created_at).toLocaleDateString())}</div>
+                <div style="font-size:.74rem;color:#94a3b8;">${escapeHtml(p.formatted_time || new Date(p.created_at).toLocaleTimeString())}</div>
             </td>
             <td style="font-family:monospace;font-size:0.8rem;color:#64748b;">${p.reference || '—'}</td>
             <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml((p.event_name || '-').replace(/\s*#\d+$/, ''))}">

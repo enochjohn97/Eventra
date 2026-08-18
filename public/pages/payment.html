@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Secure Payment - Eventra" />
     <title>Secure Payment | Eventra</title>
+    <link rel="icon" href="data:," />
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="../css/variables.css" />
@@ -329,12 +330,6 @@
             Please wait while we confirm your transaction with Paystack...
           </p>
 
-          <!-- Success Actions (Hidden by default) -->
-          <div 
-            id="successActions" 
-            style="display: none; flex-direction: column; gap: 1rem; align-items: center; margin-bottom: 2rem;">
-          </div>
-
           <a
             href="index.html"
             style="
@@ -461,12 +456,13 @@
         style="
           width: 800px;
           height: 350px;
-          background: transparent;
+          background: #0f172a;
           color: white;
           display: flex;
           font-family: &quot;Inter&quot;, sans-serif;
           border-radius: 20px;
           position: relative;
+          overflow: hidden;
         "
       >
         <div
@@ -664,6 +660,8 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/auth-controller.js"></script>

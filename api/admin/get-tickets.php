@@ -151,6 +151,10 @@ try {
     $stats['total_revenue']    = (float)$stats['total_revenue'];
     $stats['remaining_tickets'] = $stats['total_tickets'] - $stats['used_tickets'] - $stats['cancelled_tickets'];
 
+    // Pending tickets from orders table
+    $pendingRow = $pdo->query("SELECT COALESCE(SUM(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata,'$.quantity')) AS UNSIGNED),1)),0) AS cnt FROM orders WHERE payment_status='pending'")->fetch(PDO::FETCH_ASSOC);
+    $stats['pending_tickets'] = (int)($pendingRow['cnt'] ?? 0);
+
     echo json_encode([
         'success' => true,
         'tickets' => $tickets,

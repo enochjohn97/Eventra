@@ -471,8 +471,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sliderContainer) return;
 
         try {
-            // Fetch all published events regardless of client login status
-            const response = await apiFetch('/api/events/get-events.php?status=published&limit=10');
+            const urlParams = new URLSearchParams(window.location.search);
+            const clientId = urlParams.get('client_id');
+            
+            // Build API URL — use client-specific events if available, else general published events
+            const apiUrl = clientId
+                ? `/api/events/get-events.php?status=published&limit=10&client_id=${encodeURIComponent(clientId)}`
+                : `/api/events/get-events.php?status=published&limit=10`;
+
+            const response = await apiFetch(apiUrl);
             const data = await response.json();
 
             if (data.success && data.events && data.events.length > 0) {
@@ -481,12 +488,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Inject images
                 sliderContainer.innerHTML = events.map((event, index) => {
-                    const imgUrl = typeof getImageUrl === 'function' ? getImageUrl(event.image_path) : (event.image_path || '');
+                    const cleanPath = event.image_path.replace(/^\/+/, '');
+                    let webPath = cleanPath;
+                    if (cleanPath.startsWith('assets/') && !cleanPath.includes('public/')) {
+                        webPath = 'public/' + cleanPath;
+                    }
+                    const imgUrl = event.image_path.startsWith('http') ? event.image_path : '/' + webPath;
+
                     return `
                         <img src="${imgUrl}" 
                              alt="${escapeHTML(event.event_name)}" 
                              class="slider-img ${index === 0 ? 'active' : ''}" 
-                             data-index="${index}">
+                             data-index="${index}"
+                             onerror="this.style.display='none'">
                     `;
                 }).join('');
 
@@ -503,6 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setInterval(updateSlider, 5000);
             }
         } catch (error) {
+            console.error('Error loading slider events:', error);
         }
     }
 
@@ -517,6 +532,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.success && data.client_id) {
+                // Dynamically load Google SDK script if not already present
+                if (!window.google?.accounts?.id && !document.querySelector('script[src*="gsi/client"]')) {
+                    const script = document.createElement('script');
+                    script.src = 'https://accounts.google.com/gsi/client';
+                    script.async = true;
+                    script.defer = true;
+                    document.head.appendChild(script);
+                }
+
                 // Wait for Google SDK to load
                 const googleLoaded = await new Promise((resolve) => {
                     if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {

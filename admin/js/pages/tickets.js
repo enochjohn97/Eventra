@@ -203,6 +203,7 @@ function updateStats(data) {
     set('ticketsScanned',   stats.used_tickets || 0);
     set('ticketsRemaining', stats.remaining_tickets || 0);
     set('ticketsCancelled', stats.cancelled_tickets || 0);
+    set('ticketsPending',   stats.pending_tickets || 0);
     
     const revenueEl = document.getElementById('totalRevenue');
     if (revenueEl) {

@@ -60,8 +60,16 @@ async function loadEvents() {
   if (globalSearch && globalSearch.value.trim() !== "") return; // Don't refresh data while search is active
 
   try {
+    const keys =
+      typeof getRoleKeys === "function" ? getRoleKeys() : { user: "user" };
+    const user = window.storage
+      ? window.storage.get(keys.user) || window.storage.get("user")
+      : null;
+    const userState = (user?.state || "").toLowerCase().trim();
+
+    const stateParam = userState ? `&user_state=${encodeURIComponent(userState)}` : "";
     const response = await apiFetch(
-      "/api/events/get-events.php?limit=150&offset=0",
+      `/api/events/get-events.php?limit=150&offset=0${stateParam}`,
     );
     const result = await response.json();
     if (result.success && result.events) {
@@ -80,87 +88,74 @@ async function loadEvents() {
         window.allEventsData = publishedEvents;
       }
 
-      // Sort helper by creation date (newest first)
-      const sortByCreation = (events) => {
-        return events.sort((a, b) => {
-          const dateA = new Date(a.created_at || a.event_date);
-          const dateB = new Date(b.created_at || b.event_date);
-          return dateB - dateA;
-        });
-      };
+      // Sort helpers
+      const sortByCreation = (events) =>
+        [...events].sort((a, b) => new Date(b.created_at || b.event_date) - new Date(a.created_at || a.event_date));
+      const sortBySales = (events) =>
+        [...events].sort((a, b) => (parseInt(b.sales_count) || 0) - (parseInt(a.sales_count) || 0));
 
-      // Get user location for Nearby events
-      const keys =
-        typeof getRoleKeys === "function" ? getRoleKeys() : { user: "user" };
-      const user = window.storage
-        ? window.storage.get(keys.user) || window.storage.get("user")
-        : null;
-      const userState = user?.state?.toLowerCase();
-      const userCity = user?.city?.toLowerCase();
+      // Today's date string YYYY-MM-DD (browser local)
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // User location for Nearby
+      const userState = (user?.state || "").toLowerCase().trim();
 
       const now = new Date();
-      const upcomingEvents = publishedEvents.filter(
-        (event) => new Date(event.event_date) >= now,
+
+      // --- Category classification (priority_label from server is authoritative) ---
+
+      // Featured: admin-boosted only
+      eventsData.featured = sortByCreation(
+        publishedEvents.filter((e) =>
+          (e.priority_label || e.priority || "").toLowerCase().includes("featured")
+        )
       );
 
-      // Priority-based filtering
-      eventsData.featured = sortByCreation([
-        ...publishedEvents.filter((e) => (e.priority_label || e.priority || "").toLowerCase().includes("featured")),
-      ]);
-      eventsData.hot = sortByCreation([
-        ...publishedEvents.filter((e) => (e.priority_label || e.priority || "").toLowerCase().includes("hot")),
-      ]);
-      eventsData.trending = sortByCreation([
-        ...publishedEvents.filter((e) => (e.priority_label || e.priority || "").toLowerCase().includes("trending")),
-      ]);
-
-      // Upcoming: strictly use priority 'upcoming' if available, otherwise fallback to future events
-      const priorityUpcoming = publishedEvents.filter(
-        (e) => (e.priority_label || e.priority || "").toLowerCase().includes("upcoming"),
+      // Hot & Trending: sorted purely by ticket sales count (descending)
+      const hotCandidates = publishedEvents.filter((e) =>
+        (e.priority_label || e.priority || "").toLowerCase().includes("hot")
       );
-      if (priorityUpcoming.length > 0) {
-        eventsData.upcoming = sortByCreation([...priorityUpcoming]);
-      } else {
-        eventsData.upcoming = upcomingEvents.sort(
-          (a, b) => new Date(a.event_date) - new Date(b.event_date),
-        );
-      }
+      eventsData.hot = sortBySales(hotCandidates);
+
+      const trendingCandidates = publishedEvents.filter((e) =>
+        (e.priority_label || e.priority || "").toLowerCase().includes("trending")
+      );
+      eventsData.trending = sortBySales(trendingCandidates);
+
+      // Upcoming: events strictly after today
+      eventsData.upcoming = publishedEvents
+        .filter((e) => {
+          const d = e.event_date ? e.event_date.split('T')[0] : '';
+          return d > todayStr;
+        })
+        .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
 
       // All Events: sorted by creation date
       eventsData.all = sortByCreation([...publishedEvents]);
 
-      // Nearby: strictly use priority 'nearby' if available, otherwise fallback to location matches
-      const priorityNearby = publishedEvents.filter(
-        (e) => (e.priority_label || e.priority || "").toLowerCase().includes("nearby"),
+      // Nearby: events on TODAY whose state matches user's state(s)
+      // Supports both single-state and multi-state events
+      eventsData.nearby = sortByCreation(
+        publishedEvents.filter((e) => {
+          const eventDateStr = e.event_date ? e.event_date.split('T')[0] : '';
+          if (eventDateStr !== todayStr) return false; // must be today
+          if (!userState) {
+            // No user state: fall back to server label
+            return (e.priority_label || e.priority || "").toLowerCase().includes("nearby");
+          }
+          const eventStates = (e.state || "")
+            .toLowerCase()
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          // Match if user's state is in event's state list, or event is 'all states'
+          return (
+            eventStates.includes(userState) ||
+            eventStates.includes('all states') ||
+            eventStates.includes('all')
+          );
+        })
       );
-
-      if (userState || userCity) {
-        const locationNearby = publishedEvents.filter((e) => {
-          const eventState = e.state?.toLowerCase() || "";
-          const eventCity = e.city?.toLowerCase() || "";
-          const isSingleState = !eventState.includes(',');
-          
-          const stateMatch =
-            userState &&
-            eventState &&
-            isSingleState && 
-            eventState === userState;
-          const cityMatch =
-            userCity &&
-            eventCity &&
-            (eventCity.includes(userCity) || userCity.includes(eventCity));
-          return stateMatch || cityMatch;
-        });
-
-        // Combine priority-nearby and location-nearby, unique by id
-        const combined = [...priorityNearby];
-        locationNearby.forEach((le) => {
-          if (!combined.find((pe) => pe.id === le.id)) combined.push(le);
-        });
-        eventsData.nearby = sortByCreation(combined);
-      } else {
-        eventsData.nearby = sortByCreation([...priorityNearby]);
-      }
 
       // Favorites: events where is_favorite is 1
       eventsData.favorites = publishedEvents.filter(
@@ -219,7 +214,7 @@ function initHeroBackground() {
 
   wrapper.innerHTML = `
         <div class="hero-slide-static">
-            <img src="${eventImage}" alt="Event Background" class="hero-background" onerror="this.src='${fallback}'">
+            <img src="${eventImage}" alt="Event Background" class="hero-background" fetchpriority="high" onerror="this.src='${fallback}'">
             <div class="hero-overlay"></div>
             <div class="hero-gradient"></div>
             <div class="hero-content">
@@ -686,6 +681,15 @@ async function initGoogleAuth() {
     const data = await response.json();
 
     if (data.success && data.client_id) {
+      // Dynamically load Google SDK script if not already present
+      if (!window.google?.accounts?.id && !document.querySelector('script[src*="gsi/client"]')) {
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+
       // Wait for Google SDK to load (up to 10s)
       const googleLoaded = await new Promise((resolve) => {
         if (
@@ -962,10 +966,7 @@ function createEventCard(event, index) {
         return "";
     }
   };
-  const priorityVal = event.priority_label || event.priority || "";
-  const priorityBadge = priorityVal
-    ? `<div class="card-priority-badge priority-${priorityVal.toLowerCase()}">${getPriorityIcon(priorityVal)} ${priorityVal}</div>`
-    : "";
+  const priorityBadge = "";
 
   return `
     <div class="event-card" data-id="${event.id}" data-status="${status}" onclick="showEventModal(${event.id})">
@@ -975,6 +976,17 @@ function createEventCard(event, index) {
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             <span style="font-size: 0.8rem; font-weight: 600;">No Image</span>
         </div>
+        
+        <!-- Actions Overlay (Heart & Share) -->
+        <div class="event-image-actions" style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5;">
+            <button class="card-action-btn fav-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id}); event.stopPropagation();" title="Favorite" style="background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <i data-lucide="heart" class="${isFavorite ? "active" : ""}" style="width: 18px; height: 18px; color: #ef4444; ${isFavorite ? "fill: currentColor;" : ""}"></i>
+            </button>
+            <button class="card-action-btn share-btn" onclick="shareEvent(event, ${event.id}, '${escapeHTML(shareTitle)}', '${escapeHTML(shareText)}'); event.stopPropagation();" title="Share" style="background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <i data-lucide="share-2" style="width: 18px; height: 18px; color: #4b5563;"></i>
+            </button>
+        </div>
+
         <div class="event-badges">
           <span class="event-category-badge">${category}</span>
           <div class="event-status-badge" style="color: ${statusColor};">
@@ -982,7 +994,7 @@ function createEventCard(event, index) {
             ${statusLabel}
           </div>
         </div>
-        ${priorityBadge}
+        
       </div>
       
       <div class="event-content">
@@ -1057,14 +1069,6 @@ function createEventCard(event, index) {
 
       <div class="event-footer">
           <div class="event-price ${price === "Free" ? "free" : ""}">${price}</div>
-          <div class="event-card-actions">
-            <button class="card-action-btn fav-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id}); event.stopPropagation();" title="Favorite">
-              <i data-lucide="heart" class="${isFavorite ? "active" : ""}" style="width: 18px; height: 18px; ${isFavorite ? "fill: currentColor;" : ""}"></i>
-            </button>
-            <button class="card-action-btn share-btn" onclick="shareEvent(event, ${event.id}, '${escapeHTML(shareTitle)}', '${escapeHTML(shareText)}'); event.stopPropagation();" title="Share">
-              <i data-lucide="share-2" style="width: 18px; height: 18px;"></i>
-            </button>
-          </div>
       </div>
     </div>
   `;
@@ -1759,6 +1763,25 @@ function showEventModal(eventId) {
       modalImage.src = fallback;
     };
   }
+
+  // Populate overlay badges on modal hero image
+  const modalCatBadge = document.getElementById("modalCategoryBadge");
+  const modalStatusBadge = document.getElementById("modalStatusBadge");
+  const modalStatusDot = document.getElementById("modalStatusDot");
+  const modalStatusLabelEl = document.getElementById("modalStatusLabel");
+  if (modalCatBadge) {
+    modalCatBadge.textContent = escapeHTML(event.category || event.event_type || "Event");
+  }
+  if (modalStatusBadge && modalStatusDot && modalStatusLabelEl) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const evDay = new Date((event.event_date || "") + "T00:00:00");
+    const isPassed = event.event_date ? evDay < today : false;
+    const mStatusLabel = isPassed ? "Passed" : event.sold_out ? "Sold Out" : "Upcoming";
+    const mStatusColor = isPassed ? "#6b7280" : event.sold_out ? "#ef4444" : "#722f37";
+    modalStatusDot.style.backgroundColor = mStatusColor;
+    modalStatusBadge.style.color = mStatusColor;
+    modalStatusLabelEl.textContent = mStatusLabel;
+  }
   if (document.getElementById("modalEventTitle"))
     document.getElementById("modalEventTitle").textContent =
       event.event_name.replace(/\s*#\d+$/, "");
@@ -1851,7 +1874,7 @@ function showEventModal(eventId) {
       event.category || event.event_type || "General";
   if (document.getElementById("modalEventShareLink"))
     document.getElementById("modalEventShareLink").value =
-      `${window.location.origin}/public/pages/checkout.html?id=${event.id}`;
+      `${window.location.origin}/public/pages/index.html?event_id=${event.id}`;
   const modalPrice =
     !event.price || parseFloat(event.price) === 0
       ? "Free"
@@ -1924,7 +1947,7 @@ function showEventModal(eventId) {
   const modalPriorityVal = event.priority_label || event.priority || "";
   if (modalPriorityVal) {
     priorityBadge.textContent = modalPriorityVal.toUpperCase();
-    priorityBadge.style.display = "block";
+    priorityBadge.style.display = "flex";
     const pv = modalPriorityVal.toLowerCase();
     if (pv === "hot") {
       priorityBadge.style.background =
@@ -2110,7 +2133,7 @@ function toggleCartView(e) {
       const closeHandler = (event) => {
         if (
           !dropdown.contains(event.target) &&
-          !document.getElementById("cartIconContainer").contains(event.target)
+          !document.getElementById("cartIconContainer")?.contains(event.target)
         ) {
           dropdown.classList.remove("show");
           document.removeEventListener("click", closeHandler);
@@ -2325,7 +2348,7 @@ function copyModalShareLink() {
   let url = linkInput && linkInput.value ? linkInput.value : "";
 
   if (!url && window.currentModalEventId) {
-    url = `${window.location.origin}/public/pages/checkout.html?id=${window.currentModalEventId}`;
+    url = `${window.location.origin}/public/pages/index.html?event_id=${window.currentModalEventId}`;
   }
 
   if (!url) return;

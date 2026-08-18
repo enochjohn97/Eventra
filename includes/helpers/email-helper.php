@@ -1,100 +1,86 @@
 <?php
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception as MailerException;
 
 /**
- * Email Helper using PHPMailer
+ * Email Helper — Queue-first architecture
+ *
+ * Primary path: pushes email jobs into `email_queue` DB table.
+ * Background cron (cron/email-worker.php) dispatches via PHPMailer.
+ *
+ * Direct-send fallback (PHPMailer) is used only when called from contexts
+ * without DB access (e.g., CLI scripts that bypass the queue).
  */
 
-// ─── 1. ROBUST PHPMailer LOADING ─────────────────────────────────────────────
+// ─── Email Configuration ────────────────────────────────────────────────────
+require_once __DIR__ . '/../../config/email.php';
+
+// ─── PHPMailer fallback loader (graceful — no fatal if absent) ────────────────
 $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = null;
-
-if (!file_exists(__DIR__ . '/../../vendor/autoload.php')) {
-    $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = 'Composer autoload not found.';
-    error_log('[EmailHelper] ' . $GLOBALS['EVENTRA_AUTOLOADER_ERROR']);
-}
-
-if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+if (!class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
     $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
     if (file_exists($autoloadPath)) {
-        try {
-            if (!(@include_once $autoloadPath)) {
-                throw new \Exception("include_once returned false for {$autoloadPath}");
-            }
-        } catch (\Throwable $e) {
+        try { @include_once $autoloadPath; } catch (\Throwable $e) {
             $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = $e->getMessage();
             error_log('[EmailHelper] Composer autoloader failed: ' . $e->getMessage());
         }
     }
-
-    // Manual fallback — load PHPMailer src files directly
-    if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-        $phpmailerBase = __DIR__ . '/../../vendor/phpmailer/phpmailer/src/';
-        foreach (['Exception.php', 'PHPMailer.php', 'SMTP.php'] as $file) {
-            $p = $phpmailerBase . $file;
-            if (file_exists($p)) {
-                @include_once $p;
-            }
-        }
-    }
-
-    // Emergency alias so code below never throws a fatal class-not-found
-    if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-        error_log('[EmailHelper] CRITICAL: PHPMailer not found — emails will fail gracefully.');
-        if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
-            class_alias('stdClass', 'PHPMailer\PHPMailer\PHPMailer');
+    if (!class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
+        foreach (['Exception.php','PHPMailer.php','SMTP.php'] as $_f) {
+            $_p = __DIR__ . '/../../vendor/phpmailer/phpmailer/src/' . $_f;
+            if (file_exists($_p)) @include_once $_p;
         }
     }
 }
 
-// ─── 2. thecodingmachine/safe COMPATIBILITY ───────────────────────────────────
+// ─── Safe compat helper ───────────────────────────────────────────────────────
 if (!function_exists('safe_file_get_contents')) {
-    function safe_file_get_contents(string $filename): string|false
-    {
-        if (!file_exists($filename)) {
-            return false;
-        }
-        return file_get_contents($filename);
+    function safe_file_get_contents(string $filename): string|false {
+        return file_exists($filename) ? file_get_contents($filename) : false;
     }
 }
 
-require_once __DIR__ . '/../../config/email.php';
 
-// ─── 3. MAIN CLASS ───────────────────────────────────────────────────────────
+// ─── MAIN CLASS ───────────────────────────────────────────────────────────────
 class EmailHelper
 {
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
-     * Core send method — all other methods funnel through here.
+     * Core send method — direct send via SMTP.
      */
     public static function sendEmail(
         string $to,
         string $subject,
         string $body,
-        array $attachments = [],
-        string $altBody = '',
-        array $embeddedImages = []
+        array  $attachments = [],
+        string $altBody     = '',
+        array  $embeddedImages = []
     ): array {
+        // ── SMTP send via PHPMailer ──────
         if (empty(SMTP_HOST) || empty(SMTP_USER) || empty(SMTP_PASS)) {
             error_log('[EmailHelper] SMTP credentials not configured.');
             return ['success' => false, 'message' => 'SMTP credentials not configured.'];
         }
 
-        if (
-            !class_exists('PHPMailer\PHPMailer\PHPMailer') ||
-            !method_exists('PHPMailer\PHPMailer\PHPMailer', 'isSMTP')
-        ) {
-            $msg = 'Email service unavailable (PHPMailer load failed)';
-            if (!empty($GLOBALS['EVENTRA_AUTOLOADER_ERROR'])) {
-                $msg .= ': ' . $GLOBALS['EVENTRA_AUTOLOADER_ERROR'];
-            }
+        if (!class_exists('PHPMailer\PHPMailer\PHPMailer') || !method_exists('PHPMailer\PHPMailer\PHPMailer', 'isSMTP')) {
+            $msg = 'Email service unavailable (PHPMailer load failed). Falling back to native mail().';
             error_log('[EmailHelper] ' . $msg);
-            return ['success' => false, 'message' => $msg];
+            
+            // Fallback to native mail()
+            $headers  = "MIME-Version: 1.0\r\n";
+            $headers .= "Content-type: text/html; charset=utf-8\r\n";
+            $headers .= "From: " . EMAIL_FROM_NAME . " <" . EMAIL_FROM . ">\r\n";
+            $replyTo = $_ENV['MAIL_REPLY_TO'] ?? EMAIL_FROM;
+            $headers .= "Reply-To: " . $replyTo . "\r\n";
+            
+            // Note: Attachments and embedded images are not supported in this simple fallback
+            $sent = @mail($to, $subject, $body, $headers);
+            if ($sent) {
+                return ['success' => true, 'message' => 'Email sent successfully via native mail()'];
+            }
+            return ['success' => false, 'message' => 'Email delivery failed via native mail()'];
         }
 
-        $mail = new PHPMailer(true);
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
         try {
             $mail->isSMTP();
@@ -107,6 +93,7 @@ class EmailHelper
             $mail->Timeout = 15;
             $mail->SMTPDebug = 0;
             $mail->Debugoutput = null;
+            $mail->CharSet = 'UTF-8';
 
             $mail->setFrom(EMAIL_FROM, EMAIL_FROM_NAME);
             $mail->addReplyTo($_ENV['MAIL_REPLY_TO'] ?? EMAIL_FROM, EMAIL_FROM_NAME);
@@ -114,27 +101,16 @@ class EmailHelper
 
             foreach ($attachments as $filePath) {
                 $filePath = trim((string) $filePath);
-                if ($filePath === '') {
-                    continue;
+                if ($filePath !== '' && file_exists($filePath) && filesize($filePath) > 0) {
+                    $mail->addAttachment($filePath);
                 }
-                if (!file_exists($filePath)) {
-                    error_log("[EmailHelper] Attachment not found: {$filePath}");
-                    continue;
-                }
-                if (filesize($filePath) === 0) {
-                    error_log("[EmailHelper] Attachment is empty (0 bytes): {$filePath}");
-                    continue;
-                }
-                $mail->addAttachment($filePath);
             }
 
             if (is_array($embeddedImages)) {
                 foreach ($embeddedImages as $img) {
                     $path = $img['path'] ?? '';
-                    $cid = $img['cid'] ?? '';
-                    $name = $img['name'] ?? '';
                     if ($path !== '' && file_exists($path)) {
-                        $mail->addEmbeddedImage($path, $cid, $name);
+                        $mail->addEmbeddedImage($path, $img['cid'] ?? '', $img['name'] ?? '');
                     }
                 }
             }
@@ -147,19 +123,19 @@ class EmailHelper
             $sent = @$mail->send();
 
             if ($sent) {
-                error_log("[EmailHelper] Sent → {$to} | {$subject}");
+                error_log("[EmailHelper] Sent (SMTP) → {$to} | {$subject}");
                 return ['success' => true, 'message' => 'Email sent successfully'];
             }
 
-            error_log("[EmailHelper] Send failed → {$to}: " . $mail->ErrorInfo);
+            error_log("[EmailHelper] Send failed (SMTP) → {$to}: " . $mail->ErrorInfo);
             return ['success' => false, 'message' => 'Email delivery failed: ' . $mail->ErrorInfo];
 
-        } catch (MailerException $ex) {
+        } catch (\PHPMailer\PHPMailer\Exception $ex) {
             error_log("[EmailHelper] Mailer error → {$to}: " . $ex->getMessage());
             return ['success' => false, 'message' => 'Email delivery failed: ' . $ex->getMessage()];
         } catch (\Throwable $ex) {
             error_log("[EmailHelper] Critical error → {$to}: " . $ex->getMessage());
-            return ['success' => false, 'message' => 'Email service encountered a critical configuration error.'];
+            return ['success' => false, 'message' => 'Email service encountered a critical error.'];
         }
     }
 
@@ -366,16 +342,7 @@ class EmailHelper
     private static function buildVerificationUrl(array $ticketData): string
     {
         $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? ''));
-        $appUrl  = rtrim(defined('APP_URL') ? APP_URL : ($_ENV['APP_URL'] ?? ''), '/');
-
-        // Substitute LAN IP for localhost/127.0.0.1 so mobile devices can resolve the URL
-        $parsedHost = parse_url($appUrl, PHP_URL_HOST) ?? '';
-        if (in_array($parsedHost, ['localhost', '127.0.0.1'], true)) {
-            $lanIp = gethostbyname(gethostname());
-            if ($lanIp !== gethostname() && $lanIp !== '127.0.0.1' && filter_var($lanIp, FILTER_VALIDATE_IP)) {
-                $appUrl = str_replace($parsedHost, $lanIp, $appUrl);
-            }
-        }
+        $appUrl  = 'https://eventra-website.liveblog365.com';
 
         return $appUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($barcode);
     }
@@ -399,15 +366,16 @@ class EmailHelper
 
         if ($forPdf) {
             return "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\""
-                . " style=\"width:{$size}px;height:{$size}px;display:block;\">";
+                . " style=\"width:{$size}px;height:{$size}px;display:block;pointer-events:none;user-select:none;\" draggable=\"false\">";
         }
 
-        return "<img src=\"{$safeQrSrc}\" alt=\"QR Code\" style=\"width:{$size}px;height:{$size}px;display:block;\">";
+        // Wrapping the image in an anchor tag prevents Gmail from showing the image download/save overlay on hover.
+        return "<a href=\"#\" style=\"text-decoration:none;cursor:default;display:block;\"><img src=\"{$safeQrSrc}\" alt=\"QR Code\" width=\"{$size}\" height=\"{$size}\" style=\"width:{$size}px;height:{$size}px;display:block;pointer-events:none;user-select:none;border:none;outline:none;\" draggable=\"false\"></a>";
     }
 
     /**
      * Resolve a stored QR path to an absolute filesystem path.
-     */
+     */ 
     private static function resolveLocalQrPath(string $qrPath): string
     {
         $localPath = trim($qrPath);
@@ -589,8 +557,9 @@ class EmailHelper
                 $b64 = $ticketData['qr_base64'];
                 $qrSrc = str_starts_with($b64, 'data:') ? $b64 : 'data:image/png;base64,' . $b64;
             } else {
-                // Generate/resolve QR as base64 data-URI so it always displays in all email clients
-                $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, false);
+                // Use absolute URL for the QR code in emails to ensure it displays correctly
+                $baseAppUrl = rtrim(defined('APP_URL') ? APP_URL : ($_ENV['APP_URL'] ?? ''), '/');
+                $qrSrc = $baseAppUrl . '/public/assets/imgs/qr.png';
             }
         } else {
             // 🔥 FIX: Use self::generateQrDataUri (which now always returns base64 or empty)
@@ -796,11 +765,12 @@ class EmailHelper
 
         /* ── EMAIL HTML ─────────────────────────────────────────────────── */
         $bgImageStyle = 'background-color: #0f172a;';
+        $bgAttr = '';
         if ($imgBase64 !== '') {
             $safeImgSrc = htmlspecialchars($imgBase64, ENT_QUOTES, 'UTF-8');
-            $bgImageStyle = "background-image: linear-gradient(rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.88)), url('{$safeImgSrc}'); background-repeat: no-repeat; background-size: cover; background-position: center;";
-        } else {
-            $bgImageStyle = "background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);";
+            // Remove linear gradient from background-image, use fallback color + background-image
+            $bgImageStyle = "background-color: #0f172a; background-image: url('{$safeImgSrc}'); background-repeat: no-repeat; background-size: cover; background-position: center;";
+            $bgAttr = " background=\"{$safeImgSrc}\"";
         }
 
         $html = <<<HTML
@@ -809,17 +779,28 @@ class EmailHelper
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+  @media only screen and (max-width: 750px) {
+    .ticket-desktop { width: 100% !important; max-width: 100% !important; }
+    .ticket-desktop td[width="550"] { width: 73% !important; }
+    .ticket-desktop td[width="198"] { width: 27% !important; padding: 12px 8px !important; }
+  }
+</style>
 </head>
 <body style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
 <tr><td align="center">
 
-  <table width="750" cellpadding="0" cellspacing="0" border="0" role="presentation"
+  <!-- Desktop View: Full Ticket layout (also used on mobile) -->
+  <table width="750" class="ticket-desktop" cellpadding="0" cellspacing="0" border="0" role="presentation"{$bgAttr}
          style="max-width:750px;width:750px;{$bgImageStyle}border-radius:16px;overflow:hidden;border-collapse:collapse;border:none;color:#ffffff;box-shadow:0 10px 25px rgba(0,0,0,0.15);">
   <tr>
-    <!-- Main Body Section (Left ~73% -> 550px) -->
-    <td width="550" valign="top" style="padding:28px 32px;width:550px;background-color:transparent;">
+    <td style="background-color: rgba(15, 23, 42, 0.88);">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <tr>
+        <!-- Main Body Section (Left ~73% -> 550px) -->
+        <td width="550" valign="top" style="padding:28px 32px;width:550px;background-color:transparent;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
         <tr>
           <td valign="top">
@@ -876,7 +857,22 @@ class EmailHelper
   </tr>
   </table>
 
+    </td>
+  </tr>
+  </table>
+
 </td></tr>
+</table>
+
+<!-- Download Ticket Button Section -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:20px;">
+  <tr>
+    <td align="center">
+      <a href="https://eventra-website.liveblog365.com/api/tickets/download-ticket.php?code={$barcode}" style="display:inline-block;padding:14px 28px;background-color:#ff5a5f;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:700;border-radius:12px;box-shadow:0 4px 12px rgba(255,90,95,0.3);">
+        ⬇ Download Ticket
+      </a>
+    </td>
+  </tr>
 </table>
 
 </body>
@@ -1331,7 +1327,7 @@ if (!function_exists('sendEmail')) {
     function sendEmail(string $to, string $subject, string $body, array $attachments = [], string $altBody = ''): array
     {
         return EmailHelper::sendEmail($to, $subject, $body, $attachments, $altBody);
-    }
+    }   
 }
 
 if (!function_exists('sendTicketEmail')) {

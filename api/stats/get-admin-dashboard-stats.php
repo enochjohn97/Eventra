@@ -51,14 +51,15 @@ try {
 
     // 3. Top Users and Active Clients (optimized with GROUP BY instead of subqueries)
     $top_users_stmt = $pdo->prepare("
-        SELECT u.id, u.name, u.profile_pic, u.state, a.is_online,
-               IF(a.is_online = 1, 'active', 'offline') as status,
+        SELECT u.id, u.name, u.profile_pic, u.state, 
+               IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, 0) as is_online,
+               IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 'active', 'offline') as status,
                COUNT(t.id) as ticket_count
         FROM users u
         JOIN auth_accounts a ON u.user_auth_id = a.id
         LEFT JOIN tickets t ON u.id = t.user_id
         WHERE u.deleted_at IS NULL
-        GROUP BY u.id
+        GROUP BY u.id, a.is_online, a.last_seen
         ORDER BY ticket_count DESC
         LIMIT 5
     ");
@@ -66,15 +67,16 @@ try {
     $top_users = $top_users_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $active_clients_stmt = $pdo->prepare("
-        SELECT c.id, c.business_name as name, c.profile_pic, c.company, c.state, a.email, a.is_online,
-               IF(a.is_online = 1, 'active', 'offline') as status,
+        SELECT c.id, c.business_name as name, c.profile_pic, c.company, c.state, a.email, 
+               IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, 0) as is_online,
+               IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 'active', 'offline') as status,
                COUNT(e.id) as event_count
         FROM clients c
         JOIN auth_accounts a ON c.client_auth_id = a.id
         LEFT JOIN events e ON c.id = e.client_id AND e.deleted_at IS NULL
         WHERE c.deleted_at IS NULL AND a.deleted_at IS NULL
-        GROUP BY c.id, a.is_online
-        ORDER BY a.is_online DESC, event_count DESC
+        GROUP BY c.id, a.is_online, a.last_seen
+        ORDER BY is_online DESC, event_count DESC
         LIMIT 10
     ");
     $active_clients_stmt->execute();
@@ -94,9 +96,20 @@ try {
     ");
     $events_stmt->execute();
     $all_events = $events_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($all_events as &$ev) {
+        if (!empty($ev['image_path'])) {
+            $img = str_replace('\\', '/', $ev['image_path']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $ev['image_path'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $ev['image_path'] = '/' . $m[1];
+            }
+        }
+    }
     
-    $upcoming_events = array_filter($all_events, fn($e) => $e['event_type'] === 'upcoming');
-    $past_events = array_filter($all_events, fn($e) => $e['event_type'] === 'past');
+    $upcoming_events = array_values(array_filter($all_events, fn($e) => $e['event_type'] === 'upcoming'));
+    $past_events = array_values(array_filter($all_events, fn($e) => $e['event_type'] === 'past'));
 
     echo json_encode([
         'success' => true,

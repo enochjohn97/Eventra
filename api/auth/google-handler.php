@@ -128,7 +128,7 @@ try {
             $stmt = $pdo->prepare("
                 INSERT INTO clients (client_auth_id, custom_id, business_name, email, name, profile_pic, password) 
                 VALUES (?, ?, ?, ?, ?, ?, 'GOOGLE_AUTH')
-                ON DUPLICATE KEY UPDATE name = VALUES(name), profile_pic = VALUES(profile_pic)
+                ON DUPLICATE KEY UPDATE client_auth_id = VALUES(client_auth_id)
             ");
             // Check if custom_id already exists for this client (UPSERT case)
             $existingStmt = $pdo->prepare("SELECT custom_id FROM clients WHERE client_auth_id = ?");
@@ -140,7 +140,7 @@ try {
             $stmt = $pdo->prepare("
                 INSERT INTO users (user_auth_id, custom_id, name, profile_pic) 
                 VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE name = VALUES(name), profile_pic = VALUES(profile_pic)
+                ON DUPLICATE KEY UPDATE user_auth_id = VALUES(user_auth_id)
             ");
             // Check if custom_id already exists for this user (UPSERT case)
             $existingStmt = $pdo->prepare("SELECT custom_id FROM users WHERE user_auth_id = ?");

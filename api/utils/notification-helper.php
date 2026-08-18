@@ -162,29 +162,32 @@ function createLogoutNotification($user_auth_id, $user_name)
 /**
  * Create an event created notification
  */
-function createEventCreatedNotification($client_auth_id, $event_name)
+function createEventCreatedNotification($client_auth_id, $event_name, $event_id = null)
 {
     $message = "Event '{$event_name}' has been created successfully";
-    return createNotification($client_auth_id, $message, 'event_created', $client_auth_id, 'client', 'client');
+    $metadata = $event_id ? ['event_id' => $event_id] : null;
+    return createNotification($client_auth_id, $message, 'event_created', $client_auth_id, 'client', 'client', $metadata);
 }
 
 /**
  * Create an event scheduled notification
  */
-function createEventScheduledNotification($client_id, $event_name, $scheduled_time)
+function createEventScheduledNotification($client_id, $event_name, $scheduled_time, $event_id = null)
 {
     $formatted_time = date('M d, Y \a\t g:i A', strtotime($scheduled_time));
     $message = "Event '{$event_name}' has been scheduled for {$formatted_time}";
-    return createNotification($client_id, $message, 'event_scheduled', $client_id, 'client', 'client');
+    $metadata = $event_id ? ['event_id' => $event_id] : null;
+    return createNotification($client_id, $message, 'event_scheduled', $client_id, 'client', 'client', $metadata);
 }
 
 /**
  * Create an event published notification
  */
-function createEventPublishedNotification($client_auth_id, $event_name)
+function createEventPublishedNotification($client_auth_id, $event_name, $event_id = null)
 {
     $message = "Event '{$event_name}' has been published and is now live";
-    return createNotification($client_auth_id, $message, 'event_published', $client_auth_id, 'client', 'client');
+    $metadata = $event_id ? ['event_id' => $event_id] : null;
+    return createNotification($client_auth_id, $message, 'event_published', $client_auth_id, 'client', 'client', $metadata);
 }
 
 /**

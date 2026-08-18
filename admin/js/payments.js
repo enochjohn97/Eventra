@@ -134,12 +134,15 @@ async function loadRefundRequests() {
         const res = await apiFetch('/api/payments/get-refund-requests.php');
         const data = await res.json();
 
-        if (!data.success || !data.requests.length) {
+        // API returns 'data' key; support both for compatibility
+        const requests = data.data || data.requests || [];
+
+        if (!data.success || !requests.length) {
             if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#94a3b8;">No refund requests found.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = data.requests.map(r => {
+        tbody.innerHTML = requests.map(r => {
             const statusClass = r.status === 'approved' ? 'status-paid' : r.status === 'declined' ? 'status-failed' : 'status-pending';
             const statusLabel = r.status === 'approved' ? '✓ Approved' : r.status === 'declined' ? '✗ Declined' : '⏳ Pending';
             return `<tr>
@@ -162,7 +165,8 @@ async function loadRefundRequests() {
 
         updateEventraPagination(data.total, 1, data.limit || 100, 1);
     } catch (err) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;">Error loading refund requests.</td></tr>`;
+        console.error('[loadRefundRequests] Error:', err);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ef4444;">Error loading refund requests.</td></tr>`;
     }
 }
 
@@ -214,8 +218,8 @@ function renderTransactionsTable(payments) {
                 <div style="font-size:.75rem;color:var(--admin-primary);font-family:monospace;font-weight:700;">${escapeHtml(p.custom_id || p.id)}</div>
             </td>
             <td>
-                <div style="font-weight:600;font-size:.88rem;">${escapeHtml(new Date(p.created_at).toLocaleDateString())}</div>
-                <div style="font-size:.74rem;color:#94a3b8;">${escapeHtml(new Date(p.created_at).toLocaleTimeString())}</div>
+                <div style="font-weight:600;font-size:.88rem;">${escapeHtml(p.formatted_date || new Date(p.created_at).toLocaleDateString())}</div>
+                <div style="font-size:.74rem;color:#94a3b8;">${escapeHtml(p.formatted_time || new Date(p.created_at).toLocaleTimeString())}</div>
             </td>
             <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(p.event_name || '')}">${escapeHtml((p.event_name || '—').replace(/\s*#\d+$/, ''))}</td>
             <td>

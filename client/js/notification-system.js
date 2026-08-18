@@ -240,10 +240,9 @@ class NotificationManager {
             `;
 
             notifItem.onclick = () => {
-                if (['event_deleted', 'event_restored'].includes(notif.type) && metadata?.event_id) {
+                this.markSingleAsRead(notif.id);
+                if (['event_deleted', 'event_restored', 'event_created', 'event_published', 'event_scheduled', 'event_updated'].includes(notif.type) && metadata?.event_id) {
                     this.handleEventNotificationClick(metadata.event_id, notif.type);
-                } else {
-                    this.markSingleAsRead(notif.id);
                 }
             };
 
@@ -380,12 +379,18 @@ class NotificationManager {
     /**
      * Handle event-specific notification clicks
      * @param {number} eventId - ID of the event
-     * @param {string} notificationType - Type of notification (event_deleted, event_restored)
+     * @param {string} notificationType - Type of notification (event_deleted, event_restored, etc.)
      */
     handleEventNotificationClick(eventId, notificationType) {
         if (window.deletedEventModal && ['event_deleted', 'event_restored'].includes(notificationType)) {
             // Open the deleted event modal
             window.deletedEventModal.open(eventId);
+        } else if (['event_created', 'event_published', 'event_scheduled', 'event_updated'].includes(notificationType)) {
+            if (typeof window.showEventPreviewModal === 'function') {
+                window.showEventPreviewModal(eventId);
+            } else if (typeof window.editEvent === 'function') {
+                window.editEvent(eventId);
+            }
         }
     }
 }

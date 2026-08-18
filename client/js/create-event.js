@@ -208,7 +208,7 @@ function showCreateEventModal(eventToEdit = null) {
                                             </div>
                                             <div id="stateSelectDropdown" class="state-select-dropdown">
                                                 <div style="display: grid; gap: 4px;">
-                                                    ${getNigerianStates(true).map(state => `
+                                                    ${getNigerianStates(false).map(state => `
                                                         <label class="state-option-label">
                                                             <input type="checkbox" class="state-checkbox state-checkbox-custom" value="${state}" onchange="updateSelectedStates()">
                                                             <span class="state-option-text">${state}</span>
@@ -276,28 +276,32 @@ function showCreateEventModal(eventToEdit = null) {
                                     <!-- Conditional Price/Quantity Inputs -->
                                     <div id="regularConfig" class="ticket-price-section" style="display: none;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Regular Ticket Price (₦)</label>
-                                        <input type="number" name="regular_price" id="regularPriceInput" placeholder="0.00" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <input type="text" inputmode="decimal" name="regular_price" id="regularPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <div id="regularPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:-0.75rem;margin-bottom:0.5rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Quantity</label>
                                         <input type="number" name="regular_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
                                     </div>
 
                                     <div id="vipConfig" class="ticket-price-section" style="display: none;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">VIP Ticket Price (₦)</label>
-                                        <input type="number" name="vip_price" id="vipPriceInput" placeholder="0.00" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <input type="text" inputmode="decimal" name="vip_price" id="vipPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <div id="vipPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:-0.75rem;margin-bottom:0.5rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Quantity</label>
                                         <input type="number" name="vip_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
                                     </div>
 
                                     <div id="premiumConfig" class="ticket-price-section" style="display: none;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Premium Ticket Price (₦)</label>
-                                        <input type="number" name="premium_price" id="premiumPriceInput" placeholder="0.00" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <input type="text" inputmode="decimal" name="premium_price" id="premiumPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <div id="premiumPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:-0.75rem;margin-bottom:0.5rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Quantity</label>
                                         <input type="number" name="premium_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
                                     </div>
 
                                     <div id="allConfig" class="ticket-price-section" style="display: block;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">All Ticket Price (₦)</label>
-                                        <input type="number" name="price" id="allPriceInput" placeholder="0.00" min="0" step="0.01" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #2563eb; border-radius: 10px; background: #f8fafc;">
+                                        <input type="text" inputmode="decimal" name="price" id="allPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #2563eb; border-radius: 10px; background: #f8fafc;">
+                                        <div id="allPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:0.25rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">One price for all ticket tiers (Regular, VIP, Premium).</p>
                                     </div>
                                 </div>
@@ -683,37 +687,38 @@ function showCreateEventModal(eventToEdit = null) {
         setTimePickerValue('eventTimePickerContainer', restoredTime);
     }
 
-    // Free Event Checkbox Handler
+    // Free Event Checkbox Handler — mutual exclusivity with paid ticket types
     const freeCheckbox = document.getElementById('freeEventCheckbox');
-    const priceInput = document.getElementById('priceInput');
-    const priceInputGroup = document.getElementById('priceInputGroup');
     const ticketConfig = document.getElementById('ticketTypeConfigSection');
+    const _priceInputIds = ['regularPriceInput', 'vipPriceInput', 'premiumPriceInput', 'allPriceInput'];
+
+    function _setFreeMode(isFree) {
+        if (ticketConfig) ticketConfig.style.display = isFree ? 'none' : 'block';
+        _priceInputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.value = isFree ? '0' : ''; el.disabled = isFree; }
+        });
+        document.querySelectorAll('.ticket-type-checkbox').forEach(cb => {
+            cb.disabled = isFree;
+        });
+        if (isFree) {
+            document.querySelectorAll('#ticketTypeConfigSection input[name$="quantity"]').forEach(i => { i.value = ''; });
+        }
+    }
 
     freeCheckbox.addEventListener('change', function () {
-        if (this.checked) {
-            // If free, hide ticket config and set hidden inputs to 0
-            if (ticketConfig) ticketConfig.style.display = 'none';
+        _setFreeMode(this.checked);
+        if (!this.checked) updateTicketTypeSections();
+    });
 
-            const regularPriceInput = document.getElementById('regularPriceInput');
-            const vipPriceInput = document.getElementById('vipPriceInput');
-            const premiumPriceInput = document.getElementById('premiumPriceInput');
-            const allPriceInput = document.getElementById('allPriceInput');
-
-            if (regularPriceInput) { regularPriceInput.value = 0; regularPriceInput.required = false; }
-            if (vipPriceInput) { vipPriceInput.value = 0; vipPriceInput.required = false; }
-            if (premiumPriceInput) { premiumPriceInput.value = 0; premiumPriceInput.required = false; }
-            if (allPriceInput) { allPriceInput.value = 0; allPriceInput.required = false; }
-
-            // Clear quantities
-            const qtyInputs = document.querySelectorAll('#ticketTypeConfigSection input[type="number"]');
-            qtyInputs.forEach(input => {
-                if (input.name.includes('quantity')) input.value = '';
-            });
-        } else {
-            // Restore visibility and requirements
-            if (ticketConfig) ticketConfig.style.display = 'block';
-            updateTicketTypeSections(); // Recalculate requirements
-        }
+    // When any paid ticket type is selected, uncheck Free
+    document.querySelectorAll('.ticket-type-checkbox').forEach(cb => {
+        cb.addEventListener('change', function () {
+            if (this.checked && freeCheckbox.checked) {
+                freeCheckbox.checked = false;
+                _setFreeMode(false);
+            }
+        });
     });
 
     const statusInput = document.querySelector('input[name="status"]');
@@ -811,14 +816,54 @@ function showCreateEventModal(eventToEdit = null) {
     // Initial render
     updateTicketTypeSections();
 
-    // ── Fix 5: Paste suppression — don't trigger red-border validation on paste ──
-    // When user pastes into any field, set a flag that validation checks before
-    // applying the error highlight
+    // ── Paste suppression
     createEventForm.addEventListener('paste', () => {
         window._isPasting = true;
         setTimeout(() => { window._isPasting = false; }, 300);
     }, true);
+
+    // ── Price input validation: block non-numeric, enforce max 10 digits ─────
+    const priceRegex = /^\d{0,10}(\.\d{0,2})?$/;
+    function attachPriceGuard(inputId, errorId) {
+        const inp = document.getElementById(inputId);
+        const err = document.getElementById(errorId);
+        if (!inp) return;
+        inp.addEventListener('keydown', (e) => {
+            const allowed = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','.',' '];
+            if (allowed.includes(e.key)) return;
+            if (e.key === '.' && inp.value.includes('.')) { e.preventDefault(); return; }
+            if (!/^\d$/.test(e.key)) { e.preventDefault(); return; }
+        });
+        inp.addEventListener('input', () => {
+            const digits = inp.value.replace('.', '').replace('-', '').replace(/\D/g,'');
+            const valid = priceRegex.test(inp.value) && digits.length <= 10;
+            if (err) err.style.display = valid ? 'none' : 'block';
+            inp.style.borderColor = valid ? '' : '#ef4444';
+        });
+    }
+    attachPriceGuard('regularPriceInput', 'regularPriceError');
+    attachPriceGuard('vipPriceInput',     'vipPriceError');
+    attachPriceGuard('premiumPriceInput', 'premiumPriceError');
+    attachPriceGuard('allPriceInput',     'allPriceError');
+
+    // ── Date change → restrict time picker to future times if today is selected
+    document.getElementById('eventDateInput')?.addEventListener('input', function () {
+        const selectedDate = this.value;
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const timeInput = document.getElementById('eventTimeInput');
+        if (!timeInput) return;
+        if (selectedDate === todayStr) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 5);
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            timeInput.dataset.minTime = `${hh}:${mm}`;
+        } else {
+            delete timeInput.dataset.minTime;
+        }
+    });
 }
+
 
 function closeCreateEventModal() {
     const modal = document.getElementById('createEventModal');
@@ -918,7 +963,7 @@ async function handleGoogleCalendarSchedule(e) {
         formData.append('event_id', eventId);
     }
 
-    const endpoint = '/api/events/create-event.php';
+    const endpoint = eventId ? '/api/events/update-event.php' : '/api/events/create-event.php';
     const submitBtn = e.submitter || e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = isGoogleCalendar ? 'Connecting to Google...' : 'Saving...';
@@ -1079,6 +1124,27 @@ function confirmMaterialDatePicker() {
         dateInput.value = `${yyyy}-${mm}-${dd}`;
         dateInput.dispatchEvent(new Event('input', { bubbles: true }));
 
+        // Enforce time limits if selecting today
+        const timeInput = document.getElementById('eventTimeInput');
+        if (timeInput) {
+            const todayY = window.mdpToday.getFullYear();
+            const todayM = String(window.mdpToday.getMonth() + 1).padStart(2, '0');
+            const todayD = String(window.mdpToday.getDate()).padStart(2, '0');
+            const todayStr = `${todayY}-${todayM}-${todayD}`;
+            
+            if (dateInput.value === todayStr) {
+                const now = new Date();
+                timeInput.dataset.minTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            } else {
+                delete timeInput.dataset.minTime;
+            }
+            // Trigger time display update if already selected
+            const timeContainer = document.getElementById('eventTimePickerContainer');
+            if (timeContainer && timeInput.value) {
+                _updateTimeDisplay('eventTimePickerContainer');
+            }
+        }
+
         // Format display
         const displayOpts = { month: 'long', day: 'numeric', year: 'numeric' };
         const displayInput = document.getElementById('customDateDisplay');
@@ -1187,15 +1253,22 @@ function _updateTimeDisplay(containerId) {
                       container.querySelector('.time-picker-display > span:first-child');
     const hiddenInput = container.querySelector('input[type="hidden"]');
     if (h) {
+        let h24 = parseInt(h);
+        if (ap.toUpperCase() === 'AM' && h24 === 12) h24 = 0;
+        if (ap.toUpperCase() === 'PM' && h24 !== 12) h24 += 12;
+        const selectedTimeStr = `${String(h24).padStart(2,'0')}:${m}`;
+
+        // Reject past time if today is selected
+        const minTime = hiddenInput ? hiddenInput.dataset.minTime : null;
+        if (minTime && selectedTimeStr < minTime) {
+            if (displayEl) displayEl.textContent = 'Select a future time';
+            if (hiddenInput) hiddenInput.value = '';
+            return;
+        }
+
         const text = `${h}:${m} ${ap}`;
         if (displayEl) displayEl.textContent = text;
-        if (hiddenInput) {
-            // store as 24h for backend
-            let h24 = parseInt(h);
-            if (ap.toUpperCase() === 'AM' && h24 === 12) h24 = 0;
-            if (ap.toUpperCase() === 'PM' && h24 !== 12) h24 += 12;
-            hiddenInput.value = `${String(h24).padStart(2,'0')}:${m}`;
-        }
+        if (hiddenInput) hiddenInput.value = selectedTimeStr;
     }
 }
 

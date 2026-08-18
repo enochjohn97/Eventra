@@ -6,6 +6,10 @@
  */
 
 header('Content-Type: application/json');
+// Prevent browsers/CDNs from caching this dynamic endpoint (avoids cross-client image leaks on login screen)
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 require_once '../../config/database.php';
 require_once '../../includes/middleware/auth.php';
 
@@ -17,16 +21,31 @@ try {
     $offset    = (int)($_GET['offset'] ?? 0);
     $user_role = $_SESSION['user_role'] ?? 'guest';
 
-    $meritScore = "((IFNULL(e.view_count,0) * 0.3 + IFNULL(e.sales_count,0) * 0.7)
-                    * IF(e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY), 1.2, 1.0))";
+    $user_state = trim($_GET['user_state'] ?? '');
+
+    // Sales-driven merit: weight sales heavily, boost very recent events
+    $meritScore = "((IFNULL(e.view_count,0) * 0.2 + IFNULL(e.sales_count,0) * 0.8)
+                    * IF(e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY), 1.3, 1.0))";
 
     // Dynamic Priority Label Logic
-    $priorityLabel = "CASE 
-        WHEN e.is_boosted = 1 THEN '⭐ Featured'
-        WHEN $meritScore > 100 THEN '📈 Trending'
-        WHEN $meritScore > 50 THEN '🔥 Hot'
-        WHEN e.event_date >= CURDATE() AND e.event_date <= DATE_ADD(CURDATE(), INTERVAL 14 DAY) THEN '🕒 Upcoming'
-        ELSE '📍 Nearby'
+    // - Featured  : admin-boosted
+    // - Hot       : top 20% by sales_count (high ticket demand)
+    // - Trending  : next tier by combined merit
+    // - Nearby    : event date = TODAY and event state matches user's state (any in list)
+    $userStateSql = $pdo->quote($user_state);
+    $priorityLabel = "CASE
+        WHEN e.is_boosted = 1 THEN '\u2b50 Featured'
+        WHEN IFNULL(e.sales_count,0) >= 50 THEN '\ud83d\udd25 Hot'
+        WHEN $meritScore > 60 THEN '\ud83d\udcc8 Trending'
+        WHEN e.event_date = CURDATE()
+             AND $userStateSql != ''
+             AND (
+                 FIND_IN_SET($userStateSql, e.state) > 0
+                 OR e.state = 'All States'
+                 OR e.state = 'all'
+             ) THEN '\ud83d\udccd Nearby'
+        WHEN e.event_date > CURDATE() THEN ''
+        ELSE ''
     END";
 
     // ── Waterfall Fallback Feed ─────────────────────────────────────────────
@@ -124,6 +143,14 @@ try {
             if ($user_role !== 'admin') {
                 unset($ev['is_boosted']);
                 unset($ev['priority']); // legacy
+            }
+            if (!empty($ev['image_path'])) {
+                $img = str_replace('\\', '/', $ev['image_path']);
+                if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                    $ev['image_path'] = $m[1];
+                } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                    $ev['image_path'] = '/' . $m[1];
+                }
             }
             return $ev;
         }, $events);
@@ -228,6 +255,15 @@ try {
         if ($user_role !== 'admin') {
             unset($ev['is_boosted']);
             unset($ev['priority']); // legacy
+        }
+        // Normalize image_path to a root-relative web path
+        if (!empty($ev['image_path'])) {
+            $img = str_replace('\\', '/', $ev['image_path']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $ev['image_path'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $ev['image_path'] = '/' . $m[1];
+            }
         }
         return $ev;
     }, $events);

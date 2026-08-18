@@ -97,7 +97,7 @@ if ($intent === 'client_login_otp') {
         $pdo->prepare("UPDATE clients SET email = ? WHERE client_auth_id = ?")->execute([$user['email'], $auth_id]);
 
         // 7. Create session and access token
-        $expires_at = date('Y-m-d H:i:s', strtotime('+30 minutes')); // or use remember_me
+        $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour'));
         $token = bin2hex(random_bytes(32));
 
         // Delete old access tokens

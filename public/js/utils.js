@@ -309,16 +309,16 @@ function getVerificationBadge(status) {
     let onclick = '';
 
     if (status === 'verified') {
-        icon = 'check';
+        icon = 'check-circle';
         badgeClass = 'badge-verified';
         title = 'Verified Organizer';
     } else if (status === 'rejected') {
-        icon = 'slash';
+        icon = 'x-circle';
         badgeClass = 'badge-rejected';
         title = 'Verification Rejected';
         onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Rejected', text: 'This organizer\'s verification was declined by admin. Proceed with extreme caution.', icon: 'error', confirmButtonColor: '#6366f1'})"`;
     } else if (status === 'pending') {
-        icon = 'clock';
+        icon = 'alert-triangle';
         badgeClass = 'badge-pending';
         title = 'Verification Pending';
         onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Pending', text: 'This organizer\'s verification is currently being reviewed by our team.', icon: 'info', confirmButtonColor: '#6366f1'})"`;
@@ -513,15 +513,8 @@ async function apiFetch(url, options = {}) {
           loginPage = origin + '/public/pages/index.html';
         }
         
-        if (path === new URL(loginPage).pathname || (path.includes('index.html') && loginPage.includes('index.html'))) {
-           if (window.storage) window.storage.clearRoleSessions();
-           return response;
-        }
-
-        const finalRedirect = loginPage + (loginPage.includes('?') ? '&' : '?') + 'error=session_timeout' + (loginPage.includes('index.html') ? '&trigger=login' : '');
-        if (window.storage) window.storage.clearRoleSessions();
-        window.location.href = finalRedirect;
-        return null;
+        // Disabled inappropriate auto-logout on refresh
+        return response;
       }
     }
 
@@ -530,7 +523,10 @@ async function apiFetch(url, options = {}) {
         try {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
-          throw new Error(errorData.message || `Server error: ${response.status}`);
+          const err = new Error(errorData.message || errorData.error || `Server error: ${response.status}`);
+          err.data = errorData;
+          err.response = response;
+          throw err;
         } catch (jsonErr) {
           if (jsonErr.message && !jsonErr.message.includes('JSON')) throw jsonErr;
           throw new Error(`Server error: ${response.status}`);

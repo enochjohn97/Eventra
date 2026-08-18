@@ -116,10 +116,12 @@
         });
     }
 
-    // ── Boot ────────────────────────────────────────────────────────────────────
-    sendHeartbeat();
-    setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
-    setInterval(checkInactivity, CHECK_INTERVAL_MS);
+    // ── Boot (deferred 3 s after load to keep off critical render path) ────────
+    setTimeout(function() {
+        sendHeartbeat();
+        setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+        setInterval(checkInactivity, CHECK_INTERVAL_MS);
+    }, 3000);
 
     // Expose so admin-main.js can call initHeartbeat() for compat
     window.initHeartbeat = function () { /* already initialized above */ };

@@ -284,7 +284,7 @@ try {
     // ─────────────────────────────────────────────────────────────────────────
 
     // Validation
-    $required_fields = ['event_name', 'event_type', 'event_date', 'event_time', 'status', 'phone_contact_1'];
+    $required_fields = ['event_name', 'event_type', 'event_date', 'event_time', 'status', 'phone_contact_1', 'state'];
     
     // Address is required unless locations_json is provided
     $has_locations = !empty($_POST['locations_json']);
@@ -326,6 +326,16 @@ try {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Event date cannot be more than 365 days from today.']);
         exit;
+    }
+
+    // Reject past event timestamps (date + time must be in the future)
+    if (!empty($_POST['event_date']) && !empty($_POST['event_time'])) {
+        $event_timestamp = strtotime($_POST['event_date'] . ' ' . $_POST['event_time']);
+        if ($event_timestamp !== false && $event_timestamp <= time()) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Event date and time must be in the future.']);
+            exit;
+        }
     }
 
     // Pricing fields
@@ -461,18 +471,18 @@ try {
             $client_auth_id = $stmt->fetchColumn();
         }
 
-        createNotification($client_auth_id, $message, 'event_updated', $auth_id, 'client', ($role === 'admin' ? 'admin' : 'client'));
+        createNotification($client_auth_id, $message, 'event_updated', $auth_id, 'client', ($role === 'admin' ? 'admin' : 'client'), ['event_id' => $event_id]);
 
         // Notify Admin as well
         $admin_id = getAdminUserId();
         if ($admin_id && $auth_id != $admin_id) {
             $name = $_POST['event_name'];
             $admin_message = "Event '{$name}' has been updated" . ($role === 'admin' ? " by an administrator." : " by organizer.");
-            createNotification($admin_id, $admin_message, 'event_updated', $auth_id, 'admin', ($role === 'admin' ? 'admin' : 'client'));
+            createNotification($admin_id, $admin_message, 'event_updated', $auth_id, 'admin', ($role === 'admin' ? 'admin' : 'client'), ['event_id' => $event_id]);
         }
 
         if ($status === 'scheduled' && $scheduled_publish_time) {
-            createEventScheduledNotification($client_auth_id, $_POST['event_name'], $scheduled_publish_time);
+            createEventScheduledNotification($client_auth_id, $_POST['event_name'], $scheduled_publish_time, $event_id);
         }
     } catch (Throwable $notif_err) {
         error_log("[Update Event Notification Error] " . $notif_err->getMessage());

@@ -11,14 +11,19 @@ header('Content-Type: application/json');
 require_once '../../config/database.php';
 require_once '../../includes/middleware/auth.php';
 
-$client_auth_id = clientMiddleware();
+$user_id = checkAuth(['client', 'admin']);
+$user_role = $_SESSION['user_role'] ?? 'guest';
 
 $status_filter = $_GET['status'] ?? ''; // '', 'pending', 'approved', 'declined'
 
 try {
-    $client_id = $client_auth_id;
-    $where = "WHERE o.organizer_id = ?";
-    $params = [$client_id];
+    $where = "WHERE 1=1";
+    $params = [];
+
+    if ($user_role === 'client') {
+        $where .= " AND o.organizer_id = ?";
+        $params[] = $user_id;
+    }
 
     if ($status_filter !== '') {
         $where .= " AND rr.status = ?";

@@ -38,12 +38,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const verifyRes = await apiFetch(`/api/payments/verify-payment.php?reference=${reference}`);
                 const verifyData = verifyRes ? await verifyRes.json() : null;
+                
                 if (verifyData && verifyData.success && verifyData.barcode) {
                     await showPaymentSuccess(reference, verifyData.barcode);
                     return;
                 }
                 startPolling(reference);
             } catch (err) {
+                console.error("Verification error:", err);
+                
+                // Only start polling if it's explicitly a pending state or network blip,
+                // Do NOT poll on a hard 500 error from the server.
+                const isServerError = err.message && (err.message.includes('500') || err.message.includes('crash'));
+                const isExplicitFailure = err.data && (err.data.status === 'failed' || err.data.success === false);
+                
+                if (isServerError || isExplicitFailure) {
+                    const icon = document.getElementById('statusIcon');
+                    const title = document.getElementById('statusTitle');
+                    const msg = document.getElementById('statusMessage');
+                    if (icon) icon.textContent = '❌';
+                    if (title) title.textContent = 'Verification Failed';
+                    if (msg) msg.textContent = escapeHTML(err.message || 'An unexpected error occurred while verifying payment.');
+                    return;
+                }
+                
                 startPolling(reference);
             }
         })();
@@ -111,7 +129,6 @@ async function showPaymentSuccess(reference, barcode) {
     const title = document.getElementById('statusTitle');
     const msg = document.getElementById('statusMessage');
     const actions = document.getElementById('successActions');
-    const downloadBtn = document.getElementById('downloadTicketBtn');
 
     if (paymentLoading) paymentLoading.style.display = 'none';
     if (paymentForm) paymentForm.style.display = 'none';
@@ -126,50 +143,14 @@ async function showPaymentSuccess(reference, barcode) {
 
     const cleanedName = (order?.event_name || '').replace(/\s*#\d+$/, '');
     const finalBarcode = barcode || (order?.barcode) || (order?.tickets?.[0]?.barcode) || (order?.ticket_id) || reference || 'N/A';
-    const qrPayload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(finalBarcode)}`;
+    const qrPayload = `https://eventra-website.liveblog365.com/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(finalBarcode)}`;
 
-    icon.innerHTML = `<div id="qrcode-container" style="display:flex;flex-direction:column;align-items:center;margin-bottom:1.5rem;pointer-events:none;user-select:none;">
-        <div id="qrcode" style="background:#fff;padding:10px;border-radius:1rem;box-shadow:var(--shadow-card);border:1px solid var(--border-light);"></div>
-    </div>
-    <div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.75rem;">Scan to validate ticket</div>`;
+    icon.innerHTML = `<div style="font-size:4rem;margin-bottom:1rem;">🎉</div>`;
 
-    setTimeout(() => {
-        const qrcodeEl = document.getElementById('qrcode');
-        if (qrcodeEl && typeof QRCode !== 'undefined') {
-            qrcodeEl.innerHTML = '';
-            new QRCode(qrcodeEl, {
-                text: qrPayload,
-                width: 160,
-                height: 160,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-        }
-    }, 100);
 
     title.textContent = order?.amount <= 0 ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
     msg.innerHTML = `Your ticket${(order?.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? 'have been issued' : 'are ready'}.<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
 
-    if (order) renderSummary(order, order.quantity || 1, order.ticket_type || 'regular');
-    prepareTicketForDownload(order || { event_name: cleanedName, barcode: finalBarcode }, finalBarcode);
-
-    if (downloadBtn) {
-        downloadBtn.onclick = () => {
-            const originalText = downloadBtn.innerHTML;
-            downloadBtn.innerHTML = '<span class="btn-spinner"></span> Generating PDF...';
-            downloadBtn.disabled = true;
-            const element = document.getElementById('ticket-card');
-            const opt = { margin: 0.5, filename: `eventra_ticket_${barcode}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
-            const generatePdf = () => html2pdf().set(opt).from(element).save().then(() => { downloadBtn.innerHTML = originalText; downloadBtn.disabled = false; });
-            if (typeof html2pdf === 'undefined') {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                script.onload = generatePdf;
-                document.head.appendChild(script);
-            } else generatePdf();
-        };
-    }
     if (actions) actions.style.display = 'flex';
     sessionStorage.removeItem('pending_order');
     sessionStorage.setItem('purchase_success_redirection', 'true');
@@ -184,7 +165,6 @@ async function startPolling(reference) {
     const title = document.getElementById('statusTitle');
     const msg = document.getElementById('statusMessage');
     const actions = document.getElementById('successActions');
-    const downloadBtn = document.getElementById('downloadTicketBtn');
 
     const poll = async () => {
         pollCount++;
@@ -382,16 +362,12 @@ function renderSummary(event, qty, ticketType = 'regular') {
             </div>
         </div>
         <div class="summary-item">
-            <span>Price</span>
-            <span>${priceNum === 0 ? 'FREE' : '₦' + priceNum.toLocaleString()}</span>
-        </div>
-        <div class="summary-item">
             <span>Quantity</span>
             <span>× ${qty}</span>
         </div>
         <div class="summary-total">
             <span>Amount Paid</span>
-            <span>${total === 0 ? 'FREE' : '₦' + total.toLocaleString()}</span>
+            <span>${(event.amount !== undefined ? parseFloat(event.amount) : total) === 0 ? 'FREE' : '₦' + (event.amount !== undefined ? parseFloat(event.amount) : total).toLocaleString()}</span>
         </div>
     `;
 }
@@ -451,8 +427,8 @@ function prepareTicketForDownload(order, barcode) {
     if (qrContainer && typeof QRCode !== 'undefined') {
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
-            text: window.location.origin + '/api/tickets/validate-ticket.php?barcode=' + encodeURIComponent(barcode || ''),
-            width: 130,
+            text: 'https://eventra-website.liveblog365.com/api/tickets/validate-ticket.php?barcode=' + encodeURIComponent(barcode || ''),
+            width: 140,
             height: 130,
             colorDark: "#000000",
             colorLight: "#ffffff",

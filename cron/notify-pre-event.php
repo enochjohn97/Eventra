@@ -55,7 +55,7 @@ try {
         $earliestDiff = ($earliestTime - $now) / 60.0;
         $adminClientNotified = isset($metadata['admin_client_starting_notified']);
 
-        if (!$adminClientNotified && $earliestDiff >= 15 && $earliestDiff <= 25) {
+        if (!$adminClientNotified && $earliestDiff <= 60 && $earliestDiff >= -30) {
             $clientAuthId = $event['client_auth_id'] ?? null;
             $adminAuthId = getAdminUserId();
             $startingMessage = "Event '{$eventName}' is starting in 20 minutes!";
@@ -128,7 +128,7 @@ try {
                 // Calculate diff
                 $locDiffMinutes = ($locStartTimestamp - $now) / 60.0;
 
-                if ($locDiffMinutes >= 15 && $locDiffMinutes <= 25) {
+                if ($locDiffMinutes <= 60 && $locDiffMinutes >= -30) {
                     $subject = "Reminder: {$eventName} starts in 20 minutes!";
                     $body = "
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>

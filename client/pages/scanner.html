@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../../public/css/modals.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -244,8 +244,8 @@
     <script src="../js/scanner.js"></script>
     <script src="../../public/js/heartbeat.js"></script>
     <script>
-        lucide.createIcons();
-    </script>
+  document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
+</script>
 </body>
 </html>
 

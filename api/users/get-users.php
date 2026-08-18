@@ -11,6 +11,9 @@ require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 // Then immediately set JSON response header
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Handle CORS preflight — must come before any logic
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -31,8 +34,7 @@ try {
         exit;
     }
 
-    // Get ALL registered users (who have logged in to the system)
-    // Also calculate stats about their engagement with this client's events
+    // Get ONLY users who have interacted with this client's events (scoped by event ownership)
     $stmt = $pdo->prepare("
         SELECT 
             u.id,
@@ -52,7 +54,8 @@ try {
             COALESCE(SUM(CASE WHEN p.status = 'paid' THEN 1 ELSE 0 END), 0) as paid_count
         FROM users u
         JOIN auth_accounts aa ON u.user_auth_id = aa.id
-        LEFT JOIN tickets t ON u.id = t.user_id AND t.event_id IN (
+        -- INNER JOIN ensures only users with tickets for this client's events are returned
+        INNER JOIN tickets t ON u.id = t.user_id AND t.event_id IN (
             SELECT id FROM events WHERE client_id = ?
         )
         LEFT JOIN payments p ON u.id = p.user_id AND p.status = 'paid' AND p.event_id IN (

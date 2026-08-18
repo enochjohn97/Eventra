@@ -1,5 +1,5 @@
 -- =============================================================================
--- EVENTRA DATABASE SCHEMA v2.0
+-- EVENTRA DATABASE SCHEMA v2.0 (CORRECTED)
 -- Restructured for clarity, performance, and maintainability
 -- =============================================================================
 
@@ -54,6 +54,8 @@ CREATE TABLE auth_accounts (
     
     PRIMARY KEY (id),
     UNIQUE KEY uq_auth_email (email),
+    -- 🔧 FIX: Add unique constraint on username to prevent collisions
+    UNIQUE KEY uq_auth_username (username),
     UNIQUE KEY uq_provider_id (provider_id),
     KEY idx_auth_role_active (role, is_active),
     KEY idx_auth_deleted (deleted_at),
@@ -300,6 +302,7 @@ CREATE TABLE events (
     PRIMARY KEY (id),
     UNIQUE KEY uq_event_custom_id (custom_id),
     KEY idx_event_client (client_id),
+    -- 🔧 FIX: Add composite index for efficient owner-filtered queries
     KEY idx_event_client_status_deleted (client_id, status, deleted_at),
     KEY idx_event_status_deleted (status, deleted_at),
     KEY idx_event_ranking (admin_status, event_date, ticket_count),
@@ -493,8 +496,9 @@ CREATE TABLE favorites (
     
     PRIMARY KEY (id),
     UNIQUE KEY uq_user_event (user_id, event_id),
+    -- 🔧 FIX: Reference `users` table instead of `auth_accounts`
     CONSTRAINT fk_fav_user 
-        FOREIGN KEY (user_id) REFERENCES auth_accounts (id) 
+        FOREIGN KEY (user_id) REFERENCES users (id) 
         ON DELETE CASCADE,
     CONSTRAINT fk_fav_event 
         FOREIGN KEY (event_id) REFERENCES events (id) 
@@ -678,6 +682,8 @@ CREATE TABLE media (
     
     PRIMARY KEY (id),
     KEY idx_media_client (client_id),
+    -- 🔧 FIX: Add an index for owner + deletion status
+    KEY idx_media_client_deleted (client_id, is_deleted),
     KEY idx_media_folder (folder_id),
     CONSTRAINT fk_media_client 
         FOREIGN KEY (client_id) REFERENCES clients (id) 
@@ -687,8 +693,27 @@ CREATE TABLE media (
         ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
+
 -- =============================================================================
--- SECTION 10: SEED DATA
+-- SECTION 10: EMAIL QUEUE
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS `email_queue` (
+    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `recipient`   VARCHAR(255)    NOT NULL,
+    `subject`     VARCHAR(500)    NOT NULL,
+    `body`        LONGTEXT        NOT NULL,
+    `status`      ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
+    `attempts`    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    `created_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_status_attempts` (`status`, `attempts`),
+    INDEX `idx_created_at`      (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================================
+-- SECTION 11: SEED DATA
 -- =============================================================================
 
 INSERT IGNORE INTO auth_accounts (

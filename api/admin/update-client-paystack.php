@@ -100,6 +100,7 @@ try {
         $meta['paystack_key'] = $paystack_key;
         $meta['paystack_env'] = $env;
         $meta['paystack_auth_token'] = $paystack_key;
+        $meta['paystack_connection_status'] = 'connected';
     }
     if ($paystack_public_key !== '') $meta['paystack_public_key'] = $paystack_public_key;
     if ($paystack_merchant_id !== '') $meta['paystack_merchant_id'] = $paystack_merchant_id;
@@ -112,7 +113,7 @@ try {
     if ($paystack_connection_status !== null) { $sets[] = 'paystack_connection_status = ?'; $params[] = $paystack_connection_status; }
     if ($paystack_public_key !== '') { $sets[] = 'paystack_public_key = ?'; $params[] = $paystack_public_key; }
     if ($paystack_merchant_id !== '') { $sets[] = 'paystack_merchant_id = ?'; $params[] = $paystack_merchant_id; }
-    if ($paystack_key) { $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key; $sets[] = "settlement_verification_status = 'verified'"; }
+    if ($paystack_key) { $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key; $sets[] = "settlement_verification_status = 'verified'"; $sets[] = "paystack_connection_status = 'connected'"; }
     $params[] = $client_id;
 
     $updateStmt = $pdo->prepare("UPDATE clients SET " . implode(', ', $sets) . " WHERE id = ?");

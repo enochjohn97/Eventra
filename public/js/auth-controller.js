@@ -168,13 +168,22 @@ class AuthController {
     }
 
     /**
-     * Hard Reset Storage & State
+     * Hard Reset Storage & State — wipes ALL known cross-role session keys
      */
     clearSession() {
-        this.clearLocalState();
-        window.storage.remove('redirect_after_login');
+        // Wipe all cross-role keys (not just current role)
+        const ALL_SESSION_KEYS = [
+            'admin_user', 'admin_auth_token',
+            'client_user', 'client_auth_token',
+            'user', 'auth_token',
+            'login_timestamp', 'redirect_after_login', 'export_visible'
+        ];
+        ALL_SESSION_KEYS.forEach(key => {
+            try { localStorage.removeItem(key); } catch (e) {}
+        });
+        this.user = null;
         this.setState(this.states.UNAUTHENTICATED);
-        
+
         // Force Google SDK reset
         if (typeof google !== 'undefined') {
             google.accounts.id.disableAutoSelect();
@@ -212,6 +221,13 @@ class AuthController {
             // Only render/prompt if container is provided and not 'none'
             if (containerId !== 'none') {
                 this.renderGoogleButton(containerId);
+            } else {
+                // If initialized with 'none', check if loginModal is currently displayed.
+                // If so, render the button now that Google SDK is ready.
+                const loginModal = document.getElementById('loginModal');
+                if (loginModal && (loginModal.style.display === 'flex' || loginModal.classList.contains('show'))) {
+                    this.renderGoogleButton('googleSignInContainer');
+                }
             }
         } catch (error) {
             this.setState(this.states.ERROR);
@@ -313,24 +329,50 @@ class AuthController {
             }
             
             if (!this.googleInitialized) {
-                // If it's still not initialized, it might be blocked or not configured for this portal
-                const role = this.getPortalIntent();
-                if (role === 'user') {
-                    showNotification('Google Sign-In is taking longer than expected. Please refresh or try another method.', 'info');
+                // If not initialized yet, try a quick config fetch and initialization
+                try {
+                    const response = await apiFetch("/api/config/get-google-config.php");
+                    const data = await response.json();
+                    if (data.success && data.client_id) {
+                        this.initGoogle(data.client_id, 'googleSignInContainer');
+                    }
+                } catch (err) {}
+
+                if (!this.googleInitialized) {
+                    const role = this.getPortalIntent();
+                    if (role === 'user') {
+                        showNotification('Google Sign-In is taking longer than expected. Please refresh or try another method.', 'info');
+                    }
+                    return;
                 }
-                return;
             }
         }
         
         try {
-            // Programmatic prompt (One Tap) is no longer supported reliably without FedCM.
-            // The user must click the rendered Google iframe button.
             const container = document.getElementById('googleSignInContainer');
-            if (container && container.querySelector('iframe')) {
-                showNotification('Please click the official "Sign in with Google" button above.', 'info');
-            } else {
-                showNotification('Google Sign-In is unavailable. Please try again later.', 'error');
+            // If the official Google iframe button is not rendered yet, render it now
+            if (container && !container.querySelector('iframe') && !container.querySelector('[data-testid="button"]') && !container.querySelector('.gis-button')) {
+                this.renderGoogleButton('googleSignInContainer');
             }
+
+            // Trigger Google One Tap prompt programmatically as a highly reliable fallback/alternative display method
+            if (typeof google !== 'undefined' && google?.accounts?.id) {
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        console.debug('One Tap not displayed:', notification.getNotDisplayedReason() || notification.getSkippedReason());
+                    }
+                });
+            }
+
+            // Guide the user to click the official rendered button
+            setTimeout(() => {
+                const refreshedContainer = document.getElementById('googleSignInContainer');
+                if (refreshedContainer && (refreshedContainer.querySelector('iframe') || refreshedContainer.querySelector('[data-testid="button"]') || refreshedContainer.querySelector('.gis-button'))) {
+                    showNotification('Please click the official "Sign in with Google" button.', 'info');
+                } else {
+                    showNotification('Google Sign-In is initializing. Please try again.', 'info');
+                }
+            }, 100);
         } catch (e) {
             console.error('Google manual login error:', e);
         }

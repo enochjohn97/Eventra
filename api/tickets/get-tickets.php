@@ -12,6 +12,9 @@ require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 // Then immediately set JSON response header
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Handle CORS preflight — must come before any logic
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -64,6 +67,40 @@ try {
     ");
     $stmt->execute([$real_client_id]);
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Also fetch pending orders so they appear in the ticket table
+    $pending_orders_stmt = $pdo->prepare("
+        SELECT
+            NULL AS id,
+            o.transaction_reference AS custom_id,
+            NULL AS barcode,
+            NULL AS qr_path,
+            NULL AS qr_data,
+            COALESCE(JSON_UNQUOTE(JSON_EXTRACT(o.metadata, '$.ticket_type')), 'regular') AS ticket_type,
+            0 AS used,
+            'pending' AS status,
+            o.created_at AS purchase_date,
+            e.event_name,
+            e.image_path AS event_image,
+            e.category AS event_category,
+            e.price AS event_price,
+            e.ticket_type AS event_ticket_type,
+            u.name AS buyer_name,
+            o.amount,
+            NULL AS payment_ticket_type,
+            'pending' AS payment_status,
+            o.transaction_reference AS reference,
+            c.business_name AS organiser_name
+        FROM orders o
+        JOIN events e ON o.event_id = e.id
+        JOIN clients c ON e.client_id = c.id
+        LEFT JOIN users u ON o.user_id = u.id
+        WHERE e.client_id = ? AND o.payment_status = 'pending'
+        ORDER BY o.created_at DESC
+    ");
+    $pending_orders_stmt->execute([$real_client_id]);
+    $pending_orders = $pending_orders_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $tickets = array_merge($tickets, $pending_orders);
 
     // Normalise price display, ticket type and event category
     foreach ($tickets as &$ticket) {

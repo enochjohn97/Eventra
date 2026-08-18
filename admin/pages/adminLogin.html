@@ -15,10 +15,15 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+
+    <style>
+        .login-right { display: flex !important; }
+        .login-right .overlay-gradient { display: none; }
+    </style>
 </head>
 
 <body>
@@ -29,7 +34,7 @@
                 <div id="successMessage" class="success-message"></div>
 
                 <header class="login-header" style="margin-bottom: 2.5rem;">
-                    <h1 class="login-title" style="font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;">Welcome Back!</h1>
+                    <h1 class="login-title" style="font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: #eee;">Welcome Back!</h1>
                     <p style="color: #fff; margin-top: 0.5rem;">Access the Elite Management Panel</p>
                 </header>
 
@@ -81,8 +86,8 @@
     <script src="../../public/js/auth-controller.js"></script>
     <script src="../js/adminLogin.js"></script>
     <script>
-        lucide.createIcons();
-    </script>
+  document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
+</script>
 </body>
 
 </html>

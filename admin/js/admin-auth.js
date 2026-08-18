@@ -152,42 +152,41 @@ class AdminAuth {
 
 
     async handleLogout() {
-        try {
-            const response = await apiFetch('/api/auth/logout.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+        // Full cross-role localStorage wipe
+        const ALL_SESSION_KEYS = [
+            'admin_user', 'admin_auth_token',
+            'client_user', 'client_auth_token',
+            'user', 'auth_token',
+            'login_timestamp', 'redirect_after_login', 'export_visible'
+        ];
+        ALL_SESSION_KEYS.forEach(key => {
+            try { localStorage.removeItem(key); } catch (e) {}
+        });
+        // Full sessionStorage wipe
+        try { sessionStorage.clear(); } catch (e) {}
 
-            const result = await response.json();
-            
-            if (result.success) {
-                // Clear local storage (namespaced for Admin)
-                if (typeof storage !== 'undefined') {
-                    storage.remove('admin_user');
-                    storage.remove('admin_auth_token');
-                }
-                
-                // Show success message
-                if (window.toast) {
-                    window.toast.success('Logged out successfully');
-                }
-                
-                // Redirect to login
-                setTimeout(() => {
-                    window.location.href = '../../admin/pages/adminLogin.html';
-                }, 1000);
-            } else {
-                if (window.toast) {
-                    window.toast.error(result.message || 'Logout failed');
-                }
-            }
-        } catch (error) {
-            if (window.toast) {
-                window.toast.error('An error occurred during logout');
-            }
+        // Clear authController in-memory state
+        if (window.authController && typeof window.authController.clearSession === 'function') {
+            window.authController.clearSession();
         }
+
+        try {
+            await apiFetch('/api/auth/logout.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            // Proceed regardless
+        }
+
+        // Show success message
+        if (window.toast) {
+            window.toast.success('Logged out successfully');
+        }
+
+        setTimeout(() => {
+            window.location.href = '../../admin/pages/adminLogin.html';
+        }, 500);
     }
 }
 

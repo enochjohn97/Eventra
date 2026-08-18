@@ -1,8 +1,8 @@
 :root {
   /* Login Page Specific Colors */
-  --login-primary: #1976D2;
-  --login-primary-hover: #1565C0;
-  --login-accent: #2196F3;
+  --login-primary: #064081;
+  --login-primary-hover: #1e59a7;
+  --login-accent: #ffffff;
   --login-bg-left: #0a1929;
   --login-bg-right: #ffffff;
   --login-text-dark: #1a1a1a;

@@ -445,9 +445,10 @@ function initKycUploadPreviews(form) {
                         storage.set('user', result.user);
                     }
                 })
-                .catch(() => {
+                .catch((e) => {
                     saving.textContent = 'Not saved';
                     saving.style.color = '#dc2626';
+                    if (window.showNotification) showNotification(e.message || 'Upload failed', 'error');
                 });
         });
     });
@@ -1913,7 +1914,7 @@ async function handleEventUpdate(e) {
 // Ticket Preview Modal
 function renderStyledTicketQr(container, barcode) {
     if (!container || !barcode) return;
-    const payload = `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
+    const payload = `https://eventra-website.liveblog365.com/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(barcode)}`;
 
     if (typeof QRCode !== 'undefined') {
         container.innerHTML = `
@@ -1939,7 +1940,7 @@ function renderStyledTicketQr(container, barcode) {
     }
 
     if (typeof QRCode === 'undefined') {
-        const apiUrl = `${window.location.origin}/api/barcodes/generate-barcode.php?text=${encodeURIComponent(payload)}`;
+        const apiUrl = `https://eventra-website.liveblog365.com/api/barcodes/generate-barcode.php?text=${encodeURIComponent(payload)}`;
         container.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;pointer-events:none;user-select:none;">
                 <div style="position:relative;background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;">
@@ -1982,32 +1983,22 @@ function showTicketPreviewModal(ticket) {
             <!-- Details -->
             <div style="padding:1.5rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-                    <span class="tkt-badge ${statusClass}" style="font-size:.82rem; padding: 4px 12px; border-radius: 20px; font-weight: 600;">${escapeHTML(statusLabel)}</span>
                     <span style="font-family:monospace;font-size:.85rem;color:#6366f1;font-weight:700;">${escapeHTML(ticket.custom_id || ticket.id)}</span>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
-                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Buyer</div><div style="font-weight:600;">${escapeHTML(ticket.buyer_name || ticket.user_name || '—')}</div></div>
+                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Buyer</div><div style="font-weight:600;">${escapeHTML(ticket.user_name || ticket.buyer_name || '—')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Price</div><div style="font-weight:700;">${price}</div></div>
-                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Category</div><div style="font-weight:600;">${escapeHTML(ticket.category || ticket.event_category || 'General')}</div></div>
-                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Date Purchased</div><div style="font-weight:600;">${ticket.purchase_date || ticket.created_at ? new Date(ticket.purchase_date || ticket.created_at).toLocaleDateString() : '—'}</div></div>
+                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Category</div><div style="font-weight:600;">${escapeHTML(ticket.category || 'General')}</div></div>
+                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Date Purchased</div><div style="font-weight:600;">${ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : (ticket.purchase_date ? new Date(ticket.purchase_date).toLocaleDateString() : '—')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div><div style="font-weight:600;text-transform:capitalize;color:#6366f1;">${escapeHTML(typeLabel)}</div></div>
                 </div>
-                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 12px; margin: 1.25rem 0; border: 1px dashed #e2e8f0;">
-                    <div style="font-size: .7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.05em;">Ticket</div>
-                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                        <div style="flex:1;min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
-                            <div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase;">Ticket ID</div>
-                            <svg id="ticketBarcode" style="width:100%;max-width:280px;height:60px;"></svg>
-                            <div style="font-family: 'Courier New', monospace; font-size: .85rem; color: #1e293b; margin-top: 0.25rem; font-weight: 700; background: white; padding: 6px 10px; border-radius: 4px;">${escapeHTML(ticket.custom_id || ticket.barcode || 'TKT-' + (ticket.id || Math.random().toString(36).substr(2, 9).toUpperCase()))}</div>
-                        </div>
-                        <div id="ticketQrContainer" style="width:160px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:8px;background:white;border-radius:8px;">
-                            <!-- QR will render here -->
-                        </div>
-                    </div>
+                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1.25rem 0;text-align:center;">
+                    <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Barcode</div>
+                    <svg id="ticketBarcode" style="margin:0 auto;max-width:100%;height:auto;max-height:60px;"></svg>
+                    <div style="font-family:monospace;font-size:.75rem;color:#475569;margin-top:0.75rem;word-break:break-all;">${escapeHTML(ticket.barcode || ticket.custom_id || 'TKT-' + ticket.id)}</div>
+                    <div id="ticketQrContainer" style="margin-top:12px;display:flex;justify-content:center;"></div>
                 </div>
-                <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
-                    <button onclick="closeTicketPreviewModal()" style="flex:1;padding:.75rem;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>
-                </div>
+                <button onclick="closeTicketPreviewModal()" style="margin-top:1.5rem;width:100%;padding:.75rem;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>
             </div>
         </div>
     </div>`;
@@ -2152,7 +2143,6 @@ function closeUserPreviewModal() {
 
 // Removed local showNotification to use global one from utils.js
 
-// Make functions globally available
 window.showProfileEditModal = showProfileEditModal;
 window.closeProfileEditModal = closeProfileEditModal;
 window.previewProfilePic = previewProfilePic;
@@ -2168,3 +2158,15 @@ window.showTicketPreviewModal = showTicketPreviewModal;
 window.closeTicketPreviewModal = closeTicketPreviewModal;
 window.showUserPreviewModal = showUserPreviewModal;
 window.closeUserPreviewModal = closeUserPreviewModal;
+
+// ── Issue #3: Prevent modals from closing when clicking outside (on backdrop) ──
+// Clicks that land on .modal-content or any child thereof must not bubble up to
+// the backdrop, because other code may be listening there. We stop propagation
+// at the content level so every modal in the dashboard is covered.
+document.addEventListener('click', function (e) {
+    // If the click target is inside a .modal-content, stop it from reaching
+    // any backdrop-level listener that might close the modal.
+    if (e.target && e.target.closest && e.target.closest('.modal-content')) {
+        e.stopPropagation();
+    }
+}, true); // capture phase so we intercept before any bubble-phase handlers

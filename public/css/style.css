@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Inter font is self-hosted via @font-face in the page <head> critical CSS.
+   Google Fonts @import removed to eliminate render-blocking external request. */
 
 * {
   margin: 0;
@@ -60,7 +61,8 @@ body {
 
 .logo img {
   height: 40px;
-  width: auto;
+  width: 40px;
+  aspect-ratio: 1 / 1;
   object-fit: contain;
 }
 
@@ -731,7 +733,7 @@ body {
 .event-date-time {
   font-size: 13px;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #4338ca; /* Darker indigo for better contrast */
 }
 
 .event-title {
@@ -868,7 +870,7 @@ body {
 .event-price {
   font-size: 1rem;
   font-weight: 700;
-  color: #6366f1; /* Using a vibrant blue/indigo for price as requested */
+  color: #4338ca; /* Darker indigo for better contrast */
 }
 
 .event-price.free {
@@ -1085,7 +1087,8 @@ body {
 
   .footer-content {
     grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
+    gap: var(--space-lg);
+    padding-bottom: 2rem;
   }
 }
 
@@ -1588,6 +1591,20 @@ body {
   height: 100px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
 }
+
+/* Overlay badges on modal hero image */
+.modal-img-badges {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
 
 .event-details-close {
   position: absolute;

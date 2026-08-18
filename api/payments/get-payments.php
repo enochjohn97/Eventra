@@ -12,6 +12,9 @@ require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 // Then immediately set JSON response header
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Handle CORS preflight — must come before any logic
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -176,6 +179,9 @@ try {
     foreach ($payments as &$p) {
         $p['amount'] = (float) $p['amount'];
         $created = strtotime($p['created_at']);
+        $p['formatted_date'] = date('M j, Y', $created);
+        $p['formatted_time'] = date('h:i A', $created);
+
         $diff = time() - $created;
         if ($diff < 60) {
             $p['relative_time'] = 'Just now';
@@ -184,7 +190,16 @@ try {
         } elseif ($diff < 86400) {
             $p['relative_time'] = floor($diff / 3600) . ' hr ago';
         } else {
-            $p['relative_time'] = date('M d, Y', $created);
+            $p['relative_time'] = $p['formatted_date'];
+        }
+        // Normalize event_image path so clients can display it
+        if (!empty($p['event_image'])) {
+            $img = str_replace('\\', '/', $p['event_image']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $p['event_image'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $p['event_image'] = '/' . $m[1];
+            }
         }
     }
 

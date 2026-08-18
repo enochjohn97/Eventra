@@ -342,7 +342,17 @@ try {
         exit;
     }
 
-    // Validate required fields (image optional if already provided as URL)
+    // Reject past event timestamps (date + time must be in the future)
+    if (!empty($event_date) && !empty($event_time)) {
+        $event_timestamp = strtotime($event_date . ' ' . $event_time);
+        if ($event_timestamp !== false && $event_timestamp <= time()) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Event date and time must be in the future.']);
+            exit;
+        }
+    }
+
+    // Validate required fields (image optional for drafts)
     if (
         empty($event_name) || empty($description) || empty($event_type) ||
         empty($event_date) || empty($event_time) || empty($phone_contact_1) ||
@@ -350,33 +360,15 @@ try {
     ) {
         http_response_code(400);
         $missing = [];
-        if (empty($event_name)) {
-            $missing[] = 'Event Name';
-        }
-        if (empty($description)) {
-            $missing[] = 'Description';
-        }
-        if (empty($event_type)) {
-            $missing[] = 'Category';
-        }
-        if (empty($event_date)) {
-            $missing[] = 'Date';
-        }
-        if (empty($event_time)) {
-            $missing[] = 'Time';
-        }
-        if (empty($phone_contact_1)) {
-            $missing[] = 'Primary Contact';
-        }
-        if (empty($state)) {
-            $missing[] = 'State';
-        }
-        if (empty($address)) {
-            $missing[] = 'Address';
-        }
-        if ($status !== 'draft' && empty($image_path)) {
-            $missing[] = 'Event Image (Banner)';
-        }
+        if (empty($event_name))       $missing[] = 'Event Name';
+        if (empty($description))      $missing[] = 'Description';
+        if (empty($event_type))       $missing[] = 'Category';
+        if (empty($event_date))       $missing[] = 'Date';
+        if (empty($event_time))       $missing[] = 'Time';
+        if (empty($phone_contact_1))  $missing[] = 'Primary Contact';
+        if (empty($state))            $missing[] = 'State';
+        if (empty($address))          $missing[] = 'Address';
+        if ($status !== 'draft' && empty($image_path)) $missing[] = 'Event Image (Banner)';
 
         echo json_encode([
             'success' => false,
@@ -503,16 +495,16 @@ try {
     if ($admin_id) {
         $display_name = $client_data['name'] ?? 'Client';
         $admin_message = "New event created: '{$event_name}' by {$display_name} - Status: {$status}";
-        createNotification($admin_id, $admin_message, 'event_created', $auth_id, 'admin', 'client');
+        createNotification($admin_id, $admin_message, 'event_created', $auth_id, 'admin', 'client', ['event_id' => $event_id]);
     }
 
     // Notify client
     if ($status === 'scheduled' && $scheduled_publish_time) {
-        createEventScheduledNotification($auth_id, $event_name, $scheduled_publish_time);
+        createEventScheduledNotification($auth_id, $event_name, $scheduled_publish_time, $event_id);
     } elseif ($status === 'published') {
-        createEventPublishedNotification($auth_id, $event_name);
+        createEventPublishedNotification($auth_id, $event_name, $event_id);
     } else {
-        createEventCreatedNotification($auth_id, $event_name);
+        createEventCreatedNotification($auth_id, $event_name, $event_id);
     }
 
     echo json_encode([

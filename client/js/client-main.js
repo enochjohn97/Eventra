@@ -210,7 +210,7 @@ function updateGlobalAvatar(user) {
 
 /**
  * Global logout function
- * Clears all storage, stops polling, and redirects to login
+ * Clears ALL local state, storage, and redirects to login
  */
 async function logout() {
   const result = await Swal.fire({
@@ -232,38 +232,48 @@ async function logout() {
     window.clearAllIntervals();
   }
 
-  try {
-    // Call server-side logout
-    await apiFetch("/api/auth/logout.php");
-
-    // Stop notification polling
-    if (window.notificationManager) {
-      window.notificationManager.stopPolling();
-    }
-
-    // Clear ONLY role-specific storage
-    const keys = storage.getRoleKeys();
-    storage.remove(keys.user);
-    storage.remove(keys.token);
-    sessionStorage.clear();
-
-    // Hard redirect to login
-    const loginPage =
-      keys.user === "admin_user"
-        ? "../../admin/pages/adminLogin.html"
-        : "../../client/pages/clientLogin.html";
-    window.location.href = loginPage;
-  } catch (error) {
-    // Clean up and redirect anyway
-    const keys = storage.getRoleKeys();
-    storage.remove(keys.user);
-    storage.remove(keys.token);
-    const loginPage =
-      keys.user === "admin_user"
-        ? "../../admin/pages/adminLogin.html"
-        : "../../client/pages/clientLogin.html";
-    window.location.href = loginPage;
+  // Stop notification polling immediately
+  if (window.notificationManager) {
+    window.notificationManager.stopPolling();
   }
+
+  // Clear stateManager in-memory state
+  if (window.stateManager && typeof window.stateManager.clear === "function") {
+    window.stateManager.clear();
+  }
+
+  // Full localStorage wipe of all known session keys (cross-role)
+  const ALL_SESSION_KEYS = [
+    "admin_user", "admin_auth_token",
+    "client_user", "client_auth_token",
+    "user", "auth_token",
+    "login_timestamp", "redirect_after_login", "export_visible"
+  ];
+  ALL_SESSION_KEYS.forEach(key => {
+    try { localStorage.removeItem(key); } catch (e) {}
+  });
+  // Full sessionStorage wipe
+  try { sessionStorage.clear(); } catch (e) {}
+
+  try {
+    // Call server-side logout (fire-and-forget; we proceed regardless)
+    await apiFetch("/api/auth/logout.php");
+  } catch (error) {
+    // Proceed with client-side cleanup even if server call fails
+  }
+
+  // Clear authController state
+  if (window.authController && typeof window.authController.clearSession === "function") {
+    window.authController.clearSession();
+  }
+
+  // Hard redirect to login
+  const keys = storage.getRoleKeys();
+  const loginPage =
+    keys.user === "admin_user"
+      ? "../../admin/pages/adminLogin.html"
+      : "../../client/pages/clientLogin.html";
+  window.location.href = loginPage;
 }
 
 // Make logout globally accessible

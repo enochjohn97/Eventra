@@ -969,7 +969,7 @@ async function previewEvent(eventId) {
         <div class="event-preview-container" style="font-family: 'Plus Jakarta Sans', sans-serif;">
             <!-- Hero Header -->
             <div style="position: relative; height: 300px; border-radius: 0 0 32px 32px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-                <img src="${eventImage.startsWith('http') ? eventImage : (eventImage.startsWith('/') ? '../..' + eventImage : '../../' + eventImage)}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" alt="Event">
+                <img src="${typeof getImageUrl === 'function' ? getImageUrl(eventImage) : (eventImage.startsWith('http') ? eventImage : (eventImage.startsWith('/') ? '../..' + eventImage : '../../' + eventImage))}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" alt="Event" onerror="this.style.display='none'">
                 <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);"></div>
                 
                 <div style="position: absolute; top: 1.5rem; left: 1.5rem; display: flex; gap: 10px;">

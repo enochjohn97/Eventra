@@ -29,18 +29,20 @@ if (!$ticket_id) {
 try {
     $pdo->beginTransaction();
 
-    // Check if ticket exists and belongs to user (or if admin)
-    $stmt = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
-    $stmt->execute([$ticket_id]);
+    // Enforce object-level ownership at the DB level — never trust client-supplied ticket_id alone
+    $isAdmin = ($_SESSION['role'] ?? '') === 'admin';
+    if ($isAdmin) {
+        $stmt = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
+        $stmt->execute([$ticket_id]);
+    } else {
+        // For non-admin: scope the fetch to tickets owned by this user
+        $stmt = $pdo->prepare("SELECT * FROM tickets WHERE id = ? AND user_id = ?");
+        $stmt->execute([$ticket_id, $user_id]);
+    }
     $ticket = $stmt->fetch();
 
     if (!$ticket) {
-        throw new Exception("Ticket not found");
-    }
-
-    // Role isolation check — use strict comparison to prevent type confusion
-    if ($_SESSION['role'] !== 'admin' && (int)$ticket['user_id'] !== (int)$user_id) {
-        throw new Exception("Access denied. You do not own this ticket.");
+        throw new Exception("Ticket not found or access denied.");
     }
 
     // Update status to cancelled

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../../public/css/modals.css">
     <link rel="stylesheet" href="../css/modal-styles.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Export Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -151,10 +151,10 @@
 
     <!-- Export Modal -->
     <div class="modal-backdrop" id="exportModal">
-        <div class="modal-content">
-            <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Export Options</h2>
-            <ul class="export-options">
-                <li class="export-option" data-format="CSV">
+        <div class="modal-content" style="max-width: 400px; padding: 2rem; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 9999;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1.5rem; font-weight: 700; color: #1e293b;">Export Options</h2>
+            <ul class="export-options" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                <li class="export-option" data-format="CSV" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; color: #3b82f6; transition: all 0.2s;" onmouseover="this.style.background='#eff6ff'; this.style.borderColor='#3b82f6'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e2e8f0'">
                     <i data-lucide="file-text"></i> CSV Spreadsheet
                 </li>
             </ul>
