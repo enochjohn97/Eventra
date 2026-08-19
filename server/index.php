@@ -71,6 +71,107 @@ if (strpos($uri, '/api/') === 0) {
     
     // Safety: Strip .php to prevent .php.php resolution
     $cleanPath = preg_replace('/\.php$/', '', $apiPath);
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // =========================================================================
+    // REST API routes (mobile + web clients)
+    // =========================================================================
+    $dispatchApi = static function (string $relativePath) use ($rootDir): void {
+        $fullPath = $rootDir . '/api/' . $relativePath;
+        if (!file_exists($fullPath)) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'API handler not found: ' . $relativePath]);
+            exit;
+        }
+        $prevCwd = getcwd();
+        chdir(dirname($fullPath));
+        require_once $fullPath;
+        if ($prevCwd !== false) {
+            chdir($prevCwd);
+        }
+        exit;
+    };
+
+    if ($method === 'POST' && $cleanPath === 'auth/google') {
+        $auth_intent = 'user';
+        $dispatchApi('auth/google-handler.php');
+    }
+
+    if ($method === 'GET' && preg_match('#^events/(\d+)$#', $cleanPath, $eventMatch)) {
+        $_GET['event_id'] = $eventMatch[1];
+        $_GET['id'] = $eventMatch[1];
+        $dispatchApi('events/get-event-details.php');
+    }
+
+    if ($method === 'GET' && $cleanPath === 'events') {
+        if (!empty($_GET['search'])) {
+            $_GET['q'] = $_GET['search'];
+            $dispatchApi('events/search-events.php');
+        }
+        if (!empty($_GET['favorite']) && $_GET['favorite'] !== '0') {
+            $dispatchApi('favorites/get-favorites.php');
+        }
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = (int)($_GET['limit'] ?? 10);
+        if ($limit <= 0) {
+            $limit = 10;
+        }
+        $_GET['offset'] = ($page - 1) * $limit;
+        $_GET['limit'] = $limit;
+        if (!empty($_GET['sort'])) {
+            $sortMap = [
+                'date' => 'date',
+                'price_low' => 'price_low',
+                'price_high' => 'price_high',
+                'popular' => 'popular',
+                'popularity' => 'popular',
+                'newest' => 'newest',
+                'merit' => 'merit',
+            ];
+            $_GET['sort_by'] = $sortMap[strtolower((string)$_GET['sort'])] ?? $_GET['sort'];
+        }
+        $dispatchApi('events/get-events.php');
+    }
+
+    if ($method === 'POST' && $cleanPath === 'favorites/toggle') {
+        $dispatchApi('events/favorite.php');
+    }
+
+    if ($method === 'GET' && $cleanPath === 'favorites') {
+        $dispatchApi('favorites/get-favorites.php');
+    }
+
+    if ($method === 'PUT' && $cleanPath === 'profile') {
+        $dispatchApi('users/update-profile.php');
+    }
+
+    if ($method === 'GET' && $cleanPath === 'profile') {
+        $dispatchApi('users/get-profile.php');
+    }
+
+    if ($method === 'POST' && $cleanPath === 'payments/initialize') {
+        $dispatchApi('payments/initialize.php');
+    }
+
+    if ($method === 'POST' && $cleanPath === 'payments/verify') {
+        $dispatchApi('payments/verify-payment.php');
+    }
+
+    if ($method === 'POST' && $cleanPath === 'tickets/send') {
+        $dispatchApi('tickets/send-ticket.php');
+    }
+
+    if ($method === 'GET' && $cleanPath === 'tickets') {
+        $dispatchApi('tickets/get-user-tickets.php');
+    }
+
+    if ($method === 'GET' && $cleanPath === 'config/app') {
+        $dispatchApi('config/get-google-config.php');
+    }
+
+    if ($method === 'GET' && $cleanPath === 'config/paystack') {
+        $dispatchApi('payments/paystack.php');
+    }
 
     // Handle pluralization inconsistencies for main portals
     $mappings = [

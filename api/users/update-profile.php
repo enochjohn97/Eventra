@@ -23,20 +23,35 @@ if (!$user_auth_id) {
     exit;
 }
 
+$jsonBody = [];
+$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+if (stripos($contentType, 'application/json') !== false) {
+    $jsonBody = json_decode(file_get_contents('php://input'), true) ?? [];
+}
 
+$input = array_merge($_POST, $jsonBody);
 
 $stmt_existing = $pdo->prepare("SELECT * FROM users WHERE user_auth_id = ?");
 $stmt_existing->execute([$user_auth_id]);
 $existing = $stmt_existing->fetch() ?: [];
 
-$name    = isset($_POST['name']) && trim($_POST['name']) !== '' ? trim($_POST['name']) : ($existing['name'] ?? '');
-$phone   = isset($_POST['phone']) ? trim($_POST['phone']) : ($existing['phone'] ?? '');
-$address = isset($_POST['address']) ? trim($_POST['address']) : ($existing['address'] ?? '');
-$city    = isset($_POST['city']) ? trim($_POST['city']) : ($existing['city'] ?? '');
-$state   = isset($_POST['state']) ? trim($_POST['state']) : ($existing['state'] ?? '');
-$country = isset($_POST['country']) ? trim($_POST['country']) : ($existing['country'] ?? '');
-$dob     = isset($_POST['dob']) ? trim($_POST['dob']) : ($existing['dob'] ?? '');
-$gender  = isset($_POST['gender']) ? trim($_POST['gender']) : ($existing['gender'] ?? '');
+$name    = isset($input['name']) && trim((string)$input['name']) !== '' ? trim((string)$input['name']) : ($existing['name'] ?? '');
+$phone   = isset($input['phone']) ? trim((string)$input['phone']) : ($existing['phone'] ?? '');
+$address = isset($input['address']) ? trim((string)$input['address']) : ($existing['address'] ?? '');
+$city    = isset($input['city']) ? trim((string)$input['city']) : ($existing['city'] ?? '');
+$state   = isset($input['state']) ? trim((string)$input['state']) : ($existing['state'] ?? '');
+$country = isset($input['country']) ? trim((string)$input['country']) : ($existing['country'] ?? '');
+$dob     = isset($input['dob']) ? trim((string)$input['dob']) : ($existing['dob'] ?? '');
+$gender  = isset($input['gender']) ? trim((string)$input['gender']) : ($existing['gender'] ?? '');
+
+if (isset($input['email']) && trim((string)$input['email']) !== '') {
+    $email = trim((string)$input['email']);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid email address']);
+        exit;
+    }
+    $pdo->prepare('UPDATE auth_accounts SET email = ? WHERE id = ?')->execute([$email, $user_auth_id]);
+}
 
 if ($name === '') {
     echo json_encode(['success' => false, 'message' => 'Name is required']);

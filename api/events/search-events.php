@@ -7,6 +7,9 @@
 
 header('Content-Type: application/json');
 require_once '../../config/database.php';
+require_once '../../includes/middleware/auth.php';
+
+checkAuthOptional();
 
 try {
     $q = $_GET['q'] ?? '';

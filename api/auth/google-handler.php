@@ -15,6 +15,14 @@ $data = json_decode(file_get_contents("php://input"), true);
 require_once __DIR__ . '/../../config/env-loader.php';
 
 if (!isset($data['credential']) || empty($data['credential'])) {
+    if (!empty($data['id_token'])) {
+        $data['credential'] = $data['id_token'];
+    } elseif (!empty($data['idToken'])) {
+        $data['credential'] = $data['idToken'];
+    }
+}
+
+if (!isset($data['credential']) || empty($data['credential'])) {
     echo json_encode(['success' => false, 'message' => 'Google credential is required.']);
     exit;
 }
@@ -330,6 +338,7 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Signed in with Google',
+        'token' => $token,
         'redirect' => $redirect,
         'user' => [
             'id' => $user['id'],
