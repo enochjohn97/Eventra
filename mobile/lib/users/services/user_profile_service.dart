@@ -27,10 +27,10 @@ class UserProfileService {
       'name': name,
       'email': email,
       'phone': phone,
-      if (address != null) 'address': address,
-      if (city != null) 'city': city,
-      if (state != null) 'state': state,
-      if (country != null) 'country': country,
+      'address': ?address,
+      'city': ?city,
+      'state': ?state,
+      'country': ?country,
     });
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {

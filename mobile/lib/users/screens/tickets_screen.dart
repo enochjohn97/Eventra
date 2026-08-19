@@ -47,7 +47,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: provider.tickets.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final ticket = provider.tickets[index];
                       return Card(

@@ -17,7 +17,7 @@ class EventSkeletonGrid extends StatelessWidget {
         childAspectRatio: 0.78,
       ),
       itemCount: count,
-      itemBuilder: (_, __) => Shimmer.fromColors(
+      itemBuilder: (_, _) => Shimmer.fromColors(
         baseColor: Colors.grey.shade300,
         highlightColor: Colors.grey.shade100,
         child: Container(

@@ -19,9 +19,9 @@ class UserTicketService {
 
   static Future<void> sendTicketEmail({String? reference, String? barcode, int? ticketId}) async {
     final response = await _dio.post('/tickets/send', data: {
-      if (reference != null) 'reference': reference,
-      if (barcode != null) 'barcode': barcode,
-      if (ticketId != null) 'ticket_id': ticketId,
+      'reference': ?reference,
+      'barcode': ?barcode,
+      'ticket_id': ?ticketId,
     });
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {

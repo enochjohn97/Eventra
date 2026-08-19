@@ -24,7 +24,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   late TextEditingController _emailCtrl;
   late TextEditingController _phoneCtrl;
   int _quantity = 1;
-  String _ticketType = 'regular';
+  final String _ticketType = 'regular';
   bool _processing = false;
 
   @override
@@ -154,7 +154,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         borderRadius: BorderRadius.circular(12),
                         child: imageUrl.isNotEmpty
                             ? Image.network(imageUrl, width: 80, height: 80, fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _thumbPlaceholder())
+                                errorBuilder: (_, _, _) => _thumbPlaceholder())
                             : _thumbPlaceholder(),
                       ),
                       const SizedBox(width: 14),

@@ -39,12 +39,12 @@ GoRouter createUserRouter(AuthProvider authProvider) {
       return null;
     },
     routes: [
-      GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/welcome', builder: (_, __) => const WelcomeScreen()),
-      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/profile-complete', builder: (_, __) => const ProfileCompleteScreen()),
-      GoRoute(path: '/home', builder: (_, __) => const UserShellScreen()),
+      GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/profile-complete', builder: (_, _) => const ProfileCompleteScreen()),
+      GoRoute(path: '/home', builder: (_, _) => const UserShellScreen()),
       GoRoute(
         path: '/checkout',
         builder: (context, state) {

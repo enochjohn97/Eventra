@@ -38,8 +38,8 @@ class EventCard extends StatelessWidget {
                     CachedNetworkImage(
                       imageUrl: imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: Colors.grey.shade200),
-                      errorWidget: (_, __, ___) => _fallbackImage(),
+                      placeholder: (_, _) => Container(color: Colors.grey.shade200),
+                      errorWidget: (_, _, _) => _fallbackImage(),
                     )
                   else
                     _fallbackImage(),
