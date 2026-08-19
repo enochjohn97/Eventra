@@ -10,10 +10,19 @@ class GoogleAuthService {
   static GoogleSignIn? _googleSignIn;
   static String? _serverClientId;
 
+  static bool get isConfigured => _googleSignIn != null && (_serverClientId?.isNotEmpty ?? false);
+
   static Future<void> configure({required String serverClientId}) async {
+    if (serverClientId.isEmpty) return;
     _serverClientId = serverClientId;
     _googleSignIn = GoogleSignIn.instance;
     await _googleSignIn!.initialize(serverClientId: serverClientId);
+  }
+
+  static String? _resolveProfilePic(String? pic) {
+    if (pic == null || pic.isEmpty) return null;
+    if (pic.startsWith('http')) return pic;
+    return ApiClient().absoluteUrl(pic);
   }
 
   static Future<UserModel?> signIn() async {
@@ -21,7 +30,7 @@ class GoogleAuthService {
       await configure(serverClientId: _serverClientId!);
     }
     if (_googleSignIn == null) {
-      throw Exception('Google Sign-In is not configured. Load app config first.');
+      throw Exception('Google Sign-In is not configured. Check your connection and try again.');
     }
 
     GoogleSignInAccount account;
@@ -38,7 +47,10 @@ class GoogleAuthService {
       throw Exception('Google did not return an ID token.');
     }
 
-    final response = await _dio.post('/auth/google', data: {'credential': idToken});
+    final response = await _dio.post('/auth/google', data: {
+      'credential': idToken,
+      'intent': 'user',
+    });
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
       throw Exception(data['message']?.toString() ?? 'Google authentication failed');
@@ -53,6 +65,25 @@ class GoogleAuthService {
 
     final userJson = Map<String, dynamic>.from(data['user'] as Map);
     userJson['token'] = token;
+
+    final googleName = account.displayName?.trim();
+    final googleEmail = account.email.trim();
+    final googlePhoto = account.photoUrl;
+
+    if (googleName != null && googleName.isNotEmpty) {
+      userJson['name'] = googleName;
+    }
+    if (googleEmail.isNotEmpty) {
+      userJson['email'] = googleEmail;
+    }
+    final profilePic = _resolveProfilePic(googlePhoto) ??
+        _resolveProfilePic(userJson['profile_pic']?.toString()) ??
+        _resolveProfilePic(userJson['profile_image']?.toString());
+    if (profilePic != null) {
+      userJson['profile_pic'] = profilePic;
+      userJson['profile_image'] = profilePic;
+    }
+
     await SecureStorage.saveUser(userJson);
 
     return UserModel.fromJson(userJson);

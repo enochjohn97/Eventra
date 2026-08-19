@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../core/network/api_client.dart';
 import '../services/app_config_service.dart';
 import '../services/google_auth_service.dart';
 
@@ -11,9 +12,10 @@ class AppConfigProvider extends ChangeNotifier {
   String paystackPublicKey = '';
   String appUrl = '';
 
-  Future<void> load() async {
-    if (isLoaded || isLoading) return;
+  Future<void> load({bool force = false}) async {
+    if ((isLoaded && !force) || isLoading) return;
     isLoading = true;
+    error = null;
     notifyListeners();
     try {
       final config = await AppConfigService.load();
@@ -23,6 +25,8 @@ class AppConfigProvider extends ChangeNotifier {
       appUrl = config.appUrl;
       if (googleClientId.isNotEmpty) {
         await GoogleAuthService.configure(serverClientId: googleClientId);
+      } else {
+        error = 'Google Client ID is not configured on the server.';
       }
       isLoaded = true;
     } catch (e) {

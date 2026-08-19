@@ -5,9 +5,9 @@ class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   static const _images = [
-    'https://images.unsplash.com/photo-1533174072545-7a4b6ecd4ae0?w=1200&h=800&fit=crop',
-    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b0?w=1200&h=800&fit=crop',
     'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=800&fit=crop',
+    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&h=800&fit=crop',
+    'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=1200&h=800&fit=crop',
   ];
 
   @override

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/network/api_client.dart';
 import '../../core/widgets/adaptive_dialogs.dart';
 import '../providers/auth_provider.dart';
 
@@ -80,9 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 44,
-                backgroundImage: user?.profilePic != null && user!.profilePic!.startsWith('http')
-                    ? NetworkImage(user.profilePic!)
-                    : null,
+                backgroundImage: _profileImage(user?.profilePic),
                 child: user?.profilePic == null ? const Icon(Icons.person, size: 40) : null,
               ),
               if (user?.customId != null) ...[
@@ -136,4 +135,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
+
+ImageProvider? _profileImage(String? pic) {
+  if (pic == null || pic.isEmpty) return null;
+  final url = pic.startsWith('http') ? pic : ApiClient().absoluteUrl(pic);
+  return url.isEmpty ? null : NetworkImage(url);
 }

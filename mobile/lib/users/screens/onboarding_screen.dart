@@ -17,17 +17,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final _pages = const [
     _OnboardPage(
-      image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=800&fit=crop',
+      image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=800&fit=crop',
       title: 'Find Events Near You',
       body: 'Browse concerts, festivals, and cultural gatherings across Nigeria and Africa.',
     ),
     _OnboardPage(
-      image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&h=800&fit=crop',
+      image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&h=800&fit=crop',
       title: 'Secure Ticket Checkout',
       body: 'Pay safely with Paystack and receive your ticket instantly by email.',
     ),
     _OnboardPage(
-      image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200&h=800&fit=crop',
+      image: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=1200&h=800&fit=crop',
       title: 'Save & Share Favorites',
       body: 'Heart events you love, share with friends, and never miss out.',
     ),

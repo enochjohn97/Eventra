@@ -31,7 +31,23 @@ class ApiClient {
         }
         return handler.next(options);
       },
+      onError: (error, handler) {
+        if (error.type == DioExceptionType.connectionError ||
+            error.type == DioExceptionType.connectionTimeout) {
+          return handler.next(DioException(
+            requestOptions: error.requestOptions,
+            type: error.type,
+            message: 'No internet connection. Check your network and API URL.',
+          ));
+        }
+        return handler.next(error);
+      },
     ));
+  }
+
+  void syncOrigin(String? appUrl) {
+    if (appUrl == null || appUrl.isEmpty) return;
+    baseOrigin = appUrl.replaceAll(RegExp(r'/$'), '');
   }
 
   String absoluteUrl(String? path) {
