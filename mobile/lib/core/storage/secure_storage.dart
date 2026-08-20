@@ -32,7 +32,11 @@ class SecureStorage {
     final raw = await _storage.read(key: _keyUser);
     if (raw == null || raw.isEmpty) return null;
     try {
-      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      dynamic decoded = jsonDecode(raw);
+      // Handle double-encoded JSON: decode again if still a String
+      if (decoded is String) decoded = jsonDecode(decoded);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
     } catch (_) {
       return null;
     }

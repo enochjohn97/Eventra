@@ -98,7 +98,9 @@ class GoogleAuthService {
       userJson = Map<String, dynamic>.from(userData);
     } else if (userData is String) {
       try {
-        final decodedUser = jsonDecode(userData);
+        // json.decode the string, then re-decode if still a String (double-encoded)
+        dynamic decodedUser = jsonDecode(userData);
+        if (decodedUser is String) decodedUser = jsonDecode(decodedUser);
         if (decodedUser is Map) {
           userJson = Map<String, dynamic>.from(decodedUser);
         } else {
