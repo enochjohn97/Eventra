@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final config = context.watch<AppConfigProvider>();
-    final configError = config.error;
+    final configError = config.snackbar;
     final googleReady = GoogleAuthService.isConfigured;
     final isBusy = auth.isLoading || config.isLoading;
 

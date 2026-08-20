@@ -15,23 +15,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _index = 0;
 
-  final _pages = const [
-    _OnboardPage(
-      image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=800&fit=crop',
-      title: 'Find Events Near You',
-      body: 'Browse concerts, festivals, and cultural gatherings across Nigeria and Africa.',
-    ),
-    _OnboardPage(
-      image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&h=800&fit=crop',
-      title: 'Secure Ticket Checkout',
-      body: 'Pay safely with Paystack and receive your ticket instantly by email.',
-    ),
-    _OnboardPage(
-      image: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=1200&h=800&fit=crop',
-      title: 'Save & Share Favorites',
-      body: 'Heart events you love, share with friends, and never miss out.',
-    ),
-  ];
+  final _pages = [
+    SafeArea(
+      child: Column(
+        children: const [
+          _OnboardPage(
+          image: 'https://plus.unsplash.com/premium_vector-1728198083819-170412197bdf?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          title: 'Find Events Near You',
+          body: 'Browse concerts, festivals, and cultural gatherings across Nigeria and Africa.',
+        ),
+        _OnboardPage(
+          image: 'https://plus.unsplash.com/premium_vector-1728586228949-fc0b5697fa57?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          title: 'Secure Ticket Checkout',
+          body: 'Pay safely with Paystack and receive your ticket instantly by email.',
+        ),
+        _OnboardPage(
+          image: 'https://plus.unsplash.com/premium_vector-1682299602004-be7e14d05bd1?q=80&w=707&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          title: 'Save & Share Favorites',
+          body: 'Heart events you love, share with friends, and never miss out.',
+        ),
+      ],
+    )
+  )];
 
   Future<void> _finish() async {
     final prefs = await SharedPreferences.getInstance();
