@@ -85,7 +85,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
   Future<void> _share() async {
     final config = context.read<AppConfigProvider>();
     final link = '${config.appUrl}/public/pages/event-details.html?id=${_event.id}';
-    await Share.share('Check out ${_event.eventName} on Eventra!\n$link');
+    await SharePlus.instance.share(ShareParams(text: 'Check out ${_event.eventName} on Eventra!\n$link'));
   }
 
   Future<void> _openMaps() async {
