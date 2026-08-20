@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -10,7 +11,8 @@ class GoogleAuthService {
   static GoogleSignIn? _googleSignIn;
   static String? _serverClientId;
 
-  static bool get isConfigured => _googleSignIn != null && (_serverClientId?.isNotEmpty ?? false);
+  static bool get isConfigured =>
+      _googleSignIn != null && (_serverClientId?.isNotEmpty ?? false);
 
   static Future<void> configure({required String serverClientId}) async {
     if (serverClientId.isEmpty) return;
@@ -30,7 +32,9 @@ class GoogleAuthService {
       await configure(serverClientId: _serverClientId!);
     }
     if (_googleSignIn == null) {
-      throw Exception('Google Sign-In is not configured. Check your connection and try again.');
+      throw Exception(
+        'Google Sign-In is not configured. Check your connection and try again.',
+      );
     }
 
     GoogleSignInAccount account;
@@ -47,16 +51,32 @@ class GoogleAuthService {
       throw Exception('Google did not return an ID token.');
     }
 
-    final response = await _dio.post('/auth/google', data: {
-      'credential': idToken,
-      'intent': 'user',
-    });
-    final data = response.data as Map<String, dynamic>;
+    final response = await _dio.post(
+      '/auth/google',
+      data: {'credential': idToken, 'intent': 'user'},
+    );
+
+    Map<String, dynamic> data;
+    if (response.data is String) {
+      try {
+        data = jsonDecode(response.data) as Map<String, dynamic>;
+      } catch (e) {
+        String errStr = response.data.toString();
+        // ignore: prefer_interpolation_to_compose_strings
+        if (errStr.length > 100) errStr = errStr.substring(0, 100) + '...';
+        throw Exception('Server error: $errStr');
+      }
+    } else {
+      data = response.data as Map<String, dynamic>;
+    }
     if (data['success'] != true) {
-      throw Exception(data['message']?.toString() ?? 'Google authentication failed');
+      throw Exception(
+        data['message']?.toString() ?? 'Google authentication failed',
+      );
     }
 
-    final token = data['token']?.toString() ?? data['user']?['token']?.toString();
+    final token =
+        data['token']?.toString() ?? data['user']?['token']?.toString();
     if (token == null || token.isEmpty) {
       throw Exception('Authentication token missing from server response.');
     }
@@ -76,7 +96,8 @@ class GoogleAuthService {
     if (googleEmail.isNotEmpty) {
       userJson['email'] = googleEmail;
     }
-    final profilePic = _resolveProfilePic(googlePhoto) ??
+    final profilePic =
+        _resolveProfilePic(googlePhoto) ??
         _resolveProfilePic(userJson['profile_pic']?.toString()) ??
         _resolveProfilePic(userJson['profile_image']?.toString());
     if (profilePic != null) {
