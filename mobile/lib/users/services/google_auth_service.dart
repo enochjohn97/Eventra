@@ -56,10 +56,17 @@ class GoogleAuthService {
       data: {'credential': idToken, 'intent': 'user'},
     );
 
-    Map<String, dynamic> data;
-    if (response.data is String) {
+    Map<String, dynamic> data = {};
+    if (response.data is Map) {
+      data = Map<String, dynamic>.from(response.data as Map);
+    } else if (response.data is String) {
       try {
-        data = jsonDecode(response.data) as Map<String, dynamic>;
+        final decoded = jsonDecode(response.data as String);
+        if (decoded is Map) {
+          data = Map<String, dynamic>.from(decoded);
+        } else {
+          throw Exception('Invalid server response format (expected Map).');
+        }
       } catch (e) {
         String errStr = response.data.toString();
         // ignore: prefer_interpolation_to_compose_strings
@@ -67,23 +74,43 @@ class GoogleAuthService {
         throw Exception('Server error: $errStr');
       }
     } else {
-      data = response.data as Map<String, dynamic>;
+      throw Exception('Unexpected server response format.');
     }
+
     if (data['success'] != true) {
       throw Exception(
         data['message']?.toString() ?? 'Google authentication failed',
       );
     }
 
-    final token =
-        data['token']?.toString() ?? data['user']?['token']?.toString();
+    final token = data['token']?.toString() ?? 
+        (data['user'] is Map ? (data['user'] as Map)['token']?.toString() : null);
+        
     if (token == null || token.isEmpty) {
       throw Exception('Authentication token missing from server response.');
     }
 
     await SecureStorage.saveToken(token);
 
-    final userJson = Map<String, dynamic>.from(data['user'] as Map);
+    final userData = data['user'];
+    Map<String, dynamic> userJson = {};
+    if (userData is Map) {
+      userJson = Map<String, dynamic>.from(userData);
+    } else if (userData is String) {
+      try {
+        final decodedUser = jsonDecode(userData);
+        if (decodedUser is Map) {
+          userJson = Map<String, dynamic>.from(decodedUser);
+        } else {
+          throw Exception('Invalid user data format.');
+        }
+      } catch (_) {
+        throw Exception('Invalid user data format.');
+      }
+    } else {
+      throw Exception('User data is missing or invalid.');
+    }
+    
     userJson['token'] = token;
 
     final googleName = account.displayName?.trim();
