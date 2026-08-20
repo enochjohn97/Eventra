@@ -27,6 +27,41 @@ class GoogleAuthService {
     return ApiClient().absoluteUrl(pic);
   }
 
+  /// Recursively decodes any JSON strings found inside maps or lists.
+  /// This ensures that even if the server returns a field as a JSON string,
+  /// it will be converted to the appropriate Dart type (Map, List, etc.).
+  static dynamic _deepDecode(dynamic value) {
+    if (value is String) {
+      final trimmed = value.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+          (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          return _deepDecode(jsonDecode(trimmed));
+        } catch (_) {
+          return value; // Not valid JSON; return as is
+        }
+      }
+      return value;
+    } else if (value is Map) {
+      return value.map((k, v) => MapEntry(k.toString(), _deepDecode(v)));
+    } else if (value is List) {
+      return value.map(_deepDecode).toList();
+    }
+    return value;
+  }
+
+  /// Converts any decoded value to a `Map<String, dynamic>`.
+  /// Throws an [Exception] if the value is not a Map after decoding.
+  static Map<String, dynamic> _asMap(dynamic value) {
+    final decoded = _deepDecode(value);
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) {
+      // Ensure we return a Map<String, dynamic> specifically
+      return Map<String, dynamic>.from(decoded);
+    }
+    throw Exception('Invalid data format: expected an object.');
+  }
+
   static Future<UserModel?> signIn() async {
     if (_googleSignIn == null && _serverClientId != null) {
       await configure(serverClientId: _serverClientId!);
@@ -56,25 +91,13 @@ class GoogleAuthService {
       data: {'credential': idToken, 'intent': 'user'},
     );
 
-    Map<String, dynamic> data = {};
-    if (response.data is Map) {
-      data = Map<String, dynamic>.from(response.data as Map);
-    } else if (response.data is String) {
-      try {
-        final decoded = jsonDecode(response.data as String);
-        if (decoded is Map) {
-          data = Map<String, dynamic>.from(decoded);
-        } else {
-          throw Exception('Invalid server response format (expected Map).');
-        }
-      } catch (e) {
-        String errStr = response.data.toString();
-        // ignore: prefer_interpolation_to_compose_strings
-        if (errStr.length > 100) errStr = errStr.substring(0, 100) + '...';
-        throw Exception('Server error: $errStr');
-      }
-    } else {
-      throw Exception('Unexpected server response format.');
+    Map<String, dynamic> data;
+    try {
+      data = _asMap(response.data);
+    } catch (e) {
+      String errStr = response.data.toString();
+      if (errStr.length > 100) errStr = '${errStr.substring(0, 100)}...';
+      throw Exception('Server error: $errStr');
     }
 
     if (data['success'] != true) {
@@ -83,36 +106,39 @@ class GoogleAuthService {
       );
     }
 
-    final token = data['token']?.toString() ?? 
-        (data['user'] is Map ? (data['user'] as Map)['token']?.toString() : null);
-        
+    // Extract token from either `data['token']` or `data['user']['token']`.
+    // `data['user']` may be a Map or a JSON string – handle both safely.
+    String? token;
+    if (data['token'] != null) {
+      token = data['token'].toString();
+    } else {
+      final userField = data['user'];
+      if (userField != null) {
+        try {
+          final userMap = _asMap(userField);
+          token = userMap['token']?.toString();
+        } catch (_) {
+          // Ignore if userField is not a Map/JSON object
+          token = null;
+        }
+      }
+    }
+
     if (token == null || token.isEmpty) {
       throw Exception('Authentication token missing from server response.');
     }
 
     await SecureStorage.saveToken(token);
 
-    final userData = data['user'];
-    Map<String, dynamic> userJson = {};
-    if (userData is Map) {
-      userJson = Map<String, dynamic>.from(userData);
-    } else if (userData is String) {
-      try {
-        // json.decode the string, then re-decode if still a String (double-encoded)
-        dynamic decodedUser = jsonDecode(userData);
-        if (decodedUser is String) decodedUser = jsonDecode(decodedUser);
-        if (decodedUser is Map) {
-          userJson = Map<String, dynamic>.from(decodedUser);
-        } else {
-          throw Exception('Invalid user data format.');
-        }
-      } catch (_) {
-        throw Exception('Invalid user data format.');
-      }
-    } else {
-      throw Exception('User data is missing or invalid.');
+    Map<String, dynamic> userJson;
+    try {
+      // `_asMap` will decode `data['user']` even if it is a JSON string
+      userJson = _asMap(data['user']);
+    } catch (_) {
+      throw Exception('Invalid user data format.');
     }
-    
+
+    // Add the token to the user map (it may already be there, but we ensure)
     userJson['token'] = token;
 
     final googleName = account.displayName?.trim();
@@ -134,9 +160,16 @@ class GoogleAuthService {
       userJson['profile_image'] = profilePic;
     }
 
+    // Save the user map to secure storage
     await SecureStorage.saveUser(userJson);
 
-    return UserModel.fromJson(userJson);
+    try {
+      return UserModel.fromJson(userJson);
+    } catch (e, st) {
+      debugPrint('UserModel.fromJson failed on: $userJson');
+      debugPrint('$e\n$st');
+      rethrow;
+    }
   }
 
   static Future<void> signOut() async {
