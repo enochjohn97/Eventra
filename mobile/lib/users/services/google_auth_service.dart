@@ -86,10 +86,35 @@ class GoogleAuthService {
       throw Exception('Google did not return an ID token.');
     }
 
-    final response = await _dio.post(
-      '/auth/google',
-      data: {'credential': idToken, 'intent': 'user'},
-    );
+    late Response<dynamic> response;
+    try {
+      response = await _dio.post(
+        '/auth/google',
+        data: {'credential': idToken, 'intent': 'user'},
+      );
+    } on DioException catch (e) {
+      final body = e.response?.data?.toString() ?? '';
+      debugPrint('[GoogleAuth] Request URL : ${e.requestOptions.uri}');
+      debugPrint('[GoogleAuth] Status      : ${e.response?.statusCode}');
+      debugPrint('[GoogleAuth] Body (200ch): ${body.length > 200 ? body.substring(0, 200) : body}');
+      rethrow;
+    }
+
+    // Guard: reject HTML responses (bot-challenge / WAF page) before JSON decode.
+    final contentType =
+        (response.headers.value('content-type') ?? '').toLowerCase();
+    if (contentType.contains('text/html')) {
+      final snippet = response.data.toString();
+      debugPrint('[GoogleAuth] HTML response received from /auth/google – possible WAF/bot-challenge.');
+      debugPrint('[GoogleAuth] URL     : ${response.requestOptions.uri}');
+      debugPrint('[GoogleAuth] Headers : ${response.requestOptions.headers}');
+      debugPrint('[GoogleAuth] Snippet : ${snippet.length > 300 ? snippet.substring(0, 300) : snippet}');
+      throw Exception(
+        'Server returned an HTML page instead of JSON. '
+        'The API host may be blocking this request (bot-protection). '
+        'Check the debug log for the full request URL and headers.',
+      );
+    }
 
     Map<String, dynamic> data;
     try {

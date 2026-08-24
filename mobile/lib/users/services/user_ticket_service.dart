@@ -1,6 +1,14 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../models/ticket_model.dart';
+
+Map<String, dynamic> _toMap(dynamic raw) {
+  if (raw is Map<String, dynamic>) return raw;
+  if (raw is Map) return Map<String, dynamic>.from(raw);
+  if (raw is String) return jsonDecode(raw) as Map<String, dynamic>;
+  throw Exception('Unexpected response format: ${raw.runtimeType}');
+}
 
 class UserTicketService {
   static final Dio _dio = ApiClient().dio;
@@ -8,7 +16,7 @@ class UserTicketService {
 
   static Future<List<TicketModel>> getTickets() async {
     final response = await _dio.get('/tickets');
-    final data = response.data as Map<String, dynamic>;
+    final data = _toMap(response.data);
     if (data['success'] != true) {
       throw Exception(data['message']?.toString() ?? 'Failed to load tickets');
     }

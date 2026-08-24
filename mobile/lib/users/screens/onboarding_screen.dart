@@ -17,17 +17,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final _pages = const [
     _OnboardPage(
-      image: 'https://plus.unsplash.com/premium_vector-1728198083819-170412197bdf?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      image:
+          'https://plus.unsplash.com/premium_vector-1728198083819-170412197bdf?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       title: 'Find Events Near You',
-      body: 'Browse concerts, festivals, and cultural gatherings across Nigeria and Africa.',
+      body:
+          'Browse concerts, festivals, and cultural gatherings across Nigeria and Africa.',
     ),
     _OnboardPage(
-      image: 'https://plus.unsplash.com/premium_vector-1728586228949-fc0b5697fa57?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      image:
+          'https://plus.unsplash.com/premium_vector-1728586228949-fc0b5697fa57?q=80&w=400&h=400&fit=crop&crop=faces,center&auto=format&ixlib=rb-4.1.0',
       title: 'Secure Ticket Checkout',
-      body: 'Pay safely with Paystack and receive your ticket instantly by email.',
+      body:
+          'Pay safely with Paystack and receive your ticket instantly by email.',
     ),
     _OnboardPage(
-      image: 'https://plus.unsplash.com/premium_vector-1682299602004-be7e14d05bd1?q=80&w=707&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      image:
+          'https://plus.unsplash.com/premium_vector-1682299602004-be7e14d05bd1?q=80&w=707&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       title: 'Save & Share Favorites',
       body: 'Heart events you love, share with friends, and never miss out.',
     ),
@@ -67,7 +72,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   width: _index == i ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _index == i ? AppTheme.primary : Colors.grey.shade300,
+                    color: _index == i
+                        ? AppTheme.primary
+                        : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
@@ -80,12 +87,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_index < _pages.length - 1) {
-                      _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+                      _controller.nextPage(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOut,
+                      );
                     } else {
                       _finish();
                     }
                   },
-                  child: Text(_index < _pages.length - 1 ? 'Next' : 'Continue to Login'),
+                  child: Text(
+                    _index < _pages.length - 1 ? 'Next' : 'Continue to Login',
+                  ),
                 ),
               ),
             ),
@@ -101,7 +113,11 @@ class _OnboardPage extends StatelessWidget {
   final String title;
   final String body;
 
-  const _OnboardPage({required this.image, required this.title, required this.body});
+  const _OnboardPage({
+    required this.image,
+    required this.title,
+    required this.body,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -112,13 +128,25 @@ class _OnboardPage extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: Image.network(image, width: double.infinity, fit: BoxFit.cover),
+              child: Image.network(
+                image,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(height: 28),
-          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 12),
-          Text(body, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textMuted, height: 1.5)),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.textMuted, height: 1.5),
+          ),
           const SizedBox(height: 16),
         ],
       ),
