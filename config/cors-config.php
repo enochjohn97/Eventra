@@ -21,27 +21,32 @@ if (!empty($env_origins)) {
     $allowed_origins = array_merge($allowed_origins, $additional);
 }
 
-// $origin set above (may have been added for localhost)
-
 // --- Handle preflight OPTIONS request ---
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    if (in_array($origin, $allowed_origins, true)) {
-        header("Access-Control-Allow-Origin: $origin");
+    if ($origin === '' || in_array($origin, $allowed_origins, true)) {
+        if ($origin !== '') {
+            header("Access-Control-Allow-Origin: $origin");
+        }
         header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Eventra-Portal, X-Access-Token, Accept');
         header('Access-Control-Max-Age: 86400');
     }
-    
-    http_response_code(204); // 204 No Content is more appropriate for preflight
+    http_response_code(204);
     exit;
 }
 
 // --- Actual request ---
-if (in_array($origin, $allowed_origins, true)) {
+// Mobile/native clients (Flutter, iOS, Android) send NO Origin header — allow them through.
+// Browser clients must match the allowlist.
+if ($origin === '') {
+    // Native mobile app — no Origin header, treat as trusted client
+    header('Access-Control-Allow-Credentials: true');
+} elseif (in_array($origin, $allowed_origins, true)) {
+    // Browser origin matched allowlist
     header("Access-Control-Allow-Origin: $origin");
     header('Access-Control-Allow-Credentials: true');
-    // Expose only the headers your frontend actually needs
     header('Access-Control-Expose-Headers: Content-Type, Authorization');
-    header('Vary: Origin');  // Important: tells caches to differentiate by Origin
+    header('Vary: Origin');
 }
+

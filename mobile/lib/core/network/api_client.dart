@@ -21,6 +21,11 @@ class ApiClient {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
+        'Origin': 'https://eventra-website.liveblog365.com',
+        'Referer': 'https://eventra-website.liveblog365.com/',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
         'User-Agent':
             'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
       },
