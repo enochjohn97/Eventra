@@ -9,16 +9,16 @@ import '../models/user_model.dart';
 class GoogleAuthService {
   static final Dio _dio = ApiClient().dio;
   static GoogleSignIn? _googleSignIn;
-  static String? _serverClientId;
 
-  static bool get isConfigured =>
-      _googleSignIn != null && (_serverClientId?.isNotEmpty ?? false);
+  static bool _initialized = false;
 
-  static Future<void> configure({required String serverClientId}) async {
-    if (serverClientId.isEmpty) return;
-    _serverClientId = serverClientId;
-    _googleSignIn = GoogleSignIn.instance;
-    await _googleSignIn!.initialize(serverClientId: serverClientId);
+  static bool get isConfigured => _googleSignIn != null && _initialized;
+
+  static Future<void> configure() async {
+    _googleSignIn ??= GoogleSignIn.instance;
+    if (_initialized) return;
+    await _googleSignIn!.initialize();
+    _initialized = true;
   }
 
   static String? _resolveProfilePic(String? pic) {
@@ -63,25 +63,22 @@ class GoogleAuthService {
   }
 
   static Future<UserModel?> signIn() async {
-    if (_googleSignIn == null && _serverClientId != null) {
-      await configure(serverClientId: _serverClientId!);
-    }
-    if (_googleSignIn == null) {
-      throw Exception(
-        'Google Sign-In is not configured. Check your connection and try again.',
-      );
-    }
+    if (!_initialized) await configure();
 
     GoogleSignInAccount account;
     try {
+      // v7.2.0: authenticate() is the correct method (signIn() does not exist)
       account = await _googleSignIn!.authenticate();
+    } on GoogleSignInException catch (e) {
+      debugPrint('Google sign-in failed: ${e.code} – ${e.description}');
+      return null;
     } catch (e) {
       debugPrint('Google sign-in cancelled or failed: $e');
       return null;
     }
 
-    final auth = account.authentication;
-    final idToken = auth.idToken;
+    // v7.2.0: .authentication is a synchronous getter, NOT a Future
+    final idToken = account.authentication.idToken;
     if (idToken == null || idToken.isEmpty) {
       throw Exception('Google did not return an ID token.');
     }
@@ -96,19 +93,25 @@ class GoogleAuthService {
       final body = e.response?.data?.toString() ?? '';
       debugPrint('[GoogleAuth] Request URL : ${e.requestOptions.uri}');
       debugPrint('[GoogleAuth] Status      : ${e.response?.statusCode}');
-      debugPrint('[GoogleAuth] Body (200ch): ${body.length > 200 ? body.substring(0, 200) : body}');
+      debugPrint(
+        '[GoogleAuth] Body (200ch): ${body.length > 200 ? body.substring(0, 200) : body}',
+      );
       rethrow;
     }
 
     // Guard: reject HTML responses (bot-challenge / WAF page) before JSON decode.
-    final contentType =
-        (response.headers.value('content-type') ?? '').toLowerCase();
+    final contentType = (response.headers.value('content-type') ?? '')
+        .toLowerCase();
     if (contentType.contains('text/html')) {
       final snippet = response.data.toString();
-      debugPrint('[GoogleAuth] HTML response received from /auth/google – possible WAF/bot-challenge.');
+      debugPrint(
+        '[GoogleAuth] HTML response received from /auth/google – possible WAF/bot-challenge.',
+      );
       debugPrint('[GoogleAuth] URL     : ${response.requestOptions.uri}');
       debugPrint('[GoogleAuth] Headers : ${response.requestOptions.headers}');
-      debugPrint('[GoogleAuth] Snippet : ${snippet.length > 300 ? snippet.substring(0, 300) : snippet}');
+      debugPrint(
+        '[GoogleAuth] Snippet : ${snippet.length > 300 ? snippet.substring(0, 300) : snippet}',
+      );
       throw Exception(
         'Server returned an HTML page instead of JSON. '
         'The API host may be blocking this request (bot-protection). '

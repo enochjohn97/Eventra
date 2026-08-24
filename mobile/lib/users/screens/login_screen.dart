@@ -48,17 +48,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: AppTheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.celebration_rounded, color: AppTheme.primary, size: 36),
+                child: const Icon(
+                  Icons.celebration_rounded,
+                  color: AppTheme.primary,
+                  size: 36,
+                ),
               ),
               const SizedBox(height: 24),
-              const Text('Welcome to Eventra', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+              const Text(
+                'Welcome to Eventra',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 8),
               const Text(
                 'Sign in to discover events, save favorites, and get tickets.',
                 style: TextStyle(color: AppTheme.textMuted, height: 1.4),
               ),
               const Spacer(flex: 2),
-              if (auth.error != null || (configError != null && !googleReady)) ...[
+              if (auth.error != null ||
+                  (configError != null && !googleReady)) ...[
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -67,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    auth.error ?? configError ?? 'Google Sign-In is unavailable.',
+                    auth.error ??
+                        configError ??
+                        'Google Sign-In is unavailable.',
                     style: const TextStyle(color: AppTheme.error),
                   ),
                 ),
@@ -76,9 +86,15 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: isBusy
-                    ? Center(child: Platform.isIOS ? const CupertinoActivityIndicator() : const CircularProgressIndicator())
+                    ? Center(
+                        child: Platform.isIOS
+                            ? const CupertinoActivityIndicator()
+                            : const CircularProgressIndicator(),
+                      )
                     : _GoogleButton(
-                        onPressed: googleReady ? () => _handleLogin(context) : () => _retryConfig(context),
+                        onPressed: googleReady
+                            ? () => _handleLogin(context)
+                            : () => _retryConfig(context),
                       ),
               ),
               const SizedBox(height: 16),
@@ -95,9 +111,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin(BuildContext context) async {
     final config = context.read<AppConfigProvider>();
-    if (!config.isLoaded) await config.load();
+    // Trigger load if not loaded, but don't await it so we don't block the Google Sign-In native UI
+    if (!config.isLoaded && !config.isLoading) {
+      config.load();
+    }
     if (!GoogleAuthService.isConfigured) {
-      await config.load(force: true);
+      await GoogleAuthService.configure();
     }
     if (!context.mounted || !GoogleAuthService.isConfigured) return;
 
@@ -122,7 +141,12 @@ class _GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logo = Image.network(_googleLogoUrl, width: 20, height: 20, fit: BoxFit.contain);
+    final logo = Image.network(
+      _googleLogoUrl,
+      width: 20,
+      height: 20,
+      fit: BoxFit.contain,
+    );
 
     if (Platform.isIOS) {
       return CupertinoButton(
@@ -140,7 +164,13 @@ class _GoogleButton extends StatelessWidget {
             children: [
               logo,
               const SizedBox(width: 10),
-              const Text('Continue with Google', style: TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.w600)),
+              const Text(
+                'Continue with Google',
+                style: TextStyle(
+                  color: AppTheme.textMain,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -159,7 +189,10 @@ class _GoogleButton extends StatelessWidget {
         children: [
           logo,
           const SizedBox(width: 10),
-          const Text('Continue with Google', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text(
+            'Continue with Google',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

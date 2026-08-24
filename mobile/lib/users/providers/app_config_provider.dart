@@ -16,16 +16,18 @@ class AppConfigProvider extends ChangeNotifier {
     isLoading = true;
     snackbar = null;
     notifyListeners();
+    await GoogleAuthService.configure();
     try {
       final config = await AppConfigService.load();
       googleClientId = config.googleClientId;
       mapsApiKey = config.mapsApiKey;
       paystackPublicKey = config.paystackPublicKey;
       appUrl = config.appUrl;
-      if (googleClientId.isNotEmpty) {
-        await GoogleAuthService.configure(serverClientId: googleClientId);
-      } else {
-        snackbar = 'Google Client ID is not configured on the server.';
+      if (googleClientId.isEmpty) {
+        // We no longer rely on the server's googleClientId for mobile sign-in.
+        debugPrint(
+          'Server googleClientId is empty, but continuing with native config.',
+        );
       }
       isLoaded = true;
     } catch (e) {

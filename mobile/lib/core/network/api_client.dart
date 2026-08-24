@@ -9,25 +9,19 @@ class ApiClient {
 
   factory ApiClient() => _instance;
 
+  // Retry delays for Render cold-start (spin-up can take up to 60s)
+  static const _retryDelays = [5, 10, 15, 20, 20];
+
   ApiClient._internal() {
     dio = Dio(BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 70),
+      followRedirects: true,
+      maxRedirects: 5,
       headers: {
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Origin': 'https://eventra-website.liveblog365.com',
-        'Referer': 'https://eventra-website.liveblog365.com/',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
       },
     ));
 
@@ -39,30 +33,58 @@ class ApiClient {
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        // Track retry count via extra map
+        options.extra['_retryCount'] ??= 0;
         return handler.next(options);
       },
-      onResponse: (response, handler) {
+      onResponse: (response, handler) async {
         final contentType = (response.headers.value('content-type') ?? '').toLowerCase();
-        if (contentType.contains('text/html')) {
+        final isColdStart = contentType.contains('text/html') || [502, 503, 504].contains(response.statusCode);
+        if (isColdStart) {
+          // Render cold-start: retry with backoff
+          final retryCount = (response.requestOptions.extra['_retryCount'] as int? ?? 0);
+          if (retryCount < _retryDelays.length) {
+            await Future.delayed(Duration(seconds: _retryDelays[retryCount]));
+            final opts = response.requestOptions;
+            opts.extra['_retryCount'] = retryCount + 1;
+            try {
+              final retryResponse = await dio.fetch(opts);
+              return handler.resolve(retryResponse);
+            } catch (e) {
+              return handler.reject(e is DioException ? e : DioException(requestOptions: opts, error: e));
+            }
+          }
           return handler.reject(DioException(
             requestOptions: response.requestOptions,
             response: response,
             type: DioExceptionType.badResponse,
-            message: 'Server returned an HTML page instead of JSON. The API host may be blocking this request (bot-protection).',
+            message: 'Server is starting up. Please wait a moment and try again.',
           ));
         }
         return handler.next(response);
       },
-      onError: (error, handler) {
+      onError: (error, handler) async {
         if (error.response != null) {
           final contentType = (error.response?.headers.value('content-type') ?? '').toLowerCase();
-          if (contentType.contains('text/html')) {
+          final isColdStart = contentType.contains('text/html') || [502, 503, 504].contains(error.response?.statusCode);
+          if (isColdStart) {
+            final retryCount = (error.requestOptions.extra['_retryCount'] as int? ?? 0);
+            if (retryCount < _retryDelays.length) {
+              await Future.delayed(Duration(seconds: _retryDelays[retryCount]));
+              error.requestOptions.extra['_retryCount'] = retryCount + 1;
+              try {
+                final retryResponse = await dio.fetch(error.requestOptions);
+                return handler.resolve(retryResponse);
+              } catch (e) {
+                return handler.next(e is DioException ? e : DioException(requestOptions: error.requestOptions, error: e));
+              }
+            }
             return handler.next(DioException(
               requestOptions: error.requestOptions,
               response: error.response,
               type: error.type,
               error: error.error,
-              message: 'Server returned an HTML page instead of JSON. The API host may be blocking this request (bot-protection).',
+              message: 'Server is starting up. Please wait a moment and try again.',
             ));
           }
         }
