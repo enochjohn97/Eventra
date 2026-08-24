@@ -16,6 +16,7 @@ php_value post_max_size 6M
 
     # Force HTTPS
     RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Pass Authorization header to PHP — required on shared hosting
