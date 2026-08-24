@@ -15,11 +15,14 @@ class ApiClient {
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
-        'Accept': 'application/json',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Content-Type': 'application/json',
-        'X-Eventra-Portal': 'user',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
         'User-Agent':
-            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Eventra/1.0',
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
       },
     ));
 
@@ -63,12 +66,16 @@ class ApiClient {
           return handler.next(DioException(
             requestOptions: error.requestOptions,
             type: error.type,
-            message: 'No internet connection. Check your network and API URL.',
+            message: 'No internet connection or timeout trying to reach: ${error.requestOptions.uri}. Check your network and API URL.',
           ));
         }
         return handler.next(error);
       },
     ));
+  }
+
+  void setBypassCookie(String cookie) {
+    dio.options.headers['Cookie'] = cookie;
   }
 
   void syncOrigin(String? appUrl) {

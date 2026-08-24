@@ -20,7 +20,7 @@ dependencies:
   url_launcher: ^6.3.1
   intl: ^0.20.2
   shared_preferences: ^2.5.3
-  webview_flutter: ^4.10.0
+  webview_flutter: ^4.14.1
   qr_flutter: ^4.1.0
   shimmer: ^3.0.0
 
