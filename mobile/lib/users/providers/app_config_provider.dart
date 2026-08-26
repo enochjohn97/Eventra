@@ -6,17 +6,18 @@ class AppConfigProvider extends ChangeNotifier {
   bool isLoaded = false;
   bool isLoading = false;
   String? snackbar;
-  String googleClientId = '';
-  String mapsApiKey = '';
-  String paystackPublicKey = '';
-  String appUrl = '';
+  String googleClientId =
+      '76953809917-o7bf7c7qbvpu7qglejqe77as5gb609fb.apps.googleusercontent.com';
+  String mapsApiKey = '[GCP_API_KEY]';
+  String paystackPublicKey =
+      'pk_test_ba48887507e3b7e82566b3b5fec96edf38d5007b';
+  String appUrl = 'https://eventra-website.liveblog365.com/api/';
 
   Future<void> load({bool force = false}) async {
-    if ((isLoaded && !force) || isLoading) return;
+    if ((isLoaded && !force) || isLoading) return; 
     isLoading = true;
     snackbar = null;
     notifyListeners();
-    await GoogleAuthService.configure();
     try {
       final config = await AppConfigService.load();
       googleClientId = config.googleClientId;
@@ -29,6 +30,7 @@ class AppConfigProvider extends ChangeNotifier {
           'Server googleClientId is empty, but continuing with native config.',
         );
       }
+      await GoogleAuthService.configure(googleClientId);
       isLoaded = true;
     } catch (e) {
       snackbar = e.toString().replaceFirst('Exception: ', '');

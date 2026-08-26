@@ -9,8 +9,8 @@ class ApiClient {
 
   factory ApiClient() => _instance;
 
-  // Retry delays for Render cold-start (spin-up can take up to 60s)
-  static const _retryDelays = [5, 10, 15, 20, 20];
+  // Retry delays for transient server errors (e.g. brief HTML responses from anti-bot layer)
+  static const _retryDelays = [3, 5];
 
   ApiClient._internal() {
     dio = Dio(BaseOptions(

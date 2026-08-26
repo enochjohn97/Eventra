@@ -29,9 +29,10 @@ class AuthProvider extends ChangeNotifier {
       } else {
         status = AuthStatus.unauthenticated;
       }
-    } catch (e) {
+    } catch (_) {
+      // Bootstrap is a silent background check — don't surface network
+      // errors as user-visible messages; just fall back to unauthenticated.
       status = AuthStatus.unauthenticated;
-      error = e.toString();
     } finally {
       isLoading = false;
       notifyListeners();

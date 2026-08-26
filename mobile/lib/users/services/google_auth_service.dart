@@ -8,17 +8,33 @@ import '../models/user_model.dart';
 
 class GoogleAuthService {
   static final Dio _dio = ApiClient().dio;
-  static GoogleSignIn? _googleSignIn;
+  static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   static bool _initialized = false;
 
-  static bool get isConfigured => _googleSignIn != null && _initialized;
+  static bool get isConfigured => _initialized;
 
-  static Future<void> configure() async {
-    _googleSignIn ??= GoogleSignIn.instance;
+  static Future<void> configure([String? serverClientId]) async {
     if (_initialized) return;
-    await _googleSignIn!.initialize();
+
+    String? clientId;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      clientId = '76953809917-eguefgb6sgetu8a7g5grjh966il7slq6.apps.googleusercontent.com';
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      clientId = '76953809917-eetkrdqtda43el15vir4dpghhml53dnr.apps.googleusercontent.com';
+    }
+
+    await _googleSignIn.initialize(
+      clientId: clientId,
+      serverClientId: serverClientId?.isNotEmpty == true ? serverClientId : null,
+    );
     _initialized = true;
+  }
+
+  static Future<void> signInSilently() async {
+    try {
+      await _googleSignIn.attemptLightweightAuthentication();
+    } catch (_) {}
   }
 
   static String? _resolveProfilePic(String? pic) {
@@ -68,7 +84,9 @@ class GoogleAuthService {
     GoogleSignInAccount account;
     try {
       // v7.2.0: authenticate() is the correct method (signIn() does not exist)
-      account = await _googleSignIn!.authenticate();
+      account = await _googleSignIn.authenticate(
+        scopeHint: const ['email', 'profile'],
+      );
     } on GoogleSignInException catch (e) {
       debugPrint('Google sign-in failed: ${e.code} – ${e.description}');
       return null;
@@ -86,7 +104,7 @@ class GoogleAuthService {
     late Response<dynamic> response;
     try {
       response = await _dio.post(
-        '/auth/google',
+        '/auth/google-handler.php',
         data: {'credential': idToken, 'intent': 'user'},
       );
     } on DioException catch (e) {
@@ -202,7 +220,7 @@ class GoogleAuthService {
 
   static Future<void> signOut() async {
     try {
-      await _googleSignIn?.signOut();
+      await _googleSignIn.signOut();
     } catch (_) {}
     await SecureStorage.clearAll();
   }

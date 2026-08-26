@@ -16,14 +16,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final config = context.read<AppConfigProvider>();
-      if (!config.isLoaded) config.load();
-    });
-  }
+  bool _isLoggingIn = false;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final config = context.watch<AppConfigProvider>();
     final configError = config.snackbar;
     final googleReady = GoogleAuthService.isConfigured;
-    final isBusy = auth.isLoading || config.isLoading;
+    final isBusy = auth.isLoading || _isLoggingIn;
 
     return Scaffold(
       body: SafeArea(
@@ -92,9 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             : const CircularProgressIndicator(),
                       )
                     : _GoogleButton(
-                        onPressed: googleReady
-                            ? () => _handleLogin(context)
-                            : () => _retryConfig(context),
+                        onPressed: () => _handleLogin(context),
                       ),
               ),
               const SizedBox(height: 16),
@@ -105,29 +96,29 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _retryConfig(BuildContext context) async {
-    await context.read<AppConfigProvider>().load(force: true);
-  }
-
   Future<void> _handleLogin(BuildContext context) async {
-    final config = context.read<AppConfigProvider>();
-    // Trigger load if not loaded, but don't await it so we don't block the Google Sign-In native UI
-    if (!config.isLoaded && !config.isLoading) {
-      config.load();
-    }
-    if (!GoogleAuthService.isConfigured) {
-      await GoogleAuthService.configure();
-    }
-    if (!context.mounted || !GoogleAuthService.isConfigured) return;
+    setState(() => _isLoggingIn = true);
+    try {
+      final config = context.read<AppConfigProvider>();
+      if (!config.isLoaded) {
+        await config.load();
+      }
+      if (!GoogleAuthService.isConfigured) {
+        await GoogleAuthService.configure(config.googleClientId);
+      }
+      if (!context.mounted || !GoogleAuthService.isConfigured) return;
 
-    final auth = context.read<AuthProvider>();
-    final ok = await auth.signInWithGoogle();
-    if (!context.mounted) return;
-    if (!ok) return;
-    if (auth.status == AuthStatus.profileIncomplete) {
-      context.go('/profile-complete');
-    } else {
-      context.go('/home');
+      final auth = context.read<AuthProvider>();
+      final ok = await auth.signInWithGoogle();
+      if (!context.mounted) return;
+      if (!ok) return;
+      if (auth.status == AuthStatus.profileIncomplete) {
+        context.go('/profile-complete');
+      } else {
+        context.go('/home');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoggingIn = false);
     }
   }
 }

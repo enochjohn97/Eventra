@@ -25,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
     _OnboardPage(
       image:
-          'https://plus.unsplash.com/premium_vector-1728586228949-fc0b5697fa57?q=80&w=400&h=400&fit=crop&crop=faces,center&auto=format&ixlib=rb-4.1.0',
+          'https://plus.unsplash.com/premium_vector-1728586228949-fc0b5697fa57?q=80&w=687&auto=format&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       title: 'Secure Ticket Checkout',
       body:
           'Pay safely with Paystack and receive your ticket instantly by email.',

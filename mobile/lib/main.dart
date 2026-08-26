@@ -11,6 +11,7 @@ import 'users/providers/events_provider.dart';
 import 'users/providers/favorites_provider.dart';
 import 'users/providers/tickets_provider.dart';
 import 'users/routing/user_router.dart';
+import 'users/services/google_auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,19 +37,32 @@ class EventraUserApp extends StatefulWidget {
 class _EventraUserAppState extends State<EventraUserApp> {
   late final AuthProvider _authProvider;
   late final GoRouter _router;
+  late final AppConfigProvider _configProvider;
 
   @override
   void initState() {
     super.initState();
     _authProvider = AuthProvider();
     _router = createUserRouter(_authProvider);
+    _configProvider = AppConfigProvider();
+    
+    // Pre-load network handshakes sequentially without blocking UI
+    _initializeAuthAndConfig();
+  }
+
+  Future<void> _initializeAuthAndConfig() async {
+    try {
+      await _configProvider.load();
+      await GoogleAuthService.configure(_configProvider.googleClientId);
+      await GoogleAuthService.signInSilently();
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppConfigProvider()),
+        ChangeNotifierProvider.value(value: _configProvider),
         ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider(create: (_) => EventsProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
