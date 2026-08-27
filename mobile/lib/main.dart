@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
-import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
 import 'users/providers/app_config_provider.dart';
 import 'users/providers/auth_provider.dart';
@@ -16,9 +15,8 @@ import 'users/services/google_auth_service.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   
-  if (kDebugMode && AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+  if (kDebugMode) {
     debugPrint('\n======================================================');
-    debugPrint('⚠️ WARNING: Using Emulator-only API URL (${AppConfig.apiBaseUrl})');
     debugPrint('This will NOT work on a physical device. Ensure you are on an Android Emulator.');
     debugPrint('======================================================\n');
   }
@@ -54,7 +52,7 @@ class _EventraUserAppState extends State<EventraUserApp> {
     try {
       await _configProvider.load();
       await GoogleAuthService.configure(_configProvider.googleClientId);
-      await GoogleAuthService.signInSilently();
+      // signInSilently() removed – Google sign-in only triggers on button press.
     } catch (_) {}
   }
 

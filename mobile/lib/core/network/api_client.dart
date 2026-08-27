@@ -1,5 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
-import '../config/app_config.dart';
+import 'package:dio/io.dart';
 import '../storage/secure_storage.dart';
 
 class ApiClient {
@@ -14,7 +15,6 @@ class ApiClient {
 
   ApiClient._internal() {
     dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 70),
       followRedirects: true,
@@ -22,10 +22,22 @@ class ApiClient {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        // Mimic a real mobile browser — WAF on liveblog365.com fingerprints
+        // Dart's default UA ("Dart/x.y (dart:io)") and serves an HTML challenge.
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
       },
     ));
 
-    baseOrigin = AppConfig.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    // Prevent stale-socket "unsolicited response" on shared/WAF hosts.
+    // A short idle timeout ensures pooled connections are dropped before
+    // the server closes them on its side (common on liveblog365.com / shared hosts).
+    (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.idleTimeout = const Duration(seconds: 8);
+      return client;
+    };
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -48,7 +60,11 @@ class ApiClient {
             final opts = response.requestOptions;
             opts.extra['_retryCount'] = retryCount + 1;
             try {
-              final retryResponse = await dio.fetch(opts);
+              // Use a fresh Dio instance to avoid reusing the poisoned HttpClient
+              // connection that received the HTML/WAF response.
+              // Intentionally NOT copying interceptors — prevents recursive retry loops.
+              final freshDio = Dio(dio.options);
+              final retryResponse = await freshDio.fetch(opts);
               return handler.resolve(retryResponse);
             } catch (e) {
               return handler.reject(e is DioException ? e : DioException(requestOptions: opts, error: e));
@@ -73,7 +89,8 @@ class ApiClient {
               await Future.delayed(Duration(seconds: _retryDelays[retryCount]));
               error.requestOptions.extra['_retryCount'] = retryCount + 1;
               try {
-                final retryResponse = await dio.fetch(error.requestOptions);
+                final freshDio = Dio(dio.options);
+                final retryResponse = await freshDio.fetch(error.requestOptions);
                 return handler.resolve(retryResponse);
               } catch (e) {
                 return handler.next(e is DioException ? e : DioException(requestOptions: error.requestOptions, error: e));

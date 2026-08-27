@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/network/api_client.dart';
@@ -7,7 +9,117 @@ import '../../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
 
 class GoogleAuthService {
-  static final Dio _dio = ApiClient().dio;
+  // Retry delays (seconds) for WAF/bot-challenge HTML responses.
+  static const _retryDelays = [3, 5];
+
+  /// Returns a fresh, isolated Dio instance for Google auth requests.
+  /// - Separate connection pool (no stale-socket "unsolicited response").
+  /// - Forwards WAF bypass cookie from the app singleton so the server
+  ///   does not serve an HTML challenge page.
+  /// - Inline HTML-detect + retry interceptor (mirrors ApiClient logic).
+  static Dio _newAuthDio() {
+    final singleton = ApiClient();
+
+    // Build options from scratch — only copy the stable fields.
+    final opts = BaseOptions(
+      baseUrl: singleton.dio.options.baseUrl,
+      connectTimeout: singleton.dio.options.connectTimeout,
+      receiveTimeout: singleton.dio.options.receiveTimeout,
+      followRedirects: true,
+      maxRedirects: 5,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        // Mimic a real mobile browser so the WAF does not fingerprint
+        // Dart's default User-Agent ("Dart/x.y (dart:io)") as a bot.
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+        // Forward the WAF/bot-challenge bypass cookie if one was set.
+        if (singleton.dio.options.headers.containsKey('Cookie'))
+          'Cookie': singleton.dio.options.headers['Cookie'],
+      },
+    );
+
+    final dio = Dio(opts);
+
+    // Fresh HttpClient with a short idle-timeout — completely separate pool.
+    (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.idleTimeout = const Duration(seconds: 8);
+      return client;
+    };
+
+    // Retry on HTML responses (WAF challenge) — same logic as ApiClient.
+    dio.interceptors.add(InterceptorsWrapper(
+      onResponse: (response, handler) async {
+        final ct = (response.headers.value('content-type') ?? '').toLowerCase();
+        if (ct.contains('text/html') ||
+            [502, 503, 504].contains(response.statusCode)) {
+          final retryCount =
+              (response.requestOptions.extra['_retryCount'] as int? ?? 0);
+          if (retryCount < _retryDelays.length) {
+            await Future.delayed(
+                Duration(seconds: _retryDelays[retryCount]));
+            final reqOpts = response.requestOptions
+              ..extra['_retryCount'] = retryCount + 1;
+            try {
+              // Fresh Dio for the retry — no interceptors to avoid loops.
+              final retryDio = Dio(opts);
+              (retryDio.httpClientAdapter as IOHttpClientAdapter)
+                  .createHttpClient = () {
+                final c = HttpClient();
+                c.idleTimeout = const Duration(seconds: 8);
+                return c;
+              };
+              return handler.resolve(await retryDio.fetch(reqOpts));
+            } catch (e) {
+              return handler.reject(e is DioException
+                  ? e
+                  : DioException(requestOptions: reqOpts, error: e));
+            }
+          }
+        }
+        return handler.next(response);
+      },
+      onError: (error, handler) async {
+        if (error.response != null) {
+          final ct = (error.response!.headers.value('content-type') ?? '')
+              .toLowerCase();
+          if (ct.contains('text/html') ||
+              [502, 503, 504].contains(error.response!.statusCode)) {
+            final retryCount =
+                (error.requestOptions.extra['_retryCount'] as int? ?? 0);
+            if (retryCount < _retryDelays.length) {
+              await Future.delayed(
+                  Duration(seconds: _retryDelays[retryCount]));
+              error.requestOptions.extra['_retryCount'] = retryCount + 1;
+              try {
+                final retryDio = Dio(opts);
+                (retryDio.httpClientAdapter as IOHttpClientAdapter)
+                    .createHttpClient = () {
+                  final c = HttpClient();
+                  c.idleTimeout = const Duration(seconds: 8);
+                  return c;
+                };
+                return handler
+                    .resolve(await retryDio.fetch(error.requestOptions));
+              } catch (e) {
+                return handler.next(e is DioException
+                    ? e
+                    : DioException(
+                        requestOptions: error.requestOptions, error: e));
+              }
+            }
+          }
+        }
+        return handler.next(error);
+      },
+    ));
+
+    return dio;
+  }
+
   static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   static bool _initialized = false;
@@ -103,7 +215,7 @@ class GoogleAuthService {
 
     late Response<dynamic> response;
     try {
-      response = await _dio.post(
+      response = await _newAuthDio().post(
         '/auth/google-handler.php',
         data: {'credential': idToken, 'intent': 'user'},
       );

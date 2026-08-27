@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -29,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _initBypass() {
-    if (AppConfig.apiBaseUrl.contains('10.0.2.2') || AppConfig.apiBaseUrl.contains('localhost')) {
+    if (kDebugMode) {
       _boot();
       return;
     }
@@ -41,26 +42,29 @@ class _SplashScreenState extends State<SplashScreen> {
           onPageFinished: (String url) async {
             if (_bypassed) return;
             try {
-              final cookies = await _webViewController.runJavaScriptReturningResult('document.cookie');
+              final cookies = await _webViewController
+                  .runJavaScriptReturningResult('document.cookie');
               final cookieStr = cookies.toString().replaceAll('"', '');
               if (cookieStr.contains('__test=')) {
                 _bypassed = true;
                 _bypassTimeout?.cancel();
-                
+
                 // Extract only the __test cookie from all cookies
                 final parts = cookieStr.split(';');
-                final testCookie = parts.firstWhere((p) => p.trim().startsWith('__test='), orElse: () => '');
+                final testCookie = parts.firstWhere(
+                  (p) => p.trim().startsWith('__test='),
+                  orElse: () => '',
+                );
                 if (testCookie.isNotEmpty) {
                   ApiClient().setBypassCookie(testCookie.trim());
                 }
-                
+
                 _boot();
               }
             } catch (_) {}
           },
         ),
-      )
-      ..loadRequest(Uri.parse(AppConfig.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '')));
+      );
 
     _bypassTimeout = Timer(const Duration(seconds: 8), () {
       if (!_bypassed) {
@@ -106,19 +110,17 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Invisible webview for solving bot challenge
-          if (!AppConfig.apiBaseUrl.contains('10.0.2.2') && !AppConfig.apiBaseUrl.contains('localhost'))
-            Positioned(
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 1,
-              child: Opacity(
-                opacity: 0.01,
-                child: WebViewWidget(controller: _webViewController),
-              ),
+          Positioned(
+            top: 0,
+            left: 0,
+            width: 1,
+            height: 1,
+            child: Opacity(
+              opacity: 0.01,
+              child: WebViewWidget(controller: _webViewController),
             ),
-            
+          ),
+
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -135,7 +137,11 @@ class _SplashScreenState extends State<SplashScreen> {
                 SizedBox(height: 16),
                 Text(
                   AppConfig.appName,
-                  style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 SizedBox(height: 24),
                 CircularProgressIndicator(color: Colors.white),

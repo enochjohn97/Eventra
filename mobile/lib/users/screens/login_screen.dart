@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -123,21 +124,70 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Inline Google 'G' logo — drawn with CustomPainter, no network required.
+// ---------------------------------------------------------------------------
+class _GoogleLogo extends StatelessWidget {
+  final double size;
+  const _GoogleLogo({this.size = 20});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2;
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
+
+    // Red segment  (315° → 45°  i.e. top-right quarter + a bit)
+    canvas.drawArc(rect, -math.pi * 0.25, math.pi * 0.75,
+        true, Paint()..color = const Color(0xFFEA4335));  // Google Red
+    // Blue segment (45° → 165°)
+    canvas.drawArc(rect, math.pi * 0.25, math.pi * 0.667,
+        true, Paint()..color = const Color(0xFF4285F4));  // Google Blue
+    // Green segment (165° → 255°)
+    canvas.drawArc(rect, math.pi * 0.917, math.pi * 0.5,
+        true, Paint()..color = const Color(0xFF34A853));  // Google Green
+    // Yellow segment (255° → 315°)
+    canvas.drawArc(rect, math.pi * 1.417, math.pi * 0.333,
+        true, Paint()..color = const Color(0xFFFBBC05));  // Google Yellow
+
+    // White inner circle (donut hole)
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.58,
+      Paint()..color = Colors.white,
+    );
+
+    // White bar for the crossbar of the 'G'
+    final barPaint = Paint()..color = const Color(0xFF4285F4);
+    canvas.drawRect(
+      Rect.fromLTRB(cx, cy - r * 0.2, cx + r, cy + r * 0.2),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _GoogleButton extends StatelessWidget {
   final VoidCallback onPressed;
   const _GoogleButton({required this.onPressed});
 
-  static const _googleLogoUrl =
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png';
-
   @override
   Widget build(BuildContext context) {
-    final logo = Image.network(
-      _googleLogoUrl,
-      width: 20,
-      height: 20,
-      fit: BoxFit.contain,
-    );
+    const logo = _GoogleLogo(size: 20);
 
     if (Platform.isIOS) {
       return CupertinoButton(
@@ -150,12 +200,12 @@ class _GoogleButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               logo,
-              const SizedBox(width: 10),
-              const Text(
+              SizedBox(width: 10),
+              Text(
                 'Continue with Google',
                 style: TextStyle(
                   color: AppTheme.textMain,
@@ -175,12 +225,12 @@ class _GoogleButton extends StatelessWidget {
         elevation: 1,
         padding: const EdgeInsets.symmetric(vertical: 14),
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           logo,
-          const SizedBox(width: 10),
-          const Text(
+          SizedBox(width: 10),
+          Text(
             'Continue with Google',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
@@ -189,3 +239,4 @@ class _GoogleButton extends StatelessWidget {
     );
   }
 }
+
