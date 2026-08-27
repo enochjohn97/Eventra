@@ -37,7 +37,7 @@ class ApiClient {
     // the server closes them on its side (common on liveblog365.com / shared hosts).
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
-      client.idleTimeout = const Duration(seconds: 8);
+      client.idleTimeout = const Duration(milliseconds: 1);
       return client;
     };
 

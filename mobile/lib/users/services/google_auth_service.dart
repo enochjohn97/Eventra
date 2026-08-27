@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -27,11 +29,14 @@ class GoogleAuthService {
       receiveTimeout: singleton.dio.options.receiveTimeout,
       followRedirects: true,
       maxRedirects: 5,
+      validateStatus: (status) {
+        return status != null && status < 600;
+      },
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Connection': 'close',
-        // Custom User-Agent to help the backend/WAF identify and trust the app's requests.
+        // Match the User-Agent used in ApiClient to ensure the WAF bypass cookie remains valid.
         'User-Agent':
             'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 '
             '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
@@ -46,7 +51,7 @@ class GoogleAuthService {
     // Fresh HttpClient with a short idle-timeout — completely separate pool.
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
-      client.idleTimeout = const Duration(seconds: 8);
+      client.idleTimeout = const Duration(milliseconds: 1);
       return client;
     };
 
@@ -69,7 +74,7 @@ class GoogleAuthService {
               (retryDio.httpClientAdapter as IOHttpClientAdapter)
                   .createHttpClient = () {
                 final c = HttpClient();
-                c.idleTimeout = const Duration(seconds: 8);
+                c.idleTimeout = const Duration(milliseconds: 1);
                 return c;
               };
               return handler.resolve(await retryDio.fetch(reqOpts));
@@ -99,7 +104,7 @@ class GoogleAuthService {
                 (retryDio.httpClientAdapter as IOHttpClientAdapter)
                     .createHttpClient = () {
                   final c = HttpClient();
-                  c.idleTimeout = const Duration(seconds: 8);
+                  c.idleTimeout = const Duration(milliseconds: 1);
                   return c;
                 };
                 return handler
@@ -214,18 +219,38 @@ class GoogleAuthService {
     }
 
     late Response<dynamic> response;
+    final dio = _newAuthDio();
     try {
-      response = await _newAuthDio().post(
+      print('------------------- [API REQUEST LOG] -------------------');
+      print('Sending Request to: ${dio.options.baseUrl}/auth/google-handler.php');
+
+      response = await dio.post(
         '/auth/google-handler.php',
         data: {'credential': idToken, 'intent': 'user'},
+        options: Options(responseType: ResponseType.plain),
       );
+
+      print('STATUS CODE: ${response.statusCode}');
+      print('RESPONSE HEADERS: ${response.headers}');
+      print('RAW RESPONSE BODY:');
+      print(response.data);
+      print('---------------------------------------------------------');
     } on DioException catch (e) {
+      print('=================== [DIO EXCEPTION] ===================');
+      print('TYPE: ${e.type}');
+      print('MESSAGE: ${e.message}');
+      print('ERROR RESPONSE: ${e.response?.data}');
+      print('=======================================================');
       final body = e.response?.data?.toString() ?? '';
       debugPrint('[GoogleAuth] Request URL : ${e.requestOptions.uri}');
       debugPrint('[GoogleAuth] Status      : ${e.response?.statusCode}');
       debugPrint(
         '[GoogleAuth] Body (200ch): ${body.length > 200 ? body.substring(0, 200) : body}',
       );
+      rethrow;
+    } catch (e, stackTrace) {
+      print('UNEXPECTED ERROR: $e');
+      print(stackTrace);
       rethrow;
     }
 
