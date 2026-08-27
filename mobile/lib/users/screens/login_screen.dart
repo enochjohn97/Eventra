@@ -148,31 +148,29 @@ class _GoogleLogoPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = size.width / 2;
     final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
+    final strokeWidth = size.width * 0.2;
 
-    // Red segment  (315° → 45°  i.e. top-right quarter + a bit)
-    canvas.drawArc(rect, -math.pi * 0.25, math.pi * 0.75,
-        true, Paint()..color = const Color(0xFFEA4335));  // Google Red
-    // Blue segment (45° → 165°)
-    canvas.drawArc(rect, math.pi * 0.25, math.pi * 0.667,
-        true, Paint()..color = const Color(0xFF4285F4));  // Google Blue
-    // Green segment (165° → 255°)
-    canvas.drawArc(rect, math.pi * 0.917, math.pi * 0.5,
-        true, Paint()..color = const Color(0xFF34A853));  // Google Green
-    // Yellow segment (255° → 315°)
-    canvas.drawArc(rect, math.pi * 1.417, math.pi * 0.333,
-        true, Paint()..color = const Color(0xFFFBBC05));  // Google Yellow
+    Paint createPaint(Color color) {
+      return Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.butt;
+    }
 
-    // White inner circle (donut hole)
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r * 0.58,
-      Paint()..color = Colors.white,
-    );
+    // Red segment
+    canvas.drawArc(rect, -math.pi * 0.25, math.pi * 0.25, false, createPaint(const Color(0xFFEA4335)));
+    // Blue segment
+    canvas.drawArc(rect, 0, math.pi * 0.3, false, createPaint(const Color(0xFF4285F4)));
+    // Green segment
+    canvas.drawArc(rect, math.pi * 0.3, math.pi * 0.45, false, createPaint(const Color(0xFF34A853)));
+    // Yellow segment
+    canvas.drawArc(rect, math.pi * 0.75, math.pi * 1.0, false, createPaint(const Color(0xFFFBBC05)));
 
-    // White bar for the crossbar of the 'G'
+    // Blue crossbar for the 'G'
     final barPaint = Paint()..color = const Color(0xFF4285F4);
     canvas.drawRect(
-      Rect.fromLTRB(cx, cy - r * 0.2, cx + r, cy + r * 0.2),
+      Rect.fromLTRB(cx, cy - strokeWidth / 2, cx + r, cy + strokeWidth / 2),
       barPaint,
     );
   }

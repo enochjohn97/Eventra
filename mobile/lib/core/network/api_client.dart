@@ -6,7 +6,7 @@ import '../storage/secure_storage.dart';
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late Dio dio;
-  String? baseOrigin;
+  String? baseOrigin = 'https://eventra-website.liveblog365.com';
 
   factory ApiClient() => _instance;
 
@@ -15,13 +15,15 @@ class ApiClient {
 
   ApiClient._internal() {
     dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 70),
+      baseUrl: 'https://eventra-website.liveblog365.com/api',
+      connectTimeout: const Duration(seconds: 120),
+      receiveTimeout: const Duration(seconds: 120),
       followRedirects: true,
       maxRedirects: 5,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        'Connection': 'close',
         // Mimic a real mobile browser — WAF on liveblog365.com fingerprints
         // Dart's default UA ("Dart/x.y (dart:io)") and serves an HTML challenge.
         'User-Agent':

@@ -110,16 +110,17 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            width: 1,
-            height: 1,
-            child: Opacity(
-              opacity: 0.01,
-              child: WebViewWidget(controller: _webViewController),
+          if (!kDebugMode)
+            Positioned(
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 1,
+              child: Opacity(
+                opacity: 0.01,
+                child: WebViewWidget(controller: _webViewController),
+              ),
             ),
-          ),
 
           Container(
             width: double.infinity,
