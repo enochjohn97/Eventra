@@ -30,11 +30,8 @@ class GoogleAuthService {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        // Mimic a real mobile browser so the WAF does not fingerprint
-        // Dart's default User-Agent ("Dart/x.y (dart:io)") as a bot.
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+        // Custom User-Agent to help the backend/WAF identify and trust the app's requests.
+        'User-Agent': 'EventraMobileApp/1.0',
         // Forward the WAF/bot-challenge bypass cookie if one was set.
         if (singleton.dio.options.headers.containsKey('Cookie'))
           'Cookie': singleton.dio.options.headers['Cookie'],

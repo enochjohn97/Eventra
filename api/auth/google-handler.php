@@ -4,6 +4,17 @@ header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header("Cross-Origin-Opener-Policy: same-origin-allow-popups");
+
+// Enforce JSON outputs under all circumstances (even on fatal database errors)
+set_exception_handler(function($e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    exit;
+});
+set_error_handler(function($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/helpers/entity-resolver.php';
 require_once __DIR__ . '/../utils/id-generator.php';
