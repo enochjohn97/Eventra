@@ -61,9 +61,13 @@ if ($httpCode !== 200 || !$response) {
 }
 
 $payload = json_decode($response, true);
-$clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? '';
+$webClientId = $_ENV['GOOGLE_CLIENT_ID'] ?? '';
+$androidClientId = $_ENV['GOOGLE_ANDROID_CLIENT_ID'] ?? '76953809917-eetkrdqtda43el15vir4dpghhml53dnr.apps.googleusercontent.com';
+$iosClientId = $_ENV['GOOGLE_IOS_CLIENT_ID'] ?? '76953809917-eguefgb6sgetu8a7g5grjh966il7slq6.apps.googleusercontent.com';
 
-if (empty($clientId) || !isset($payload['aud']) || $payload['aud'] !== $clientId) {
+$allowedClients = array_filter([$webClientId, $androidClientId, $iosClientId]);
+
+if (empty($allowedClients) || !isset($payload['aud']) || !in_array($payload['aud'], $allowedClients)) {
     echo json_encode(['success' => false, 'message' => 'Token audience mismatch.']);
     exit;
 }

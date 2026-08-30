@@ -131,7 +131,7 @@ class GoogleAuthService {
 
   static bool get isConfigured => _initialized;
 
-  static Future<void> configure([String? serverClientId]) async {
+  static Future<void> configure() async {
     if (_initialized) return;
 
     String? clientId;
@@ -143,7 +143,7 @@ class GoogleAuthService {
 
     await _googleSignIn.initialize(
       clientId: clientId,
-      serverClientId: serverClientId?.isNotEmpty == true ? serverClientId : null,
+      serverClientId: '76953809917-o7bf7c7qbvpu7qglejqe77as5gb609fb.apps.googleusercontent.com',
     );
     _initialized = true;
   }

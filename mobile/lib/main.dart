@@ -44,14 +44,13 @@ class _EventraUserAppState extends State<EventraUserApp> {
     _router = createUserRouter(_authProvider);
     _configProvider = AppConfigProvider();
     
-    // Pre-load network handshakes sequentially without blocking UI
     _initializeAuthAndConfig();
   }
 
   Future<void> _initializeAuthAndConfig() async {
     try {
       await _configProvider.load();
-      await GoogleAuthService.configure(_configProvider.googleClientId);
+      await GoogleAuthService.configure();
       // signInSilently() removed – Google sign-in only triggers on button press.
     } catch (_) {}
   }

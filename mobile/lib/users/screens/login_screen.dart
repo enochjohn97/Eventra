@@ -105,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await config.load();
       }
       if (!GoogleAuthService.isConfigured) {
-        await GoogleAuthService.configure(config.googleClientId);
+        await GoogleAuthService.configure();
       }
       if (!context.mounted || !GoogleAuthService.isConfigured) return;
 
