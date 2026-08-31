@@ -2753,7 +2753,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 
 /* SweetAlert2 Enhancements */
 .swal2-container {
-    z-index: 9999 !important;
+    z-index: 999999 !important;
 }
 
 .swal2-popup {

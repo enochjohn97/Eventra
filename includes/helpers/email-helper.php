@@ -455,6 +455,12 @@ class EmailHelper
             }
         }
 
+        $fallbackUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($verificationUrl);
+        $remote = @file_get_contents($fallbackUrl);
+        if ($remote) {
+            return 'data:image/png;base64,' . base64_encode($remote);
+        }
+
         // 4. Priority: Fallback to the static placeholder QR file
         $staticQrPath = self::getEmailQrAssetPath();
         if (file_exists($staticQrPath) && filesize($staticQrPath) > 0) {

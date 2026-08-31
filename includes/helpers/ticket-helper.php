@@ -15,9 +15,6 @@ if (file_exists($autoloadPath)) {
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/email-helper.php';
 
-use chillerlan\QRCode\QRCode;
-use chillerlan\QRCode\QROptions;
-
 /**
  * Convert an absolute filesystem path to a web-relative path (forward slashes).
  * e.g. C:\...\public\assets\event_assets\qrcodes\qr_x.png → public/assets/event_assets/qrcodes/qr_x.png
@@ -190,18 +187,6 @@ function generateTicketQRCode(array $ticketData): string
         // Build secure signed payload instead of raw barcode
         $secureToken = buildSecureQRPayload($ticketData);
 
-        // Prefer chillerlan/php-qrcode v5+ options consistent with EmailHelper
-        $options = new \chillerlan\QRCode\QROptions([
-            'outputType'      => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
-            'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::H,
-            'scale'           => 6,
-            'imageBase64'     => true,
-            'imageTransparent'=> false,
-        ]);
-
-        $qrcode = new \chillerlan\QRCode\QRCode($options);
-
-        // Encode a public verification URL — substitute LAN IP if running on localhost for mobile accessibility
         $baseAppUrl = defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/');
         if (empty($baseAppUrl)) {
             $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
@@ -217,23 +202,31 @@ function generateTicketQRCode(array $ticketData): string
         }
         $verificationUrl = $baseAppUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($ticketData['barcode'] ?? '');
 
-
-        // Render returns a data URI when imageBase64=true
         $bin = '';
-        try {
-            $rendered = $qrcode->render($verificationUrl);
-            // Normalize output to raw PNG bytes
-            if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
-                $parts = explode(',', $rendered, 2);
-                $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
-            } else {
-                // May already be raw image bytes
-                $bin = is_string($rendered) ? $rendered : '';
+        if (class_exists('chillerlan\\QRCode\\QRCode') && class_exists('chillerlan\\QRCode\\QROptions')) {
+            try {
+                $options = new \chillerlan\QRCode\QROptions([
+                    'outputType'      => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+                    'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::H,
+                    'scale'           => 6,
+                    'imageBase64'     => true,
+                    'imageTransparent'=> false,
+                ]);
+                $qrcode = new \chillerlan\QRCode\QRCode($options);
+                $rendered = $qrcode->render($verificationUrl);
+                if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
+                    $parts = explode(',', $rendered, 2);
+                    $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
+                } else {
+                    $bin = is_string($rendered) ? $rendered : '';
+                }
+            } catch (\Throwable $e) {
+                error_log('[TicketHelper] Local QR generation failed: ' . $e->getMessage() . '. Falling back to external API.');
             }
-        } catch (\Throwable $e) {
-            error_log('[TicketHelper] Local QR generation failed: ' . $e->getMessage() . '. Falling back to external API.');
+        }
+        if ($bin === '') {
             $fallbackUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($verificationUrl);
-            $bin = @file_get_contents($fallbackUrl);
+            $bin = @file_get_contents($fallbackUrl) ?: '';
         }
 
         if (empty($bin)) {

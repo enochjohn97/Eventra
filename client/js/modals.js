@@ -20,6 +20,16 @@ async function showProfileEditModal() {
         }
     } catch (_) { /* render the available cached profile */ }
 
+    let dobVal = String(user.dob || '').trim();
+    if (dobVal.includes('T')) dobVal = dobVal.slice(0, 10);
+    else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dobVal)) {
+        const [d, m, y] = dobVal.split('/');
+        dobVal = `${y}-${m}-${d}`;
+    } else if (dobVal.length > 10) {
+        dobVal = dobVal.slice(0, 10);
+    }
+    const genderVal = String(user.gender || '').toLowerCase();
+
     const modalHTML = `
         <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
             <div class="modal-content modal-content-animate" style="max-width: 750px; display: flex; flex-direction: column;">
@@ -70,15 +80,15 @@ async function showProfileEditModal() {
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Date of Birth <span class="text-danger">*</span></label>
-                                    <input type="date" name="dob" value="${escapeHTML(user.dob) || ''}" class="form-control" required>
+                                    <input type="date" name="dob" value="${escapeHTML(dobVal)}" class="form-control" required>
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Gender <span class="text-danger">*</span></label>
                                     <select name="gender" class="form-control" required>
                                         <option value="">Select Gender</option>
-                                        <option value="male" ${user.gender === 'male' ? 'selected' : ''}>Male</option>
-                                        <option value="female" ${user.gender === 'female' ? 'selected' : ''}>Female</option>
-                                        <option value="other" ${user.gender === 'other' ? 'selected' : ''}>Other</option>
+                                        <option value="male" ${genderVal === 'male' ? 'selected' : ''}>Male</option>
+                                        <option value="female" ${genderVal === 'female' ? 'selected' : ''}>Female</option>
+                                        <option value="other" ${genderVal === 'other' ? 'selected' : ''}>Other</option>
                                     </select>
                                 </div>
                                 <div class="form-group modal-grid-full">
@@ -248,52 +258,43 @@ async function showProfileEditModal() {
 
     // Make switchWizardTab globally available
     window.switchWizardTab = function (step) {
-        // Validate current step before advancing
-        if (step > 1) {
-            const form = document.getElementById('profileEditForm');
+        const form = document.getElementById('profileEditForm');
+        if (!form) return;
+        const fromStep = Number(step) === 3 ? 2 : 1;
+        const stepRoot = form.querySelector('#wizardStep' + fromStep);
+        if (step > 1 && stepRoot && !window._isPasting) {
             let currentStepValid = true;
-            let currentFields = [];
-
-            if (step === 2) {
-                currentFields = form.querySelector('#wizardStep1').querySelectorAll('[required]');
-            } else if (step === 3) {
-                currentFields = form.querySelector('#wizardStep2').querySelectorAll('[required]');
-            }
-
-            for (const field of currentFields) {
-                if (!field.value.trim() && !window._isPasting) {
+            stepRoot.querySelectorAll('[required]').forEach((field) => {
+                const val = String(field.value || '').trim();
+                if (!val) {
                     field.style.borderColor = '#ef4444';
                     field.addEventListener('input', () => { field.style.borderColor = ''; }, { once: true });
-                    field.addEventListener('paste', () => { setTimeout(() => { field.style.borderColor = ''; }, 50); }, { once: true });
                     currentStepValid = false;
                 }
-            }
-
+            });
             if (!currentStepValid) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Missing Info',
-                    text: 'Please fill in all required fields before proceeding.',
-                    confirmButtonColor: '#722f37'
-                });
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Missing Info',
+                        text: 'Please fill in all required fields before proceeding.',
+                        confirmButtonColor: '#722f37'
+                    });
+                }
                 return;
             }
         }
 
-        // Hide all steps
-        document.querySelectorAll('.wizard-step').forEach(el => el.style.display = 'none');
-        // Reset all tabs
-        document.querySelectorAll('.wizard-tab').forEach(el => {
+        form.querySelectorAll('.wizard-step').forEach(el => el.style.display = 'none');
+        form.querySelectorAll('.wizard-tab').forEach(el => {
             el.style.color = '#64748b';
             el.style.borderBottomColor = 'transparent';
         });
 
-        // Show active step
-        const stepEl = document.getElementById('wizardStep' + step);
+        const stepEl = form.querySelector('#wizardStep' + step);
         if (stepEl) stepEl.style.display = 'block';
 
-        // Update active tab
-        const tabEl = document.getElementById('wizardTab' + step);
+        const tabEl = form.querySelector('#wizardTab' + step);
         if (tabEl) {
             tabEl.style.color = '#722f37';
             tabEl.style.borderBottomColor = '#722f37';

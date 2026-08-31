@@ -232,9 +232,10 @@ body {
   color: var(--login-text-light);
 }
 
-.form-input:focus {
-  border-color: var(--login-primary);
-  box-shadow: var(--login-shadow-input);
+.form-input:focus,
+.form-input:focus-visible {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
 }
 
 .form-input.error {
@@ -554,7 +555,7 @@ input[type="password"]::-ms-clear {
 
 /* Focus Visible for Accessibility */
 *:focus-visible {
-  outline: 2px solid var(--login-primary);
+  outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
 

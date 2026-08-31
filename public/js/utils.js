@@ -636,8 +636,8 @@ function restoreFormState(storageKey, formId = storageKey) {
                 // Trigger change event for interactive elements
                 el.dispatchEvent(new Event('change', { bubbles: true }));
             } else {
+                if (formData[name] === '' || formData[name] == null) return;
                 el.value = formData[name];
-                // Trigger input/change events
                 el.dispatchEvent(new Event('input', { bubbles: true }));
                 el.dispatchEvent(new Event('change', { bubbles: true }));
             }

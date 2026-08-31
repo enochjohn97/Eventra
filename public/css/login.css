@@ -16,7 +16,7 @@
   /* Shadows */
   --login-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
   --login-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --login-shadow-input: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  --login-shadow-input: 0 0 0 3px rgba(255, 255, 255, 0.2);
   
   /* Transitions */
   --login-transition: 0.3s ease;
