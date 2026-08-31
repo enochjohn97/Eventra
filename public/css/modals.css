@@ -286,3 +286,8 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+
+/* Ensure SweetAlert is above our modals */
+.swal2-container {
+    z-index: 10000 !important;
+}

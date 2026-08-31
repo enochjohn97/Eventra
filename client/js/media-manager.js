@@ -160,7 +160,6 @@ function displayMediaGrid(media, stats) {
                         <div class="media-name">${item.name}</div>
                         <div class="media-meta">
                             <span>${item.file_count || 0} files</span>
-                            <span data-timestamp="${item.created_at}" data-short-time="true">${window.timeAgo(item.created_at, true)}</span>
                         </div>
                     </div>
                     <div class="media-actions-overlay">

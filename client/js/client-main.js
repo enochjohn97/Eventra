@@ -49,6 +49,21 @@ document.addEventListener("DOMContentLoaded", () => {
   initInactivityMonitor();
 });
 
+// Global Modal Close Handler
+document.addEventListener("click", function(e) {
+    // Close on backdrop click (if clicking directly on the backdrop, not its children)
+    if (e.target.classList.contains("modal-backdrop")) {
+        e.target.remove();
+    }
+    
+    // Close on 'x' or 'close' button click
+    const closeBtn = e.target.closest(".modal-close, .close-modal");
+    if (closeBtn) {
+        const modal = closeBtn.closest(".modal-backdrop");
+        if (modal) modal.remove();
+    }
+});
+
 function initInactivityMonitor() {
   const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 mins
   const WARNING_TIME = 28 * 60 * 1000; // 28 mins
