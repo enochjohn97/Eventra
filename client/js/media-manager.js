@@ -613,12 +613,15 @@ function updateHeaderUI() {
 async function openFolder(id, name) {
     currentFolderId = id;
     currentFolderName = name;
-    
+
     const modal = document.getElementById('folderContentsModal');
     const nameEl = document.getElementById('modalFolderName');
     const grid = document.getElementById('folderMediaGrid');
     const emptyState = document.getElementById('modalEmptyState');
-    
+
+    // Guard: modal HTML is only present on media.html — bail out silently elsewhere
+    if (!modal || !nameEl || !emptyState) return;
+
     nameEl.textContent = name;
     if (grid) grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem;">Loading files...</div>';
     emptyState.style.display = 'none';

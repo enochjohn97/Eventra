@@ -26,7 +26,6 @@ async function openEventDetailsModal(eventIdOrData) {
 
   // 1. Show Loading Skeleton State
   modalContent.innerHTML = `
-    <button class="modal-close" onclick="closeEventDetailsModal()" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;">&times;</button>
     <div style="position: relative; height: 300px; border-radius: 16px 16px 0 0; margin: -2rem -2rem 2rem -2rem; background: #e5e7eb; animation: pulse 1.5s infinite ease-in-out;"></div>
     <div style="padding: 0 1rem;">
       <div style="height: 2.5rem; width: 70%; background: #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem; animation: pulse 1.5s infinite ease-in-out;"></div>
@@ -81,7 +80,6 @@ async function openEventDetailsModal(eventIdOrData) {
 
   } catch (error) {
     modalContent.innerHTML = `
-      <button class="modal-close" onclick="closeEventDetailsModal()" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;">&times;</button>
       <div style="padding: 3rem 1rem; text-align: center;">
         <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
         <h3 style="color: #111827; font-size: 1.5rem; margin-bottom: 0.5rem;">Oops!</h3>
@@ -156,8 +154,7 @@ function renderModalContent(container, eventData) {
 
   
   container.innerHTML = `
-    <button class="modal-close" onclick="closeEventDetailsModal()" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">&times;</button>
-    <button class="modal-share" onclick="shareEventFromModal('${escapeHTML(eventData.id)}', '${escapeHTML(eventData.event_name.replace(/'/g, "\\'"))}', '${escapeHTML((eventData.client_name || eventData.organizer_name || 'Eventra').replace(/'/g, "\\'"))}')" style="position: absolute; top: 1rem; right: 4rem; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Share Event">
+    <button class="modal-share" onclick="shareEventFromModal('${escapeHTML(eventData.id)}', '${escapeHTML(eventData.event_name.replace(/'/g, "\\'"))}', '${escapeHTML((eventData.client_name || eventData.organizer_name || 'Eventra').replace(/'/g, "\\'"))}')" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Share Event">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
     
@@ -557,4 +554,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 600);
   }
+});
+
+// Backdrop click close listener
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('eventDetailsModal');
+    if (modal && e.target === modal) {
+        if (typeof closeEventDetailsModal === 'function') closeEventDetailsModal();
+    }
 });

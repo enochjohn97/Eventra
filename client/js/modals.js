@@ -31,11 +31,10 @@ async function showProfileEditModal() {
     const genderVal = String(user.gender || '').toLowerCase();
 
     const modalHTML = `
-        <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true">
+        <div id="profileEditModal" class="modal-backdrop active" role="dialog" aria-modal="true" onclick="if(event.target===this) closeProfileEditModal()">
             <div class="modal-content modal-content-animate" style="max-width: 750px; display: flex; flex-direction: column;">
                 <div class="modal-header">
                     <h2>Edit Profile</h2>
-                    <button type="button" class="modal-close" onclick="closeProfileEditModal()">&times;</button>
                 </div>
 
                 <div class="modal-body" style="overflow-y: auto; padding-top: 0;">
@@ -260,26 +259,52 @@ async function showProfileEditModal() {
     window.switchWizardTab = function (step) {
         const form = document.getElementById('profileEditForm');
         if (!form) return;
-        const fromStep = Number(step) === 3 ? 2 : 1;
-        const stepRoot = form.querySelector('#wizardStep' + fromStep);
-        if (step > 1 && stepRoot && !window._isPasting) {
+
+        // Always validate the step we're leaving (step - 1) when moving forward
+        const fromStep = step - 1;
+        const stepRoot = fromStep >= 1 ? form.querySelector('#wizardStep' + fromStep) : null;
+
+        if (step > fromStep && fromStep >= 1 && stepRoot && !window._isPasting) {
+            let firstInvalid = null;
             let currentStepValid = true;
+
             stepRoot.querySelectorAll('[required]').forEach((field) => {
                 const val = String(field.value || '').trim();
+                // Remove any existing error span
+                const existingErr = field.parentElement.querySelector('.wizard-field-error');
+                if (existingErr) existingErr.remove();
+
                 if (!val) {
                     field.style.borderColor = '#ef4444';
-                    field.addEventListener('input', () => { field.style.borderColor = ''; }, { once: true });
+                    field.style.boxShadow = '0 0 0 2px rgba(239,68,68,0.15)';
                     currentStepValid = false;
+                    if (!firstInvalid) firstInvalid = field;
+
+                    // Inline error message
+                    const errSpan = document.createElement('span');
+                    errSpan.className = 'wizard-field-error';
+                    errSpan.style.cssText = 'color:#ef4444;font-size:0.75rem;display:block;margin-top:4px;';
+                    const lbl = field.closest('.form-group')?.querySelector('label')?.textContent?.replace('*','').trim() || 'This field';
+                    errSpan.textContent = `${lbl} is required.`;
+                    field.insertAdjacentElement('afterend', errSpan);
+
+                    // Reset on change OR input (covers selects, textareas, inputs)
+                    const clearError = () => {
+                        field.style.borderColor = '';
+                        field.style.boxShadow = '';
+                        const err = field.parentElement.querySelector('.wizard-field-error');
+                        if (err) err.remove();
+                    };
+                    field.addEventListener('input', clearError, { once: true });
+                    field.addEventListener('change', clearError, { once: true });
                 }
             });
+
             if (!currentStepValid) {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Missing Info',
-                        text: 'Please fill in all required fields before proceeding.',
-                        confirmButtonColor: '#722f37'
-                    });
+                // Scroll modal body to first invalid field
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstInvalid.focus();
                 }
                 return;
             }
@@ -299,6 +324,10 @@ async function showProfileEditModal() {
             tabEl.style.color = '#722f37';
             tabEl.style.borderBottomColor = '#722f37';
         }
+
+        // Scroll modal body back to top when switching steps
+        const modalBody = form.closest('.modal-body');
+        if (modalBody) modalBody.scrollTop = 0;
     };
 
     // Add window.handleKycPreview function

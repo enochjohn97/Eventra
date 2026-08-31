@@ -51,16 +51,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Global Modal Close Handler
 document.addEventListener("click", function(e) {
-    // Close on backdrop click (if clicking directly on the backdrop, not its children)
+    // Close on backdrop click (only when clicking directly on the backdrop element itself)
     if (e.target.classList.contains("modal-backdrop")) {
-        e.target.remove();
-    }
-    
-    // Close on 'x' or 'close' button click
-    const closeBtn = e.target.closest(".modal-close, .close-modal");
-    if (closeBtn) {
-        const modal = closeBtn.closest(".modal-backdrop");
-        if (modal) modal.remove();
+        // For persistent modals that use .active class, remove active rather than removing from DOM
+        if (e.target.id === 'folderContentsModal') {
+            if (typeof closeFolderContentsModal === 'function') closeFolderContentsModal();
+        } else if (e.target.id === 'profileEditModal') {
+            if (typeof closeProfileEditModal === 'function') closeProfileEditModal();
+        } else if (e.target.id === 'exportModal') {
+            e.target.classList.remove('active');
+        } else if (e.target.classList.contains('active')) {
+            // Generic active-class modal — remove active
+            e.target.classList.remove('active');
+        } else {
+            // Dynamically injected modals (no persistent ID) — safe to remove
+            e.target.remove();
+        }
     }
 });
 

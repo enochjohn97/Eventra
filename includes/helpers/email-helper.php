@@ -779,6 +779,10 @@ class EmailHelper
             $bgAttr = " background=\"{$safeImgSrc}\"";
         }
 
+        // Build download URL dynamically so it works across environments
+        $appBaseUrl = rtrim($_ENV['APP_URL'] ?? getenv('APP_URL') ?: 'https://eventra-website.liveblog365.com', '/');
+        $downloadUrl = $appBaseUrl . '/api/tickets/download-ticket.php?code=' . $barcode;
+
         $html = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -874,7 +878,7 @@ class EmailHelper
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:20px;">
   <tr>
     <td align="center">
-      <a href="https://eventra-website.liveblog365.com/api/tickets/download-ticket.php?code={$barcode}" style="display:inline-block;padding:14px 28px;background-color:#ff5a5f;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:700;border-radius:12px;box-shadow:0 4px 12px rgba(255,90,95,0.3);">
+      <a href="{$downloadUrl}" style="display:inline-block;padding:14px 28px;background-color:#ff5a5f;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:700;border-radius:12px;box-shadow:0 4px 12px rgba(255,90,95,0.3);">
         ⬇ Download Ticket
       </a>
     </td>

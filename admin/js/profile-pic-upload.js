@@ -13,11 +13,10 @@ class ProfilePicUpload {
 
     createModal() {
         const modalHTML = `
-            <div class="modal-backdrop" id="profilePicModal" style="display: none;">
+            <div class="modal-backdrop" id="profilePicModal" style="display: none;" onclick="if(event.target===this) window.profilePicUpload.closeModal()">
                 <div class="profile-pic-upload-modal">
                     <div class="upload-modal-header">
                         <h2>Update Profile Picture</h2>
-                        <span class="upload-modal-close">&times;</span>
                     </div>
                     <div class="upload-modal-body">
                         <div class="upload-dropzone" id="uploadDropzone">
@@ -60,10 +59,8 @@ class ProfilePicUpload {
         });
 
         // Close modal
-        const closeBtn = document.querySelector('.upload-modal-close');
         const cancelBtn = document.getElementById('cancelUploadBtn');
         
-        if (closeBtn) closeBtn.onclick = () => this.closeModal();
         if (cancelBtn) cancelBtn.onclick = () => this.closeModal();
 
         // Browse file button

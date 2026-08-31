@@ -149,14 +149,13 @@
     </div>
 
     <!-- Folder Contents Modal -->
-    <div class="modal-backdrop" id="folderContentsModal">
+    <div class="modal-backdrop" id="folderContentsModal" onclick="if(event.target===this) closeFolderContentsModal()">
         <div class="modal-content" style="max-width: 1200px; max-height: 90vh; width: 95vw; display: flex; flex-direction: column; padding: 0;">
             <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--client-border);">
                 <div>
                     <h2 id="modalFolderName" style="font-size: 1.25rem; margin: 0;">Folder Name</h2>
                     <p id="modalFileCount" style="font-size: 0.75rem; color: var(--client-text-muted); margin: 0;">0 files</p>
                 </div>
-                <button class="modal-close" onclick="closeFolderContentsModal()" style="font-size: 1.5rem;">&times;</button>
             </div>
             <div class="modal-body" style="padding: 1.5rem; overflow-y: auto; flex: 1;">
                 <div class="media-grid" id="folderMediaGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
