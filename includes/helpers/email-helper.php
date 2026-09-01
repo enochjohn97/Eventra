@@ -1053,7 +1053,7 @@ PDF;
         int $expiryMinutes = 10
     ): array {
         $isPasswordReset = stripos($actionText, 'reset') !== false;
-        $subjectText = $isPasswordReset ? "Reset password verification code: {$otp}" : "Your Eventra verification code: {$otp}";
+        $subjectText = $isPasswordReset ? "Reset password verification code" : "Your Eventra verification code";
         $subject = "=?UTF-8?B?" . base64_encode($subjectText) . "?=";
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $safeAction = htmlspecialchars($actionText, ENT_QUOTES, 'UTF-8');
