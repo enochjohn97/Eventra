@@ -53,10 +53,6 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('../../assets/images/flowering_bg.png');
-  background-size: cover;
-  background-position: left center;
-  background-repeat: no-repeat;
   opacity: 0.5; /* Significant visibility for a premium look */
   z-index: -1; /* Place behind form container */
   pointer-events: none;

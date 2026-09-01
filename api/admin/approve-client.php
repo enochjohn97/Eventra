@@ -118,13 +118,6 @@ try {
                         </td>
                     </tr>
                 </table>
-                <div style='margin-bottom: 20px; text-align: left;'>
-                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>in</a>
-                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>X</a>
-                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>ig</a>
-                    <a href='#' style='text-decoration: none; margin-right: 15px; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>fb</a>
-                    <a href='#' style='text-decoration: none; color: #888; font-weight: bold; font-size: 16px; font-family: monospace;'>tg</a>
-                </div>
                 <div style='font-size: 10px; color: #999; line-height: 1.5; text-align: justify;'>
                     <p>Legal Information. Eventra is a company providing event management and ticketing solutions. Services are provided in accordance with our terms and conditions.</p>
                     <p>Notice to the recipient. This message and any attachments are confidential and intended only for the use of the addressee(s) herein. If you are not the intended recipient, please notify the sender immediately and delete the original message.</p>

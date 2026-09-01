@@ -975,7 +975,26 @@ function createEventCard(event, index) {
         return "";
     }
   };
-  const priorityBadge = "";
+  
+  let priorityBadge = "";
+  const eventPriorityText = event.priority_label || event.priority || "";
+  if (eventPriorityText && !eventPriorityText.toLowerCase().includes("upcoming")) {
+    let displayPriority = eventPriorityText;
+    if (!event.priority_label && event.priority) {
+      displayPriority = `${getPriorityIcon(event.priority)} ${event.priority.charAt(0).toUpperCase() + event.priority.slice(1)}`;
+    }
+    let pColor = "#722f37";
+    let pBg = "white";
+    const lowerPriority = displayPriority.toLowerCase();
+    if (lowerPriority.includes("hot")) { pColor = "white"; pBg = "#ff4757"; }
+    else if (lowerPriority.includes("trending")) { pColor = "white"; pBg = "#3742fa"; }
+    else if (lowerPriority.includes("featured")) { pColor = "white"; pBg = "#2ed573"; }
+    else if (lowerPriority.includes("nearby")) { pColor = "white"; pBg = "#00b894"; }
+    
+    priorityBadge = `<div class="event-status-badge" style="color: ${pColor}; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pColor === 'white' ? pBg : pColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-left: 0.5rem;">
+      ${displayPriority}
+    </div>`;
+  }
 
   return `
     <div class="event-card" data-id="${event.id}" data-status="${status}" onclick="showEventModal(${event.id})">
@@ -1002,6 +1021,7 @@ function createEventCard(event, index) {
             <span class="status-dot" style="background-color: ${statusColor};"></span>
             ${statusLabel}
           </div>
+          ${priorityBadge}
         </div>
         
       </div>
@@ -1439,7 +1459,10 @@ function applyFilters() {
   }
 
   // Helper to check priority tag
-  const hasPriority = (e, tag) => e.priority && e.priority.toLowerCase().split(',').map(p => p.trim()).includes(tag);
+  const hasPriority = (e, tag) => {
+    const ep = (e.priority_label || e.priority || "").toLowerCase();
+    return ep.includes(tag.toLowerCase());
+  };
 
   // If priority tags are selected, sort those to the top
   if (filters.selectedPriorities.length > 0) {
