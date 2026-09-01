@@ -36,6 +36,13 @@ $existing = $stmt_existing->fetch() ?: [];
 $name           = isset($_POST['name']) && trim($_POST['name']) !== '' ? trim($_POST['name']) : ($existing['name'] ?? '');
 $business_name  = isset($_POST['business_name']) && trim($_POST['business_name']) !== '' ? trim($_POST['business_name']) : ($existing['business_name'] ?? '');
 $phone          = isset($_POST['phone']) && trim($_POST['phone']) !== '' ? trim($_POST['phone']) : ($existing['phone'] ?? '');
+
+// Validate phone: max 11 digits, digits only
+if ($phone !== '' && (!ctype_digit($phone) || strlen($phone) > 11)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Phone number must be numeric and at most 11 digits.']);
+    exit;
+}
 $address        = isset($_POST['address']) && trim($_POST['address']) !== '' ? trim($_POST['address']) : ($existing['address'] ?? '');
 $city           = isset($_POST['city']) && trim($_POST['city']) !== '' ? trim($_POST['city']) : ($existing['city'] ?? '');
 $state          = isset($_POST['state']) && trim($_POST['state']) !== '' ? trim($_POST['state']) : ($existing['state'] ?? '');

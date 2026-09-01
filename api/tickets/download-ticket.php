@@ -12,6 +12,10 @@ require_once '../../includes/helpers/ticket-helper.php';
 require_once '../../includes/helpers/email-helper.php';
 require_once '../../includes/middleware/auth.php';
 
+// Increase limits for PDF generation
+set_time_limit(120);
+ini_set('memory_limit', '256M');
+
 // We do not require a specific role, just any logged-in session.
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -117,11 +121,12 @@ try {
         }
 
         try {
+            // Fix: Disable external image loading during on-the-fly PDF generation to prevent Dompdf from timing out on Windows.
             if (empty($ticket['event_image']) && !empty($ticket['image_path'])) {
-                $ticket['event_image'] = $ticket['image_path'];
+                $ticket['event_image'] = null; // previously was $ticket['image_path']
             }
             $ticket = array_merge($ticket, [
-                'event_image'    => $ticket['image_path'] ?? null,
+                'event_image'    => null,
                 'ticket_type'    => $ticket['ticket_type'] ?? 'regular',
                 'amount'         => $ticket['amount'] ?? 0,
                 'quantity'       => $ticket['quantity'] ?? 1,

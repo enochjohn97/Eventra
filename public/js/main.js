@@ -574,6 +574,15 @@ function initUserIcon() {
       setVal("profileCity", user.city);
       setVal("profileAddress", user.address);
 
+      // Enforce digits-only and 11-char max on phone field
+      const phoneEl = document.getElementById("profilePhone");
+      if (phoneEl && !phoneEl._phoneLimited) {
+        phoneEl._phoneLimited = true;
+        phoneEl.addEventListener("input", () => {
+          phoneEl.value = phoneEl.value.replace(/\D/g, "").slice(0, 11);
+        });
+      }
+
       if (profileSideModal) profileSideModal.classList.add("open");
     });
   }
@@ -1339,14 +1348,6 @@ function getFilteredEvents(events, filters) {
         (event.category || event.event_type || "General").toLowerCase(),
       );
 
-    const eventPriorities = (event.priority_label || event.priority || "")
-      .toLowerCase()
-      .split(",")
-      .map((p) => p.trim());
-    const matchesPriority =
-      selectedPriorities.length === 0 ||
-      selectedPriorities.some((p) => eventPriorities.some(ep => ep.includes(p.toLowerCase())));
-
     // Fix: Force local time by appending T00:00:00 to avoid UTC midnight shift
     const eventDay = new Date((event.event_date || "") + "T00:00:00");
     const todayMidnight = new Date(
@@ -1355,6 +1356,17 @@ function getFilteredEvents(events, filters) {
       now.getDate(),
     );
     const isPassed = eventDay < todayMidnight;
+
+    const eventPriorities = (event.priority_label || event.priority || "")
+      .toLowerCase()
+      .split(",")
+      .map((p) => p.trim());
+    const matchesPriority =
+      selectedPriorities.length === 0 ||
+      selectedPriorities.some((p) => {
+        if (p.toLowerCase() === "upcoming") return !isPassed;
+        return eventPriorities.some(ep => ep.includes(p.toLowerCase()));
+      });
     const matchesStatus =
       selectedStatuses.length === 0 ||
       (selectedStatuses.includes("passed") && isPassed) ||

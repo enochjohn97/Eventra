@@ -154,6 +154,47 @@ async function showPaymentSuccess(reference, barcode) {
     if (actions) actions.style.display = 'flex';
     sessionStorage.removeItem('pending_order');
     sessionStorage.setItem('purchase_success_redirection', 'true');
+
+    // Wire up the Download Ticket button
+    const dlBtn = document.getElementById('downloadTicketBtn');
+    if (dlBtn && finalBarcode && finalBarcode !== 'N/A') {
+        dlBtn.onclick = async function () {
+            dlBtn.disabled = true;
+            dlBtn.textContent = '⏳ Preparing...';
+            try {
+                const dlUrl = `/api/tickets/download-ticket.php?code=${encodeURIComponent(finalBarcode)}`;
+                const resp = await fetch(dlUrl, { credentials: 'include' });
+                if (!resp.ok) {
+                    const errData = await resp.json().catch(() => ({}));
+                    throw new Error(errData.message || 'Download failed');
+                }
+                const blob = await resp.blob();
+                const objUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = `eventra_ticket_${finalBarcode}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { URL.revokeObjectURL(objUrl); a.remove(); }, 5000);
+                dlBtn.textContent = '✓ Downloaded!';
+            } catch (err) {
+                dlBtn.textContent = '⬇ Download Ticket';
+                alert('Could not download ticket: ' + (err.message || 'Unknown error'));
+            } finally {
+                dlBtn.disabled = false;
+            }
+        };
+    }
+
+    if (order && order.event_id) {
+        try {
+            const evRes = await apiFetch(`/api/events/get-event-details.php?event_id=${order.event_id}`);
+            const evResult = await evRes.json();
+            if (evResult.success && evResult.event && typeof renderSummary === 'function') {
+                renderSummary(evResult.event, order.quantity || 1, order.ticket_type || 'regular');
+            }
+        } catch(e) {}
+    }
 }
 
 async function startPolling(reference) {

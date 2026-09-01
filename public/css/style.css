@@ -1307,7 +1307,8 @@ body {
 }
 
 .save-profile-btn:hover {
-  background-color: var(--success-hover);
+  background-color: var(--primary-color);
+  color: white !important;
   transform: translateY(-2px);
 }
 

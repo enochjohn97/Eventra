@@ -795,6 +795,7 @@ class EmailHelper
     .ticket-desktop td[width="550"] { width: 73% !important; }
     .ticket-desktop td[width="198"] { width: 27% !important; padding: 12px 8px !important; }
   }
+  a, a[href] { color: inherit !important; text-decoration: none !important; }
 </style>
 </head>
 <body style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
@@ -937,6 +938,7 @@ HTML;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
   }
+  a, a[href] { color: inherit !important; text-decoration: none !important; }
   table { border-collapse: collapse; }
   .event-title {
     font-size: 20pt;
