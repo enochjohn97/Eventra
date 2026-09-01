@@ -112,29 +112,7 @@ try {
     ];
     $kycUpdates = [];
 
-    // Optional: we enforce mandatory validation if the client is submitting for verification
-    // Since this endpoint is for profile update, if any of the KYC fields is missing, we check if they already uploaded it
-    // Wait, the prompt says "Add mandatory client-side and server-side validation for all KYC document fields"
-    // I will use validateKycDocuments to enforce it if they are updating KYC.
-    require_once '../../includes/helpers/validation.php';
-    
-    // Determine which KYC fields are actually uploaded
-    $uploadedKycs = [];
-    foreach ($kycFiles as $field) {
-        if (isset($_FILES[$field]) && $_FILES[$field]['error'] !== UPLOAD_ERR_NO_FILE) {
-            $uploadedKycs[] = $field;
-        }
-    }
-    
-    if (!empty($uploadedKycs)) {
-        $kycVal = validateKycDocuments($_FILES, $uploadedKycs);
-        if (!$kycVal['valid']) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            http_response_code(422);
-            echo json_encode(['success' => false, 'message' => implode('. ', $kycVal['errors'])]);
-            exit;
-        }
-    }
+    // KYC file validation (extension, MIME type, size) is handled inline below.
 
     $allowedKycExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
     foreach ($kycFiles as $field) {
