@@ -555,18 +555,8 @@ class EmailHelper
         );
 
         if (!$forPdf) {
-            if (!empty($ticketData['qr_cid'])) {
-                // Embedded image via CID (PHPMailer addEmbeddedImage)
-                $qrSrc = 'cid:' . $ticketData['qr_cid'];
-            } elseif (!empty($ticketData['qr_base64'])) {
-                // Caller already provided base64
-                $b64 = $ticketData['qr_base64'];
-                $qrSrc = str_starts_with($b64, 'data:') ? $b64 : 'data:image/png;base64,' . $b64;
-            } else {
-                // Use absolute URL for the QR code in emails to ensure it displays correctly
-                $baseAppUrl = rtrim(defined('APP_URL') ? APP_URL : ($_ENV['APP_URL'] ?? ''), '/');
-                $qrSrc = $baseAppUrl . '/public/assets/imgs/qr.png';
-            }
+            $verificationUrl = self::buildVerificationUrl($ticketData);
+            $qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data=' . urlencode($verificationUrl);
         } else {
             // 🔥 FIX: Use self::generateQrDataUri (which now always returns base64 or empty)
             $qrSrc = self::generateQrDataUri($ticketData, $staticQrPath, false);
