@@ -20,7 +20,35 @@
   <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
 
   <style>
-    .login-right { display: flex !important; }
+    body { overflow: hidden; }
+    .login-container {
+        position: relative;
+        background: radial-gradient(circle at 15% 25%, rgba(124,58,237,0.12) 0%, transparent 45%),
+                    radial-gradient(circle at 85% 75%, rgba(167,139,250,0.12) 0%, transparent 45%),
+                    #0f172a;
+    }
+    .login-left {
+        flex: 0 0 50%;
+        background: transparent;
+        border-right: none;
+    }
+    .login-right {
+        flex: 0 0 50%;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: transparent;
+    }
+    .slider-images {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+        height: 75vh;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 32px 64px rgba(0,0,0,0.5);
+    }
     .login-right .overlay-gradient { display: none; }
   </style>
 </head>

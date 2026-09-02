@@ -19,8 +19,15 @@
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
 
     <style>
-        .login-right { display: flex !important; }
-        .login-right .overlay-gradient { display: none; }
+        .login-container { position: relative; }
+        .login-left {
+            flex: 0 0 100%;
+            border-right: none;
+            background: radial-gradient(circle at 15% 25%, rgba(124,58,237,0.18) 0%, transparent 45%),
+                        radial-gradient(circle at 85% 75%, rgba(167,139,250,0.18) 0%, transparent 45%),
+                        #0f172a;
+        }
+        .login-right { display: none !important; }
     </style>
 </head>
 <body>
