@@ -483,8 +483,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.success && data.events && data.events.length > 0) {
-                const events = data.events.filter(e => e.image_path);
+                let events = data.events.filter(e => e.image_path);
                 if (events.length === 0) return;
+
+                // Shuffle events for random display
+                events = events.sort(() => 0.5 - Math.random());
 
                 // Inject images
                 sliderContainer.innerHTML = events.map((event, index) => {
@@ -498,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return `
                         <img src="${imgUrl}" 
                              alt="${escapeHTML(event.event_name)}" 
-                             class="slider-img ${index === 0 ? 'active' : ''}" 
+                             class="slider-img bouncy-image ${index === 0 ? 'active' : ''}" 
                              data-index="${index}"
                              onerror="this.style.display='none'">
                     `;

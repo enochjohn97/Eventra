@@ -66,7 +66,7 @@ body {
 /* Right Side - Slider Area */
 .login-right {
   flex: 0 0 50%;
-  background: #ffffff;
+  background: transparent;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -139,7 +139,7 @@ body {
 /* Right Side - Form */
 .login-right {
   flex: 0 0 50%; /* Equal partition */
-  background: #ffffff;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -677,3 +677,13 @@ input[type="password"]::-ms-clear {
 
 /* SweetAlert2 Modal Override */
 .swal2-container { z-index: 999999999 !important; }
+
+@keyframes bounceFloat {
+  0%   { transform: translateY(0px) scale(1); }
+  50%  { transform: translateY(-14px) scale(1.01); }
+  100% { transform: translateY(0px) scale(1); }
+}
+
+.slider-img.bouncy-image {
+  animation: bounceFloat 5s ease-in-out infinite;
+}

@@ -258,7 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.success && data.events && data.events.length > 0) {
-                const eventsWithImages = data.events.filter(e => e.image_path);
+                let eventsWithImages = data.events.filter(e => e.image_path);
+
+                // Shuffle for random display
+                eventsWithImages = eventsWithImages.sort(() => 0.5 - Math.random());
 
                 if (eventsWithImages.length === 0) {
                     showFallback();
@@ -268,8 +271,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Inject images
                 sliderContainer.innerHTML = eventsWithImages.map((event, index) => {
                     const cleanPath = event.image_path.replace(/^\/+/, '');
-                    // Normalize path: Ensure it points to the correct location relative to admin/pages/
-                    // If it already starts with public/, keep it. If it starts with assets/, it might be missing public/
                     let webPath = cleanPath;
                     if (cleanPath.startsWith('assets/') && !cleanPath.includes('public/')) {
                         webPath = 'public/' + cleanPath;
@@ -280,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return `
                         <img src="${imgUrl}" 
                              alt="${escapeHTML(event.event_name)}" 
-                             class="slider-img ${index === 0 ? 'active' : ''}" 
+                             class="slider-img bouncy-image ${index === 0 ? 'active' : ''}" 
                              data-index="${index}"
                              onerror="this.style.display='none'">
                     `;
