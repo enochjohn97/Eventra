@@ -874,6 +874,7 @@ async function handleProfileUpdate(e) {
         if (profileResult.user) {
             storage.set('client_user', profileResult.user);
             if (window.storage) window.storage.set('user', profileResult.user);
+            if (window.authController) window.authController.user = profileResult.user;
 
             document.dispatchEvent(new CustomEvent('EventraProfileUpdated', {
                 detail: profileResult.user

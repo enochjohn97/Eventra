@@ -632,6 +632,7 @@ function initUserIcon() {
 
         if (result.success) {
           if (window.storage) window.storage.set(keys.user, result.user);
+          if (window.authController) window.authController.user = result.user;
           showNotification("Profile updated successfully!", "success");
           if (profileSideModal) profileSideModal.classList.remove("open");
           setupUI(); // Refresh icon and label immediately
