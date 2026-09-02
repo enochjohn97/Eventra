@@ -1254,8 +1254,8 @@ PDF;
     public static function regeneratePdf(array $ticketData, string $outputPath): bool
     {
         try {
-            $autoloadPath = realpath(__DIR__ . '/../../vendor/autoload.php');
-            if ($autoloadPath && file_exists($autoloadPath)) {
+            $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
+            if (file_exists($autoloadPath)) {
                 require_once $autoloadPath;
             }
 

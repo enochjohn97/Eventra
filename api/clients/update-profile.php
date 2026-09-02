@@ -229,16 +229,21 @@ try {
         $_SESSION['last_activity'] = time();
     }
 
-    require_once '../utils/notification-helper.php';
-    createNotification($client_auth_id, "Your profile has been updated successfully.", 'profile_updated', $client_auth_id, 'client', 'client');
-
-    $admin_id = getAdminUserId();
-    if ($admin_id) {
-        $client_name = $updated_client['business_name'] ?? $updated_client['name'];
-        createClientProfileUpdatedNotification($admin_id, $client_auth_id, $client_name);
-    }
-
     $pdo->commit();
+
+    try {
+        require_once '../utils/notification-helper.php';
+        createNotification($client_auth_id, "Your profile has been updated successfully.", 'profile_updated', $client_auth_id, 'client', 'client');
+        
+        $stmt = $pdo->query("SELECT id FROM auth_accounts WHERE role = 'admin' LIMIT 1");
+        $admin_id = $stmt->fetchColumn();
+        if ($admin_id) {
+            $client_name = $updated_client['business_name'] ?? $updated_client['name'];
+            createClientProfileUpdatedNotification($admin_id, $client_auth_id, $client_name);
+        }
+    } catch (Throwable $e) {
+        error_log("Client profile updated but failed to send notification: " . $e->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

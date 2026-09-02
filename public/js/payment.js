@@ -365,7 +365,10 @@ function renderSummary(event, qty, ticketType = 'regular') {
     else if (ticketType === 'premium' && event.premium_price) priceNum = parseFloat(event.premium_price);
     else if (ticketType === 'regular' && event.regular_price) priceNum = parseFloat(event.regular_price);
 
-    const total = priceNum * qty;
+    const baseTotal = priceNum * qty;
+    // Include 10% Eventra platform fee to match what was actually charged
+    const surcharge = baseTotal * 0.10;
+    const total = baseTotal + surcharge;
     const typeLabel = priceNum === 0 ? 'Free' : ticketType;
     const container = document.getElementById('summaryContent');
     if (!container) return;
@@ -408,7 +411,7 @@ function renderSummary(event, qty, ticketType = 'regular') {
         </div>
         <div class="summary-total">
             <span>Amount Paid</span>
-            <span>${(event.amount !== undefined ? parseFloat(event.amount) : total) === 0 ? 'FREE' : '₦' + (event.amount !== undefined ? parseFloat(event.amount) : total).toLocaleString()}</span>
+            <span>${(event.amount !== undefined ? parseFloat(event.amount) : total) === 0 ? 'FREE' : '\u20a6' + (event.amount !== undefined ? parseFloat(event.amount) : total).toLocaleString()}</span>
         </div>
     `;
 }

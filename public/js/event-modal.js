@@ -129,14 +129,16 @@ function renderModalContent(container, eventData) {
 
   // Get active modes from metadata (ticket_type_mode)
   let modes = (eventData.ticket_type_mode || 'all').split(',').map(m => m.trim().toLowerCase());
-  
+  // Apply 10% Eventra platform fee so modal price matches checkout
+  const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
   if (modes.includes('all') || modes.length === 0) {
-      eventPriceDisplay = legacyPrice > 0 ? `₦${legacyPrice.toLocaleString()}` : 'Free';
+      const legacyWithFee = applyFee(legacyPrice);
+      eventPriceDisplay = legacyWithFee > 0 ? `₦${legacyWithFee.toLocaleString()}` : 'Free';
   } else {
       let priceParts = [];
-      if (modes.includes('regular')) priceParts.push(regPrice);
-      if (modes.includes('vip')) priceParts.push(vipPrice);
-      if (modes.includes('premium')) priceParts.push(premPrice);
+      if (modes.includes('regular')) priceParts.push(applyFee(regPrice));
+      if (modes.includes('vip')) priceParts.push(applyFee(vipPrice));
+      if (modes.includes('premium')) priceParts.push(applyFee(premPrice));
       
       const maxP = Math.max(...priceParts);
       const minP = Math.min(...priceParts);

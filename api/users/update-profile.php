@@ -127,10 +127,14 @@ try {
         $_SESSION['last_activity'] = time();
     }
 
-    require_once '../utils/notification-helper.php';
-    createNotification($user_auth_id, "Your profile has been updated successfully.", 'profile_updated', $user_auth_id);
-
     $pdo->commit();
+
+    try {
+        require_once '../utils/notification-helper.php';
+        createNotification($user_auth_id, "Your profile has been updated successfully.", 'profile_updated', $user_auth_id);
+    } catch (Throwable $e) {
+        error_log("Profile updated but failed to send notification: " . $e->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

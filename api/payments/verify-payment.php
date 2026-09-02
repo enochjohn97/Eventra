@@ -375,15 +375,26 @@ try {
         echo $responsePayload;
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
-        }
-
-        if (!empty($ticketJobReady ?? false)) {
-            if (!defined('RUNNING_INLINE')) {
-                define('RUNNING_INLINE', true);
+            if (!empty($ticketJobReady ?? false)) {
+                if (!defined('RUNNING_INLINE')) {
+                    define('RUNNING_INLINE', true);
+                }
+                global $globalJobData;
+                $globalJobData = $jobData;
+                include_once $processorPath;
             }
-            global $globalJobData;
-            $globalJobData = $jobData;
-            include_once $processorPath;
+        } else {
+            if (!empty($ticketJobReady ?? false)) {
+                // Trigger asynchronously via cURL to prevent blocking checkout
+                $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/api/utils/process-ticket-queue.php';
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+                curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_exec($ch);
+                curl_close($ch);
+            }
         }
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
