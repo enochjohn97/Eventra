@@ -138,6 +138,10 @@ foreach ($files as $jobFile) {
                     $order_id ?? 0,
                     $genError->getMessage()
                 ));
+                // Move job to dead-letter queue and abort this job
+                $failedJobFile = str_replace('.json', '.failed.json', $jobFile);
+                @rename($jobFile, $failedJobFile);
+                continue 2; // Skip processing the rest of this job's barcodes
             }
         }
 

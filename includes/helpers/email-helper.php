@@ -865,17 +865,6 @@ class EmailHelper
 </td></tr>
 </table>
 
-<!-- Download Ticket Button Section -->
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:20px;">
-  <tr>
-    <td align="center">
-      <a href="{$downloadUrl}" style="display:inline-block;padding:14px 28px;background-color:#ff5a5f;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:700;border-radius:12px;box-shadow:0 4px 12px rgba(255,90,95,0.3);">
-        ⬇ Download Ticket
-      </a>
-    </td>
-  </tr>
-</table>
-
 </body>
 </html>
 HTML;
@@ -1235,28 +1224,7 @@ PDF;
 
         $qrPathRaw = $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? '';
         $resolvedQrPath = self::resolveLocalPath($qrPathRaw);
-        if ($resolvedQrPath !== '') {
-            $uniqueQrCid = 'qr_code_' . substr(md5($barcode), 0, 8);
-            $embeddedImages[] = [
-                'path' => $resolvedQrPath,
-                'cid'  => $uniqueQrCid,
-                'name' => 'qr_code.png'
-            ];
-            $ticketData['qr_cid'] = $uniqueQrCid;
-        } else if (!empty($ticketData['qr_base64'])) {
-            // Write base64 to temp file and attach as CID to avoid Gmail stripping data URI
-            $tmpPath = sys_get_temp_dir() . '/qr_' . md5($barcode) . '.png';
-            $decoded = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $ticketData['qr_base64']));
-            if ($decoded && file_put_contents($tmpPath, $decoded)) {
-                $uniqueQrCid = 'qr_code_' . substr(md5($barcode), 0, 8);
-                $embeddedImages[] = [
-                    'path' => $tmpPath,
-                    'cid'  => $uniqueQrCid,
-                    'name' => 'qr_code.png'
-                ];
-                $ticketData['qr_cid'] = $uniqueQrCid;
-            }
-        }
+        // QR Code attachment removed as requested. Ticket PDF is attached via $validPdfPaths.
 
         $eventImgRaw = $ticketData['event_image'] ?? '';
         $resolvedEventImgPath = self::resolveLocalPath($eventImgRaw);
@@ -1292,8 +1260,12 @@ PDF;
             }
 
             if (!class_exists('Dompdf\Dompdf')) {
-                error_log('[EmailHelper] Dompdf class not found. Run composer require dompdf/dompdf.');
-                return false;
+                throw new \Exception('Dompdf class not found. Run composer require dompdf/dompdf.');
+            }
+
+            $outputDir = dirname($outputPath);
+            if (!is_dir($outputDir) || !is_writable($outputDir)) {
+                throw new \Exception("Output directory is not writable: {$outputDir}");
             }
 
             // Generate raw HTML for the PDF using the existing builder
@@ -1312,14 +1284,17 @@ PDF;
             $dompdf->render();
 
             $output = $dompdf->output();
-            if ($output !== null && file_put_contents($outputPath, $output) !== false) {
-                return true;
+            if ($output === null || file_put_contents($outputPath, $output) === false) {
+                throw new \Exception('Failed to write PDF file to disk.');
+            }
+            if (filesize($outputPath) === 0) {
+                throw new \Exception('Generated PDF file is empty (0 bytes).');
             }
             
-            return false;
+            return true;
         } catch (\Throwable $e) {
             error_log('[EmailHelper] PDF regeneration error: ' . $e->getMessage());
-            return false;
+            throw new \Exception('PDF generation failed: ' . $e->getMessage());
         }
     }
 }
