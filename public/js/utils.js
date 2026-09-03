@@ -409,12 +409,13 @@ function showNotification(message, type = 'info') {
 /* Shared validation for login, signup, event and profile forms. */
 (function () {
   const style = document.createElement('style');
-  style.textContent = '.eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;pointer-events:none}.login-form .eventra-field-wrap{display:flex;align-items:center;gap:.55rem}.login-form .eventra-field-wrap>.form-input,.login-form .eventra-field-wrap>input,.login-form .eventra-field-wrap>select,.login-form .eventra-field-wrap>textarea{flex:1;min-width:0}.login-form .eventra-state-icon{position:static;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;flex:0 0 1.1rem;transform:none}.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem!important;margin-top:.3rem}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}';
+  style.textContent = '.eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;line-height:1;pointer-events:none}.login-form .eventra-field-wrap{display:block}.login-form .input-icon,.login-form .toggle-password{top:50%;transform:translateY(-50%)}.login-form .eventra-state-icon{right:2.75rem;top:50%;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;transform:translateY(-50%);z-index:2}.form-input.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.form-input.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.form-input.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem!important;margin-top:.3rem}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}';
   document.head.appendChild(style);
 
   function fieldMessage(field, message) {
     const parent = field.closest('.form-group,.form-field') || field.parentElement;
-    let msg = parent.querySelector('.eventra-field-message');
+    const isAuthField = !!field.closest('.login-form');
+    let msg = isAuthField ? parent.closest('.form-group,.form-field')?.querySelector('.error-message') : parent.querySelector('.eventra-field-message');
     if (!msg) { msg = document.createElement('div'); msg.className = 'eventra-field-message'; parent.appendChild(msg); }
     msg.textContent = message || '';
     msg.style.display = message ? 'block' : 'none';
@@ -426,12 +427,9 @@ function showNotification(message, type = 'info') {
       wrapper.classList.add('eventra-field-wrap');
       const icon = document.createElement('span');
       icon.className = 'eventra-state-icon';
-      if (isAuthField) wrapper.parentElement.insertBefore(icon, wrapper.nextSibling);
-      else wrapper.appendChild(icon);
+      wrapper.appendChild(icon);
     }
-    const icon = isAuthField
-      ? (wrapper.nextElementSibling?.classList.contains('eventra-state-icon') ? wrapper.nextElementSibling : null)
-      : wrapper.querySelector('.eventra-state-icon');
+    const icon = wrapper.querySelector('.eventra-state-icon');
     if (!icon) return;
     field.classList.remove('eventra-warning','eventra-error','eventra-success');
     field.classList.add('eventra-' + state);
