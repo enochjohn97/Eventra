@@ -350,10 +350,14 @@ try {
                 'quantity' => $quantity
             ];
 
+            $jobFile = '';
             if (is_dir($jobDir)) {
                 $jobFile = $jobDir . 'ticket_' . $reference . '.json';
-                file_put_contents($jobFile, json_encode($jobData));
+                if (@file_put_contents($jobFile, json_encode($jobData), LOCK_EX) === false) {
+                    $jobFile = '';
+                }
             }
+            $runTicketJobInline = ($jobFile === '');
 
             $processorPath = __DIR__ . '/../utils/process-ticket-queue.php';
             $ticketJobReady = true;
@@ -375,7 +379,7 @@ try {
         echo $responsePayload;
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
-            if (!empty($ticketJobReady ?? false)) {
+            if (!empty($ticketJobReady ?? false) && ($runTicketJobInline ?? false)) {
                 if (!defined('RUNNING_INLINE')) {
                     define('RUNNING_INLINE', true);
                 }
@@ -384,7 +388,14 @@ try {
                 include_once $processorPath;
             }
         } else {
-            if (!empty($ticketJobReady ?? false)) {
+            if (!empty($ticketJobReady ?? false) && ($runTicketJobInline ?? false)) {
+                if (!defined('RUNNING_INLINE')) {
+                    define('RUNNING_INLINE', true);
+                }
+                global $globalJobData;
+                $globalJobData = $jobData;
+                include_once $processorPath;
+            } elseif (!empty($ticketJobReady ?? false)) {
                 // Trigger asynchronously via cURL to prevent blocking checkout
                 $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/api/utils/process-ticket-queue.php';
                 $ch = curl_init($url);

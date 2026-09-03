@@ -11,7 +11,10 @@
 set_time_limit(300); // 5-minute max execution time
 
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../vendor/autoload.php';
+$autoload = __DIR__ . '/../../vendor/autoload.php';
+if (file_exists($autoload)) {
+    require_once $autoload;
+}
 require_once __DIR__ . '/../../includes/helpers/ticket-helper.php';
 require_once __DIR__ . '/../../includes/helpers/email-helper.php';
 require_once __DIR__ . '/../../includes/helpers/sms-helper.php';

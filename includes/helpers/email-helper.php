@@ -1270,7 +1270,7 @@ PDF;
             }
 
             if (!class_exists('Dompdf\Dompdf')) {
-                throw new \Exception('Dompdf class not found. Run composer require dompdf/dompdf.');
+                return self::writeFallbackPdf($ticketData, $outputPath);
             }
 
             $outputDir = dirname($outputPath);
@@ -1306,6 +1306,45 @@ PDF;
             error_log('[EmailHelper] PDF regeneration error: ' . $e->getMessage());
             throw new \Exception('PDF generation failed: ' . $e->getMessage());
         }
+    }
+
+    private static function writeFallbackPdf(array $ticketData, string $outputPath): bool
+    {
+        $lines = [
+            'EVENTRA TICKET',
+            'Event: ' . ($ticketData['event_name'] ?? 'Event'),
+            'Attendee: ' . ($ticketData['buyer_name'] ?? $ticketData['user_name'] ?? 'Attendee'),
+            'Date: ' . ($ticketData['event_date'] ?? 'TBC'),
+            'Time: ' . ($ticketData['event_time'] ?? 'TBC'),
+            'Venue: ' . ($ticketData['address'] ?? $ticketData['location'] ?? 'See event details'),
+            'Ticket ID: ' . ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? 'N/A'),
+        ];
+        $escape = static fn(string $v): string => str_replace(['\\', '(', ')'], ['\\\\', '\(', '\)'], $v);
+        $stream = "BT\n/F1 16 Tf\n50 790 Td\n";
+        foreach ($lines as $i => $line) {
+            if ($i > 0) $stream .= "0 -32 Td\n";
+            $stream .= '(' . $escape((string)$line) . ") Tj\n";
+        }
+        $stream .= "ET\n";
+        $objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+            "<< /Length " . strlen($stream) . " >>\nstream\n" . $stream . "endstream",
+        ];
+        $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+        $offsets = [0];
+        foreach ($objects as $i => $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($i + 1) . " 0 obj\n" . $object . "\nendobj\n";
+        }
+        $pdf .= "%" . str_repeat(" ", 512) . "\n";
+        $xref = strlen($pdf);
+        $pdf .= "xref\n0 6\n0000000000 65535 f \n";
+        for ($i = 1; $i <= 5; $i++) $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        $pdf .= "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF\n";
+        return file_put_contents($outputPath, $pdf, LOCK_EX) !== false && filesize($outputPath) > 0;
     }
 }
 
