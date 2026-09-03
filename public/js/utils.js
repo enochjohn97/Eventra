@@ -409,7 +409,7 @@ function showNotification(message, type = 'info') {
 /* Shared validation for login, signup, event and profile forms. */
 (function () {
   const style = document.createElement('style');
-  style.textContent = '.eventra-field-wrap{position:relative}.eventra-field-wrap>.input-icon{display:none}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:2.7rem!important}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;pointer-events:none}.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem;margin-top:.3rem;color:#EF4444}';
+  style.textContent = '.eventra-field-wrap{position:relative}.eventra-field-wrap>.input-icon{display:none}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:2.7rem!important}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;pointer-events:none}.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem!important;margin-top:.3rem}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}';
   document.head.appendChild(style);
 
   function fieldMessage(field, message) {
@@ -434,6 +434,8 @@ function showNotification(message, type = 'info') {
     icon.textContent = state === 'success' ? '✓' : state === 'error' ? '×' : '⚠';
     icon.style.color = state === 'success' ? '#10B981' : state === 'error' ? '#EF4444' : '#F59E0B';
     fieldMessage(field, message);
+    const messageEl = (field.closest('.form-group,.form-field') || field.parentElement).querySelector('.eventra-field-message');
+    if (messageEl) messageEl.className = 'eventra-field-message eventra-msg-' + state;
   }
   function validateField(field, form) {
     if (field.disabled || field.type === 'hidden' || field.type === 'file' || field.dataset.skipValidation === 'true') return true;
