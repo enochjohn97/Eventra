@@ -406,6 +406,78 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
+/* Shared validation for login, signup, event and profile forms. */
+(function () {
+  const style = document.createElement('style');
+  style.textContent = '.eventra-field-wrap{position:relative}.eventra-field-wrap>.input-icon{display:none}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:2.7rem!important}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;pointer-events:none}.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem;margin-top:.3rem;color:#EF4444}';
+  document.head.appendChild(style);
+
+  function fieldMessage(field, message) {
+    const parent = field.closest('.form-group,.form-field') || field.parentElement;
+    let msg = parent.querySelector('.eventra-field-message');
+    if (!msg) { msg = document.createElement('div'); msg.className = 'eventra-field-message'; parent.appendChild(msg); }
+    msg.textContent = message || '';
+    msg.style.display = message ? 'block' : 'none';
+  }
+  function setState(field, state, message = '') {
+    const wrapper = field.parentElement;
+    if (!wrapper.classList.contains('eventra-field-wrap')) {
+      wrapper.classList.add('eventra-field-wrap');
+      const icon = document.createElement('span');
+      icon.className = 'eventra-state-icon';
+      wrapper.appendChild(icon);
+    }
+    const icon = wrapper.querySelector('.eventra-state-icon');
+    field.classList.remove('eventra-warning','eventra-error','eventra-success');
+    field.classList.add('eventra-' + state);
+    icon.className = 'eventra-state-icon eventra-' + state;
+    icon.textContent = state === 'success' ? '✓' : state === 'error' ? '×' : '⚠';
+    icon.style.color = state === 'success' ? '#10B981' : state === 'error' ? '#EF4444' : '#F59E0B';
+    fieldMessage(field, message);
+  }
+  function validateField(field, form) {
+    if (field.disabled || field.type === 'hidden' || field.type === 'file' || field.dataset.skipValidation === 'true') return true;
+    const value = String(field.value || '').trim();
+    if (!value && (field.required || field.getAttribute('aria-required') === 'true')) { setState(field, 'warning', 'This field is required.'); return false; }
+    if (!value) return true;
+    if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { setState(field, 'error', 'Enter a valid email address.'); return false; }
+    if (field.name && /phone|mobile/i.test(field.name) && !/^\d{7,15}$/.test(value.replace(/\s+/g,''))) { setState(field, 'error', 'Enter a valid phone number.'); return false; }
+    if (field.type === 'password' && value.length < 8) { setState(field, 'warning', 'Use at least 8 characters.'); return false; }
+    const confirm = form && form.querySelector('[name*="confirm"],#confirmPassword');
+    if (confirm && field === confirm && confirm.value !== form.querySelector('input[type="password"]')?.value) { setState(field, 'error', 'Passwords do not match.'); return false; }
+    setState(field, 'success'); return true;
+  }
+  function validateForm(form) {
+    let valid = true, first = null;
+    form.querySelectorAll('input,select,textarea').forEach(field => { if (!validateField(field, form)) { valid = false; first ||= field; } });
+    if (!valid) { showNotification('All required fields must be filled out.', 'error'); first?.focus(); }
+    return valid;
+  }
+  window.eventraValidateForm = validateForm;
+  window.eventraApplyApiErrors = function (form, payload) {
+    const errors = payload?.errors || payload?.validation_errors || {};
+    Object.entries(errors).forEach(([key, value]) => {
+      const field = form.querySelector('[name="' + key + '"],#' + key);
+      if (field) setState(field, 'error', Array.isArray(value) ? value[0] : String(value));
+    });
+    if (Object.keys(errors).length) showNotification(payload.message || 'Please correct the highlighted fields.', 'error');
+  };
+  window.eventraValidationSuccess = (form, message = 'Saved successfully.') => { showNotification(message, 'success'); };
+  function attach(form) {
+    if (!form || form.dataset.eventraValidation) return;
+    form.dataset.eventraValidation = '1'; form.noValidate = true;
+    form.querySelectorAll('input,select,textarea').forEach(field => {
+      field.addEventListener('blur', () => validateField(field, form));
+      field.addEventListener('input', () => { if (field.classList.contains('eventra-error') || field.classList.contains('eventra-warning')) validateField(field, form); });
+      field.addEventListener('change', () => validateField(field, form));
+    });
+    form.addEventListener('submit', event => { if (!validateForm(form)) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  }
+  const scan = () => document.querySelectorAll('form').forEach(attach);
+  document.addEventListener('DOMContentLoaded', scan);
+  new MutationObserver(scan).observe(document.documentElement, {childList:true, subtree:true});
+})();
+
 
 
 // Auth helpers - Rely on window.storage for consistency
