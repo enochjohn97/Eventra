@@ -102,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+            errorElement.style.color = '#EF4444';
         }
         const inputId = elementId.replace('Error', '');
         const inputElement = document.getElementById(inputId);

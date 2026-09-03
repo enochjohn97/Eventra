@@ -10,7 +10,9 @@
   --login-text-light: #999999;
   --login-border: #e0e0e0;
   --login-input-bg: #ffffff;
-  --login-error: #fcfbfb;
+  --login-error: #EF4444;
+  --login-warning: #F59E0B;
+  --login-success: #10B981;
   --login-success: #388e3c;
   
   /* Shadows */

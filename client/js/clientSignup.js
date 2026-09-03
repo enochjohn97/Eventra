@@ -81,13 +81,20 @@ document.addEventListener('DOMContentLoaded', () => {
             let isValid = true;
             resetErrors();
 
-            if (fullNameInput.value.trim().length < 2) {
-                showError('fullNameError', 'Please enter your full name');
+            const fullName = fullNameInput.value.trim();
+            const businessName = businessNameInput?.value.trim() || '';
+            if (!/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(fullName)) {
+                showError('fullNameError', 'Enter your first and last name using letters only.');
                 isValid = false;
             }
 
             if (!validateEmail(emailInput.value)) {
                 showError('emailError', 'Please enter a valid email address');
+                isValid = false;
+            }
+
+            if (intent === 'client' && !/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/.test(businessName)) {
+                showError('businessNameError', 'Enter a valid business name (letters and numbers only).');
                 isValid = false;
             }
 
@@ -113,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+            errorElement.style.color = '#EF4444';
         }
         
         const inputId = elementId.replace('Error', '');
