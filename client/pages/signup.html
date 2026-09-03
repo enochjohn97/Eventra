@@ -28,6 +28,15 @@
                         #0a0a0f;
         }
         .login-right { display: none !important; }
+        .login-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #fff; padding: 1rem; }
+        .login-left { flex: 0 0 auto; width: 100%; background: #fff; }
+        .login-right { display: none !important; }
+        .login-form-container { background: #fff !important; border: 1px solid #e5e7eb; box-shadow: 0 20px 50px rgba(15,23,42,.08); }
+        .login-title, .form-label { color: #111827 !important; }
+        .login-signup-prompt { color: #64748b !important; }
+        .form-input { background: #fff !important; color: #111827 !important; border-color: #d1d5db !important; }
+        .form-input::placeholder { color: #9ca3af !important; }
+        .slider-images { display: none; }
     </style>
 </head>
 <body>
@@ -44,7 +53,7 @@
                     </p>
                 </header>
 
-                <form id="signupForm" class="login-form" autocomplete="off">
+                <form id="signupForm" class="login-form" autocomplete="off" novalidate>
                     <!-- Full Name Field -->
                     <div class="form-group">
                         <label for="fullName" class="form-label">Full Name</label>
@@ -122,7 +131,7 @@
         <!-- Right Side: Empty white panel (no event images on signup) -->
         <div class="login-right" id="eventSlider">
             <div class="slider-images">
-                <!-- Images will be injected here -->
+                <img src="../../public/assets/imgs/login.png" alt="Eventra experiences" class="slider-img active">
             </div>
             <div class="overlay-gradient"></div>
         </div>

@@ -51,6 +51,14 @@
             box-shadow: 0 32px 64px rgba(0,0,0,0.5);
         }
         .login-right .overlay-gradient { display: none; }
+        .login-container { flex-direction: row-reverse; background: #fff; }
+        .login-left { background: #fff; order: 2; }
+        .login-right { order: 1; background: #fff; }
+        .login-form-container { background: #fff !important; border: 1px solid #e5e7eb; box-shadow: 0 20px 50px rgba(15,23,42,.08); }
+        .login-title, .form-label { color: #111827 !important; }
+        .login-form-container p, .login-signup-prompt { color: #64748b !important; }
+        .form-input { background: #fff !important; color: #111827 !important; border-color: #d1d5db !important; }
+        .form-input::placeholder { color: #9ca3af !important; }
     </style>
 </head>
 
@@ -66,7 +74,7 @@
                     <p style="color: #fff; margin-top: 0.5rem;">Access the Elite Management Panel</p>
                 </header>
 
-                <form id="loginForm" class="login-form" autocomplete="off">
+                <form id="loginForm" class="login-form" autocomplete="off" novalidate>
                     <!-- Username Field -->
                     <div class="form-group">
                         <label for="username" class="form-label">Username</label>
