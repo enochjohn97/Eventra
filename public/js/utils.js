@@ -409,7 +409,7 @@ function showNotification(message, type = 'info') {
 /* Shared validation for login, signup, event and profile forms. */
 (function () {
   const style = document.createElement('style');
-  style.textContent = '.eventra-field-wrap{position:relative}.eventra-field-wrap>.input-icon{display:none}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:2.7rem!important}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;pointer-events:none}.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem!important;margin-top:.3rem}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}';
+  style.textContent = '.eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;pointer-events:none}.login-form .eventra-field-wrap{display:flex;align-items:center;gap:.55rem}.login-form .eventra-field-wrap>.form-input,.login-form .eventra-field-wrap>input,.login-form .eventra-field-wrap>select,.login-form .eventra-field-wrap>textarea{flex:1;min-width:0}.login-form .eventra-state-icon{position:static;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;flex:0 0 1.1rem;transform:none}.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem!important;margin-top:.3rem}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}';
   document.head.appendChild(style);
 
   function fieldMessage(field, message) {
@@ -421,13 +421,18 @@ function showNotification(message, type = 'info') {
   }
   function setState(field, state, message = '') {
     const wrapper = field.parentElement;
+    const isAuthField = !!field.closest('.login-form');
     if (!wrapper.classList.contains('eventra-field-wrap')) {
       wrapper.classList.add('eventra-field-wrap');
       const icon = document.createElement('span');
       icon.className = 'eventra-state-icon';
-      wrapper.appendChild(icon);
+      if (isAuthField) wrapper.parentElement.insertBefore(icon, wrapper.nextSibling);
+      else wrapper.appendChild(icon);
     }
-    const icon = wrapper.querySelector('.eventra-state-icon');
+    const icon = isAuthField
+      ? (wrapper.nextElementSibling?.classList.contains('eventra-state-icon') ? wrapper.nextElementSibling : null)
+      : wrapper.querySelector('.eventra-state-icon');
+    if (!icon) return;
     field.classList.remove('eventra-warning','eventra-error','eventra-success');
     field.classList.add('eventra-' + state);
     icon.className = 'eventra-state-icon eventra-' + state;
@@ -442,6 +447,9 @@ function showNotification(message, type = 'info') {
     const value = String(field.value || '').trim();
     if (!value && (field.required || field.getAttribute('aria-required') === 'true')) { setState(field, 'warning', 'This field is required.'); return false; }
     if (!value) return true;
+    if (field.id === 'fullName' && !/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(value)) { setState(field, 'error', 'Enter your first and last name.'); return false; }
+    if (field.id === 'businessName' && !/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/.test(value)) { setState(field, 'error', 'Enter a valid business name.'); return false; }
+    if (field.id === 'username' && !/^[A-Za-z0-9_.-]{3,50}$/.test(value)) { setState(field, 'error', 'Enter a valid username.'); return false; }
     if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { setState(field, 'error', 'Enter a valid email address.'); return false; }
     if (field.name && /phone|mobile/i.test(field.name) && !/^\d{7,15}$/.test(value.replace(/\s+/g,''))) { setState(field, 'error', 'Enter a valid phone number.'); return false; }
     if (field.type === 'password' && value.length < 8) { setState(field, 'warning', 'Use at least 8 characters.'); return false; }
@@ -455,6 +463,7 @@ function showNotification(message, type = 'info') {
     if (!valid) { showNotification('All required fields must be filled out.', 'error'); first?.focus(); }
     return valid;
   }
+  window.eventraSetFieldState = setState;
   window.eventraValidateForm = validateForm;
   window.eventraApplyApiErrors = function (form, payload) {
     const errors = payload?.errors || payload?.validation_errors || {};

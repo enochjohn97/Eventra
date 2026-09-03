@@ -105,7 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const inputId = elementId.replace('Error', '');
         const inputElement = document.getElementById(inputId);
-        if (inputElement) inputElement.classList.add('error');
+        if (inputElement) {
+            inputElement.classList.add('error');
+            if (window.eventraSetFieldState) window.eventraSetFieldState(inputElement, 'error', message);
+        }
     }
 
     function resetErrors() {

@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputElement = document.getElementById(inputId);
         if (inputElement) {
             inputElement.classList.add('error');
+            if (window.eventraSetFieldState) window.eventraSetFieldState(inputElement, 'error', message);
         }
     }
 
