@@ -242,6 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initSlider() {
         const sliderContainer = document.querySelector('.slider-images');
         if (!sliderContainer) return;
+        // Login is public: never load another tenant's event image here.
+        sliderContainer.innerHTML = '<img src="../../public/assets/imgs/login.png" alt="Eventra experiences" class="slider-img active">';
+        return;
 
         const basePath = typeof getBasePath === 'function' ? getBasePath() : '../../';
         const escapeHTML = window.escapeHTML || (text => text);

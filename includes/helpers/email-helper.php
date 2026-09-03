@@ -1320,12 +1320,14 @@ PDF;
             'Ticket ID: ' . ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? 'N/A'),
         ];
         $escape = static fn(string $v): string => str_replace(['\\', '(', ')'], ['\\\\', '\(', '\)'], $v);
-        $stream = "BT\n/F1 16 Tf\n50 790 Td\n";
+        $stream = "0.06 0.09 0.16 rg 0 0 675 315 re f\n";
+        $stream .= "0.12 0.23 0.37 rg 0 0 165 315 re f\n";
+        $stream .= "0.12 0.17 0.24 rg 497 0 178 315 re f\n";
+        $stream .= "0.83 0.69 0.12 rg 21 270 62 18 re f\n1 1 1 rg\n";
         foreach ($lines as $i => $line) {
-            if ($i > 0) $stream .= "0 -32 Td\n";
-            $stream .= '(' . $escape((string)$line) . ") Tj\n";
+            $stream .= "BT\n/F1 11 Tf\n21 " . (235 - $i * 25) . " Td\n(" . $escape((string)$line) . ") Tj\nET\n";
         }
-        $stream .= "ET\n";
+        $stream .= "0 0 0 rg 530 82 110 110 re f\n1 1 1 rg\nBT\n/F1 9 Tf\n530 260 Td\n(SCAN QRCODE) Tj\nET\n";
         $objects = [
             "<< /Type /Catalog /Pages 2 0 R >>",
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

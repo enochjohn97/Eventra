@@ -469,6 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const escapeHTML = window.escapeHTML || (text => text);
         const sliderContainer = document.querySelector('.slider-images');
         if (!sliderContainer) return;
+        // Login is public: never load another tenant's event image here.
+        sliderContainer.innerHTML = '<img src="../../public/assets/imgs/login.png" alt="Eventra experiences" class="slider-img active">';
+        return;
 
         try {
             const urlParams = new URLSearchParams(window.location.search);
