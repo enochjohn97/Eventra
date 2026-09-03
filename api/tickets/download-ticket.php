@@ -156,6 +156,7 @@ try {
             }
 
             // Step 2: Generate PDF directly via EmailHelper
+            // Use the same branded landscape renderer as email attachments.
             $regen = EmailHelper::regeneratePdf($ticket, $pdfPath);
 
             if (!$regen || !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {

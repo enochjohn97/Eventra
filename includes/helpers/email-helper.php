@@ -1290,7 +1290,9 @@ PDF;
 
             $dompdf = new \Dompdf\Dompdf($options);
             $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'landscape');
+            // Keep every generated ticket print-ready and horizontally fitted.
+            $pdfOrientation = 'landscape';
+            $dompdf->setPaper('A4', $pdfOrientation);
             $dompdf->render();
 
             $output = $dompdf->output();
