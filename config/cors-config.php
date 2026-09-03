@@ -22,7 +22,7 @@ if (!empty($env_origins)) {
 }
 
 // --- Handle preflight OPTIONS request ---
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     if ($origin === '' || in_array($origin, $allowed_origins, true)) {
         if ($origin !== '') {
             header("Access-Control-Allow-Origin: $origin");
@@ -49,4 +49,4 @@ if ($origin === '') {
     header('Access-Control-Expose-Headers: Content-Type, Authorization');
     header('Vary: Origin');
 }
-
+

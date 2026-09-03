@@ -1,15 +1,5 @@
 <?php
 
-/**
- * Email Helper — Queue-first architecture
- *
- * Primary path: pushes email jobs into `email_queue` DB table.
- * Background cron (cron/email-worker.php) dispatches via PHPMailer.
- *
- * Direct-send fallback (PHPMailer) is used only when called from contexts
- * without DB access (e.g., CLI scripts that bypass the queue).
- */
-
 // ─── Email Configuration ────────────────────────────────────────────────────
 require_once __DIR__ . '/../../config/email.php';
 
@@ -1217,6 +1207,26 @@ PDF;
 
             if (file_exists($path) && filesize($path) > 0) {
                 $validPdfPaths[] = $path;
+            }
+        }
+
+        // Always provide a real attachment when the caller did not pass one (the
+        // normal purchase flow intentionally passes [] after creating the ticket).
+        if (!$validPdfPaths && $barcode !== '') {
+            $ticketDir = __DIR__ . '/../../public/assets/event_assets/tickets';
+            if (!is_dir($ticketDir)) {
+                @mkdir($ticketDir, 0755, true);
+            }
+            $generatedPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '.pdf';
+            try {
+                if (!file_exists($generatedPath) || filesize($generatedPath) < 1000) {
+                    self::regeneratePdf($ticketData, $generatedPath);
+                }
+                if (file_exists($generatedPath) && filesize($generatedPath) >= 1000) {
+                    $validPdfPaths[] = $generatedPath;
+                }
+            } catch (\Throwable $pdfEx) {
+                error_log('[EmailHelper] Ticket PDF attachment generation failed: ' . $pdfEx->getMessage());
             }
         }
 

@@ -17,7 +17,7 @@ ini_set('error_log', $rootDir . '/logs/php-errors.log');
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
              (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-             $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+             ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
 
 $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
 $base_url = $protocol . $host;
@@ -32,7 +32,7 @@ if (!$isLocalHost && session_status() !== PHP_SESSION_ACTIVE) {
     ini_set('session.cookie_domain',   $host);
     ini_set('session.cookie_secure',   ($protocol === "https://") ? 1 : 0);
     ini_set('session.cookie_httponly', 1);
-    ini_set('session.cookie_samesite', 'Lax');
+    ini_set('session.cookie_samesite', 'Strict');
 }
 
 // Centralized session management

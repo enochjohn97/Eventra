@@ -12,6 +12,11 @@ require_once '../../includes/helpers/ticket-helper.php';
 require_once '../../includes/helpers/email-helper.php';
 require_once '../../includes/middleware/auth.php';
 
+// A ticket download is generated per request; never serve a cached PDF/error response.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Increase limits for PDF generation
 set_time_limit(120);
 ini_set('memory_limit', '256M');
@@ -111,7 +116,9 @@ try {
     if (!is_dir($ticketDir)) {
         mkdir($ticketDir, 0775, true);
     }
-    $pdfPath = $ticketDir . '/ticket_' . $barcode . '.pdf';
+    // Use the canonical barcode from the database so aliases cannot select another file.
+    $barcode = trim((string)$ticket['barcode']);
+    $pdfPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '.pdf';
     $minPdfBytes = 1000;
     $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes;
 
@@ -121,12 +128,10 @@ try {
         }
 
         try {
-            // Fix: Disable external image loading during on-the-fly PDF generation to prevent Dompdf from timing out on Windows.
-            if (empty($ticket['event_image']) && !empty($ticket['image_path'])) {
-                $ticket['event_image'] = null; // previously was $ticket['image_path']
-            }
+            // Prepare ticket data for generation
             $ticket = array_merge($ticket, [
-                'event_image'    => null,
+                // The event image is embedded locally by the PDF builder; do not discard it.
+                'event_image'    => $ticket['image_path'] ?? null,
                 'ticket_type'    => $ticket['ticket_type'] ?? 'regular',
                 'amount'         => $ticket['amount'] ?? 0,
                 'quantity'       => $ticket['quantity'] ?? 1,
@@ -134,29 +139,29 @@ try {
                 'payment_status' => $paymentStatus !== '' ? $paymentStatus : 'paid',
             ]);
 
-            $generated = generateTicketPDF($ticket);
-            if ($generated === '' || !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {
-                $qrPath = generateTicketQRCode($ticket);
-                if ($qrPath === '' || !file_exists($qrPath)) {
-                    $fallbackQr = __DIR__ . '/../../public/assets/imgs/qr.png';
-                    if (file_exists($fallbackQr)) {
-                        $qrPath = $fallbackQr;
-                    }
+            // Step 1: Generate QR code first
+            $qrPath = generateTicketQRCode($ticket);
+            if ($qrPath === '' || !file_exists($qrPath)) {
+                $fallbackQr = __DIR__ . '/../../public/assets/imgs/qr.png';
+                if (file_exists($fallbackQr)) {
+                    $qrPath = $fallbackQr;
                 }
-                if ($qrPath !== '' && file_exists($qrPath)) {
-                    $ticket['qr_path'] = $qrPath;
-                    $ticket['qr_base64'] = base64_encode_image($qrPath);
-                }
-                if (empty($ticket['qr_base64'])) {
-                    error_log('[download-ticket.php] QR image could not be encoded for barcode ' . $barcode);
-                }
-                EmailHelper::regeneratePdf($ticket, $pdfPath);
+            }
+            if ($qrPath !== '' && file_exists($qrPath)) {
+                $ticket['qr_path']   = $qrPath;
+                $ticket['qr_base64'] = base64_encode_image($qrPath);
+            }
+            if (empty($ticket['qr_base64'])) {
+                error_log('[download-ticket.php] QR image could not be encoded for barcode ' . $barcode);
             }
 
-            if (!file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {
+            // Step 2: Generate PDF directly via EmailHelper
+            $regen = EmailHelper::regeneratePdf($ticket, $pdfPath);
+
+            if (!$regen || !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes) {
                 throw new Exception('PDF generation failed to create a valid file.');
             }
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log('[download-ticket.php] Generation error: ' . $e->getMessage());
             http_response_code(500);
             header('Content-Type: application/json');

@@ -1008,16 +1008,6 @@ function createEventCard(event, index) {
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             <span style="font-size: 0.8rem; font-weight: 600;">No Image</span>
         </div>
-        
-        <!-- Actions Overlay (Heart & Share) -->
-        <div class="event-image-actions" style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5;">
-            <button class="card-action-btn fav-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id}); event.stopPropagation();" title="Favorite" style="background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <i data-lucide="heart" class="${isFavorite ? "active" : ""}" style="width: 18px; height: 18px; color: #ef4444; ${isFavorite ? "fill: currentColor;" : ""}"></i>
-            </button>
-            <button class="card-action-btn share-btn" onclick="shareEvent(event, ${event.id}, '${escapeHTML(shareTitle)}', '${escapeHTML(shareText)}'); event.stopPropagation();" title="Share" style="background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <i data-lucide="share-2" style="width: 18px; height: 18px; color: #4b5563;"></i>
-            </button>
-        </div>
 
         <div class="event-badges">
           <span class="event-category-badge">${category}</span>
@@ -1100,8 +1090,16 @@ function createEventCard(event, index) {
         </div>
       </div>
 
-      <div class="event-footer">
+      <div class="event-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <div class="event-price ${price === "Free" ? "free" : ""}">${price}</div>
+          <div class="event-actions" style="display: flex; gap: 8px;">
+            <button class="card-action-btn fav-btn ${isFavorite}" onclick="toggleFavorite(event, ${event.id}); event.stopPropagation();" title="Favorite" style="background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <i data-lucide="heart" class="${isFavorite ? "active" : ""}" style="width: 18px; height: 18px; color: #ef4444; ${isFavorite ? "fill: currentColor;" : ""}"></i>
+            </button>
+            <button class="card-action-btn share-btn" onclick="shareEvent(event, ${event.id}, '${escapeHTML(shareTitle)}', '${escapeHTML(shareText)}'); event.stopPropagation();" title="Share" style="background: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <i data-lucide="share-2" style="width: 18px; height: 18px; color: #4b5563;"></i>
+            </button>
+          </div>
       </div>
     </div>
   `;
@@ -1914,10 +1912,13 @@ function showEventModal(eventId) {
   if (document.getElementById("modalEventShareLink"))
     document.getElementById("modalEventShareLink").value =
       `${window.location.origin}/public/pages/index.html?event_id=${event.id}`;
+      
+  const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
+  const legacyPrice = parseFloat(event.price || 0);
   const modalPrice =
-    !event.price || parseFloat(event.price) === 0
+    !legacyPrice || legacyPrice === 0
       ? "Free"
-      : `₦${parseFloat(event.price).toLocaleString()}`;
+      : `₦${applyFee(legacyPrice).toLocaleString()}`;
   if (document.getElementById("modalEventPrice"))
     document.getElementById("modalEventPrice").textContent = modalPrice;
 
@@ -1970,10 +1971,10 @@ function showEventModal(eventId) {
       // Only one type or none - hide selector
       ticketTypeSection.style.display = "none";
       let displayPrice = "Free";
-      if (regularPrice > 0) displayPrice = `₦${regularPrice.toLocaleString()}`;
-      else if (vipPrice > 0) displayPrice = `₦${vipPrice.toLocaleString()}`;
+      if (regularPrice > 0) displayPrice = `₦${applyFee(regularPrice).toLocaleString()}`;
+      else if (vipPrice > 0) displayPrice = `₦${applyFee(vipPrice).toLocaleString()}`;
       else if (premiumPrice > 0)
-        displayPrice = `₦${premiumPrice.toLocaleString()}`;
+        displayPrice = `₦${applyFee(premiumPrice).toLocaleString()}`;
 
       if (document.getElementById("modalEventPrice")) {
         document.getElementById("modalEventPrice").textContent = displayPrice;
@@ -2339,18 +2340,20 @@ function updateTicketPriceDisplay(event, ticketType) {
   const regularPrice = parseFloat(event.regular_price || 0);
   const vipPrice = parseFloat(event.vip_price || 0);
   const premiumPrice = parseFloat(event.premium_price || 0);
+  
+  const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
 
   // Update the main price display
   const priceElement = document.getElementById("modalEventPrice");
   if (ticketType === "regular" && priceElement) {
     priceElement.textContent =
-      regularPrice > 0 ? `₦${regularPrice.toLocaleString()}` : "Free";
+      regularPrice > 0 ? `₦${applyFee(regularPrice).toLocaleString()}` : "Free";
   } else if (ticketType === "vip" && priceElement) {
     priceElement.textContent =
-      vipPrice > 0 ? `₦${vipPrice.toLocaleString()}` : "Free";
+      vipPrice > 0 ? `₦${applyFee(vipPrice).toLocaleString()}` : "Free";
   } else if (ticketType === "premium" && priceElement) {
     priceElement.textContent =
-      premiumPrice > 0 ? `₦${premiumPrice.toLocaleString()}` : "Free";
+      premiumPrice > 0 ? `₦${applyFee(premiumPrice).toLocaleString()}` : "Free";
   }
 
   // Update individual ticket type prices in the selector
@@ -2359,15 +2362,15 @@ function updateTicketPriceDisplay(event, ticketType) {
   const premiumPriceDisplay = document.getElementById("premiumTicketPrice");
 
   if (regularPriceDisplay && regularPrice > 0) {
-    regularPriceDisplay.textContent = `₦${regularPrice.toLocaleString()}`;
+    regularPriceDisplay.textContent = `₦${applyFee(regularPrice).toLocaleString()}`;
   }
 
   if (vipPriceDisplay && vipPrice > 0) {
-    vipPriceDisplay.textContent = `₦${vipPrice.toLocaleString()}`;
+    vipPriceDisplay.textContent = `₦${applyFee(vipPrice).toLocaleString()}`;
   }
 
   if (premiumPriceDisplay && premiumPrice > 0) {
-    premiumPriceDisplay.textContent = `₦${premiumPrice.toLocaleString()}`;
+    premiumPriceDisplay.textContent = `₦${applyFee(premiumPrice).toLocaleString()}`;
   }
 }
 

@@ -66,6 +66,15 @@ try {
     $user_email = $user['email'];
     $user_name = $user['name'];
 
+    // Checkout edits are durable profile changes, not one-request metadata.
+    $contactInfo = is_array($body['contact_info'] ?? null) ? $body['contact_info'] : [];
+    $checkoutName = trim(($contactInfo['fname'] ?? '') . ' ' . ($contactInfo['lname'] ?? ''));
+    if ($checkoutName !== '' && mb_strlen($checkoutName) <= 150) {
+        $pdo->prepare('UPDATE users SET name = ?, updated_at = NOW() WHERE id = ?')
+            ->execute([$checkoutName, $user_id]);
+        $user_name = $checkoutName;
+    }
+
     // ── Fetch event + organizer Paystack Connect details ───────────────────────
     $eStmt = $pdo->prepare("
         SELECT e.id, e.event_name, e.price, e.status, e.max_capacity, e.attendee_count,
@@ -245,7 +254,17 @@ try {
             // 5. Notifications & Email
             foreach ($allFreeTicketData as $ftd) {
                 $sendTo = $ftd['buyer_email'] ?? $user_email;
-                EmailHelper::sendTicketEmailFull($sendTo, $ftd, []);
+                // Generate PDF attachment before sending email
+                $pdfAttachment = [];
+                try {
+                    $pdfFilePath = generateTicketPDF($ftd);
+                    if ($pdfFilePath && file_exists($pdfFilePath) && filesize($pdfFilePath) >= 1000) {
+                        $pdfAttachment = [$pdfFilePath];
+                    }
+                } catch (\Throwable $pdfErr) {
+                    error_log('[initialize.php] Free ticket PDF generation failed for ' . ($ftd['barcode'] ?? '') . ': ' . $pdfErr->getMessage());
+                }
+                EmailHelper::sendTicketEmailFull($sendTo, $ftd, $pdfAttachment);
             }
             createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
             createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);
