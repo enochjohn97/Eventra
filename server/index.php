@@ -4,6 +4,30 @@
 // Project root is one level up from server/
 $rootDir = dirname(__DIR__);
 
+// Apache applies these headers through .htaccess; mirror them for the PHP server.
+$requestIsHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+    || (($_SERVER['SERVER_PORT'] ?? 80) == 443);
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isLocalHost = (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+
+if (!$requestIsHttps && !$isLocalHost && !empty($host)) {
+    header('Location: https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/'), true, 301);
+    exit;
+}
+
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://accounts.google.com https://apis.google.com https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://api.qrserver.com https://www.gstatic.com https://images.unsplash.com https://ui-avatars.com; connect-src 'self' https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src 'self' https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests");
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), clipboard-read=(self), clipboard-write=(self)');
+header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+header('Cross-Origin-Embedder-Policy: unsafe-none');
+header('Cross-Origin-Resource-Policy: same-origin');
+if ($requestIsHttps) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+}
+
 // Handle static files for PHP built-in server
 if (php_sapi_name() === 'cli-server') {
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

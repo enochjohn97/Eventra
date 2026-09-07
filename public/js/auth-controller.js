@@ -14,6 +14,7 @@ class AuthController {
     this.state = this.states.INITIALIZING;
     this.user = null;
     this.googleInitialized = false;
+    this.googleInitializing = false;
     this.isRedirecting = false;
     this.isSyncing = false;
     this.settled = false;
@@ -248,11 +249,12 @@ class AuthController {
    * @param {string} containerId
    */
   initGoogle(clientId, containerId = "googleSignInContainer") {
-    if (!clientId || this.googleInitialized) {
+    if (!clientId || this.googleInitialized || this.googleInitializing) {
       return;
     }
 
     try {
+      this.googleInitializing = true;
       // Check if we should even initialize Google here
       const role = this.getPortalIntent();
       // Optional: If you want to completely disable Google for certain roles at the controller level
@@ -287,6 +289,8 @@ class AuthController {
       }
     } catch (error) {
       this.setState(this.states.ERROR);
+    } finally {
+      this.googleInitializing = false;
     }
   }
 

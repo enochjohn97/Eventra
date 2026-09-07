@@ -1762,16 +1762,12 @@ function initSmoothScroll() {
 
 // Initialize all functions
 async function init() {
-  // 1. Initialize Auth Controller First
+  // Events are public content and must not wait for the session handshake.
+  const eventsPromise = loadEvents().then(() => {
+    initializeSlider("hot-events-grid");
+  });
   await authController.init();
-  // Initialize dynamic components
-  const isGuest =
-    authController.state === authController.states.UNAUTHENTICATED;
-  if (!isGuest) {
-    loadEvents().then(() => {
-      initializeSlider("hot-events-grid");
-    });
-  }
+  await eventsPromise;
   initMobileMenu();
   initUserIcon();
   initEnhancedSearch();
