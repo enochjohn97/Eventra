@@ -1,10 +1,6 @@
 <?php
 
-/**
- * Google Configuration API
- * Returns Google Client ID for frontend use
- * Does NOT expose client secret
- */
+
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

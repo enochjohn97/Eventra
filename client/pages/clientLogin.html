@@ -89,7 +89,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        color: #111827;
+        color: #fff !important;
         font-size: 1.25rem;
         font-weight: 800;
         z-index: 5;
@@ -99,6 +99,13 @@
         height: 38px;
         border-radius: 50%;
         object-fit: cover;
+      }
+      .brand-mark span { color: #fff !important; }
+      .toggle-password {
+        background: transparent !important;
+        color: #fff !important;
+        appearance: none;
+        -webkit-appearance: none;
       }
     </style>
   </head>
@@ -177,7 +184,7 @@
                 <button type="button" id="togglePassword" class="toggle-password" aria-label="Show password"
                   ><i
                     data-lucide="eye"
-                    style="width: 18px; height: 18px; color: #111827"
+                    style="width: 18px; height: 18px; color: #fff"
                   ></i
                 ></button>
               </div>

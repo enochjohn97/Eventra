@@ -621,10 +621,7 @@
             'use strict';
 
             // ─── Image pool (high-quality event/venue photos) ───
-            const IMAGES = [
-                '../../public/assets/imgs/login.png',
-                '../../public/assets/imgs/admin.png'
-            ];
+            const IMAGES = [];
 
             // ─── state ───
             let currentIndex = 0;
@@ -713,6 +710,7 @@
 
             // ─── init ───
             function init() {
+                if (!IMAGES.length) return;
                 buildSlider();
 
                 // click on dots resets timer

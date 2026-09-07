@@ -303,8 +303,9 @@ class AuthController {
       return Promise.resolve(false);
     }
 
-    if (state.initialized) {
+    if (state.initialized || window.__eventraGoogleInitializeStarted) {
       state.controller = this;
+      state.initialized = true;
       this.googleInitialized = true;
       this.renderGoogleButton(containerId);
       return Promise.resolve(true);
@@ -321,6 +322,7 @@ class AuthController {
 
     this.googleInitializing = true;
     state.initializing = true;
+    window.__eventraGoogleInitializeStarted = true;
     state.controller = this;
     state.clientId = clientId;
     state.initPromise = Promise.resolve().then(() => {
@@ -339,6 +341,7 @@ class AuthController {
       if (containerId !== "none") this.renderGoogleButton(containerId);
       return true;
     }).catch(() => {
+      window.__eventraGoogleInitializeStarted = false;
       this.setState(this.states.ERROR);
       return false;
     }).finally(() => {

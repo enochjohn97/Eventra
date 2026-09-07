@@ -299,7 +299,7 @@ document.addEventListener("DOMContentLoaded", () => {
       sliderContainer.innerHTML = `
                 <img src="../../public/assets/imgs/login.png"
                      alt="Eventra experience"
-                     class="slider-img active">
+                     class="slide active">
             `;
     };
 
@@ -339,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `
                         <img src="${imgUrl}" 
                              alt="${escapeHTML(event.event_name)}" 
-                             class="slider-img bouncy-image ${index === 0 ? "active" : ""}" 
+                             class="slide bouncy-image ${index === 0 ? "active" : ""}"
                              data-index="${index}"
                              onerror="this.style.display='none'">
                     `;
@@ -347,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .join("");
 
         let currentIndex = 0;
-        const images = sliderContainer.querySelectorAll(".slider-img");
+        const images = sliderContainer.querySelectorAll(".slide");
 
         if (images.length === 0) {
           showFallback();
@@ -355,7 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const updateSlider = () => {
-          const currentImages = sliderContainer.querySelectorAll(".slider-img");
+          const currentImages = sliderContainer.querySelectorAll(".slide");
           if (currentImages.length <= 1) return;
 
           currentImages[currentIndex].classList.remove("active");
