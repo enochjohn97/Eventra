@@ -145,7 +145,6 @@ try {
                 unset($ev['priority']); // legacy
             }
             if ($user_role === 'guest') {
-                unset($ev['image_path']);
                 unset($ev['metadata']);
                 unset($ev['client_profile_pic']);
             }
@@ -261,9 +260,8 @@ try {
             unset($ev['is_boosted']);
             unset($ev['priority']); // legacy
         }
-        // Guest/public responses must never disclose tenant-uploaded images.
+        // Keep private metadata and profile fields out of guest responses.
         if ($user_role === 'guest') {
-            unset($ev['image_path']);
             unset($ev['metadata']);
             unset($ev['client_profile_pic']);
         }

@@ -935,7 +935,7 @@ function createEventCard(event, index) {
   // Security: Sanitize and Path Priority
   const eventImage =
     typeof getImageUrl === "function"
-      ? getImageUrl(event.image_path)
+      ? getImageUrl(event.image_path) || event.absolute_image_url || ""
       : event.absolute_image_url || "";
 
   let eventDate = "Date TBA";
