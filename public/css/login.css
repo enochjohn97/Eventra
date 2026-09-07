@@ -1,7 +1,7 @@
 :root {
   /* Login Page Specific Colors */
-  --login-primary: #064081;
-  --login-primary-hover: #1e59a7;
+  --login-primary: #7c3aed;
+  --login-primary-hover: #6d28d9;
   --login-accent: #ffffff;
   --login-bg-left: #0a1929;
   --login-bg-right: #ffffff;
@@ -10,141 +10,142 @@
   --login-text-light: #999999;
   --login-border: #e0e0e0;
   --login-input-bg: #ffffff;
-  --login-error: #EF4444;
-  --login-warning: #F59E0B;
-  --login-success: #10B981;
+  --login-error: #ef4444;
+  --login-warning: #f59e0b;
+  --login-success: #10b981;
   --login-success: #388e3c;
-  
+
   /* Shadows */
   --login-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
   --login-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
   --login-shadow-input: 0 0 0 3px rgba(255, 255, 255, 0.2);
-  
+
   /* Transitions */
   --login-transition: 0.3s ease;
 }
 
 /* Modal Styling */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    backdrop-filter: blur(4px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
 }
 
 .modal-content.role-selection-modal {
-    background: white;
-    padding: 2.5rem;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 450px;
-    box-shadow: var(--login-shadow-md);
-    text-align: center;
+  background: white;
+  padding: 2.5rem;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: var(--login-shadow-md);
+  text-align: center;
 }
 
 .modal-title {
-    font-size: 1.5rem;
-    color: var(--login-text-dark);
-    margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+  color: var(--login-text-dark);
+  margin-bottom: 0.5rem;
 }
 
 .modal-desc {
-    color: var(--login-text-gray);
-    margin-bottom: 2rem;
+  color: var(--login-text-gray);
+  margin-bottom: 2rem;
 }
 
 .role-options {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
 .role-option {
-    cursor: pointer;
-    position: relative;
+  cursor: pointer;
+  position: relative;
 }
 
 .role-option input {
-    position: absolute;
-    opacity: 0;
+  position: absolute;
+  opacity: 0;
 }
 
 .role-card {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 1.25rem;
-    border: 2px solid var(--login-border);
-    border-radius: 12px;
-    transition: var(--login-transition);
-    text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border: 2px solid var(--login-border);
+  border-radius: 12px;
+  transition: var(--login-transition);
+  text-align: left;
 }
 
 .role-option input:checked + .role-card {
-    border-color: var(--login-primary);
-    background: rgba(25, 118, 210, 0.05);
+  border-color: var(--login-primary);
+  background: rgba(25, 118, 210, 0.05);
 }
 
 .role-icon {
-    font-size: 2rem;
-    background: #f5f5f5;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
+  font-size: 2rem;
+  background: #f5f5f5;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
 }
 
 .role-text strong {
-    display: block;
-    font-size: 1.1rem;
-    color: var(--login-text-dark);
+  display: block;
+  font-size: 1.1rem;
+  color: var(--login-text-dark);
 }
 
 .role-text span {
-    font-size: 0.85rem;
-    color: var(--login-text-gray);
+  font-size: 0.85rem;
+  color: var(--login-text-gray);
 }
 
 .modal-actions {
-    display: flex;
-    gap: 1rem;
+  display: flex;
+  gap: 1rem;
 }
 
-.btn-primary, .btn-secondary {
-    flex: 1;
-    padding: 0.75rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--login-transition);
+.btn-primary,
+.btn-secondary {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--login-transition);
 }
 
 .btn-primary {
-    background: var(--login-primary);
-    color: white;
-    border: none;
+  background: var(--login-primary);
+  color: white;
+  border: none;
 }
 
 .btn-primary:hover {
-    background: var(--login-primary-hover);
+  background: var(--login-primary-hover);
 }
 
 .btn-secondary {
-    background: white;
-    border: 1px solid var(--login-border);
-    color: var(--login-text-dark);
+  background: white;
+  border: 1px solid var(--login-border);
+  color: var(--login-text-dark);
 }
 
 .btn-secondary:hover {
-    background: #f5f5f5;
+  background: #f5f5f5;
 }

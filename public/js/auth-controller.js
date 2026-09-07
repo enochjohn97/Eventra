@@ -363,15 +363,18 @@ class AuthController {
 
     state.initPromise = Promise.resolve()
       .then(() => {
-        google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (res) => state.controller?.handleGoogleResponse(res),
-          auto_select: false,
-          use_fedcm_for_prompt: false,
-          prompt_parent_id: containerId !== "none" ? containerId : null,
-          cancel_on_tap_outside: true,
-          itp_support: true,
-        });
+        if (!window.__eventra_gsi_initialized_latch) {
+          window.__eventra_gsi_initialized_latch = true;
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (res) => state.controller?.handleGoogleResponse(res),
+            auto_select: false,
+            use_fedcm_for_prompt: false,
+            prompt_parent_id: containerId !== "none" ? containerId : null,
+            cancel_on_tap_outside: true,
+            itp_support: true,
+          });
+        }
 
         state.initialized = true;
         this.googleInitialized = true;
