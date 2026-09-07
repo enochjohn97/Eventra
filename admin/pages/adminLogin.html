@@ -1,122 +1,221 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Login to your Eventra account to manage and discover experiences">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Login to your Eventra account to manage and discover experiences"
+    />
     <title>Admin Login - Eventra</title>
 
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="../../public/css/login-style.css">
-    <link rel="stylesheet" href="../../public/css/login.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../public/css/login-style.css" />
+    <link rel="stylesheet" href="../../public/css/login.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
 
     <style>
-        body { overflow: hidden; }
-        .login-container {
-            position: relative;
-            background: radial-gradient(circle at 15% 25%, rgba(124,58,237,0.08) 0%, transparent 45%),
-                        radial-gradient(circle at 85% 75%, rgba(167,139,250,0.08) 0%, transparent 45%),
-                        #0a0a0f;
-        }
-        .login-left {
-            flex: 0 0 50%;
-            background: transparent;
-            border-right: none;
-        }
-        .login-right {
-            flex: 0 0 50%;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            background: transparent;
-        }
-        .slider-images {
-            position: relative;
-            width: 100%;
-            max-width: 620px;
-            height: 84vh;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 32px 64px rgba(0,0,0,0.5);
-        }
-        .login-right .overlay-gradient { display: none; }
-        .login-container { flex-direction: row-reverse; background: #fff; }
-        .login-left { background: #fff; order: 2; }
-        .login-right { order: 1; background: #fff; }
-        .login-form-container { background: #fff !important; border: 1px solid #e5e7eb; box-shadow: 0 20px 50px rgba(15,23,42,.08); }
-        .login-title, .form-label { color: #111827 !important; }
-        .login-form-container p, .login-signup-prompt { color: #64748b !important; }
-        .form-input { background: #fff !important; color: #111827 !important; border-color: #d1d5db !important; }
-        .form-input::placeholder { color: #9ca3af !important; }
-        .brand-mark { position: absolute; top: 24px; left: 28px; display:flex; align-items:center; gap:10px; color:#111827; font-size:1.25rem; font-weight:800; z-index:5; }
-        .brand-mark img { width:38px; height:38px; border-radius:50%; object-fit:cover; }
+      body {
+        overflow: hidden;
+      }
+      .login-container {
+        position: relative;
+        background:
+          radial-gradient(
+            circle at 15% 25%,
+            rgba(124, 58, 237, 0.08) 0%,
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 85% 75%,
+            rgba(167, 139, 250, 0.08) 0%,
+            transparent 45%
+          ),
+          transparent;
+      }
+      .login-left {
+        flex: 0 0 50%;
+        background: transparent;
+        border-right: none;
+      }
+      .login-right {
+        flex: 0 0 50%;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: transparent;
+      }
+      .slider-images {
+        position: relative;
+        width: 100%;
+        max-width: 620px;
+        height: 84vh;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
+      }
+      .login-right .overlay-gradient {
+        display: none;
+      }
+      .login-container {
+        flex-direction: row-reverse;
+      }
+      .login-left {
+        order: 2;
+      }
+      .login-right {
+        order: 1;
+      }
+      .brand-mark {
+        position: absolute;
+        top: 24px;
+        left: 28px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 800;
+        z-index: 5;
+      }
+      .brand-mark img {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="login-container">
-        <div class="brand-mark"><img src="../../public/assets/logo1.png" alt="Eventra logo"><span>Eventra</span></div>
-        <!-- Left Side: Login Form with Glassmorphism -->
-        <div class="login-left">
-            <div class="login-form-container glass-effect" style="border-radius: 24px; padding: 3rem;">
-                <div id="successMessage" class="success-message"></div>
+      <div class="brand-mark">
+        <img src="../../public/assets/logo1.png" alt="Eventra logo" /><span
+          >Eventra</span
+        >
+      </div>
+      <!-- Left Side: Login Form with Glassmorphism -->
+      <div class="login-left">
+        <div
+          class="login-form-container glass-effect"
+          style="border-radius: 24px; padding: 3rem"
+        >
+          <div id="successMessage" class="success-message"></div>
 
-                <header class="login-header" style="margin-bottom: 2.5rem;">
-                    <h1 class="login-title" style="font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; color: #eee;">Welcome Back!</h1>
-                    <p style="color: #fff; margin-top: 0.5rem;">Access the Elite Management Panel</p>
-                </header>
+          <header class="login-header" style="margin-bottom: 2.5rem">
+            <h1
+              class="login-title"
+              style="
+                font-weight: 800;
+                font-family: &quot;Plus Jakarta Sans&quot;, sans-serif;
+                color: #eee;
+              "
+            >
+              Welcome Back!
+            </h1>
+            <p style="color: #fff; margin-top: 0.5rem">
+              Access the Elite Management Panel
+            </p>
+          </header>
 
-                <form id="loginForm" class="login-form" autocomplete="off" novalidate>
-                    <!-- Username Field -->
-                    <div class="form-group">
-                        <label for="username" class="form-label">Username</label>
-                        <div class="input-wrapper">
-                            <input type="text" id="username" name="admin_identity_field" class="form-input" placeholder="Enter username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" readonly required>
-                            <span class="input-icon"><i data-lucide="user" style="width: 18px; height: 18px; color: #0a0a0f;"></i></span>
-                        </div>
-                        <div id="usernameError" class="error-message"></div>
-                    </div>
-
-                    <!-- Password Field -->
-                    <div class="form-group">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-wrapper">
-                            <input type="password" id="password" name="admin_secret_field" class="form-input" placeholder="••••••••" autocomplete="new-password" data-lpignore="true" readonly required>
-                            <span id="togglePassword" class="toggle-password"><i data-lucide="eye" style="width: 18px; height: 18px; color: #111827;"></i></span>
-                        </div>
-                        <div id="passwordError" class="error-message"></div>
-                    </div>
-
-                    <!-- Options -->
-                    <div class="form-options">
-                        <!-- <a href="../../public/pages/forgot-password.html" class="forgot-password">Forgot Password?</a> -->
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" id="loginButton" class="login-button" style="border-radius: 12px; font-weight: 700;">Login</button>
-                </form>
+          <form id="loginForm" class="login-form" autocomplete="off" novalidate>
+            <!-- Username Field -->
+            <div class="form-group">
+              <label for="username" class="form-label">Username</label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="username"
+                  name="admin_identity_field"
+                  class="form-input"
+                  placeholder="Enter username"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  data-lpignore="true"
+                  readonly
+                  required
+                />
+                <span class="input-icon"
+                  ><i
+                    data-lucide="user"
+                    style="width: 18px; height: 18px; color: #0a0a0f"
+                  ></i
+                ></span>
+              </div>
+              <div id="usernameError" class="error-message"></div>
             </div>
-        </div>
 
-        <!-- Right Side: Event Image Slider -->
-        <div class="login-right" id="eventSlider">
-            <div class="slider-images">
-                <img src="../../public/assets/imgs/login.png" alt="Eventra experiences" class="slider-img active">
+            <!-- Password Field -->
+            <div class="form-group">
+              <label for="password" class="form-label">Password</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="password"
+                  name="admin_secret_field"
+                  class="form-input"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                  data-lpignore="true"
+                  readonly
+                  required
+                />
+                <span id="togglePassword" class="toggle-password"
+                  ><i
+                    data-lucide="eye"
+                    style="width: 18px; height: 18px; color: #111827"
+                  ></i
+                ></span>
+              </div>
+              <div id="passwordError" class="error-message"></div>
             </div>
+
+            <!-- Options -->
+            <div class="form-options">
+              <!-- <a href="../../public/pages/forgot-password.html" class="forgot-password">Forgot Password?</a> -->
+            </div>
+
+            <!-- Submit Button -->
+            <button
+              type="submit"
+              id="loginButton"
+              class="login-button"
+              style="border-radius: 12px; font-weight: 700"
+            >
+              Login
+            </button>
+          </form>
         </div>
+      </div>
+
+      <!-- Right Side: Event Image Slider -->
+      <div class="login-right" id="eventSlider">
+        <div class="slider-images">
+          <img
+            src="../../public/assets/imgs/login.png"
+            alt="Eventra experiences"
+            class="slider-img active"
+          />
+        </div>
+      </div>
     </div>
-
 
     <!-- Scripts -->
     <script src="../../public/js/storage.js"></script>
@@ -124,8 +223,9 @@
     <script src="../../public/js/auth-controller.js"></script>
     <script src="../js/adminLogin.js"></script>
     <script>
-  document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
-</script>
-</body>
-
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.lucide) lucide.createIcons();
+      });
+    </script>
+  </body>
 </html>

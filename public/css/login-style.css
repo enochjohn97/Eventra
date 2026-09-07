@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 * {
   margin: 0;
@@ -8,16 +8,22 @@
 
 /* Fix autofill styling globally */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
-    -webkit-text-fill-color: #ffffff !important;
-    transition: background-color 5000s ease-in-out 0s;
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   height: 100vh;
   overflow: hidden;
   background: #000;
@@ -33,9 +39,18 @@ body {
 /* Left Side - Form Area */
 .login-left {
   flex: 0 0 50%;
-  background: radial-gradient(circle at 10% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(167, 139, 250, 0.15) 0%, transparent 40%),
-              #000;
+  background:
+    radial-gradient(
+      circle at 10% 20%,
+      rgba(124, 58, 237, 0.15) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(167, 139, 250, 0.15) 0%,
+      transparent 40%
+    ),
+    #000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,7 +104,11 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to left, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.6));
+  background: linear-gradient(
+    to left,
+    rgba(15, 23, 42, 0.2),
+    rgba(15, 23, 42, 0.6)
+  );
   z-index: 2;
 }
 
@@ -99,7 +118,7 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%; 
+  height: 100%;
   z-index: 1;
 }
 
@@ -220,7 +239,7 @@ body {
   -webkit-transition: var(--login-transition);
   -moz-transition: var(--login-transition);
   transition: var(--login-transition);
-  background-color: rgba(255, 255, 255, .05);
+  background-color: rgba(255, 255, 255, 0.05);
   color: #ffffff !important;
 }
 
@@ -292,7 +311,8 @@ input[type="password"]::-ms-clear {
   accent-color: var(--login-primary);
 }
 
-.remember-me label, .remember-me span {
+.remember-me label,
+.remember-me span {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
@@ -401,7 +421,7 @@ input[type="password"]::-ms-clear {
 
 .divider::before,
 .divider::after {
-  content: '';
+  content: "";
   flex: 1;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -555,6 +575,85 @@ input[type="password"]::-ms-clear {
   outline-offset: 2px;
 }
 
+/* Deep glass theme for login and registration forms */
+.login-container,
+.login-left,
+.login-right {
+  background: #071526;
+}
+
+.login-container {
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(25, 93, 143, 0.32),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 82% 82%,
+      rgba(8, 145, 178, 0.18),
+      transparent 44%
+    ),
+    #071526;
+}
+
+.glass-effect,
+.login-form-container {
+  background: rgba(15, 35, 58, 0.62) !important;
+  border: 1px solid rgba(186, 230, 253, 0.22) !important;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.login-title,
+.form-label,
+.login-form-container p,
+.login-signup-prompt {
+  color: #f8fafc !important;
+}
+
+.login-signup-prompt {
+  color: rgba(226, 232, 240, 0.72) !important;
+}
+
+.form-input {
+  background: rgba(2, 13, 27, 0.42) !important;
+  color: #f8fafc !important;
+  border-color: rgba(186, 230, 253, 0.3) !important;
+}
+
+.form-input::placeholder {
+  color: rgba(203, 213, 225, 0.66) !important;
+}
+
+.input-icon,
+.toggle-password,
+.input-icon svg,
+.toggle-password svg {
+  color: #cbd5e1 !important;
+  stroke: currentColor !important;
+}
+
+.signup-link,
+.forgot-password {
+  color: #7dd3fc !important;
+}
+
+.error-message {
+  color: #fda4af !important;
+}
+
+.success-message {
+  background: rgba(16, 185, 129, 0.16);
+  color: #a7f3d0;
+  border-left-color: #34d399;
+}
+
+.brand-mark {
+  color: #f8fafc !important;
+}
 
 /* Modal Styles */
 .modal-overlay {
@@ -666,22 +765,40 @@ input[type="password"]::-ms-clear {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes modalScale {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* SweetAlert2 Modal Override */
-.swal2-container { z-index: 999999999 !important; }
+.swal2-container {
+  z-index: 999999999 !important;
+}
 
 @keyframes bounceFloat {
-  0%   { transform: translateY(0px) scale(1); }
-  50%  { transform: translateY(-14px) scale(1.01); }
-  100% { transform: translateY(0px) scale(1); }
+  0% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) scale(1.01);
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+  }
 }
 
 .slider-img.bouncy-image {

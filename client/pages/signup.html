@@ -1,151 +1,238 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Create your Eventra client account">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Create your Eventra client account" />
     <title>Sign Up - Eventra</title>
-    
+
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="../../public/css/login-style.css">
-    <link rel="stylesheet" href="../../public/css/login.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    
+    <link rel="stylesheet" href="../../public/css/login-style.css" />
+    <link rel="stylesheet" href="../../public/css/login.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+    />
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
 
     <style>
-        .login-container { position: relative; }
-        .login-left {
-            flex: 0 0 100%;
-            border-right: none;
-            background: radial-gradient(circle at 15% 25%, rgba(124,58,237,0.08) 0%, transparent 45%),
-                        radial-gradient(circle at 85% 75%, rgba(167,139,250,0.08) 0%, transparent 45%),
-                        #0a0a0f;
-        }
-        .login-right { display: none !important; }
-        .login-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #fff; padding: 1rem; }
-        .login-left { flex: 0 0 auto; width: 100%; background: #fff; }
-        .login-right { display: none !important; }
-        .login-form-container { background: #fff !important; border: 1px solid #e5e7eb; box-shadow: 0 20px 50px rgba(15,23,42,.08); }
-        .login-title, .form-label { color: #111827 !important; }
-        .login-signup-prompt { color: #64748b !important; }
-        .form-input { background: #fff !important; color: #111827 !important; border-color: #d1d5db !important; }
-        .form-input::placeholder { color: #9ca3af !important; }
-        .signup-link { color: #6366f1 !important; }
-        .brand-mark { position: absolute; top: 24px; left: 28px; display:flex; align-items:center; gap:10px; color:#111827; font-size:1.25rem; font-weight:800; z-index:5; }
-        .brand-mark img { width:38px; height:38px; border-radius:50%; object-fit:cover; }
-        .slider-images { display: none; }
+      .login-container {
+        position: relative;
+      }
+      .login-left {
+        flex: 0 0 100%;
+        border-right: none;
+        background:
+          radial-gradient(
+            circle at 15% 25%,
+            rgba(124, 58, 237, 0.08) 0%,
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 85% 75%,
+            rgba(167, 139, 250, 0.08) 0%,
+            transparent 45%
+          ),
+          transparent;
+      }
+      .login-right {
+        display: none !important;
+      }
+      .login-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+      .login-left {
+        flex: 0 0 auto;
+        width: 100%;
+      }
+      .login-right {
+        display: none !important;
+      }
+      .brand-mark {
+        position: absolute;
+        top: 24px;
+        left: 28px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 800;
+        z-index: 5;
+      }
+      .brand-mark img {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .slider-images {
+        display: none;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="login-container">
-        <div class="brand-mark"><img src="../../public/assets/logo1.png" alt="Eventra logo"><span>Eventra</span></div>
-        <!-- Left Side: Signup Form with Glassmorphism -->
-        <div class="login-left">
-            <div class="login-form-container glass-effect">
-                <div id="successMessage" class="success-message"></div>
-                
-                <header class="login-header">
-                    <h1 class="login-title" id="signupTitle" style="color: #eee;">Create Account</h1>
-                    <p class="login-signup-prompt" id="loginPrompt" style="color: #eee;">
-                        Already have an account? <a href="clientLogin.html" class="signup-link" id="loginLink">Log In</a>
-                    </p>
-                </header>
+      <div class="brand-mark">
+        <img src="../../public/assets/logo1.png" alt="Eventra logo" /><span
+          >Eventra</span
+        >
+      </div>
+      <!-- Left Side: Signup Form with Glassmorphism -->
+      <div class="login-left">
+        <div class="login-form-container glass-effect">
+          <div id="successMessage" class="success-message"></div>
 
-                <form id="signupForm" class="login-form" autocomplete="off" novalidate>
-                    <!-- Full Name Field -->
-                    <div class="form-group">
-                        <label for="fullName" class="form-label">Full Name</label>
-                        <div class="input-wrapper">
-                            <input type="text" 
-                                   id="fullName" 
-                                   name="fullname"
-                                   class="form-input" 
-                                   placeholder="John Doe" 
-                                   autocomplete="off"
-                                   required>
-                            <span class="input-icon"><i data-lucide="user" style="width: 18px; height: 18px; color: #0a0a0f;"></i></span>
-                        </div>
-                        <div id="fullNameError" class="error-message"></div>
-                    </div>
+          <header class="login-header">
+            <h1 class="login-title" id="signupTitle" style="color: #eee">
+              Create Account
+            </h1>
+            <p class="login-signup-prompt" id="loginPrompt" style="color: #eee">
+              Already have an account?
+              <a href="clientLogin.html" class="signup-link" id="loginLink"
+                >Log In</a
+              >
+            </p>
+          </header>
 
-                    <!-- Business Name Field (Visible for Clients) -->
-                    <div class="form-group" id="businessNameGroup">
-                        <label for="businessName" class="form-label">Business Name</label>
-                        <div class="input-wrapper">
-                            <input type="text" 
-                                   id="businessName" 
-                                   name="business_name"
-                                   class="form-input" 
-                                   placeholder="Your Business LLC" 
-                                   autocomplete="off">
-                            <span class="input-icon"><i data-lucide="briefcase" style="width: 18px; height: 18px; color: #0a0a0f;"></i></span>
-                        </div>
-                        <div id="businessNameError" class="error-message"></div>
-                    </div>
-
-                    <!-- Email Field -->
-                    <div class="form-group">
-                        <label for="email" class="form-label">Email Address</label>
-                        <div class="input-wrapper">
-                            <input type="email" 
-                                   id="email" 
-                                   name="email"
-                                   class="form-input" 
-                                   placeholder="m@example.com" 
-                                   autocomplete="off"
-                                   required>
-                            <span class="input-icon"><i data-lucide="mail" style="width: 18px; height: 18px; color: #0a0a0f;"></i></span>
-                        </div>
-                        <div id="emailError" class="error-message"></div>
-                    </div>
-
-                    <!-- Password Field -->
-                    <div class="form-group">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-wrapper">
-                            <input type="password" 
-                                   id="password" 
-                                   name="password"
-                                   class="form-input" 
-                                   placeholder="••••••••" 
-                                   autocomplete="new-password"
-                                   required>
-                            <span id="togglePassword" class="toggle-password"><i data-lucide="eye" style="width: 18px; height: 18px;"></i></span>
-                        </div>
-                        <div id="passwordError" class="error-message"></div>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" id="signupButton" class="login-button">Create Account</button>
-                    
-
-                    <p style="text-align: center; font-size: 0.8rem; color:#111827;">
-                        By signing up, you agree to our Terms of Service and Privacy Policy.
-                    </p>
-                </form>
+          <form
+            id="signupForm"
+            class="login-form"
+            autocomplete="off"
+            novalidate
+          >
+            <!-- Full Name Field -->
+            <div class="form-group">
+              <label for="fullName" class="form-label">Full Name</label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="fullName"
+                  name="fullname"
+                  class="form-input"
+                  placeholder="John Doe"
+                  autocomplete="off"
+                  required
+                />
+                <span class="input-icon"
+                  ><i
+                    data-lucide="user"
+                    style="width: 18px; height: 18px; color: #0a0a0f"
+                  ></i
+                ></span>
+              </div>
+              <div id="fullNameError" class="error-message"></div>
             </div>
-        </div>
 
-        <!-- Right Side: Empty white panel (no event images on signup) -->
-        <div class="login-right" id="eventSlider">
-            <div class="slider-images">
-                <img src="../../public/assets/imgs/login.png" alt="Eventra experiences" class="slider-img active">
+            <!-- Business Name Field (Visible for Clients) -->
+            <div class="form-group" id="businessNameGroup">
+              <label for="businessName" class="form-label">Business Name</label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="businessName"
+                  name="business_name"
+                  class="form-input"
+                  placeholder="Your Business LLC"
+                  autocomplete="off"
+                />
+                <span class="input-icon"
+                  ><i
+                    data-lucide="briefcase"
+                    style="width: 18px; height: 18px; color: #0a0a0f"
+                  ></i
+                ></span>
+              </div>
+              <div id="businessNameError" class="error-message"></div>
             </div>
-            <div class="overlay-gradient"></div>
+
+            <!-- Email Field -->
+            <div class="form-group">
+              <label for="email" class="form-label">Email Address</label>
+              <div class="input-wrapper">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  class="form-input"
+                  placeholder="m@example.com"
+                  autocomplete="off"
+                  required
+                />
+                <span class="input-icon"
+                  ><i
+                    data-lucide="mail"
+                    style="width: 18px; height: 18px; color: #0a0a0f"
+                  ></i
+                ></span>
+              </div>
+              <div id="emailError" class="error-message"></div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+              <label for="password" class="form-label">Password</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  class="form-input"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                  required
+                />
+                <span id="togglePassword" class="toggle-password"
+                  ><i data-lucide="eye" style="width: 18px; height: 18px"></i
+                ></span>
+              </div>
+              <div id="passwordError" class="error-message"></div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="signupButton" class="login-button">
+              Create Account
+            </button>
+
+            <p style="text-align: center; font-size: 0.8rem; color: #111827">
+              By signing up, you agree to our Terms of Service and Privacy
+              Policy.
+            </p>
+          </form>
         </div>
+      </div>
+
+      <!-- Right Side: Empty white panel (no event images on signup) -->
+      <div class="login-right" id="eventSlider">
+        <div class="slider-images">
+          <img
+            src="../../public/assets/imgs/login.png"
+            alt="Eventra experiences"
+            class="slider-img active"
+          />
+        </div>
+        <div class="overlay-gradient"></div>
+      </div>
     </div>
 
     <!-- Scripts -->
     <script src="../../public/js/utils.js"></script>
     <script src="../js/clientSignup.js"></script>
     <script>
-  document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
-</script>
-</body>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.lucide) lucide.createIcons();
+      });
+    </script>
+  </body>
 </html>

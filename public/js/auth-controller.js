@@ -294,6 +294,7 @@ class AuthController {
       initializing: false,
       scriptPromise: null,
       controller: null,
+      clientId: null,
     });
 
     if (!clientId || this.googleInitialized) {
@@ -308,10 +309,13 @@ class AuthController {
 
     if (state.initializing) return;
 
+    if (state.clientId && state.clientId !== clientId) return;
+
     try {
       this.googleInitializing = true;
       state.initializing = true;
       state.controller = this;
+      state.clientId = clientId;
 
       google.accounts.id.initialize({
         client_id: clientId,
