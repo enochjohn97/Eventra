@@ -244,17 +244,17 @@ class AuthController {
   }
 
   /**
-   * Initialize Google SDK
-   * @param {string} clientId
-   * @param {string} containerId
+   * Initialize Google SDK script tag (idempotent — safe to call any number of times).
    */
   loadGoogleScript() {
     const state = (window.__eventraGoogleAuth ||= {
       initialized: false,
       initializing: false,
       initPromise: null,
+      initializeCalled: false,
       scriptPromise: null,
       controller: null,
+      clientId: null,
     });
 
     if (window.google?.accounts?.id) return Promise.resolve(true);
@@ -289,6 +289,16 @@ class AuthController {
     return state.scriptPromise;
   }
 
+  /**
+   * Initialize Google Identity Services.
+   *
+   * IMPORTANT: google.accounts.id.initialize() must only ever be called ONCE
+   * for the lifetime of the page, no matter how many times initGoogle() itself
+   * is invoked (multiple portals, retries, re-renders, etc). The single source
+   * of truth for "has init started / completed" is `state.initPromise` — it is
+   * created synchronously, before any await/microtask gap, so there is no window
+   * in which two overlapping calls can both fall through to the real init call.
+   */
   initGoogle(clientId, containerId = "googleSignInContainer") {
     const state = (window.__eventraGoogleAuth ||= {
       initialized: false,
@@ -303,51 +313,81 @@ class AuthController {
       return Promise.resolve(false);
     }
 
-    if (state.initialized || window.__eventraGoogleInitializeStarted) {
-      state.controller = this;
-      state.initialized = true;
+    // Always point the shared state at the most recent caller, so the Google
+    // callback and any re-render route to the currently active controller.
+    state.controller = this;
+
+    // A different clientId is already active for this page load — refuse to
+    // re-initialize with a different one; just report the outcome of the
+    // existing init.
+    if (state.clientId && state.clientId !== clientId) {
+      console.warn(
+        "[Eventra] initGoogle ignored: Google Identity Services is already " +
+          "initialized with a different client_id on this page.",
+      );
+      return state.initPromise
+        ? state.initPromise.then((ok) => ok && state.clientId === clientId)
+        : Promise.resolve(false);
+    }
+
+    // Already fully initialized — never call initialize() again, just make
+    // sure this container has a rendered button.
+    if (state.initialized) {
       this.googleInitialized = true;
-      this.renderGoogleButton(containerId);
+      if (containerId !== "none") this.renderGoogleButton(containerId);
       return Promise.resolve(true);
     }
 
-    if (state.initializing) {
-      state.controller = this;
-      return state.initPromise || Promise.resolve(false);
-    }
-
-    if (state.clientId && state.clientId !== clientId) {
-      return Promise.resolve(false);
-    }
-
-    this.googleInitializing = true;
-    state.initializing = true;
-    window.__eventraGoogleInitializeStarted = true;
-    state.controller = this;
-    state.clientId = clientId;
-    state.initPromise = Promise.resolve().then(() => {
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (res) => state.controller?.handleGoogleResponse(res),
-        auto_select: false,
-        use_fedcm_for_prompt: false,
-        prompt_parent_id: containerId !== "none" ? containerId : null,
-        cancel_on_tap_outside: true,
-        itp_support: true,
+    // Initialization is already in flight (or already resolved once, whether
+    // success or failure and not yet reset) — piggyback on that SAME promise
+    // instead of starting a second one. This is what actually prevents the
+    // "initialize() is called multiple times" warning.
+    if (state.initPromise) {
+      return state.initPromise.then((ok) => {
+        if (ok && containerId !== "none") this.renderGoogleButton(containerId);
+        return ok;
       });
+    }
 
-      this.googleInitialized = true;
-      state.initialized = true;
-      if (containerId !== "none") this.renderGoogleButton(containerId);
-      return true;
-    }).catch(() => {
-      window.__eventraGoogleInitializeStarted = false;
-      this.setState(this.states.ERROR);
-      return false;
-    }).finally(() => {
-      this.googleInitializing = false;
-      state.initializing = false;
-    });
+    // GIS does not support re-initialization, even after a failed attempt.
+    // Keep this latch across duplicate controller loads and retries.
+    if (state.initializeCalled) return Promise.resolve(false);
+
+    // We are the first (and only) caller to reach this point for this
+    // clientId. Claim the mutex synchronously — no await/microtask happens
+    // before this assignment, so no other concurrent call can slip through.
+    state.clientId = clientId;
+    state.initializeCalled = true;
+    state.initializing = true;
+    this.googleInitializing = true;
+
+    state.initPromise = Promise.resolve()
+      .then(() => {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (res) => state.controller?.handleGoogleResponse(res),
+          auto_select: false,
+          use_fedcm_for_prompt: false,
+          prompt_parent_id: containerId !== "none" ? containerId : null,
+          cancel_on_tap_outside: true,
+          itp_support: true,
+        });
+
+        state.initialized = true;
+        this.googleInitialized = true;
+        if (containerId !== "none") this.renderGoogleButton(containerId);
+        return true;
+      })
+      .catch((err) => {
+        console.error("[Eventra] Google Identity Services init failed:", err);
+        state.initialized = false;
+        this.setState(this.states.ERROR);
+        return false;
+      })
+      .finally(() => {
+        state.initializing = false;
+        this.googleInitializing = false;
+      });
 
     return state.initPromise;
   }

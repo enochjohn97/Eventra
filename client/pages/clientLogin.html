@@ -81,7 +81,9 @@
       .login-right .overlay-gradient {
         display: none;
       }
-      .login-container { flex-direction: row; }
+      .login-container {
+        flex-direction: row;
+      }
       .brand-mark {
         position: absolute;
         top: 24px;
@@ -100,12 +102,22 @@
         border-radius: 50%;
         object-fit: cover;
       }
-      .brand-mark span { color: #fff !important; }
+      .brand-mark span {
+        color: #fff !important;
+      }
       .toggle-password {
         background: transparent !important;
         color: #fff !important;
         appearance: none;
         -webkit-appearance: none;
+      }
+      #email + .input-icon {
+        left: auto;
+        right: 1rem;
+      }
+      #email.form-input {
+        padding-left: 1rem;
+        padding-right: 2.75rem;
       }
     </style>
   </head>
@@ -147,7 +159,7 @@
           <form id="loginForm" class="login-form" autocomplete="off" novalidate>
             <!-- Email Field -->
             <div class="form-group">
-                <label for="email" class="form-label">Username or email</label>
+              <label for="email" class="form-label">Username or email</label>
               <div class="input-wrapper">
                 <input
                   type="email"
@@ -159,10 +171,7 @@
                   required
                 />
                 <span class="input-icon"
-                  ><i
-                    data-lucide="user"
-                    style="width: 18px; height: 18px"
-                  ></i
+                  ><i data-lucide="user" style="width: 18px; height: 18px"></i
                 ></span>
               </div>
               <div id="emailError" class="error-message"></div>
@@ -181,12 +190,17 @@
                   autocomplete="new-password"
                   required
                 />
-                <button type="button" id="togglePassword" class="toggle-password" aria-label="Show password"
-                  ><i
+                <button
+                  type="button"
+                  id="togglePassword"
+                  class="toggle-password"
+                  aria-label="Show password"
+                >
+                  <i
                     data-lucide="eye"
                     style="width: 18px; height: 18px; color: #fff"
-                  ></i
-                ></button>
+                  ></i>
+                </button>
               </div>
               <div id="passwordError" class="error-message"></div>
             </div>
