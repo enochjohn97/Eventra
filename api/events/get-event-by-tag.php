@@ -2,6 +2,9 @@
 
 header('Content-Type: application/json');
 require_once '../../config/database.php';
+require_once '../../includes/middleware/auth.php';
+
+$authenticatedUser = checkAuthOptional();
 
 $tag = $_GET['tag'] ?? null;
 
@@ -23,7 +26,11 @@ try {
     if ($event) {
         // Sanitize and enhance event data
         $baseUrl = rtrim($_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com', '/');
-        if (!empty($event['image_path'])) {
+        if (!$authenticatedUser) {
+            $event['image_path'] = null;
+            $event['absolute_image_url'] = null;
+            unset($event['metadata'], $event['client_profile_pic']);
+        } elseif (!empty($event['image_path'])) {
             $path = '/' . ltrim($event['image_path'], '/');
             $event['image_path'] = $path;
             $event['absolute_image_url'] = $baseUrl . $path;

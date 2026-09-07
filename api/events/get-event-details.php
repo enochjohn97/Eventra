@@ -43,6 +43,12 @@ try {
         exit;
     }
 
+    if (!$user_id) {
+        $event['image_path'] = null;
+        $event['absolute_image_url'] = null;
+        unset($event['metadata'], $event['client_profile_pic']);
+    }
+
     // For non-admins/clients, only show published events (unless it's their own)
     if ($user_role !== 'admin' && $event['status'] !== 'published') {
         if ($user_role === 'client') {

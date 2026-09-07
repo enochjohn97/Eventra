@@ -21,9 +21,16 @@ header('Expires: 0');
 set_time_limit(120);
 ini_set('memory_limit', '256M');
 
-// We do not require a specific role, just any logged-in session.
+// A barcode identifies a ticket but is not sufficient authorization to download it.
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+$authenticatedProfileId = checkAuth(['user', 'admin', 'client']);
+if (!$authenticatedProfileId) {
+    http_response_code(401);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Authentication is required to download this ticket.']);
+    exit;
 }
 $role = $_SESSION['role'] ?? null;
 $profile_id = null;
@@ -52,7 +59,7 @@ try {
             t.barcode, t.status, t.event_id, t.user_id, t.payment_id,
             t.ticket_type,
             e.event_name, e.event_date, e.event_time,
-            e.location, e.address, e.state, e.locations, e.image_path,
+            e.location, e.address, e.state, e.locations, e.image_path, e.client_id,
             u.name as user_name,
             p.status as payment_status, p.id as order_id, p.amount, p.quantity, p.paystack_response
         FROM tickets t
@@ -71,8 +78,14 @@ try {
         exit;
     }
 
-    // Security Enforcement: Block downloads if ticket is cancelled or payment isn't confirmed
-    $isAuthorized = true; // Barcode acts as the secure token
+    $isAuthorized = $role === 'admin'
+        || ($role === 'user' && (int)$ticket['user_id'] === (int)$authenticatedProfileId);
+
+    if ($role === 'client' && isset($_SESSION['client_id'])) {
+        $clientStmt = $pdo->prepare('SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1');
+        $clientStmt->execute([(int)$ticket['client_id']]);
+        $isAuthorized = (int)$clientStmt->fetchColumn() === (int)($_SESSION['auth_id'] ?? 0);
+    }
 
     if (!$isAuthorized) {
         http_response_code(403);
@@ -118,7 +131,7 @@ try {
     }
     // Use the canonical barcode from the database so aliases cannot select another file.
     $barcode = trim((string)$ticket['barcode']);
-    $pdfPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '.pdf';
+    $pdfPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '_v2.pdf';
     $minPdfBytes = 1000;
     $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes;
 

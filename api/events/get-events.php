@@ -144,6 +144,11 @@ try {
                 unset($ev['is_boosted']);
                 unset($ev['priority']); // legacy
             }
+            if ($user_role === 'guest') {
+                unset($ev['image_path']);
+                unset($ev['metadata']);
+                unset($ev['client_profile_pic']);
+            }
             if (!empty($ev['image_path'])) {
                 $img = str_replace('\\', '/', $ev['image_path']);
                 if (preg_match('#(/public/.+)$#i', $img, $m)) {
@@ -255,6 +260,12 @@ try {
         if ($user_role !== 'admin') {
             unset($ev['is_boosted']);
             unset($ev['priority']); // legacy
+        }
+        // Guest/public responses must never disclose tenant-uploaded images.
+        if ($user_role === 'guest') {
+            unset($ev['image_path']);
+            unset($ev['metadata']);
+            unset($ev['client_profile_pic']);
         }
         // Normalize image_path to a root-relative web path
         if (!empty($ev['image_path'])) {

@@ -67,9 +67,11 @@ php_value post_max_size 6M
 
     # All PHP API responses and HTML pages must never be browser-cached
     <FilesMatch "\.(php|html|htm)$">
-        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Cache-Control "private, no-store, no-cache, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"
+        Header always set Vary "Cookie, Authorization"
+        Header always set Surrogate-Control "no-store"
     </FilesMatch>
 
     # Long-lived immutable caching for versioned static assets

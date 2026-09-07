@@ -891,6 +891,10 @@ HTML;
                 . '</div>';
         }
 
+        $ticketBackground = $safeImgSrc !== ''
+            ? "background-image:url('{$safeImgSrc}');background-size:cover;background-position:center;"
+            : 'background-color:#0f172a;';
+
         return <<<PDF
 <!DOCTYPE html>
 <html lang="en">
@@ -903,7 +907,7 @@ HTML;
   html, body {
     margin: 0;
     padding: 0;
-    background-color: #0f172a;
+    background-color: #ffffff;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
   }
@@ -944,15 +948,15 @@ HTML;
 </style>
 </head>
 <body>
-<table width="675" height="315" cellpadding="0" cellspacing="0" border="0" style="width:675pt;height:315pt;background-color:#0f172a;border-collapse:collapse;margin:0;padding:0;">
+<table width="760" height="340" cellpadding="0" cellspacing="0" border="0" style="width:760pt;height:340pt;border-collapse:collapse;margin:125pt auto 0;padding:0;{$ticketBackground}">
   <tr>
     <!-- Event Image Panel (Left 165pt) -->
-    <td width="165" valign="top" style="width:165pt;height:315pt;padding:0;background-color:#1e3a5f;overflow:hidden;">
+        <td width="0" valign="top" style="width:0;height:0;padding:0;display:none;">
       {$imgCellContent}
     </td>
 
     <!-- Main Body Section (330pt) -->
-    <td width="330" valign="top" style="padding:21pt 21pt;width:330pt;background-color:#0f172a;">
+        <td width="575" valign="top" style="padding:26pt 28pt;width:575pt;background-color:rgba(11,19,36,0.88);">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
         <tr>
           <td valign="top">
@@ -992,10 +996,10 @@ HTML;
     </td>
 
     <!-- Perforated Divider -->
-    <td width="2" style="width:2pt;border-left:2pt dashed #475569;font-size:0;line-height:0;background-color:#0f172a;">&nbsp;</td>
+    <td width="2" style="width:2pt;border-left:2pt dashed #94a3b8;font-size:0;line-height:0;background-color:transparent;">&nbsp;</td>
 
     <!-- Stub Section (178pt) -->
-    <td width="178" valign="middle" align="center" style="padding:18pt 12pt;width:178pt;background-color:#1e293b;">
+    <td width="183" valign="middle" align="center" style="padding:20pt 12pt;width:183pt;background-color:rgba(30,41,59,0.9);">
       <div style="margin-bottom:10pt;text-align:center;">
         <span style="display:inline-block;font-family:Arial,sans-serif;font-size:9pt;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>

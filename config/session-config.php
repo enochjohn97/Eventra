@@ -82,6 +82,25 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Guest identity is server-issued and is never an authorization credential.
+if (empty($_COOKIE['EVENTRA_GUEST_ID'])) {
+    $guestId = sprintf(
+        '%s-%s-%s-%s-%s',
+        bin2hex(random_bytes(4)),
+        bin2hex(random_bytes(2)),
+        bin2hex(random_bytes(2)),
+        bin2hex(random_bytes(2)),
+        bin2hex(random_bytes(6))
+    );
+    setcookie('EVENTRA_GUEST_ID', $guestId, [
+        'expires' => time() + 86400,
+        'path' => '/',
+        'secure' => $_isHttps,
+        'httponly' => true,
+        'samesite' => 'Strict'
+    ]);
+}
+
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }

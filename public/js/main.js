@@ -1,8 +1,11 @@
 // Event data - will be loaded from API
 window.openSupportCenter = function () {
-  document.dispatchEvent(new CustomEvent('EventraOpenSupportCenter', { detail: { role: 'user' } }));
-  if (typeof window.showSupportCenter === 'function') return window.showSupportCenter();
-  window.location.assign('/public/pages/tickets.html?support=1');
+  document.dispatchEvent(
+    new CustomEvent("EventraOpenSupportCenter", { detail: { role: "user" } }),
+  );
+  if (typeof window.showSupportCenter === "function")
+    return window.showSupportCenter();
+  window.location.assign("/public/pages/tickets.html?support=1");
 };
 
 let eventsData = {
@@ -67,7 +70,9 @@ async function loadEvents() {
       : null;
     const userState = (user?.state || "").toLowerCase().trim();
 
-    const stateParam = userState ? `&user_state=${encodeURIComponent(userState)}` : "";
+    const stateParam = userState
+      ? `&user_state=${encodeURIComponent(userState)}`
+      : "";
     const response = await apiFetch(
       `/api/events/get-events.php?limit=150&offset=0${stateParam}`,
     );
@@ -90,12 +95,19 @@ async function loadEvents() {
 
       // Sort helpers
       const sortByCreation = (events) =>
-        [...events].sort((a, b) => new Date(b.created_at || b.event_date) - new Date(a.created_at || a.event_date));
+        [...events].sort(
+          (a, b) =>
+            new Date(b.created_at || b.event_date) -
+            new Date(a.created_at || a.event_date),
+        );
       const sortBySales = (events) =>
-        [...events].sort((a, b) => (parseInt(b.sales_count) || 0) - (parseInt(a.sales_count) || 0));
+        [...events].sort(
+          (a, b) =>
+            (parseInt(b.sales_count) || 0) - (parseInt(a.sales_count) || 0),
+        );
 
       // Today's date string YYYY-MM-DD (browser local)
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split("T")[0];
 
       // User location for Nearby
       const userState = (user?.state || "").toLowerCase().trim();
@@ -107,25 +119,29 @@ async function loadEvents() {
       // Featured: admin-boosted only
       eventsData.featured = sortByCreation(
         publishedEvents.filter((e) =>
-          (e.priority_label || e.priority || "").toLowerCase().includes("featured")
-        )
+          (e.priority_label || e.priority || "")
+            .toLowerCase()
+            .includes("featured"),
+        ),
       );
 
       // Hot & Trending: sorted purely by ticket sales count (descending)
       const hotCandidates = publishedEvents.filter((e) =>
-        (e.priority_label || e.priority || "").toLowerCase().includes("hot")
+        (e.priority_label || e.priority || "").toLowerCase().includes("hot"),
       );
       eventsData.hot = sortBySales(hotCandidates);
 
       const trendingCandidates = publishedEvents.filter((e) =>
-        (e.priority_label || e.priority || "").toLowerCase().includes("trending")
+        (e.priority_label || e.priority || "")
+          .toLowerCase()
+          .includes("trending"),
       );
       eventsData.trending = sortBySales(trendingCandidates);
 
       // Upcoming: events strictly after today
       eventsData.upcoming = publishedEvents
         .filter((e) => {
-          const d = e.event_date ? e.event_date.split('T')[0] : '';
+          const d = e.event_date ? e.event_date.split("T")[0] : "";
           return d > todayStr;
         })
         .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
@@ -137,24 +153,26 @@ async function loadEvents() {
       // Supports both single-state and multi-state events
       eventsData.nearby = sortByCreation(
         publishedEvents.filter((e) => {
-          const eventDateStr = e.event_date ? e.event_date.split('T')[0] : '';
+          const eventDateStr = e.event_date ? e.event_date.split("T")[0] : "";
           if (eventDateStr !== todayStr) return false; // must be today
           if (!userState) {
             // No user state: fall back to server label
-            return (e.priority_label || e.priority || "").toLowerCase().includes("nearby");
+            return (e.priority_label || e.priority || "")
+              .toLowerCase()
+              .includes("nearby");
           }
           const eventStates = (e.state || "")
             .toLowerCase()
-            .split(',')
+            .split(",")
             .map((s) => s.trim())
             .filter(Boolean);
           // Match if user's state is in event's state list, or event is 'all states'
           return (
             eventStates.includes(userState) ||
-            eventStates.includes('all states') ||
-            eventStates.includes('all')
+            eventStates.includes("all states") ||
+            eventStates.includes("all")
           );
-        })
+        }),
       );
 
       // Favorites: events where is_favorite is 1
@@ -390,9 +408,6 @@ function initUserIcon() {
     );
   };
 
-
-
-
   const setupUI = () => {
     const user = authController.user;
 
@@ -474,8 +489,11 @@ function initUserIcon() {
         if (loginModal) {
           loginModal.style.display = "flex";
           setTimeout(() => loginModal.classList.add("show"), 10);
-          if (window.authController && window.authController.googleInitialized) {
-            window.authController.renderGoogleButton('googleSignInContainer');
+          if (
+            window.authController &&
+            window.authController.googleInitialized
+          ) {
+            window.authController.renderGoogleButton("googleSignInContainer");
           }
           // Manual button is already in HTML, logical handler added in initUserIcon
         }
@@ -544,8 +562,11 @@ function initUserIcon() {
           if (loginModal) {
             loginModal.style.display = "flex";
             setTimeout(() => loginModal.classList.add("show"), 10);
-            if (window.authController && window.authController.googleInitialized) {
-              window.authController.renderGoogleButton('googleSignInContainer');
+            if (
+              window.authController &&
+              window.authController.googleInitialized
+            ) {
+              window.authController.renderGoogleButton("googleSignInContainer");
             }
           }
         }
@@ -674,7 +695,7 @@ function initUserIcon() {
       loginModal.style.display = "flex";
       setTimeout(() => loginModal.classList.add("show"), 10);
       if (window.authController && window.authController.googleInitialized) {
-        window.authController.renderGoogleButton('googleSignInContainer');
+        window.authController.renderGoogleButton("googleSignInContainer");
       }
     }
   }
@@ -692,7 +713,10 @@ async function initGoogleAuth() {
 
     if (data.success && data.client_id) {
       // Dynamically load Google SDK script if not already present
-      if (!window.google?.accounts?.id && !document.querySelector('script[src*="gsi/client"]')) {
+      if (
+        !window.google?.accounts?.id &&
+        !document.querySelector('script[src*="gsi/client"]')
+      ) {
         const script = document.createElement("script");
         script.src = "https://accounts.google.com/gsi/client";
         script.async = true;
@@ -875,7 +899,7 @@ function createEventCard(event, index) {
     .map((m) => m.trim().toLowerCase());
 
   // Apply 10% Eventra platform fee so displayed price matches checkout
-  const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
+  const applyFee = (p) => (p > 0 ? Math.round(p * 1.1) : 0);
   if (modes.includes("all") || modes.length === 0) {
     const legacyWithFee = applyFee(legacyPrice);
     price = legacyWithFee > 0 ? `₦${legacyWithFee.toLocaleString()}` : "Free";
@@ -947,7 +971,8 @@ function createEventCard(event, index) {
   const eventName = escapeHTML(cleanEventName);
   const category = escapeHTML(event.category || event.event_type) || "Event";
   const rawDesc = event.description || "";
-  const descPreview = rawDesc.length > 150 ? rawDesc.substring(0, 150).trim() + "....." : rawDesc;
+  const descPreview =
+    rawDesc.length > 150 ? rawDesc.substring(0, 150).trim() + "....." : rawDesc;
   const desc = escapeHTML(descPreview);
   const organizer = escapeHTML(
     event.organizer_name || event.client_name || "Eventra",
@@ -979,10 +1004,13 @@ function createEventCard(event, index) {
         return "";
     }
   };
-  
+
   let priorityBadge = "";
   const eventPriorityText = event.priority_label || event.priority || "";
-  if (eventPriorityText && !eventPriorityText.toLowerCase().includes("upcoming")) {
+  if (
+    eventPriorityText &&
+    !eventPriorityText.toLowerCase().includes("upcoming")
+  ) {
     let displayPriority = eventPriorityText;
     if (!event.priority_label && event.priority) {
       displayPriority = `${getPriorityIcon(event.priority)} ${event.priority.charAt(0).toUpperCase() + event.priority.slice(1)}`;
@@ -990,12 +1018,21 @@ function createEventCard(event, index) {
     let pColor = "#722f37";
     let pBg = "white";
     const lowerPriority = displayPriority.toLowerCase();
-    if (lowerPriority.includes("hot")) { pColor = "white"; pBg = "#ff4757"; }
-    else if (lowerPriority.includes("trending")) { pColor = "white"; pBg = "#3742fa"; }
-    else if (lowerPriority.includes("featured")) { pColor = "white"; pBg = "#2ed573"; }
-    else if (lowerPriority.includes("nearby")) { pColor = "white"; pBg = "#00b894"; }
-    
-    priorityBadge = `<div class="event-status-badge" style="color: ${pColor}; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pColor === 'white' ? pBg : pColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-left: 0.5rem;">
+    if (lowerPriority.includes("hot")) {
+      pColor = "white";
+      pBg = "#ff4757";
+    } else if (lowerPriority.includes("trending")) {
+      pColor = "white";
+      pBg = "#3742fa";
+    } else if (lowerPriority.includes("featured")) {
+      pColor = "white";
+      pBg = "#2ed573";
+    } else if (lowerPriority.includes("nearby")) {
+      pColor = "white";
+      pBg = "#00b894";
+    }
+
+    priorityBadge = `<div class="event-status-badge" style="color: ${pColor}; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pColor === "white" ? pBg : pColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-left: 0.5rem;">
       ${displayPriority}
     </div>`;
   }
@@ -1317,7 +1354,11 @@ function initDiscoveryFilters() {
   if (sortBy) sortBy.addEventListener("change", applyFilters);
 
   document.getElementById("resetFilters")?.addEventListener("click", () => {
-    document.querySelectorAll(".filter-sidebar input[type='checkbox']").forEach((i) => { i.checked = false; });
+    document
+      .querySelectorAll(".filter-sidebar input[type='checkbox']")
+      .forEach((i) => {
+        i.checked = false;
+      });
     if (sortBy) sortBy.value = "newest";
     applyFilters();
   });
@@ -1387,14 +1428,15 @@ function getFilteredEvents(events, filters) {
       selectedPriorities.length === 0 ||
       selectedPriorities.some((p) => {
         if (p.toLowerCase() === "upcoming") return !isPassed;
-        return eventPriorities.some(ep => ep.includes(p.toLowerCase()));
+        return eventPriorities.some((ep) => ep.includes(p.toLowerCase()));
       });
     const matchesStatus =
       selectedStatuses.length === 0 ||
       (selectedStatuses.includes("passed") && isPassed) ||
       (selectedStatuses.includes("recent") && !isPassed);
 
-    const getNumPrice = (v) => parseFloat((v || "0").toString().replace(/[^0-9.]/g, "")) || 0;
+    const getNumPrice = (v) =>
+      parseFloat((v || "0").toString().replace(/[^0-9.]/g, "")) || 0;
     const isFree =
       getNumPrice(event.price) === 0 &&
       getNumPrice(event.regular_price) === 0 &&
@@ -1469,8 +1511,12 @@ function applyFilters() {
   // If priority tags are selected, sort those to the top
   if (filters.selectedPriorities.length > 0) {
     discoveryFiltered.sort((a, b) => {
-      const aMatches = filters.selectedPriorities.some(p => hasPriority(a, p.toLowerCase()));
-      const bMatches = filters.selectedPriorities.some(p => hasPriority(b, p.toLowerCase()));
+      const aMatches = filters.selectedPriorities.some((p) =>
+        hasPriority(a, p.toLowerCase()),
+      );
+      const bMatches = filters.selectedPriorities.some((p) =>
+        hasPriority(b, p.toLowerCase()),
+      );
       if (aMatches && !bMatches) return -1;
       if (!aMatches && bMatches) return 1;
       return 0; // If both match or neither match, retain existing sort order
@@ -1478,14 +1524,17 @@ function applyFilters() {
   }
 
   // Hide the category carousels to keep the homepage organized as requested by user
-  document.querySelectorAll('#featuredSection, #trendingSection, #hotSection, #upcomingSection, #nearbySection').forEach(el => {
-      if(el) el.style.display = 'none';
-  });
+  document
+    .querySelectorAll(
+      "#featuredSection, #trendingSection, #hotSection, #upcomingSection, #nearbySection",
+    )
+    .forEach((el) => {
+      if (el) el.style.display = "none";
+    });
 
   // 4. Render main discovery grid
   renderDiscovery(discoveryFiltered);
 }
-
 
 // Share event function
 function shareEvent(
@@ -1716,9 +1765,13 @@ async function init() {
   // 1. Initialize Auth Controller First
   await authController.init();
   // Initialize dynamic components
-  loadEvents().then(() => {
-    initializeSlider("hot-events-grid");
-  });
+  const isGuest =
+    authController.state === authController.states.UNAUTHENTICATED;
+  if (!isGuest) {
+    loadEvents().then(() => {
+      initializeSlider("hot-events-grid");
+    });
+  }
   initMobileMenu();
   initUserIcon();
   initEnhancedSearch();
@@ -1807,14 +1860,25 @@ function showEventModal(eventId) {
   const modalStatusDot = document.getElementById("modalStatusDot");
   const modalStatusLabelEl = document.getElementById("modalStatusLabel");
   if (modalCatBadge) {
-    modalCatBadge.textContent = escapeHTML(event.category || event.event_type || "Event");
+    modalCatBadge.textContent = escapeHTML(
+      event.category || event.event_type || "Event",
+    );
   }
   if (modalStatusBadge && modalStatusDot && modalStatusLabelEl) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const evDay = new Date((event.event_date || "") + "T00:00:00");
     const isPassed = event.event_date ? evDay < today : false;
-    const mStatusLabel = isPassed ? "Passed" : event.sold_out ? "Sold Out" : "Upcoming";
-    const mStatusColor = isPassed ? "#6b7280" : event.sold_out ? "#ef4444" : "#722f37";
+    const mStatusLabel = isPassed
+      ? "Passed"
+      : event.sold_out
+        ? "Sold Out"
+        : "Upcoming";
+    const mStatusColor = isPassed
+      ? "#6b7280"
+      : event.sold_out
+        ? "#ef4444"
+        : "#722f37";
     modalStatusDot.style.backgroundColor = mStatusColor;
     modalStatusBadge.style.color = mStatusColor;
     modalStatusLabelEl.textContent = mStatusLabel;
@@ -1848,29 +1912,40 @@ function showEventModal(eventId) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  
+
   // Try structured locations JSON
   let locs = null;
   try {
-    locs = event.locations ? (typeof event.locations === "string" ? JSON.parse(event.locations) : event.locations) : null;
+    locs = event.locations
+      ? typeof event.locations === "string"
+        ? JSON.parse(event.locations)
+        : event.locations
+      : null;
   } catch (e) {}
 
-  const isMultipleStates = (Array.isArray(locs) && locs.length > 1) || (states.length > 1 && !states.includes("All States") && !states.includes("Nationwide"));
+  const isMultipleStates =
+    (Array.isArray(locs) && locs.length > 1) ||
+    (states.length > 1 &&
+      !states.includes("All States") &&
+      !states.includes("Nationwide"));
 
   const firstLine = [addressStr, cityStr].filter(Boolean).join(", ");
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(firstLine + (stateStr ? ", " + stateStr : "") || "Nigeria")}`;
 
   let locationHTML = "";
   if (isMultipleStates) {
-    const locList = Array.isArray(locs) && locs.length > 0 
-      ? locs 
-      : states.map(s => ({ state: s, address: "" }));
+    const locList =
+      Array.isArray(locs) && locs.length > 0
+        ? locs
+        : states.map((s) => ({ state: s, address: "" }));
 
     window.selectedEventLocations = locList.map((_, i) => i);
 
     locationHTML = `<div id="modalLocsContainer" class="mloc-wrap">`;
     locList.forEach((loc, idx) => {
-      const mapQuery = encodeURIComponent((loc.address || '') + ', ' + loc.state);
+      const mapQuery = encodeURIComponent(
+        (loc.address || "") + ", " + loc.state,
+      );
       locationHTML += `
         <label for="locChk_${idx}" class="mloc-card" style="cursor:pointer;">
           <input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}"
@@ -1879,17 +1954,19 @@ function showEventModal(eventId) {
           <span class="mloc-pin" aria-hidden="true">📍</span>
           <div class="mloc-body">
             <div class="mloc-state">${escapeHTML(loc.state)}</div>
-            ${loc.address && loc.address !== 'Multi-state'
-              ? `<a href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" onclick="event.stopPropagation()" class="mloc-addr">${escapeHTML(loc.address)}</a>`
-              : `<div class="mloc-addr">Address TBA</div>`}
-            ${loc.date || loc.time ? `<div class="mloc-meta">${escapeHTML([loc.date, loc.time].filter(Boolean).join(' · '))}</div>` : ''}
+            ${
+              loc.address && loc.address !== "Multi-state"
+                ? `<a href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" onclick="event.stopPropagation()" class="mloc-addr">${escapeHTML(loc.address)}</a>`
+                : `<div class="mloc-addr">Address TBA</div>`
+            }
+            ${loc.date || loc.time ? `<div class="mloc-meta">${escapeHTML([loc.date, loc.time].filter(Boolean).join(" · "))}</div>` : ""}
           </div>
         </label>`;
     });
     locationHTML += `<div class="mloc-meta" style="margin-top:4px;">Select location(s) you plan to attend</div></div>`;
   } else {
     // Standard single or All States view
-    if (firstLine && firstLine !== 'Multi-state') {
+    if (firstLine && firstLine !== "Multi-state") {
       locationHTML += `<a href="${mapUrl}" target="_blank" class="address-link" style="display: block;">${firstLine}</a>`;
       if (stateStr)
         locationHTML += `<div style="margin-top: 0.75rem; font-size: 0.9em; line-height: 1.6; color: #4b5563; display: block;">${escapeHTML(stateStr.replace(/,/g, ", "))}</div>`;
@@ -1912,8 +1989,8 @@ function showEventModal(eventId) {
   if (document.getElementById("modalEventShareLink"))
     document.getElementById("modalEventShareLink").value =
       `${window.location.origin}/public/pages/index.html?event_id=${event.id}`;
-      
-  const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
+
+  const applyFee = (p) => (p > 0 ? Math.round(p * 1.1) : 0);
   const legacyPrice = parseFloat(event.price || 0);
   const modalPrice =
     !legacyPrice || legacyPrice === 0
@@ -1971,8 +2048,10 @@ function showEventModal(eventId) {
       // Only one type or none - hide selector
       ticketTypeSection.style.display = "none";
       let displayPrice = "Free";
-      if (regularPrice > 0) displayPrice = `₦${applyFee(regularPrice).toLocaleString()}`;
-      else if (vipPrice > 0) displayPrice = `₦${applyFee(vipPrice).toLocaleString()}`;
+      if (regularPrice > 0)
+        displayPrice = `₦${applyFee(regularPrice).toLocaleString()}`;
+      else if (vipPrice > 0)
+        displayPrice = `₦${applyFee(vipPrice).toLocaleString()}`;
       else if (premiumPrice > 0)
         displayPrice = `₦${applyFee(premiumPrice).toLocaleString()}`;
 
@@ -2030,12 +2109,17 @@ function showEventModal(eventId) {
         const ticketType =
           document.querySelector('input[name="selectedTicketType"]:checked')
             ?.value || "regular";
-        
+
         let url = `/public/pages/checkout.html?id=${event.id}&quantity=${quantity}&ticket_type=${ticketType}`;
-        
+
         // Pass selected locations if applicable
-        if (window.selectedEventLocations && Array.isArray(window.selectedEventLocations)) {
-          url += '&selected_locs=' + encodeURIComponent(JSON.stringify(window.selectedEventLocations));
+        if (
+          window.selectedEventLocations &&
+          Array.isArray(window.selectedEventLocations)
+        ) {
+          url +=
+            "&selected_locs=" +
+            encodeURIComponent(JSON.stringify(window.selectedEventLocations));
         }
 
         closeEventModal();
@@ -2340,8 +2424,8 @@ function updateTicketPriceDisplay(event, ticketType) {
   const regularPrice = parseFloat(event.regular_price || 0);
   const vipPrice = parseFloat(event.vip_price || 0);
   const premiumPrice = parseFloat(event.premium_price || 0);
-  
-  const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
+
+  const applyFee = (p) => (p > 0 ? Math.round(p * 1.1) : 0);
 
   // Update the main price display
   const priceElement = document.getElementById("modalEventPrice");
@@ -2438,10 +2522,12 @@ window.copyModalShareLink = copyModalShareLink;
 /**
  * Update global location selection from checkboxes
  */
-window._updateLocSelection = function() {
+window._updateLocSelection = function () {
   const checked = [];
-  document.querySelectorAll('#modalLocsContainer input[data-loc-index]').forEach(chk => {
-    if (chk.checked) checked.push(parseInt(chk.dataset.locIndex, 10));
-  });
+  document
+    .querySelectorAll("#modalLocsContainer input[data-loc-index]")
+    .forEach((chk) => {
+      if (chk.checked) checked.push(parseInt(chk.dataset.locIndex, 10));
+    });
   window.selectedEventLocations = checked;
 };
