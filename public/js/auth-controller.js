@@ -248,21 +248,74 @@ class AuthController {
    * @param {string} clientId
    * @param {string} containerId
    */
+  loadGoogleScript() {
+    const state = (window.__eventraGoogleAuth ||= {
+      initialized: false,
+      initializing: false,
+      scriptPromise: null,
+      controller: null,
+    });
+
+    if (window.google?.accounts?.id) return Promise.resolve(true);
+    if (state.scriptPromise) return state.scriptPromise;
+
+    state.scriptPromise = new Promise((resolve) => {
+      const existingScript = document.querySelector(
+        'script[src*="accounts.google.com/gsi/client"]',
+      );
+      if (existingScript) {
+        existingScript.addEventListener("load", () => resolve(true), {
+          once: true,
+        });
+        existingScript.addEventListener("error", () => resolve(false), {
+          once: true,
+        });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    }).then((loaded) => {
+      state.scriptPromise = loaded ? Promise.resolve(true) : null;
+      return loaded;
+    });
+
+    return state.scriptPromise;
+  }
+
   initGoogle(clientId, containerId = "googleSignInContainer") {
-    if (!clientId || this.googleInitialized || this.googleInitializing) {
+    const state = (window.__eventraGoogleAuth ||= {
+      initialized: false,
+      initializing: false,
+      scriptPromise: null,
+      controller: null,
+    });
+
+    if (!clientId || this.googleInitialized) {
       return;
     }
 
+    if (state.initialized) {
+      this.googleInitialized = true;
+      this.renderGoogleButton(containerId);
+      return;
+    }
+
+    if (state.initializing) return;
+
     try {
       this.googleInitializing = true;
-      // Check if we should even initialize Google here
-      const role = this.getPortalIntent();
-      // Optional: If you want to completely disable Google for certain roles at the controller level
-      // if (role === 'admin' || role === 'client') return;
+      state.initializing = true;
+      state.controller = this;
 
       google.accounts.id.initialize({
         client_id: clientId,
-        callback: (res) => this.handleGoogleResponse(res),
+        callback: (res) => state.controller?.handleGoogleResponse(res),
         auto_select: false,
         use_fedcm_for_prompt: false,
         prompt_parent_id: containerId !== "none" ? containerId : null,
@@ -271,6 +324,7 @@ class AuthController {
       });
 
       this.googleInitialized = true;
+      state.initialized = true;
 
       // Only render/prompt if container is provided and not 'none'
       if (containerId !== "none") {
@@ -291,6 +345,7 @@ class AuthController {
       this.setState(this.states.ERROR);
     } finally {
       this.googleInitializing = false;
+      state.initializing = false;
     }
   }
 

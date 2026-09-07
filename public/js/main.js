@@ -712,44 +712,7 @@ async function initGoogleAuth() {
     const data = await response.json();
 
     if (data.success && data.client_id) {
-      // Dynamically load Google SDK script if not already present
-      if (
-        !window.google?.accounts?.id &&
-        !document.querySelector('script[src*="gsi/client"]')
-      ) {
-        const script = document.createElement("script");
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-      }
-
-      // Wait for Google SDK to load (up to 10s)
-      const googleLoaded = await new Promise((resolve) => {
-        if (
-          typeof google !== "undefined" &&
-          google.accounts &&
-          google.accounts.id
-        ) {
-          return resolve(true);
-        }
-        let attempts = 0;
-        const maxAttempts = 100;
-        const intervalId = setInterval(() => {
-          attempts++;
-          if (
-            typeof google !== "undefined" &&
-            google.accounts &&
-            google.accounts.id
-          ) {
-            clearInterval(intervalId);
-            resolve(true);
-          } else if (attempts >= maxAttempts) {
-            clearInterval(intervalId);
-            resolve(false);
-          }
-        }, 100);
-      });
+      const googleLoaded = await authController.loadGoogleScript();
 
       if (googleLoaded) {
         // Initialize Google SDK but don't render standard button yet because modal is hidden
