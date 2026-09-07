@@ -297,7 +297,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const showFallback = () => {
       sliderContainer.innerHTML = `
-                <img src="" 
+                <img src="../../public/assets/imgs/login.png"
+                     alt="Eventra experience"
                      class="slider-img active">
             `;
     };
@@ -370,7 +371,6 @@ document.addEventListener("DOMContentLoaded", () => {
         showFallback();
       }
     } catch (error) {
-      console.error("Slider Error:", error);
       showFallback();
     }
   }

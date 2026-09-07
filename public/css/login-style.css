@@ -259,7 +259,7 @@ body {
 
 .input-icon {
   position: absolute;
-  right: 1rem;
+  left: 1rem;
   color: var(--border-color);
   font-size: 1.125rem;
   pointer-events: none;
@@ -277,6 +277,16 @@ body {
   -moz-user-select: none;
   user-select: none;
   z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem;
+}
+
+.input-wrapper .form-input {
+  padding-left: 2.75rem;
 }
 
 .toggle-password:hover {

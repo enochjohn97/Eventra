@@ -198,9 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const result = await response.json();
 
-      // DEBUG: Log the API response for troubleshooting
-      console.log("Login API Response:", result);
-
       const isOtpStep =
         result.success ||
         result.status === "success" ||
@@ -557,52 +554,67 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await apiFetch(apiUrl);
       const data = await response.json();
 
-      if (data.success && data.events && data.events.length > 0) {
-        let events = data.events.filter((e) => e.image_path);
-        if (events.length === 0) return;
+      let events =
+        data.success && Array.isArray(data.events)
+          ? data.events.filter((e) => e.image_path)
+          : [];
+      if (events.length === 0) {
+        events = [
+          {
+            event_name: "Eventra experiences",
+            image_path: "../../public/assets/imgs/login.png",
+          },
+          {
+            event_name: "Eventra venues",
+            image_path: "../../public/assets/imgs/admin.png",
+          },
+        ];
+      }
 
-        // Shuffle events for random display
-        events = events.sort(() => 0.5 - Math.random());
+      // Shuffle events for random display
+      events = events.sort(() => 0.5 - Math.random());
 
-        // Inject images
-        sliderContainer.innerHTML = events
-          .map((event, index) => {
-            const cleanPath = event.image_path.replace(/^\/+/, "");
-            let webPath = cleanPath;
-            if (
-              cleanPath.startsWith("assets/") &&
-              !cleanPath.includes("public/")
-            ) {
-              webPath = "public/" + cleanPath;
-            }
-            const imgUrl = event.image_path.startsWith("http")
+      // Inject images
+      sliderContainer.innerHTML = events
+        .map((event, index) => {
+          const cleanPath = event.image_path.replace(/^\/+/, "");
+          let webPath = cleanPath;
+          if (
+            cleanPath.startsWith("assets/") &&
+            !cleanPath.includes("public/")
+          ) {
+            webPath = "public/" + cleanPath;
+          }
+          const imgUrl =
+            event.image_path.startsWith("http") ||
+            event.image_path.startsWith(".")
               ? event.image_path
               : "/" + webPath;
 
-            return `
+          return `
                         <img src="${imgUrl}" 
                              alt="${escapeHTML(event.event_name)}" 
                              class="slider-img bouncy-image ${index === 0 ? "active" : ""}" 
                              data-index="${index}"
                              onerror="this.style.display='none'">
                     `;
-          })
-          .join("");
+        })
+        .join("");
 
-        let currentIndex = 0;
-        const updateSlider = () => {
-          const images = document.querySelectorAll(".slider-img");
-          if (images.length === 0) return;
+      let currentIndex = 0;
+      const updateSlider = () => {
+        const images = document.querySelectorAll(".slider-img");
+        if (images.length === 0) return;
 
-          images[currentIndex].classList.remove("active");
-          currentIndex = (currentIndex + 1) % images.length;
-          images[currentIndex].classList.add("active");
-        };
+        images[currentIndex].classList.remove("active");
+        currentIndex = (currentIndex + 1) % images.length;
+        images[currentIndex].classList.add("active");
+      };
 
-        setInterval(updateSlider, 5000);
-      }
+      if (events.length > 1) setInterval(updateSlider, 5000);
     } catch (error) {
-      console.error("Error loading slider events:", error);
+      sliderContainer.innerHTML =
+        '<img src="../../public/assets/imgs/login.png" alt="Eventra experience" class="slider-img active">';
     }
   }
 
@@ -631,7 +643,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     } catch (error) {
-      console.error("Google init failed:", error);
+      showNotification("Google Sign-In is temporarily unavailable.", "info");
     }
   }
 

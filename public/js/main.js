@@ -706,8 +706,10 @@ function initUserIcon() {
  */
 async function initGoogleAuth() {
   if (authController.state === authController.states.AUTHENTICATED) return;
+  if (window.__eventraGoogleInitPromise) return window.__eventraGoogleInitPromise;
 
-  try {
+  window.__eventraGoogleInitPromise = (async () => {
+    try {
     const response = await apiFetch("/api/config/get-google-config.php");
     const data = await response.json();
 
@@ -716,15 +718,18 @@ async function initGoogleAuth() {
 
       if (googleLoaded) {
         // Initialize Google SDK but don't render standard button yet because modal is hidden
-        authController.initGoogle(data.client_id, "none");
+        await authController.initGoogle(data.client_id, "none");
       } else {
         // If SDK fails to load, the manual button remains and can be tried again by clicking
         console.warn("Google SDK failed to load");
       }
     }
-  } catch (error) {
-    // Silently fail — user can still navigate to login page
-  }
+    } catch (error) {
+      // Google is optional; the normal login flow remains available.
+    }
+  })();
+
+  return window.__eventraGoogleInitPromise;
 }
 
 // Debounce helper

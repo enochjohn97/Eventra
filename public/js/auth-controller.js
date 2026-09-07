@@ -252,6 +252,7 @@ class AuthController {
     const state = (window.__eventraGoogleAuth ||= {
       initialized: false,
       initializing: false,
+      initPromise: null,
       scriptPromise: null,
       controller: null,
     });
@@ -292,32 +293,37 @@ class AuthController {
     const state = (window.__eventraGoogleAuth ||= {
       initialized: false,
       initializing: false,
+      initPromise: null,
       scriptPromise: null,
       controller: null,
       clientId: null,
     });
 
-    if (!clientId || this.googleInitialized) {
-      return;
+    if (!clientId || typeof google === "undefined" || !google.accounts?.id) {
+      return Promise.resolve(false);
     }
 
     if (state.initialized) {
       state.controller = this;
       this.googleInitialized = true;
       this.renderGoogleButton(containerId);
-      return;
+      return Promise.resolve(true);
     }
 
-    if (state.initializing) return;
-
-    if (state.clientId && state.clientId !== clientId) return;
-
-    try {
-      this.googleInitializing = true;
-      state.initializing = true;
+    if (state.initializing) {
       state.controller = this;
-      state.clientId = clientId;
+      return state.initPromise || Promise.resolve(false);
+    }
 
+    if (state.clientId && state.clientId !== clientId) {
+      return Promise.resolve(false);
+    }
+
+    this.googleInitializing = true;
+    state.initializing = true;
+    state.controller = this;
+    state.clientId = clientId;
+    state.initPromise = Promise.resolve().then(() => {
       google.accounts.id.initialize({
         client_id: clientId,
         callback: (res) => state.controller?.handleGoogleResponse(res),
@@ -330,28 +336,17 @@ class AuthController {
 
       this.googleInitialized = true;
       state.initialized = true;
-
-      // Only render/prompt if container is provided and not 'none'
-      if (containerId !== "none") {
-        this.renderGoogleButton(containerId);
-      } else {
-        // If initialized with 'none', check if loginModal is currently displayed.
-        // If so, render the button now that Google SDK is ready.
-        const loginModal = document.getElementById("loginModal");
-        if (
-          loginModal &&
-          (loginModal.style.display === "flex" ||
-            loginModal.classList.contains("show"))
-        ) {
-          this.renderGoogleButton("googleSignInContainer");
-        }
-      }
-    } catch (error) {
+      if (containerId !== "none") this.renderGoogleButton(containerId);
+      return true;
+    }).catch(() => {
       this.setState(this.states.ERROR);
-    } finally {
+      return false;
+    }).finally(() => {
       this.googleInitializing = false;
       state.initializing = false;
-    }
+    });
+
+    return state.initPromise;
   }
 
   /**
@@ -520,7 +515,7 @@ class AuthController {
         }
       }, 100);
     } catch (e) {
-      console.error("Google manual login error:", e);
+      showNotification("Google Sign-In is temporarily unavailable.", "error");
     }
   }
 

@@ -64,6 +64,7 @@
         align-items: center;
         justify-content: center;
         padding: 2rem;
+        height: 100%;
         background: transparent;
         order: 2;
       }
@@ -71,7 +72,8 @@
         position: relative;
         width: 100%;
         max-width: 620px;
-        height: 84vh;
+        height: 100%;
+        min-height: 84vh;
         border-radius: 20px;
         overflow: hidden;
         box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
@@ -151,8 +153,8 @@
                 />
                 <span class="input-icon"
                   ><i
-                      data-lucide="user"
-                    style="width: 18px; height: 18px; color: #0a0a0f"
+                    data-lucide="user"
+                    style="width: 18px; height: 18px"
                   ></i
                 ></span>
               </div>
@@ -160,7 +162,7 @@
             </div>
 
             <!-- Password Field -->
-                    placeholder="Enter your username or email"
+            <div class="form-group">
               <label for="password" class="form-label">Password</label>
               <div class="input-wrapper">
                 <input
@@ -172,12 +174,12 @@
                   autocomplete="new-password"
                   required
                 />
-                <span id="togglePassword" class="toggle-password"
+                <button type="button" id="togglePassword" class="toggle-password" aria-label="Show password"
                   ><i
                     data-lucide="eye"
                     style="width: 18px; height: 18px; color: #111827"
                   ></i
-                ></span>
+                ></button>
               </div>
               <div id="passwordError" class="error-message"></div>
             </div>
