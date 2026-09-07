@@ -163,6 +163,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function handleLogin() {
+    resetErrors();
+    if (!emailInput?.value.trim()) {
+      showError("emailError", "Username or email is required.");
+      return;
+    }
+    if (!passwordInput?.value) {
+      showError("passwordError", "Password is required.");
+      return;
+    }
+
     const originalBtnText = loginButton.innerHTML;
     loginButton.disabled = true;
     loginButton.innerHTML = '<span class="spinner"></span> Logging in...';
@@ -171,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await apiFetch("/api/clients/login.php", {
         method: "POST",
         body: JSON.stringify({
-          email: emailInput.value,
+          username: emailInput.value.trim(),
           password: passwordInput.value,
           remember_me: rememberMeInput?.checked || false,
           intent: intent,
@@ -269,7 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    email: emailInput.value,
+                    username: emailInput.value.trim(),
                     password: passwordInput.value,
                     remember_me: rememberMeInput?.checked || false,
                     intent: intent,
@@ -367,15 +377,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // Clear any stale state on failure
         if (window.authController) window.authController.clearLocalState();
 
-        const msg = result.message || "Invalid email or password";
+        const msg = result.message || "Invalid username/email or password.";
         const isDatabaseError = msg.toLowerCase().includes("database error");
 
         if (isDatabaseError) {
           showError("databaseErrorBanner", msg);
         } else {
-          const errorElement = msg.toLowerCase().includes("email")
-            ? "emailError"
-            : "passwordError";
+          const errorElement =
+            msg.toLowerCase().includes("username") ||
+            msg.toLowerCase().includes("email")
+              ? "emailError"
+              : "passwordError";
           showError(errorElement, msg);
         }
 

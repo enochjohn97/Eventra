@@ -30,6 +30,14 @@
       }
       .login-container {
         position: relative;
+        width: 100%;
+        max-width: 1280px;
+        min-height: 92vh;
+        max-height: 96vh;
+        margin: 0 auto;
+        height: auto;
+        padding: 0;
+        border-radius: 32px;
         background:
           radial-gradient(
             circle at 15% 25%,
@@ -47,6 +55,8 @@
         flex: 0 0 50%;
         background: transparent;
         border-right: none;
+        order: 1;
+        padding: 2.5rem 2.5rem 2.5rem 3.5rem;
       }
       .login-right {
         flex: 0 0 50%;
@@ -55,6 +65,7 @@
         justify-content: center;
         padding: 2rem;
         background: transparent;
+        order: 2;
       }
       .slider-images {
         position: relative;
@@ -68,15 +79,7 @@
       .login-right .overlay-gradient {
         display: none;
       }
-      .login-container {
-        flex-direction: row-reverse;
-      }
-      .login-left {
-        order: 2;
-      }
-      .login-right {
-        order: 1;
-      }
+      .login-container { flex-direction: row; }
       .brand-mark {
         position: absolute;
         top: 24px;
@@ -135,7 +138,7 @@
           <form id="loginForm" class="login-form" autocomplete="off" novalidate>
             <!-- Email Field -->
             <div class="form-group">
-              <label for="email" class="form-label">Email</label>
+                <label for="email" class="form-label">Username or email</label>
               <div class="input-wrapper">
                 <input
                   type="email"
@@ -148,7 +151,7 @@
                 />
                 <span class="input-icon"
                   ><i
-                    data-lucide="mail"
+                      data-lucide="user"
                     style="width: 18px; height: 18px; color: #0a0a0f"
                   ></i
                 ></span>
@@ -157,7 +160,7 @@
             </div>
 
             <!-- Password Field -->
-            <div class="form-group">
+                    placeholder="Enter your username or email"
               <label for="password" class="form-label">Password</label>
               <div class="input-wrapper">
                 <input
@@ -200,11 +203,7 @@
       <!-- Right Side: Event Image Slider -->
       <div class="login-right" id="eventSlider">
         <div class="slider-images">
-          <img
-            src="../../public/assets/imgs/login.png"
-            alt="Eventra experiences"
-            class="slider-img active"
-          />
+          <div id="clientSlideContainer"></div>
         </div>
       </div>
     </div>

@@ -6,9 +6,13 @@
     <meta name="description" content="Create your Eventra client account" />
     <title>Sign Up - Eventra</title>
 
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="../../public/css/login-style.css" />
-    <link rel="stylesheet" href="../../public/css/login.css" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
@@ -22,83 +26,528 @@
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
 
     <style>
-      .login-container {
-        position: relative;
+      /* ── Reset & Base ── */
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-      .login-left {
-        flex: 0 0 100%;
-        border-right: none;
-        background:
-          radial-gradient(
-            circle at 15% 25%,
-            rgba(124, 58, 237, 0.08) 0%,
-            transparent 45%
-          ),
-          radial-gradient(
-            circle at 85% 75%,
-            rgba(167, 139, 250, 0.08) 0%,
-            transparent 45%
-          ),
-          transparent;
+
+      :root {
+        --glass-bg: rgba(255, 255, 255, 0.06);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-shadow: 0 32px 64px rgba(0, 0, 0, 0.45);
+        --glass-blur: blur(18px);
+
+        --primary: #7c3aed;
+        --primary-light: #a78bfa;
+        --primary-glow: rgba(124, 58, 237, 0.35);
+        --text-primary: #f1f5f9;
+        --text-secondary: rgba(255, 255, 255, 0.7);
+        --text-muted: rgba(255, 255, 255, 0.45);
+
+        --input-bg: rgba(255, 255, 255, 0.07);
+        --input-border: rgba(255, 255, 255, 0.12);
+        --input-focus: rgba(124, 58, 237, 0.5);
+        --input-text: #f1f5f9;
+
+        --error: #f87171;
+        --success: #34d399;
+
+        --radius: 16px;
+        --radius-sm: 10px;
       }
-      .login-right {
-        display: none !important;
-      }
-      .login-container {
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        background: #0b0b12;
+        min-height: 100vh;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 100vh;
-        padding: 1rem;
+        overflow: hidden;
+        color: var(--text-primary);
       }
-      .login-left {
-        flex: 0 0 auto;
+
+      /* ── Animated Background ── */
+      .bg-glow {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .bg-glow .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.5;
+        animation: floatOrb 16s ease-in-out infinite alternate;
+      }
+      .bg-glow .orb:nth-child(1) {
+        width: 600px;
+        height: 600px;
+        top: -10%;
+        left: -8%;
+        background: radial-gradient(
+          circle,
+          rgba(124, 58, 237, 0.45),
+          transparent 70%
+        );
+        animation-delay: 0s;
+      }
+      .bg-glow .orb:nth-child(2) {
+        width: 500px;
+        height: 500px;
+        bottom: -12%;
+        right: -6%;
+        background: radial-gradient(
+          circle,
+          rgba(167, 139, 250, 0.3),
+          transparent 70%
+        );
+        animation-delay: -5s;
+      }
+      .bg-glow .orb:nth-child(3) {
+        width: 350px;
+        height: 350px;
+        top: 40%;
+        left: 55%;
+        background: radial-gradient(
+          circle,
+          rgba(124, 58, 237, 0.2),
+          transparent 70%
+        );
+        animation-delay: -10s;
+      }
+      @keyframes floatOrb {
+        0% {
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          transform: translate(60px, -40px) scale(1.1);
+        }
+      }
+
+      /* ── Login Container ── */
+      .login-container {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         width: 100%;
+        max-width: 560px;
+        margin: 0 1.5rem;
+        padding: 2rem 0;
+        border-radius: 28px;
+        background: rgba(11, 11, 18, 0.65);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
       }
-      .login-right {
-        display: none !important;
+
+      /* ── Left: Signup Form (full width) ── */
+      .login-left {
+        flex: 0 0 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.5rem;
+        background: transparent;
+        position: relative;
       }
+
+      .login-form-container {
+        width: 100%;
+        max-width: 420px;
+        padding: 2.25rem 2rem 2.25rem 2rem;
+        border-radius: var(--radius);
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        transition: all 0.3s ease;
+      }
+      .login-form-container:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 36px 72px rgba(0, 0, 0, 0.55);
+      }
+
+      /* ── Brand Mark ── */
       .brand-mark {
         position: absolute;
-        top: 24px;
-        left: 28px;
+        top: 28px;
+        left: 32px;
         display: flex;
         align-items: center;
         gap: 10px;
-        color: #111827;
-        font-size: 1.25rem;
+        color: var(--text-primary);
+        font-size: 1.2rem;
         font-weight: 800;
-        z-index: 5;
+        z-index: 10;
+        letter-spacing: -0.02em;
       }
       .brand-mark img {
         width: 38px;
         height: 38px;
         border-radius: 50%;
         object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
-      .slider-images {
+      .brand-mark span {
+        background: linear-gradient(135deg, #fff 60%, var(--primary-light));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* ── Header ── */
+      .login-header {
+        margin-bottom: 2rem;
+      }
+      .login-title {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        background: linear-gradient(135deg, #fff 50%, var(--primary-light));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .login-signup-prompt {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-top: 0.15rem;
+      }
+      .login-signup-prompt .signup-link {
+        color: var(--primary-light);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      .login-signup-prompt .signup-link:hover {
+        color: #fff;
+      }
+
+      /* ── Form Groups ── */
+      .form-group {
+        margin-bottom: 1.25rem;
+      }
+      .form-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 0.4rem;
+      }
+
+      .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .input-wrapper .form-input {
+        width: 100%;
+        padding: 0.8rem 2.6rem 0.8rem 1rem;
+        font-size: 0.95rem;
+        font-weight: 400;
+        font-family: "Inter", sans-serif;
+        color: var(--input-text);
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius-sm);
+        outline: none;
+        transition:
+          border-color 0.25s,
+          box-shadow 0.25s,
+          background 0.25s;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+      .input-wrapper .form-input::placeholder {
+        color: var(--text-muted);
+        font-weight: 300;
+      }
+      .input-wrapper .form-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--input-focus);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .input-wrapper .form-input.error {
+        border-color: var(--error);
+        box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.2);
+      }
+      .input-wrapper .form-input.success {
+        border-color: var(--success);
+        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.2);
+      }
+
+      .input-icon {
+        position: absolute;
+        right: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        pointer-events: none;
+        transition: color 0.25s;
+        z-index: 2;
+      }
+      .input-wrapper .form-input:focus ~ .input-icon {
+        color: var(--primary-light);
+      }
+
+      .toggle-password {
+        position: absolute;
+        right: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        z-index: 2;
+        transition: color 0.25s;
+      }
+      .toggle-password:hover {
+        color: var(--text-primary);
+      }
+      .input-wrapper .form-input:focus ~ .toggle-password {
+        color: var(--primary-light);
+      }
+
+      /* ── Error / Success Messages ── */
+      .error-message {
+        font-size: 0.78rem;
+        color: var(--error);
+        margin-top: 0.35rem;
+        min-height: 1.2rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        opacity: 0;
+        transform: translateY(-4px);
+        transition:
+          opacity 0.25s,
+          transform 0.25s;
+      }
+      .error-message.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .error-message.success-msg {
+        color: var(--success);
+      }
+
+      .success-message {
+        font-size: 0.82rem;
+        color: var(--success);
+        padding: 0.6rem 1rem;
+        border-radius: var(--radius-sm);
+        background: rgba(52, 211, 153, 0.1);
+        border: 1px solid rgba(52, 211, 153, 0.2);
+        margin-bottom: 1rem;
         display: none;
+        font-weight: 500;
+      }
+      .success-message.visible {
+        display: block;
+      }
+
+      /* ── Submit Button ── */
+      .login-button {
+        width: 100%;
+        padding: 0.85rem;
+        font-size: 1rem;
+        font-weight: 700;
+        font-family: "Inter", sans-serif;
+        color: #fff;
+        background: linear-gradient(135deg, var(--primary), #6d28d9);
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.3s,
+          background 0.3s;
+        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+        letter-spacing: 0.01em;
+        position: relative;
+        overflow: hidden;
+      }
+      .login-button::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.1),
+          transparent 60%
+        );
+        pointer-events: none;
+      }
+      .login-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(124, 58, 237, 0.45);
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      }
+      .login-button:active {
+        transform: translateY(0);
+      }
+      .login-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* ── Terms text ── */
+      .terms-text {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 1.25rem;
+        line-height: 1.5;
+      }
+      .terms-text a {
+        color: var(--primary-light);
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .terms-text a:hover {
+        color: #fff;
+      }
+
+      /* ── Remove right side ── */
+      .login-right {
+        display: none !important;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 640px) {
+        .login-container {
+          max-width: 100%;
+          margin: 0.75rem;
+          padding: 1rem 0;
+          border-radius: 20px;
+        }
+        .login-left {
+          padding: 1rem 0.75rem;
+        }
+        .login-form-container {
+          padding: 1.5rem 1.25rem;
+        }
+        .brand-mark {
+          top: 16px;
+          left: 20px;
+        }
+        .brand-mark span {
+          font-size: 1rem;
+        }
+        .brand-mark img {
+          width: 30px;
+          height: 30px;
+        }
+        .login-title {
+          font-size: 1.6rem;
+        }
+        .input-wrapper .form-input {
+          padding: 0.7rem 2.4rem 0.7rem 0.9rem;
+          font-size: 0.9rem;
+        }
+        .login-button {
+          padding: 0.75rem;
+          font-size: 0.95rem;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .login-form-container {
+          padding: 1rem 0.75rem;
+        }
+        .login-title {
+          font-size: 1.35rem;
+        }
+        .brand-mark {
+          top: 12px;
+          left: 14px;
+        }
+        .brand-mark span {
+          font-size: 0.9rem;
+        }
+        .brand-mark img {
+          width: 26px;
+          height: 26px;
+        }
+      }
+
+      /* ── Utility ── */
+      .glass-effect {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
       }
     </style>
   </head>
   <body>
+    <!-- ─── Animated Background Orbs ─── -->
+    <div class="bg-glow" aria-hidden="true">
+      <div class="orb"></div>
+      <div class="orb"></div>
+      <div class="orb"></div>
+    </div>
+
+    <!-- ─── Main Container ─── -->
     <div class="login-container">
+      <!-- Brand Mark -->
       <div class="brand-mark">
-        <img src="../../public/assets/logo1.png" alt="Eventra logo" /><span
-          >Eventra</span
-        >
+        <img src="../../public/assets/logo1.png" alt="Eventra logo" />
+        <span>Eventra</span>
       </div>
-      <!-- Left Side: Signup Form with Glassmorphism -->
+
+      <!-- ─── Signup Form (centered) ─── -->
       <div class="login-left">
-        <div class="login-form-container glass-effect">
+        <div class="login-form-container">
+          <!-- Success Banner -->
           <div id="successMessage" class="success-message"></div>
 
+          <!-- System Error Banner -->
+          <div
+            id="databaseErrorBanner"
+            class="error-message"
+            style="
+              margin-bottom: 1rem;
+              padding: 0.6rem 0.8rem;
+              border-radius: 8px;
+              background: rgba(248, 113, 113, 0.08);
+              border: 1px solid rgba(248, 113, 113, 0.15);
+              text-align: center;
+              justify-content: center;
+            "
+          ></div>
+
+          <!-- Header -->
           <header class="login-header">
-            <h1 class="login-title" id="signupTitle" style="color: #eee">
-              Create Account
-            </h1>
-            <p class="login-signup-prompt" id="loginPrompt" style="color: #eee">
+            <h1 class="login-title">Create Account</h1>
+            <p class="login-signup-prompt" id="loginPrompt">
               Already have an account?
               <a href="clientLogin.html" class="signup-link" id="loginLink"
                 >Log In</a
@@ -106,13 +555,14 @@
             </p>
           </header>
 
+          <!-- Signup Form -->
           <form
             id="signupForm"
             class="login-form"
             autocomplete="off"
             novalidate
           >
-            <!-- Full Name Field -->
+            <!-- Full Name -->
             <div class="form-group">
               <label for="fullName" class="form-label">Full Name</label>
               <div class="input-wrapper">
@@ -125,17 +575,14 @@
                   autocomplete="off"
                   required
                 />
-                <span class="input-icon"
-                  ><i
-                    data-lucide="user"
-                    style="width: 18px; height: 18px; color: #0a0a0f"
-                  ></i
-                ></span>
+                <span class="input-icon">
+                  <i data-lucide="user" style="width: 18px; height: 18px"></i>
+                </span>
               </div>
               <div id="fullNameError" class="error-message"></div>
             </div>
 
-            <!-- Business Name Field (Visible for Clients) -->
+            <!-- Business Name (optional) -->
             <div class="form-group" id="businessNameGroup">
               <label for="businessName" class="form-label">Business Name</label>
               <div class="input-wrapper">
@@ -147,17 +594,17 @@
                   placeholder="Your Business LLC"
                   autocomplete="off"
                 />
-                <span class="input-icon"
-                  ><i
+                <span class="input-icon">
+                  <i
                     data-lucide="briefcase"
-                    style="width: 18px; height: 18px; color: #0a0a0f"
-                  ></i
-                ></span>
+                    style="width: 18px; height: 18px"
+                  ></i>
+                </span>
               </div>
               <div id="businessNameError" class="error-message"></div>
             </div>
 
-            <!-- Email Field -->
+            <!-- Email -->
             <div class="form-group">
               <label for="email" class="form-label">Email Address</label>
               <div class="input-wrapper">
@@ -170,17 +617,14 @@
                   autocomplete="off"
                   required
                 />
-                <span class="input-icon"
-                  ><i
-                    data-lucide="mail"
-                    style="width: 18px; height: 18px; color: #0a0a0f"
-                  ></i
-                ></span>
+                <span class="input-icon">
+                  <i data-lucide="mail" style="width: 18px; height: 18px"></i>
+                </span>
               </div>
               <div id="emailError" class="error-message"></div>
             </div>
 
-            <!-- Password Field -->
+            <!-- Password -->
             <div class="form-group">
               <label for="password" class="form-label">Password</label>
               <div class="input-wrapper">
@@ -193,46 +637,417 @@
                   autocomplete="new-password"
                   required
                 />
-                <span id="togglePassword" class="toggle-password"
-                  ><i data-lucide="eye" style="width: 18px; height: 18px"></i
-                ></span>
+                <button
+                  type="button"
+                  id="togglePassword"
+                  class="toggle-password"
+                  aria-label="Toggle password visibility"
+                >
+                  <i data-lucide="eye" style="width: 18px; height: 18px"></i>
+                </button>
               </div>
               <div id="passwordError" class="error-message"></div>
             </div>
 
-            <!-- Submit Button -->
+            <!-- Submit -->
             <button type="submit" id="signupButton" class="login-button">
               Create Account
             </button>
 
-            <p style="text-align: center; font-size: 0.8rem; color: #111827">
-              By signing up, you agree to our Terms of Service and Privacy
-              Policy.
+            <!-- Terms -->
+            <p class="terms-text">
+              By signing up, you agree to our
+              <a href="#">Terms of Service</a> and
+              <a href="#">Privacy Policy</a>.
             </p>
           </form>
         </div>
       </div>
 
-      <!-- Right Side: Empty white panel (no event images on signup) -->
-      <div class="login-right" id="eventSlider">
-        <div class="slider-images">
-          <img
-            src="../../public/assets/imgs/login.png"
-            alt="Eventra experiences"
-            class="slider-img active"
-          />
-        </div>
-        <div class="overlay-gradient"></div>
-      </div>
+      <!-- ─── Right side removed ─── -->
     </div>
 
-    <!-- Scripts -->
-    <script src="../../public/js/utils.js"></script>
-    <script src="../js/clientSignup.js"></script>
+    <!-- ─── Inline JavaScript ─── -->
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        if (window.lucide) lucide.createIcons();
-      });
+      (function () {
+        "use strict";
+        return;
+
+        // ─── Initialize Lucide Icons ───
+        if (typeof lucide !== "undefined") {
+          lucide.createIcons();
+        } else {
+          console.warn("Lucide library not loaded. Icons may not display.");
+        }
+
+        // ─── DOM References ───
+        const form = document.getElementById("signupForm");
+        const fullNameInput = document.getElementById("fullName");
+        const businessNameInput = document.getElementById("businessName");
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+        const togglePasswordBtn = document.getElementById("togglePassword");
+
+        const fullNameError = document.getElementById("fullNameError");
+        const businessNameError = document.getElementById("businessNameError");
+        const emailError = document.getElementById("emailError");
+        const passwordError = document.getElementById("passwordError");
+
+        const successMessage = document.getElementById("successMessage");
+        const databaseErrorBanner = document.getElementById(
+          "databaseErrorBanner",
+        );
+        const signupButton = document.getElementById("signupButton");
+
+        // ─── Helper: Show Error ───
+        function showError(input, errorEl, message) {
+          input.classList.add("error");
+          input.classList.remove("success");
+          errorEl.textContent = message;
+          errorEl.classList.add("visible");
+          errorEl.classList.remove("success-msg");
+        }
+
+        // ─── Helper: Show Success ───
+        function showSuccess(input, errorEl) {
+          input.classList.remove("error");
+          input.classList.add("success");
+          errorEl.textContent = "";
+          errorEl.classList.remove("visible");
+          errorEl.classList.remove("success-msg");
+        }
+
+        // ─── Helper: Clear Error ───
+        function clearFieldError(input, errorEl) {
+          input.classList.remove("error", "success");
+          errorEl.textContent = "";
+          errorEl.classList.remove("visible", "success-msg");
+        }
+
+        // ─── Clear errors on input ───
+        fullNameInput.addEventListener("input", function () {
+          clearFieldError(fullNameInput, fullNameError);
+          hideSuccessMessage();
+          hideDatabaseError();
+        });
+        businessNameInput.addEventListener("input", function () {
+          clearFieldError(businessNameInput, businessNameError);
+          hideSuccessMessage();
+          hideDatabaseError();
+        });
+        emailInput.addEventListener("input", function () {
+          clearFieldError(emailInput, emailError);
+          hideSuccessMessage();
+          hideDatabaseError();
+        });
+        passwordInput.addEventListener("input", function () {
+          clearFieldError(passwordInput, passwordError);
+          hideSuccessMessage();
+          hideDatabaseError();
+        });
+
+        // ─── Hide Helpers ───
+        function hideSuccessMessage() {
+          successMessage.classList.remove("visible");
+          successMessage.textContent = "";
+        }
+
+        function hideDatabaseError() {
+          databaseErrorBanner.classList.remove("visible");
+          databaseErrorBanner.textContent = "";
+        }
+
+        function showSuccessMessage(message) {
+          successMessage.textContent = message;
+          successMessage.classList.add("visible");
+        }
+
+        function showDatabaseError(message) {
+          databaseErrorBanner.textContent = message;
+          databaseErrorBanner.classList.add("visible");
+        }
+
+        // ─── Toggle Password Visibility ───
+        togglePasswordBtn.addEventListener("click", function () {
+          const isPassword = passwordInput.type === "password";
+          passwordInput.type = isPassword ? "text" : "password";
+
+          // Update icon
+          const icon = togglePasswordBtn.querySelector("i");
+          if (icon) {
+            icon.setAttribute("data-lucide", isPassword ? "eye-off" : "eye");
+            if (typeof lucide !== "undefined") {
+              lucide.createIcons();
+            }
+          }
+        });
+
+        // ─── Validation Functions ───
+
+        function validateFullName() {
+          const value = fullNameInput.value.trim();
+          if (!value) {
+            showError(fullNameInput, fullNameError, "⚠ Full name is required.");
+            return false;
+          }
+          if (value.length < 2) {
+            showError(
+              fullNameInput,
+              fullNameError,
+              "⚠ Name must be at least 2 characters long.",
+            );
+            return false;
+          }
+          if (value.length > 80) {
+            showError(
+              fullNameInput,
+              fullNameError,
+              "⚠ Name cannot exceed 80 characters.",
+            );
+            return false;
+          }
+          if (!/^[a-zA-Z\s'.-]+$/.test(value)) {
+            showError(
+              fullNameInput,
+              fullNameError,
+              "⚠ Only letters, spaces, hyphens, apostrophes, and periods are allowed.",
+            );
+            return false;
+          }
+          showSuccess(fullNameInput, fullNameError);
+          return true;
+        }
+
+        function validateBusinessName() {
+          const value = businessNameInput.value.trim();
+          if (!value) {
+            // Business name is optional — no error, but also no success class needed
+            clearFieldError(businessNameInput, businessNameError);
+            return true;
+          }
+          if (value.length < 2) {
+            showError(
+              businessNameInput,
+              businessNameError,
+              "⚠ Business name must be at least 2 characters long.",
+            );
+            return false;
+          }
+          if (value.length > 120) {
+            showError(
+              businessNameInput,
+              businessNameError,
+              "⚠ Business name cannot exceed 120 characters.",
+            );
+            return false;
+          }
+          if (!/^[a-zA-Z0-9\s'&.,()-]+$/.test(value)) {
+            showError(
+              businessNameInput,
+              businessNameError,
+              "⚠ Business name contains invalid characters. Only letters, numbers, spaces, and basic punctuation are allowed.",
+            );
+            return false;
+          }
+          showSuccess(businessNameInput, businessNameError);
+          return true;
+        }
+
+        function validateEmail() {
+          const value = emailInput.value.trim();
+          if (!value) {
+            showError(emailInput, emailError, "⚠ Email address is required.");
+            return false;
+          }
+          if (value.length > 120) {
+            showError(
+              emailInput,
+              emailError,
+              "⚠ Email cannot exceed 120 characters.",
+            );
+            return false;
+          }
+          // Robust email regex
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(value)) {
+            showError(
+              emailInput,
+              emailError,
+              "⚠ Please enter a valid email address (e.g., name@example.com).",
+            );
+            return false;
+          }
+          // Check for consecutive dots or other common issues
+          if (value.includes("..")) {
+            showError(
+              emailInput,
+              emailError,
+              "⚠ Email address cannot contain consecutive dots.",
+            );
+            return false;
+          }
+          showSuccess(emailInput, emailError);
+          return true;
+        }
+
+        function validatePassword() {
+          const value = passwordInput.value;
+          if (!value) {
+            showError(passwordInput, passwordError, "⚠ Password is required.");
+            return false;
+          }
+          if (value.length < 8) {
+            showError(
+              passwordInput,
+              passwordError,
+              "⚠ Password must be at least 8 characters long.",
+            );
+            return false;
+          }
+          if (value.length > 72) {
+            showError(
+              passwordInput,
+              passwordError,
+              "⚠ Password cannot exceed 72 characters.",
+            );
+            return false;
+          }
+          if (!/[A-Z]/.test(value)) {
+            showError(
+              passwordInput,
+              passwordError,
+              "⚠ Password must contain at least one uppercase letter (A-Z).",
+            );
+            return false;
+          }
+          if (!/[a-z]/.test(value)) {
+            showError(
+              passwordInput,
+              passwordError,
+              "⚠ Password must contain at least one lowercase letter (a-z).",
+            );
+            return false;
+          }
+          if (!/[0-9]/.test(value)) {
+            showError(
+              passwordInput,
+              passwordError,
+              "⚠ Password must contain at least one number (0-9).",
+            );
+            return false;
+          }
+          if (!/[^a-zA-Z0-9]/.test(value)) {
+            showError(
+              passwordInput,
+              passwordError,
+              "⚠ Password must contain at least one special character (e.g., !@#$%^&*).",
+            );
+            return false;
+          }
+          showSuccess(passwordInput, passwordError);
+          return true;
+        }
+
+        // ─── Form Submission ───
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          // Hide any previous success/error banners
+          hideSuccessMessage();
+          hideDatabaseError();
+
+          // Validate ALL fields — all errors will show simultaneously
+          const isFullNameValid = validateFullName();
+          const isBusinessNameValid = validateBusinessName();
+          const isEmailValid = validateEmail();
+          const isPasswordValid = validatePassword();
+
+          const allValid =
+            isFullNameValid &&
+            isBusinessNameValid &&
+            isEmailValid &&
+            isPasswordValid;
+
+          if (allValid) {
+            // Simulate successful submission
+            signupButton.disabled = true;
+            signupButton.textContent = "Creating Account...";
+
+            // Show success message
+            showSuccessMessage(
+              "✓ Account created successfully! Redirecting...",
+            );
+
+            // Simulate a delay then reset
+            setTimeout(function () {
+              signupButton.disabled = false;
+              signupButton.textContent = "Create Account";
+
+              // Reset form fields (optional — comment out if you want to keep values)
+              // form.reset();
+              // clearFieldError(fullNameInput, fullNameError);
+              // clearFieldError(businessNameInput, businessNameError);
+              // clearFieldError(emailInput, emailError);
+              // clearFieldError(passwordInput, passwordError);
+
+              // Show a SweetAlert2 success dialog (if available)
+              if (typeof Swal !== "undefined") {
+                Swal.fire({
+                  title: "Success!",
+                  text: "Your Eventra account has been created.",
+                  icon: "success",
+                  confirmButtonColor: "#7C3AED",
+                  background: "#1E1E2E",
+                  color: "#F1F5F9",
+                  confirmButtonText: "Continue",
+                });
+              } else {
+                // Fallback — keep the success banner visible
+                showSuccessMessage("✓ Account created successfully!");
+              }
+            }, 1200);
+          } else {
+            // Focus the first invalid field
+            if (!isFullNameValid) {
+              fullNameInput.focus();
+            } else if (!isEmailValid) {
+              emailInput.focus();
+            } else if (!isPasswordValid) {
+              passwordInput.focus();
+            } else if (!isBusinessNameValid) {
+              businessNameInput.focus();
+            }
+
+            // Show a subtle SweetAlert2 error toast (optional)
+            if (typeof Swal !== "undefined") {
+              Swal.fire({
+                title: "Please fix the errors",
+                text: "Check the highlighted fields and try again.",
+                icon: "warning",
+                confirmButtonColor: "#7C3AED",
+                background: "#1E1E2E",
+                color: "#F1F5F9",
+                confirmButtonText: "Got it",
+              });
+            }
+          }
+        });
+
+        // ─── Also handle button click directly (for extra safety) ───
+        signupButton.addEventListener("click", function (e) {
+          // The form's submit event will handle this — do nothing here
+          // This is just a safety net in case the submit event doesn't fire
+        });
+
+        // ─── Re-initialize icons after any DOM changes ───
+        // (Already called at the top, but this ensures icons render if the page loads slowly)
+        window.addEventListener("load", function () {
+          if (typeof lucide !== "undefined") {
+            lucide.createIcons();
+          }
+        });
+      })();
     </script>
+    <script src="../js/clientSignup.js"></script>
   </body>
 </html>

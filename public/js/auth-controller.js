@@ -302,6 +302,7 @@ class AuthController {
     }
 
     if (state.initialized) {
+      state.controller = this;
       this.googleInitialized = true;
       this.renderGoogleButton(containerId);
       return;
