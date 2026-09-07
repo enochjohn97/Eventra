@@ -261,7 +261,9 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         $pdo->commit();
 
         // ── Send notifications (outside transaction) ──────────────────────────
-        // Send one email per ticket with its own QR code
+        // Send one email per purchase with one PDF attachment per ticket.
+        $emailData = null;
+        $emailAttachments = [];
         foreach ($barcodes as $bc) {
             $td = $ticketDataMap[$bc] ?? [
                 'barcode'     => $bc,
@@ -284,7 +286,14 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             $pdfPath = generateTicketPDF($td);
             $currentPdf = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
             
-            EmailHelper::sendTicketEmailFull($sendTo, $td, $currentPdf);
+            if ($emailData === null) {
+                $emailData = $td;
+                $emailRecipient = $sendTo;
+            }
+            $emailAttachments = array_merge($emailAttachments, $currentPdf);
+        }
+        if ($emailData !== null) {
+            EmailHelper::sendTicketEmailFull($emailRecipient, $emailData, $emailAttachments);
         }
 
         // SMS to buyer

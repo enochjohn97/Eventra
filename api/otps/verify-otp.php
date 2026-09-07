@@ -30,7 +30,7 @@ $data = json_decode(file_get_contents("php://input"), true);
 $otp = $data['otp'] ?? '';
 $payment_reference = $data['payment_reference'] ?? '';
 
-if (empty($otp) || empty($payment_reference)) {
+if (!preg_match('/^\d{6}$/', (string) $otp) || empty($payment_reference)) {
     echo json_encode(['success' => false, 'message' => 'OTP and payment reference are required.']);
     exit;
 }

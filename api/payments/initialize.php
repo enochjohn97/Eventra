@@ -252,6 +252,8 @@ try {
             $pdo->commit();
 
             // 5. Notifications & Email
+            $freeEmailData = null;
+            $freePdfAttachments = [];
             foreach ($allFreeTicketData as $ftd) {
                 $sendTo = $ftd['buyer_email'] ?? $user_email;
                 // Generate PDF attachment before sending email
@@ -264,7 +266,14 @@ try {
                 } catch (\Throwable $pdfErr) {
                     error_log('[initialize.php] Free ticket PDF generation failed for ' . ($ftd['barcode'] ?? '') . ': ' . $pdfErr->getMessage());
                 }
-                EmailHelper::sendTicketEmailFull($sendTo, $ftd, $pdfAttachment);
+                if ($freeEmailData === null) {
+                    $freeEmailData = $ftd;
+                    $freeEmailRecipient = $sendTo;
+                }
+                $freePdfAttachments = array_merge($freePdfAttachments, $pdfAttachment);
+            }
+            if ($freeEmailData !== null) {
+                EmailHelper::sendTicketEmailFull($freeEmailRecipient, $freeEmailData, $freePdfAttachments);
             }
             createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
             createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);

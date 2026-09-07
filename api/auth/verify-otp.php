@@ -24,7 +24,7 @@ if ($intent === 'client_login_otp') {
     $identity = $data['identity'] ?? $data['email'] ?? null;
     $otp = $data['otp'] ?? '';
 
-    if (!$otp) {
+    if (!preg_match('/^\d{6}$/', (string) $otp)) {
         echo json_encode(['success' => false, 'message' => 'Verification code is required.']);
         exit;
     }
@@ -181,6 +181,11 @@ if ((!isset($data['identity']) && !isset($data['email'])) || !isset($data['otp']
 $identity = $data['identity'] ?? $data['email'];
 $otp = $data['otp'] ?? null;
 // $intent already set above
+
+if (!preg_match('/^\d{6}$/', (string) $otp)) {
+    echo json_encode(['success' => false, 'message' => 'Verification code must contain exactly 6 digits.']);
+    exit;
+}
 
 try {
     // 0. Connect to temporary pending session for registration_verify

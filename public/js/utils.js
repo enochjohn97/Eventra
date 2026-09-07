@@ -10,22 +10,79 @@
 window.serverTimeOffset = 0;
 
 window.NIGERIA_STATES = [
-  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 
-  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa', 
-  'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 
-  'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT'
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Lagos",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
+  "FCT",
 ];
 
 window.EVENT_CATEGORIES = [
-  'Conference', 'Workshop', 'Seminar', 'Entertainment',
-  'Sport & Fitness', 'Exhibition', 'Networking', 'Festival', 'Concert', 'Business',
-  'Education', 'Social', 'Personal', 'Community',
-  'Religion', 'Cultural', 'Technology', 'Art', 'Health', 'Food',
-  'Agriculture', 'Tourism', 'Fashion', 'Real Estate', 'Awards',
-  'Charity', 'Finance', 'Gaming', 'Political', 'Other'
+  "Conference",
+  "Workshop",
+  "Seminar",
+  "Entertainment",
+  "Sport & Fitness",
+  "Exhibition",
+  "Networking",
+  "Festival",
+  "Concert",
+  "Business",
+  "Education",
+  "Social",
+  "Personal",
+  "Community",
+  "Religion",
+  "Cultural",
+  "Technology",
+  "Art",
+  "Health",
+  "Food",
+  "Agriculture",
+  "Tourism",
+  "Fashion",
+  "Real Estate",
+  "Awards",
+  "Charity",
+  "Finance",
+  "Gaming",
+  "Political",
+  "Other",
 ];
 
-window.PRIORITY_TAGS = ['nearby', 'hot', 'upcoming', 'trending', 'featured'];
+window.PRIORITY_TAGS = ["nearby", "hot", "upcoming", "trending", "featured"];
 
 /**
  * Standardized Time Ago / Duration function
@@ -34,69 +91,78 @@ window.PRIORITY_TAGS = ['nearby', 'hot', 'upcoming', 'trending', 'featured'];
  * @returns {string} - Formatted time ago string
  */
 function timeAgo(date, shortForm = false) {
-    if (!date) return 'Just now';
-    
-    let timestamp;
-    if (typeof date === 'string') {
-        // Handle ISO strings and MySQL datetime strings
-        const validDateString = date.includes(' ') ? date.replace(' ', 'T') : date;
-        timestamp = new Date(validDateString).getTime();
-        
-        // If parsing failed (e.g. invalid date or timezone issues), try adding Z if it looks like ISO but missing Z
-        if (isNaN(timestamp) && !validDateString.includes('Z')) {
-            timestamp = new Date(validDateString + 'Z').getTime();
-        }
-        // Removing the 'Z' append fixes the timezone offset bug when the server and browser are not in UTC.
-        // It allows the browser to parse it as local time.
-        if (!validDateString.includes('Z') && !validDateString.includes('+') && validDateString.length > 10) {
-            timestamp = new Date(validDateString.replace(' ', 'T')).getTime();
-        }
-    } else if (date instanceof Date) {
-        timestamp = date.getTime();
-    } else {
-        timestamp = date;
+  if (!date) return "Just now";
+
+  let timestamp;
+  if (typeof date === "string") {
+    // Handle ISO strings and MySQL datetime strings
+    const validDateString = date.includes(" ") ? date.replace(" ", "T") : date;
+    timestamp = new Date(validDateString).getTime();
+
+    // If parsing failed (e.g. invalid date or timezone issues), try adding Z if it looks like ISO but missing Z
+    if (isNaN(timestamp) && !validDateString.includes("Z")) {
+      timestamp = new Date(validDateString + "Z").getTime();
     }
-
-    if (isNaN(timestamp)) return 'Recently';
-
-    // Use server offset if available to ensure accurate relative time
-    const now = new Date().getTime() + (window.serverTimeOffset || 0);
-    const diffMs = now - timestamp;
-    const seconds = Math.floor(diffMs / 1000);
-
-    // Handle future dates (e.g. server clock slightly ahead or scheduled events)
-    if (seconds < 0) {
-        const absSeconds = Math.abs(seconds);
-        if (absSeconds < 60) return 'In a few seconds';
-        
-        const absMinutes = Math.floor(absSeconds / 60);
-        if (absMinutes < 60) return `In ${absMinutes} min${absMinutes > 1 ? 's' : ''}`;
-        
-        const absHours = Math.floor(absMinutes / 60);
-        if (absHours < 24) return `In ${absHours} hr${absHours > 1 ? 's' : ''}`;
-        
-        const absDays = Math.floor(absHours / 24);
-        if (absDays === 1) return 'Tomorrow';
-        return `In ${absDays} days`;
+    // Removing the 'Z' append fixes the timezone offset bug when the server and browser are not in UTC.
+    // It allows the browser to parse it as local time.
+    if (
+      !validDateString.includes("Z") &&
+      !validDateString.includes("+") &&
+      validDateString.length > 10
+    ) {
+      timestamp = new Date(validDateString.replace(" ", "T")).getTime();
     }
+  } else if (date instanceof Date) {
+    timestamp = date.getTime();
+  } else {
+    timestamp = date;
+  }
 
-    if (seconds < 30) return 'Just now';
-    if (seconds < 60) return `${seconds}s ago`;
+  if (isNaN(timestamp)) return "Recently";
 
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+  // Use server offset if available to ensure accurate relative time
+  const now = new Date().getTime() + (window.serverTimeOffset || 0);
+  const diffMs = now - timestamp;
+  const seconds = Math.floor(diffMs / 1000);
 
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) {
-        const unit = shortForm ? 'hr' : 'hour';
-        return `${hours} ${unit}${hours > 1 ? 's' : ''} ago`;
-    }
+  // Handle future dates (e.g. server clock slightly ahead or scheduled events)
+  if (seconds < 0) {
+    const absSeconds = Math.abs(seconds);
+    if (absSeconds < 60) return "In a few seconds";
 
-    const days = Math.floor(hours / 24);
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
+    const absMinutes = Math.floor(absSeconds / 60);
+    if (absMinutes < 60)
+      return `In ${absMinutes} min${absMinutes > 1 ? "s" : ""}`;
 
-    return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const absHours = Math.floor(absMinutes / 60);
+    if (absHours < 24) return `In ${absHours} hr${absHours > 1 ? "s" : ""}`;
+
+    const absDays = Math.floor(absHours / 24);
+    if (absDays === 1) return "Tomorrow";
+    return `In ${absDays} days`;
+  }
+
+  if (seconds < 30) return "Just now";
+  if (seconds < 60) return `${seconds}s ago`;
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes > 1 ? "s" : ""} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    const unit = shortForm ? "hr" : "hour";
+    return `${hours} ${unit}${hours > 1 ? "s" : ""} ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 /**
@@ -106,49 +172,56 @@ function timeAgo(date, shortForm = false) {
  * @returns {string} - Formatted local date/time string.
  */
 function formatLocalDateTime(utcString, options = {}) {
-    if (!utcString) return 'TBA';
-    
-    // Ensure the string is treated as UTC if it doesn't have a Z or offset
-    const dateStr = (utcString.endsWith('Z') || utcString.includes('+') || (utcString.includes('-') && utcString.includes(':') && utcString.split('-').length > 3)) 
-        ? utcString 
-        : utcString.replace(' ', 'T') + 'Z';
-        
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return utcString;
+  if (!utcString) return "TBA";
 
-    const defaultOptions = {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    };
+  // Ensure the string is treated as UTC if it doesn't have a Z or offset
+  const dateStr =
+    utcString.endsWith("Z") ||
+    utcString.includes("+") ||
+    (utcString.includes("-") &&
+      utcString.includes(":") &&
+      utcString.split("-").length > 3)
+      ? utcString
+      : utcString.replace(" ", "T") + "Z";
 
-    return new Intl.DateTimeFormat('en-US', { ...defaultOptions, ...options }).format(date);
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return utcString;
+
+  const defaultOptions = {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  };
+
+  return new Intl.DateTimeFormat("en-US", {
+    ...defaultOptions,
+    ...options,
+  }).format(date);
 }
 
 /**
  * Real-time timer to update all elements with data-timestamp attribute
  */
 (function initRealtimeTimers() {
-    if (typeof window === 'undefined') return;
-    
-    setInterval(() => {
-        const timerElements = document.querySelectorAll('[data-timestamp]');
-        timerElements.forEach(el => {
-            const timestamp = el.getAttribute('data-timestamp');
-            const shortForm = el.getAttribute('data-short-time') === 'true';
-            if (timestamp) {
-                el.textContent = timeAgo(timestamp, shortForm);
-            }
-        });
-    }, 60000); // Update every minute
+  if (typeof window === "undefined") return;
+
+  setInterval(() => {
+    const timerElements = document.querySelectorAll("[data-timestamp]");
+    timerElements.forEach((el) => {
+      const timestamp = el.getAttribute("data-timestamp");
+      const shortForm = el.getAttribute("data-short-time") === "true";
+      if (timestamp) {
+        el.textContent = timeAgo(timestamp, shortForm);
+      }
+    });
+  }, 60000); // Update every minute
 })();
 
 // Export to window
 window.timeAgo = timeAgo;
-
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -156,30 +229,37 @@ window.timeAgo = timeAgo;
  * @returns {string} - Escaped string
  */
 // Use var or attach to window to prevent re-declaration errors if loaded twice
-if (typeof window.escapeHtml === 'undefined') {
-    window.escapeHtml = function(text) {
-        if (text === null || text === undefined) return '';
-        const map = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' };
-        return String(text).replace(/[&<>"']/g, m => map[m]);
+if (typeof window.escapeHtml === "undefined") {
+  window.escapeHtml = function (text) {
+    if (text === null || text === undefined) return "";
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
     };
-    // Maintain backward compatibility for any code using escapeHTML (all caps)
-    window.escapeHTML = window.escapeHtml;
+    return String(text).replace(/[&<>"']/g, (m) => map[m]);
+  };
+  // Maintain backward compatibility for any code using escapeHTML (all caps)
+  window.escapeHTML = window.escapeHtml;
 }
 
 // Format currency
-function formatCurrency(amount, currency = '₦') {
+function formatCurrency(amount, currency = "₦") {
   return `${currency} ${amount.toLocaleString()}`;
 }
 
 // Format date
 function formatDate(date) {
-  if (!date) return 'TBA';
-  const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  if (!date) return "TBA";
+  const options = { year: "numeric", month: "long", day: "numeric" };
   // Fix: Force local time for YYYY-MM-DD strings to avoid timezone shift
-  const dateObj = (typeof date === 'string' && date.includes('-') && !date.includes('T')) 
-    ? new Date(date + 'T00:00:00') 
-    : new Date(date);
-  return dateObj.toLocaleDateString('en-US', options);
+  const dateObj =
+    typeof date === "string" && date.includes("-") && !date.includes("T")
+      ? new Date(date + "T00:00:00")
+      : new Date(date);
+  return dateObj.toLocaleDateString("en-US", options);
 }
 
 // Debounce function for search
@@ -201,19 +281,19 @@ function debounce(func, wait) {
  * @param {string} name - Fallback name for avatar
  * @returns {string} - Final URL
  */
-function getProfileImg(path, name = '') {
-  if (!path || path.trim() === '' || path === 'null' || path === 'undefined') {
-    const fallbackName = name || 'User';
+function getProfileImg(path, name = "") {
+  if (!path || path.trim() === "" || path === "null" || path === "undefined") {
+    const fallbackName = name || "User";
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
   }
 
   // Handle external URLs (like Google profile pics) or data URIs
-  if (path.startsWith('http') || path.startsWith('data:')) {
+  if (path.startsWith("http") || path.startsWith("data:")) {
     // Avoid adding timestamp to external URLs to prevent 429 Too Many Requests
     // For data URIs, validate they are complete (contain a comma separator)
-    if (path.startsWith('data:') && !path.includes(',')) {
+    if (path.startsWith("data:") && !path.includes(",")) {
       // Truncated/malformed data URI — fall back to avatar
-      const fallbackName = name || 'User';
+      const fallbackName = name || "User";
       return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
     }
     return path;
@@ -221,34 +301,38 @@ function getProfileImg(path, name = '') {
 
   // Detect partial/truncated base64 that looks like a data URI fragment
   // (e.g., "iVBORw0..." or "data:image/..." without proper data: prefix)
-  if (/^[A-Za-z0-9+/]{20,}={0,2}$/.test(path.trim()) || path.includes('iVBORw0') || path.includes('R0lGOD')) {
-    const fallbackName = name || 'User';
+  if (
+    /^[A-Za-z0-9+/]{20,}={0,2}$/.test(path.trim()) ||
+    path.includes("iVBORw0") ||
+    path.includes("R0lGOD")
+  ) {
+    const fallbackName = name || "User";
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
   }
 
   let finalPath = path;
-  
+
   // Normalize path
-  if (!finalPath.startsWith('/')) {
+  if (!finalPath.startsWith("/")) {
     // If it starts with ../.. or public/, etc
-    if (finalPath.startsWith('../../')) {
-        finalPath = finalPath.replace('../../', '/');
-    } else if (!finalPath.startsWith('/')) {
-        finalPath = '/' + finalPath;
+    if (finalPath.startsWith("../../")) {
+      finalPath = finalPath.replace("../../", "/");
+    } else if (!finalPath.startsWith("/")) {
+      finalPath = "/" + finalPath;
     }
   }
 
   // Ensure double slashes are removed
-  finalPath = finalPath.replace(/\/\//g, '/');
+  finalPath = finalPath.replace(/\/\//g, "/");
 
   // Add cache header for local images only
   const timestamp = Date.now();
-  const separator = finalPath.includes('?') ? '&' : '?';
+  const separator = finalPath.includes("?") ? "&" : "?";
   const urlPath = `${finalPath}${separator}t=${timestamp}`;
-  
+
   // Ensure absolute URL if it starts with /
-  if (urlPath.startsWith('/')) {
-      return window.location.origin + urlPath;
+  if (urlPath.startsWith("/")) {
+    return window.location.origin + urlPath;
   }
   return urlPath;
 }
@@ -259,31 +343,31 @@ function getProfileImg(path, name = '') {
  * @returns {string} - Final URL
  */
 function getImageUrl(path) {
-  if (!path || path.trim() === '' || path === 'null' || path === 'undefined') {
-    return '';
+  if (!path || path.trim() === "" || path === "null" || path === "undefined") {
+    return "";
   }
 
   // Handle external URLs and data URIs
-  if (path.startsWith('http') || path.startsWith('data:')) {
+  if (path.startsWith("http") || path.startsWith("data:")) {
     return path;
   }
 
-  let finalPath = String(path).replace(/\\/g, '/');
+  let finalPath = String(path).replace(/\\/g, "/");
 
   // Extract web path from absolute filesystem paths (Windows or Unix)
-  const publicIdx = finalPath.toLowerCase().indexOf('/public/');
+  const publicIdx = finalPath.toLowerCase().indexOf("/public/");
   if (publicIdx >= 0) {
     finalPath = finalPath.substring(publicIdx);
   }
 
   // Normalize relative paths
-  if (finalPath.startsWith('../../')) {
-    finalPath = finalPath.replace(/^\.\.\/\.\.\//, '/');
-  } else if (!finalPath.startsWith('/')) {
-    finalPath = '/' + finalPath;
+  if (finalPath.startsWith("../../")) {
+    finalPath = finalPath.replace(/^\.\.\/\.\.\//, "/");
+  } else if (!finalPath.startsWith("/")) {
+    finalPath = "/" + finalPath;
   }
 
-  finalPath = finalPath.replace(/\/\//g, '/');
+  finalPath = finalPath.replace(/\/\//g, "/");
 
   return window.location.origin + finalPath;
 }
@@ -294,60 +378,60 @@ function getImageUrl(path) {
  * @returns {string} - Badge HTML
  */
 function getVerificationBadge(status) {
-    if (!status || status === 'unverified') {
-        return `
+  if (!status || status === "unverified") {
+    return `
             <div class="verification-badge badge-unverified" title="Unverified Organizer" 
                  onclick="event.stopPropagation(); Swal.fire({title: 'Not Verified', text: 'This organizer has not completed their identity verification. Proceed with caution.', icon: 'warning', confirmButtonColor: '#6366f1'})">
                 <i data-lucide="alert-triangle" style="color: #f59e0b;"></i>
             </div>
         `;
-    }
-    
-    let icon = 'clock';
-    let badgeClass = 'badge-pending';
-    let title = 'Verification Pending';
-    let onclick = '';
+  }
 
-    if (status === 'verified') {
-        icon = 'check-circle';
-        badgeClass = 'badge-verified';
-        title = 'Verified Organizer';
-    } else if (status === 'rejected') {
-        icon = 'x-circle';
-        badgeClass = 'badge-rejected';
-        title = 'Verification Rejected';
-        onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Rejected', text: 'This organizer\'s verification was declined by admin. Proceed with extreme caution.', icon: 'error', confirmButtonColor: '#6366f1'})"`;
-    } else if (status === 'pending') {
-        icon = 'alert-triangle';
-        badgeClass = 'badge-pending';
-        title = 'Verification Pending';
-        onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Pending', text: 'This organizer\'s verification is currently being reviewed by our team.', icon: 'info', confirmButtonColor: '#6366f1'})"`;
-    }
+  let icon = "clock";
+  let badgeClass = "badge-pending";
+  let title = "Verification Pending";
+  let onclick = "";
 
-    return `
+  if (status === "verified") {
+    icon = "check-circle";
+    badgeClass = "badge-verified";
+    title = "Verified Organizer";
+  } else if (status === "rejected") {
+    icon = "x-circle";
+    badgeClass = "badge-rejected";
+    title = "Verification Rejected";
+    onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Rejected', text: 'This organizer\'s verification was declined by admin. Proceed with extreme caution.', icon: 'error', confirmButtonColor: '#6366f1'})"`;
+  } else if (status === "pending") {
+    icon = "alert-triangle";
+    badgeClass = "badge-pending";
+    title = "Verification Pending";
+    onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Pending', text: 'This organizer\'s verification is currently being reviewed by our team.', icon: 'info', confirmButtonColor: '#6366f1'})"`;
+  }
+
+  return `
         <div class="verification-badge ${badgeClass}" title="${title}" ${onclick} style="cursor: pointer;">
             <i data-lucide="${icon}"></i>
         </div>
     `;
 }
 
-
 // Global listener for profile updates to refresh all avatars on the page
-document.addEventListener('EventraProfileUpdated', (e) => {
-    const { profile_pic, name } = e.detail;
-    if (!profile_pic) return;
+document.addEventListener("EventraProfileUpdated", (e) => {
+  const { profile_pic, name } = e.detail;
+  if (!profile_pic) return;
 
-    // Refresh all elements with data-profile-sync="true"
-    const syncedElements = document.querySelectorAll('[data-profile-sync="true"]');
-    syncedElements.forEach(el => {
-        const imgUrl = getProfileImg(profile_pic, name || el.alt || '');
-        if (el.tagName === 'IMG') {
-            el.src = imgUrl;
-        } else {
-            el.style.backgroundImage = `url(${imgUrl})`;
-        }
-    });
-
+  // Refresh all elements with data-profile-sync="true"
+  const syncedElements = document.querySelectorAll(
+    '[data-profile-sync="true"]',
+  );
+  syncedElements.forEach((el) => {
+    const imgUrl = getProfileImg(profile_pic, name || el.alt || "");
+    if (el.tagName === "IMG") {
+      el.src = imgUrl;
+    } else {
+      el.style.backgroundImage = `url(${imgUrl})`;
+    }
+  });
 });
 
 // Validate email
@@ -357,31 +441,33 @@ function isValidEmail(email) {
 }
 
 // Show notification
-function showNotification(message, type = 'info') {
-  if (typeof Swal !== 'undefined') {
+function showNotification(message, type = "info") {
+  if (typeof Swal !== "undefined") {
     Swal.fire({
       toast: true,
-      position: 'top-end',
-      icon: type === 'error' ? 'error' : type === 'success' ? 'success' : 'info',
+      position: "top-end",
+      icon:
+        type === "error" ? "error" : type === "success" ? "success" : "info",
       title: message,
       showConfirmButton: false,
       timer: 3000,
       timerProgressBar: true,
-      background: '#ffffff',
-      color: '#000000',
+      background: "#ffffff",
+      color: "#000000",
       customClass: {
-        container: 'eventra-toast-container'
-      }
+        container: "eventra-toast-container",
+      },
     });
     // Ensure container has high z-index
-    const style = document.createElement('style');
-    style.innerHTML = '.eventra-toast-container { z-index: 999999 !important; } .swal2-container { z-index: 999999 !important; }';
+    const style = document.createElement("style");
+    style.innerHTML =
+      ".eventra-toast-container { z-index: 999999 !important; } .swal2-container { z-index: 999999 !important; }";
     document.head.appendChild(style);
     return;
   }
 
   // Fallback to legacy notification if Swal is not loaded
-  const notification = document.createElement('div');
+  const notification = document.createElement("div");
   notification.className = `notification notification-${type}`;
   notification.textContent = message;
   notification.style.cssText = `
@@ -389,7 +475,7 @@ function showNotification(message, type = 'info') {
     top: 20px;
     right: 20px;
     padding: 1rem 1.5rem;
-    background-color: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+    background-color: ${type === "success" ? "#4caf50" : type === "error" ? "#f44336" : "#2196f3"};
     color: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -401,64 +487,145 @@ function showNotification(message, type = 'info') {
 
   // Remove after 3 seconds
   setTimeout(() => {
-    notification.style.animation = 'slideOut 0.3s ease';
+    notification.style.animation = "slideOut 0.3s ease";
     setTimeout(() => notification.remove(), 300);
   }, 3000);
 }
 
 /* Shared validation for login, signup, event and profile forms. */
 (function () {
-  const style = document.createElement('style');
-  style.textContent = '.eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);font-size:1.05rem;font-weight:800;line-height:1;pointer-events:none}.login-form .eventra-field-wrap{display:block}.login-form .input-icon,.login-form .toggle-password{top:50%;transform:translateY(-50%)}.login-form .eventra-state-icon{right:2.75rem;top:50%;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;transform:translateY(-50%);z-index:2}.form-input.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.form-input.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.form-input.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{font-size:.78rem!important;margin-top:.3rem}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}';
+  const style = document.createElement("style");
+  style.textContent =
+    ".eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;transform:translateY(-50%);font-size:1.05rem;font-weight:800;line-height:1;pointer-events:none;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;z-index:2}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:3rem!important}.login-form .eventra-field-wrap{display:block}.login-form .eventra-field-wrap>input{padding-right:5rem!important}.login-form .input-icon,.login-form .toggle-password{top:50%;transform:translateY(-50%)}.login-form .eventra-state-icon{right:2.75rem}.form-input.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.form-input.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.form-input.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{display:block;clear:both;width:100%;font-size:.78rem!important;margin-top:.3rem;line-height:1.35}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}";
   document.head.appendChild(style);
 
   function fieldMessage(field, message) {
-    const parent = field.closest('.form-group,.form-field') || field.parentElement;
-    const isAuthField = !!field.closest('.login-form');
-    let msg = isAuthField ? parent.closest('.form-group,.form-field')?.querySelector('.error-message') : parent.querySelector('.eventra-field-message');
-    if (!msg) { msg = document.createElement('div'); msg.className = 'eventra-field-message'; parent.appendChild(msg); }
-    msg.textContent = message || '';
-    msg.style.display = message ? 'block' : 'none';
+    const parent =
+      field.closest(".form-group,.form-field") || field.parentElement;
+    const isAuthField = !!field.closest(".login-form");
+    let msg = isAuthField
+      ? parent
+          .closest(".form-group,.form-field")
+          ?.querySelector(".error-message")
+      : parent.querySelector(".eventra-field-message");
+    if (!msg) {
+      msg = document.createElement("div");
+      msg.className = "eventra-field-message";
+      parent.appendChild(msg);
+    }
+    msg.textContent = message || "";
+    msg.style.display = message ? "block" : "none";
   }
-  function setState(field, state, message = '') {
+  function setState(field, state, message = "") {
     const wrapper = field.parentElement;
-    const isAuthField = !!field.closest('.login-form');
-    if (!wrapper.classList.contains('eventra-field-wrap')) {
-      wrapper.classList.add('eventra-field-wrap');
-      const icon = document.createElement('span');
-      icon.className = 'eventra-state-icon';
+    if (!wrapper.classList.contains("eventra-field-wrap")) {
+      wrapper.classList.add("eventra-field-wrap");
+      const icon = document.createElement("span");
+      icon.className = "eventra-state-icon";
       wrapper.appendChild(icon);
     }
-    const icon = wrapper.querySelector('.eventra-state-icon');
+    const icon = wrapper.querySelector(".eventra-state-icon");
     if (!icon) return;
-    field.classList.remove('eventra-warning','eventra-error','eventra-success');
-    field.classList.add('eventra-' + state);
-    icon.className = 'eventra-state-icon eventra-' + state;
-    icon.textContent = state === 'success' ? '✓' : state === 'error' ? '×' : '⚠';
-    icon.style.color = state === 'success' ? '#10B981' : state === 'error' ? '#EF4444' : '#F59E0B';
+    icon.style.top = field.offsetTop + field.offsetHeight / 2 + "px";
+    field.classList.remove(
+      "eventra-warning",
+      "eventra-error",
+      "eventra-success",
+    );
+    field.classList.add("eventra-" + state);
+    icon.className = "eventra-state-icon eventra-" + state;
+    icon.textContent =
+      state === "success" ? "✓" : state === "error" ? "×" : "⚠";
+    icon.style.color =
+      state === "success"
+        ? "#10B981"
+        : state === "error"
+          ? "#EF4444"
+          : "#F59E0B";
     fieldMessage(field, message);
-    const messageEl = (field.closest('.form-group,.form-field') || field.parentElement).querySelector('.eventra-field-message');
-    if (messageEl) messageEl.className = 'eventra-field-message eventra-msg-' + state;
+    const messageEl = (
+      field.closest(".form-group,.form-field") || field.parentElement
+    ).querySelector(".eventra-field-message");
+    if (messageEl)
+      messageEl.className = "eventra-field-message eventra-msg-" + state;
   }
   function validateField(field, form) {
-    if (field.disabled || field.type === 'hidden' || field.type === 'file' || field.dataset.skipValidation === 'true') return true;
-    const value = String(field.value || '').trim();
-    if (!value && (field.required || field.getAttribute('aria-required') === 'true')) { setState(field, 'warning', 'This field is required.'); return false; }
+    if (
+      field.disabled ||
+      field.type === "hidden" ||
+      field.type === "file" ||
+      field.dataset.skipValidation === "true"
+    )
+      return true;
+    const value = String(field.value || "").trim();
+    if (
+      !value &&
+      (field.required || field.getAttribute("aria-required") === "true")
+    ) {
+      setState(field, "warning", "This field is required.");
+      return false;
+    }
     if (!value) return true;
-    if (field.id === 'fullName' && !/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(value)) { setState(field, 'error', 'Enter your first and last name.'); return false; }
-    if (field.id === 'businessName' && !/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/.test(value)) { setState(field, 'error', 'Enter a valid business name.'); return false; }
-    if (field.id === 'username' && !/^[A-Za-z0-9_.-]{3,50}$/.test(value)) { setState(field, 'error', 'Enter a valid username.'); return false; }
-    if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { setState(field, 'error', 'Enter a valid email address.'); return false; }
-    if (field.name && /phone|mobile/i.test(field.name) && !/^\d{7,15}$/.test(value.replace(/\s+/g,''))) { setState(field, 'error', 'Enter a valid phone number.'); return false; }
-    if (field.type === 'password' && value.length < 8) { setState(field, 'warning', 'Use at least 8 characters.'); return false; }
-    const confirm = form && form.querySelector('[name*="confirm"],#confirmPassword');
-    if (confirm && field === confirm && confirm.value !== form.querySelector('input[type="password"]')?.value) { setState(field, 'error', 'Passwords do not match.'); return false; }
-    setState(field, 'success'); return true;
+    if (
+      field.id === "fullName" &&
+      !/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(value)
+    ) {
+      setState(field, "error", "Enter your first and last name.");
+      return false;
+    }
+    if (
+      field.id === "businessName" &&
+      !/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/.test(value)
+    ) {
+      setState(field, "error", "Enter a valid business name.");
+      return false;
+    }
+    if (field.id === "username" && !/^[A-Za-z0-9_.-]{3,50}$/.test(value)) {
+      setState(field, "error", "Enter a valid username.");
+      return false;
+    }
+    if (field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setState(field, "error", "Enter a valid email address.");
+      return false;
+    }
+    if (
+      field.name &&
+      /phone|mobile/i.test(field.name) &&
+      !/^\d{7,15}$/.test(value.replace(/\s+/g, ""))
+    ) {
+      setState(field, "error", "Enter a valid phone number.");
+      return false;
+    }
+    if (field.type === "password" && value.length < 8) {
+      setState(field, "warning", "Use at least 8 characters.");
+      return false;
+    }
+    const confirm =
+      form && form.querySelector('[name*="confirm"],#confirmPassword');
+    if (
+      confirm &&
+      field === confirm &&
+      confirm.value !== form.querySelector('input[type="password"]')?.value
+    ) {
+      setState(field, "error", "Passwords do not match.");
+      return false;
+    }
+    setState(field, "success");
+    return true;
   }
   function validateForm(form) {
-    let valid = true, first = null;
-    form.querySelectorAll('input,select,textarea').forEach(field => { if (!validateField(field, form)) { valid = false; first ||= field; } });
-    if (!valid) { showNotification('All required fields must be filled out.', 'error'); first?.focus(); }
+    let valid = true,
+      first = null;
+    form.querySelectorAll("input,select,textarea").forEach((field) => {
+      if (!validateField(field, form)) {
+        valid = false;
+        first ||= field;
+      }
+    });
+    if (!valid) {
+      showNotification("All required fields must be filled out.", "error");
+      first?.focus();
+    }
     return valid;
   }
   window.eventraSetFieldState = setState;
@@ -467,41 +634,71 @@ function showNotification(message, type = 'info') {
     const errors = payload?.errors || payload?.validation_errors || {};
     Object.entries(errors).forEach(([key, value]) => {
       const field = form.querySelector('[name="' + key + '"],#' + key);
-      if (field) setState(field, 'error', Array.isArray(value) ? value[0] : String(value));
+      if (field)
+        setState(
+          field,
+          "error",
+          Array.isArray(value) ? value[0] : String(value),
+        );
     });
-    if (Object.keys(errors).length) showNotification(payload.message || 'Please correct the highlighted fields.', 'error');
+    if (Object.keys(errors).length)
+      showNotification(
+        payload.message || "Please correct the highlighted fields.",
+        "error",
+      );
   };
-  window.eventraValidationSuccess = (form, message = 'Saved successfully.') => { showNotification(message, 'success'); };
+  window.eventraValidationSuccess = (form, message = "Saved successfully.") => {
+    showNotification(message, "success");
+  };
   function attach(form) {
     if (!form || form.dataset.eventraValidation) return;
-    form.dataset.eventraValidation = '1'; form.noValidate = true;
-    form.querySelectorAll('input,select,textarea').forEach(field => {
-      field.addEventListener('blur', () => validateField(field, form));
-      field.addEventListener('input', () => { if (field.classList.contains('eventra-error') || field.classList.contains('eventra-warning')) validateField(field, form); });
-      field.addEventListener('change', () => validateField(field, form));
+    form.dataset.eventraValidation = "1";
+    form.noValidate = true;
+    form.querySelectorAll("input,select,textarea").forEach((field) => {
+      field.addEventListener("blur", () => validateField(field, form));
+      field.addEventListener("input", () => {
+        if (
+          field.classList.contains("eventra-error") ||
+          field.classList.contains("eventra-warning")
+        )
+          validateField(field, form);
+      });
+      field.addEventListener("change", () => validateField(field, form));
     });
-    form.addEventListener('submit', event => { if (!validateForm(form)) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+    form.addEventListener(
+      "submit",
+      (event) => {
+        if (!validateForm(form)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      },
+      true,
+    );
   }
-  const scan = () => document.querySelectorAll('form').forEach(attach);
-  document.addEventListener('DOMContentLoaded', scan);
-  new MutationObserver(scan).observe(document.documentElement, {childList:true, subtree:true});
+  const scan = () => document.querySelectorAll("form").forEach(attach);
+  document.addEventListener("DOMContentLoaded", scan);
+  new MutationObserver(scan).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
 })();
-
-
 
 // Auth helpers - Rely on window.storage for consistency
 function getRoleKeys() {
-    return window.storage ? window.storage.getRoleKeys() : { user: 'user', token: 'auth_token' };
+  return window.storage
+    ? window.storage.getRoleKeys()
+    : { user: "user", token: "auth_token" };
 }
 
 function getBasePath() {
-    const path = window.location.pathname;
-    // Current detection: if in /public/pages/ or /client/pages/ or /admin/pages/
-    if (path.includes('/pages/')) return '../../';
-    // If in /admin/ or /client/ root
-    if (path.includes('/admin/') || path.includes('/client/')) return '../';
-    // If in root or /public/ root
-    return './';
+  const path = window.location.pathname;
+  // Current detection: if in /public/pages/ or /client/pages/ or /admin/pages/
+  if (path.includes("/pages/")) return "../../";
+  // If in /admin/ or /client/ root
+  if (path.includes("/admin/") || path.includes("/client/")) return "../";
+  // If in root or /public/ root
+  return "./";
 }
 
 function isAuthenticated() {
@@ -517,16 +714,16 @@ function isAuthenticated() {
 function handleAuthRedirect(targetURL) {
   if (!isAuthenticated()) {
     const effectiveTarget = targetURL || window.location.href;
-    window.storage.set('redirect_after_login', effectiveTarget);
-    
+    window.storage.set("redirect_after_login", effectiveTarget);
+
     // Use origin-based absolute URLs to avoid broken relative path resolution
     const origin = window.location.origin;
-    if (effectiveTarget.includes('/admin/')) {
-      window.location.href = origin + '/admin/pages/adminLogin.html';
-    } else if (effectiveTarget.includes('/client/')) {
-      window.location.href = origin + '/client/pages/clientLogin.html';
+    if (effectiveTarget.includes("/admin/")) {
+      window.location.href = origin + "/admin/pages/adminLogin.html";
+    } else if (effectiveTarget.includes("/client/")) {
+      window.location.href = origin + "/client/pages/clientLogin.html";
     } else {
-      window.location.href = origin + '/public/pages/index.html?trigger=login';
+      window.location.href = origin + "/public/pages/index.html?trigger=login";
     }
     return false;
   }
@@ -536,64 +733,76 @@ function handleAuthRedirect(targetURL) {
 // Centralized API Wrapper
 async function apiFetch(url, options = {}) {
   // Ensure credentials are included by default for session support
-  if (!options.credentials) options.credentials = 'include';
-  
+  if (!options.credentials) options.credentials = "include";
+
   // Add Portal Identity Header for unambiguous session resolution
   const path = window.location.pathname;
-  let portal = 'user';
-  if (path.includes('/admin/')) portal = 'admin';
-  else if (path.includes('/client/')) portal = 'client';
-  
+  let portal = "user";
+  if (path.includes("/admin/")) portal = "admin";
+  else if (path.includes("/client/")) portal = "client";
+
   // Prepare headers
   const headers = {
-    'X-Eventra-Portal': portal,
-    'Accept': 'application/json', // Explicitly ask for JSON
-    ...options.headers
+    "X-Eventra-Portal": portal,
+    Accept: "application/json", // Explicitly ask for JSON
+    ...options.headers,
   };
 
   // Automatically set Content-Type for JSON bodies if not provided
-  if (options.body && typeof options.body === 'string' && !headers['Content-Type'] && !headers['content-type']) {
+  if (
+    options.body &&
+    typeof options.body === "string" &&
+    !headers["Content-Type"] &&
+    !headers["content-type"]
+  ) {
     try {
-        // Double check if it's likely JSON
-        if (options.body.trim().startsWith('{') || options.body.trim().startsWith('[')) {
-            headers['Content-Type'] = 'application/json';
-        }
+      // Double check if it's likely JSON
+      if (
+        options.body.trim().startsWith("{") ||
+        options.body.trim().startsWith("[")
+      ) {
+        headers["Content-Type"] = "application/json";
+      }
     } catch (e) {}
   }
-  
+
   // Add Authorization header if token exists
   const token = window.storage ? window.storage.getToken() : null;
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-    headers['X-Access-Token'] = token;
+    headers["Authorization"] = `Bearer ${token}`;
+    headers["X-Access-Token"] = token;
   }
-  
+
   options.headers = headers;
-  
+
   try {
     const response = await fetch(url, options);
-    
+
     // Validate Response Type before handling 401
     const contentType = response.headers.get("content-type");
     const isJson = contentType && contentType.includes("application/json");
-    
+
     // Handle 401 (Unauthorized) indicating session expiration
     // BUT: Only redirect if this is NOT a JSON API response (let API caller handle JSON errors)
     if (response.status === 401 && !isJson) {
       // Skip redirect for login endpoints themselves
-      if (!url.includes('/login') && !url.includes('google-handler.php') && !url.includes('check-session')) {
+      if (
+        !url.includes("/login") &&
+        !url.includes("google-handler.php") &&
+        !url.includes("check-session")
+      ) {
         const path = window.location.pathname;
         const origin = window.location.origin;
-        
+
         let loginPage;
-        if (path.includes('/admin/')) {
-          loginPage = origin + '/admin/pages/adminLogin.html';
-        } else if (path.includes('/client/')) {
-          loginPage = origin + '/client/pages/clientLogin.html';
+        if (path.includes("/admin/")) {
+          loginPage = origin + "/admin/pages/adminLogin.html";
+        } else if (path.includes("/client/")) {
+          loginPage = origin + "/client/pages/clientLogin.html";
         } else {
-          loginPage = origin + '/public/pages/index.html';
+          loginPage = origin + "/public/pages/index.html";
         }
-        
+
         // Disabled inappropriate auto-logout on refresh
         return response;
       }
@@ -604,37 +813,45 @@ async function apiFetch(url, options = {}) {
         try {
           const text = await response.text();
           const errorData = text ? JSON.parse(text) : {};
-          const err = new Error(errorData.message || errorData.error || `Server error: ${response.status}`);
+          const err = new Error(
+            errorData.message ||
+              errorData.error ||
+              `Server error: ${response.status}`,
+          );
           err.data = errorData;
           err.response = response;
           throw err;
         } catch (jsonErr) {
-          if (jsonErr.message && !jsonErr.message.includes('JSON')) throw jsonErr;
+          if (jsonErr.message && !jsonErr.message.includes("JSON"))
+            throw jsonErr;
           throw new Error(`Server error: ${response.status}`);
         }
       } else {
         // Consume body to prevent resource leaks
-        try { await response.text(); } catch (_) {}
-        throw new Error(`Server returned ${response.status}. This usually means a routing error or a crash.`);
+        try {
+          await response.text();
+        } catch (_) {}
+        throw new Error(
+          `Server returned ${response.status}. This usually means a routing error or a crash.`,
+        );
       }
     }
 
     if (!isJson && response.status !== 204) {
       // We don't throw here if it's a 200, but we should be careful
     }
-    
+
     return response;
   } catch (error) {
-    if (error.name === 'AbortError') return null;
+    if (error.name === "AbortError") return null;
     throw error;
   }
 }
 
-
 // Activity Tracker: Periodically ping the server on user interaction to extend session
 (function initActivityTracker() {
-  if (typeof window === 'undefined') return;
-  
+  if (typeof window === "undefined") return;
+
   let lastPing = 0;
   const pingInterval = 5 * 60 * 1000; // 5 minutes
 
@@ -642,20 +859,22 @@ async function apiFetch(url, options = {}) {
     const now = Date.now();
     // Only ping if at least 5 minutes have passed since last ping to avoid spamming
     if (now - lastPing < pingInterval) return;
-    
+
     if (isAuthenticated()) {
       try {
         const basePath = getBasePath();
         // Us/api/auth/check-session as a heartbeat
-        await apiFetch('/api/auth/check-session.php', { method: 'GET', cache: 'no-store' });
+        await apiFetch("/api/auth/check-session.php", {
+          method: "GET",
+          cache: "no-store",
+        });
         lastPing = Date.now();
-      } catch (e) {
-      }
+      } catch (e) {}
     }
   }, 2000);
 
   // Listen for common user interactions
-  ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+  ["mousedown", "keydown", "scroll", "touchstart"].forEach((event) => {
     window.addEventListener(event, refreshSession, { passive: true });
   });
 })();
@@ -670,28 +889,37 @@ async function apiFetch(url, options = {}) {
  * @param {string} formId - The ID of the form element (defaults to storageKey if not provided)
  */
 function saveFormState(storageKey, formId = storageKey) {
-    const form = document.getElementById(formId);
-    if (!form) return;
+  const form = document.getElementById(formId);
+  if (!form) return;
 
-    const formData = {};
-    const elements = form.querySelectorAll('input, select, textarea');
+  const formData = {};
+  const elements = form.querySelectorAll("input, select, textarea");
 
-    elements.forEach(el => {
-        // Skip sensitive or unnecessary fields
-        const isHiddenToPersist = el.type === 'hidden' && (el.name.includes('date') || el.name.includes('time') || el.name.includes('tag'));
-        
-        if (el.type === 'password' || el.type === 'file' || (el.type === 'hidden' && !isHiddenToPersist) || el.name === 'event_id') {
-            return;
-        }
+  elements.forEach((el) => {
+    // Skip sensitive or unnecessary fields
+    const isHiddenToPersist =
+      el.type === "hidden" &&
+      (el.name.includes("date") ||
+        el.name.includes("time") ||
+        el.name.includes("tag"));
 
-        if (el.type === 'checkbox' || el.type === 'radio') {
-            formData[el.name] = el.checked;
-        } else {
-            formData[el.name] = el.value;
-        }
-    });
+    if (
+      el.type === "password" ||
+      el.type === "file" ||
+      (el.type === "hidden" && !isHiddenToPersist) ||
+      el.name === "event_id"
+    ) {
+      return;
+    }
 
-    localStorage.setItem(`form_state_${storageKey}`, JSON.stringify(formData));
+    if (el.type === "checkbox" || el.type === "radio") {
+      formData[el.name] = el.checked;
+    } else {
+      formData[el.name] = el.value;
+    }
+  });
+
+  localStorage.setItem(`form_state_${storageKey}`, JSON.stringify(formData));
 }
 
 /**
@@ -700,31 +928,30 @@ function saveFormState(storageKey, formId = storageKey) {
  * @param {string} formId - The ID of the form element (defaults to storageKey if not provided)
  */
 function restoreFormState(storageKey, formId = storageKey) {
-    const savedData = localStorage.getItem(`form_state_${storageKey}`);
-    if (!savedData) return;
+  const savedData = localStorage.getItem(`form_state_${storageKey}`);
+  if (!savedData) return;
 
-    try {
-        const formData = JSON.parse(savedData);
-        const form = document.getElementById(formId);
-        if (!form) return;
+  try {
+    const formData = JSON.parse(savedData);
+    const form = document.getElementById(formId);
+    if (!form) return;
 
-        Object.keys(formData).forEach(name => {
-            const el = form.querySelector(`[name="${name}"]`);
-            if (!el) return;
+    Object.keys(formData).forEach((name) => {
+      const el = form.querySelector(`[name="${name}"]`);
+      if (!el) return;
 
-            if (el.type === 'checkbox' || el.type === 'radio') {
-                el.checked = formData[name];
-                // Trigger change event for interactive elements
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-            } else {
-                if (formData[name] === '' || formData[name] == null) return;
-                el.value = formData[name];
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        });
-    } catch (e) {
-    }
+      if (el.type === "checkbox" || el.type === "radio") {
+        el.checked = formData[name];
+        // Trigger change event for interactive elements
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      } else {
+        if (formData[name] === "" || formData[name] == null) return;
+        el.value = formData[name];
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  } catch (e) {}
 }
 
 /**
@@ -732,40 +959,43 @@ function restoreFormState(storageKey, formId = storageKey) {
  * @param {string} storageKey - The key to clear from localStorage
  */
 function clearFormState(storageKey) {
-    localStorage.removeItem(`form_state_${storageKey}`);
+  localStorage.removeItem(`form_state_${storageKey}`);
 }
 
 /**
  * Animate numbers (Count Up effect)
  */
 function animateNumbers() {
-    const elements = document.querySelectorAll('.count-up:not(.animated)');
-    elements.forEach(el => {
-        const text = el.innerText.replace(/[^0-9.]/g, '');
-        const target = parseFloat(el.getAttribute('data-target') || text);
-        if (isNaN(target)) return;
-        
-        el.classList.add('animated');
-        let current = 0;
-        const duration = 1500; // ms
-        const steps = 60;
-        const increment = target / steps;
-        const stepTime = duration / steps;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                el.innerText = (el.innerText.includes('₦') ? '₦' : '') + target.toLocaleString();
-                clearInterval(timer);
-            } else {
-                el.innerText = (el.innerText.includes('₦') ? '₦' : '') + Math.floor(current).toLocaleString();
-            }
-        }, stepTime);
-    });
+  const elements = document.querySelectorAll(".count-up:not(.animated)");
+  elements.forEach((el) => {
+    const text = el.innerText.replace(/[^0-9.]/g, "");
+    const target = parseFloat(el.getAttribute("data-target") || text);
+    if (isNaN(target)) return;
+
+    el.classList.add("animated");
+    let current = 0;
+    const duration = 1500; // ms
+    const steps = 60;
+    const increment = target / steps;
+    const stepTime = duration / steps;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        el.innerText =
+          (el.innerText.includes("₦") ? "₦" : "") + target.toLocaleString();
+        clearInterval(timer);
+      } else {
+        el.innerText =
+          (el.innerText.includes("₦") ? "₦" : "") +
+          Math.floor(current).toLocaleString();
+      }
+    }, stepTime);
+  });
 }
 
 // Export utilities
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     formatCurrency,
     formatDate,
@@ -775,7 +1005,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getRoleKeys,
     isAuthenticated,
     handleAuthRedirect,
-    apiFetch
+    apiFetch,
   };
 }
 
@@ -785,39 +1015,46 @@ if (typeof module !== 'undefined' && module.exports) {
  * @param {Object} opts - { expandable, checkbox, idPrefix }
  */
 function buildMultiLocationHTML(locs, opts = {}) {
-    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const prefix = opts.idPrefix || 'mloc';
-    const listId = prefix + 'List';
-    const items = (locs || []).map((loc, idx) => {
-        const meta = [loc.date, loc.time].filter(Boolean).join(' · ');
-        const chk = opts.checkbox
-            ? `<input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}" onchange="window._updateLocSelection && window._updateLocSelection()" style="width:16px;height:16px;accent-color:var(--primary-color);margin-top:3px;flex-shrink:0;">`
-            : '';
-        return `<div class="mloc-card">${chk}<span class="mloc-pin" aria-hidden="true">📍</span><div class="mloc-body">
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  const prefix = opts.idPrefix || "mloc";
+  const listId = prefix + "List";
+  const items = (locs || [])
+    .map((loc, idx) => {
+      const meta = [loc.date, loc.time].filter(Boolean).join(" · ");
+      const chk = opts.checkbox
+        ? `<input type="checkbox" id="locChk_${idx}" data-loc-index="${idx}" onchange="window._updateLocSelection && window._updateLocSelection()" style="width:16px;height:16px;accent-color:var(--primary-color);margin-top:3px;flex-shrink:0;">`
+        : "";
+      return `<div class="mloc-card">${chk}<span class="mloc-pin" aria-hidden="true">📍</span><div class="mloc-body">
             <div class="mloc-state">${esc(loc.state)}</div>
-            <div class="mloc-addr">${esc(loc.address || 'Address TBA')}</div>
-            ${meta ? `<div class="mloc-meta">${esc(meta)}</div>` : ''}
+            <div class="mloc-addr">${esc(loc.address || "Address TBA")}</div>
+            ${meta ? `<div class="mloc-meta">${esc(meta)}</div>` : ""}
         </div></div>`;
-    }).join('');
+    })
+    .join("");
 
-    if (opts.expandable) {
-        return `<div class="mloc-wrap">
+  if (opts.expandable) {
+    return `<div class="mloc-wrap">
             <div class="mloc-header">
                 <span class="mloc-title">${locs.length} Locations</span>
                 <button type="button" class="mloc-toggle" onclick="toggleMlocList('${listId}', this)" aria-expanded="false" aria-controls="${listId}">View all ▼</button>
             </div>
             <div id="${listId}" class="mloc-list" role="list">${items}</div>
         </div>`;
-    }
-    return `<div class="mloc-wrap"><div class="mloc-list open" role="list">${items}</div></div>`;
+  }
+  return `<div class="mloc-wrap"><div class="mloc-list open" role="list">${items}</div></div>`;
 }
 
 function toggleMlocList(listId, btn) {
-    const list = document.getElementById(listId);
-    if (!list) return;
-    const open = list.classList.toggle('open');
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Hide ▲' : 'View all ▼';
+  const list = document.getElementById(listId);
+  if (!list) return;
+  const open = list.classList.toggle("open");
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  btn.textContent = open ? "Hide ▲" : "View all ▼";
 }
 
 window.buildMultiLocationHTML = buildMultiLocationHTML;
@@ -828,167 +1065,190 @@ window.toggleMlocList = toggleMlocList;
  * Used by create-event.js and modals.js
  */
 function toggleTimePicker(dropdownId) {
-    const dropdown = document.getElementById(dropdownId);
-    if (!dropdown) return;
-    
-    const container = dropdown.closest('.time-picker-container');
-    const display = container.querySelector('.time-picker-display');
-    
-    document.querySelectorAll('.time-picker-dropdown').forEach(d => {
-        if (d.id !== dropdownId) {
-            d.classList.remove('active');
-            const otherContainer = d.closest('.time-picker-container');
-            if (otherContainer) {
-                const otherDisplay = otherContainer.querySelector('.time-picker-display');
-                otherDisplay.classList.remove('active');
-                otherDisplay.setAttribute('aria-expanded', 'false');
-            }
-        }
-    });
-    
-    const isOpen = dropdown.classList.toggle('active');
-    display.classList.toggle('active', isOpen);
-    display.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    
-    if (isOpen) {
-        const closePicker = (e) => {
-            if (!container.contains(e.target)) {
-                dropdown.classList.remove('active');
-                display.classList.remove('active');
-                display.setAttribute('aria-expanded', 'false');
-                document.removeEventListener('click', closePicker);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closePicker), 10);
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+
+  const container = dropdown.closest(".time-picker-container");
+  const display = container.querySelector(".time-picker-display");
+
+  document.querySelectorAll(".time-picker-dropdown").forEach((d) => {
+    if (d.id !== dropdownId) {
+      d.classList.remove("active");
+      const otherContainer = d.closest(".time-picker-container");
+      if (otherContainer) {
+        const otherDisplay = otherContainer.querySelector(
+          ".time-picker-display",
+        );
+        otherDisplay.classList.remove("active");
+        otherDisplay.setAttribute("aria-expanded", "false");
+      }
     }
+  });
+
+  const isOpen = dropdown.classList.toggle("active");
+  display.classList.toggle("active", isOpen);
+  display.setAttribute("aria-expanded", isOpen ? "true" : "false");
+
+  if (isOpen) {
+    const closePicker = (e) => {
+      if (!container.contains(e.target)) {
+        dropdown.classList.remove("active");
+        display.classList.remove("active");
+        display.setAttribute("aria-expanded", "false");
+        document.removeEventListener("click", closePicker);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closePicker), 10);
+  }
 }
 
 function selectHour(hour, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.querySelectorAll('.hours .time-btn').forEach(btn => btn.classList.remove('selected'));
-    // Find the button with the hour text and select it
-    // Handle both "4" and "04" if needed, but grid will use "1", "2", etc.
-    const targetBtn = Array.from(container.querySelectorAll('.hours .time-btn')).find(b => b.textContent.trim() === hour.toString());
-    if (targetBtn) targetBtn.classList.add('selected');
-    
-    updateTimeValue(containerId);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container
+    .querySelectorAll(".hours .time-btn")
+    .forEach((btn) => btn.classList.remove("selected"));
+  // Find the button with the hour text and select it
+  // Handle both "4" and "04" if needed, but grid will use "1", "2", etc.
+  const targetBtn = Array.from(
+    container.querySelectorAll(".hours .time-btn"),
+  ).find((b) => b.textContent.trim() === hour.toString());
+  if (targetBtn) targetBtn.classList.add("selected");
+
+  updateTimeValue(containerId);
 }
 
 function selectMinute(minute, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.querySelectorAll('.minutes .time-btn').forEach(btn => btn.classList.remove('selected'));
-    const targetBtn = Array.from(container.querySelectorAll('.minutes .time-btn')).find(b => b.textContent.trim() === minute.toString());
-    if (targetBtn) targetBtn.classList.add('selected');
-    
-    updateTimeValue(containerId);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container
+    .querySelectorAll(".minutes .time-btn")
+    .forEach((btn) => btn.classList.remove("selected"));
+  const targetBtn = Array.from(
+    container.querySelectorAll(".minutes .time-btn"),
+  ).find((b) => b.textContent.trim() === minute.toString());
+  if (targetBtn) targetBtn.classList.add("selected");
+
+  updateTimeValue(containerId);
 }
 
 function selectAmPm(period, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.querySelectorAll('.time-picker-ampm .time-btn').forEach(btn => btn.classList.remove('selected'));
-    const targetBtn = Array.from(container.querySelectorAll('.time-picker-ampm .time-btn')).find(b => b.textContent.toLowerCase().trim() === period.toLowerCase());
-    if (targetBtn) targetBtn.classList.add('selected');
-    
-    updateTimeValue(containerId);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container
+    .querySelectorAll(".time-picker-ampm .time-btn")
+    .forEach((btn) => btn.classList.remove("selected"));
+  const targetBtn = Array.from(
+    container.querySelectorAll(".time-picker-ampm .time-btn"),
+  ).find((b) => b.textContent.toLowerCase().trim() === period.toLowerCase());
+  if (targetBtn) targetBtn.classList.add("selected");
+
+  updateTimeValue(containerId);
 }
 
 function updateTimeValue(containerId) {
-    const container = document.getElementById(containerId);
-    const hourBtn = container.querySelector('.hours .time-btn.selected');
-    const minuteBtn = container.querySelector('.minutes .time-btn.selected');
-    const ampmBtn = container.querySelector('.time-picker-ampm .time-btn.selected');
-    const display = container.querySelector('.time-picker-display span:not([aria-hidden])') || container.querySelector('.time-picker-display span');
-    const input = container.querySelector('input[type="hidden"]');
-    
-    if (hourBtn && minuteBtn && ampmBtn) {
-        const hText = hourBtn.textContent.trim();
-        const mText = minuteBtn.textContent.trim();
-        const pText = ampmBtn.textContent.trim().toLowerCase();
-        
-        const timeDisplay = `${hText}:${mText} ${pText}`;
-        
-        let h = parseInt(hText);
-        const m = mText;
-        
-        if (pText === 'pm' && h < 12) h += 12;
-        if (pText === 'am' && h === 12) h = 0;
-        
-        const timeValue24 = `${h.toString().padStart(2, '0')}:${m}`;
-        
-        input.value = timeValue24;
-        display.textContent = timeDisplay;
-        display.style.color = '#334155'; // Vibrant charcoal
-        
-        // Dispatches input event for persistence tracking
-        input.dispatchEvent(new Event('input', { bubbles: true }));
+  const container = document.getElementById(containerId);
+  const hourBtn = container.querySelector(".hours .time-btn.selected");
+  const minuteBtn = container.querySelector(".minutes .time-btn.selected");
+  const ampmBtn = container.querySelector(
+    ".time-picker-ampm .time-btn.selected",
+  );
+  const display =
+    container.querySelector(".time-picker-display span:not([aria-hidden])") ||
+    container.querySelector(".time-picker-display span");
+  const input = container.querySelector('input[type="hidden"]');
 
-        // Auto-close if all three are selected
-        setTimeout(() => {
-            const dropdown = container.querySelector('.time-picker-dropdown');
-            const displayEl = container.querySelector('.time-picker-display');
-            if (dropdown) dropdown.classList.remove('active');
-            if (displayEl) displayEl.classList.remove('active');
-        }, 500);
-    } else {
-        const h = hourBtn ? hourBtn.textContent.trim() : '--';
-        const m = minuteBtn ? minuteBtn.textContent.trim() : '--';
-        const p = ampmBtn ? ampmBtn.textContent.trim().toLowerCase() : '--';
-        display.textContent = `${h}:${m} ${p}`;
-    }
+  if (hourBtn && minuteBtn && ampmBtn) {
+    const hText = hourBtn.textContent.trim();
+    const mText = minuteBtn.textContent.trim();
+    const pText = ampmBtn.textContent.trim().toLowerCase();
+
+    const timeDisplay = `${hText}:${mText} ${pText}`;
+
+    let h = parseInt(hText);
+    const m = mText;
+
+    if (pText === "pm" && h < 12) h += 12;
+    if (pText === "am" && h === 12) h = 0;
+
+    const timeValue24 = `${h.toString().padStart(2, "0")}:${m}`;
+
+    input.value = timeValue24;
+    display.textContent = timeDisplay;
+    display.style.color = "#334155"; // Vibrant charcoal
+
+    // Dispatches input event for persistence tracking
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Auto-close if all three are selected
+    setTimeout(() => {
+      const dropdown = container.querySelector(".time-picker-dropdown");
+      const displayEl = container.querySelector(".time-picker-display");
+      if (dropdown) dropdown.classList.remove("active");
+      if (displayEl) displayEl.classList.remove("active");
+    }, 500);
+  } else {
+    const h = hourBtn ? hourBtn.textContent.trim() : "--";
+    const m = minuteBtn ? minuteBtn.textContent.trim() : "--";
+    const p = ampmBtn ? ampmBtn.textContent.trim().toLowerCase() : "--";
+    display.textContent = `${h}:${m} ${p}`;
+  }
 }
 
 function setTimePickerValue(containerId, time) {
-    const container = document.getElementById(containerId);
-    if (!container || !time) return;
+  const container = document.getElementById(containerId);
+  if (!container || !time) return;
 
-    // Expected format HH:mm or HH:mm:ss or "h:mm am/pm"
-    let hour, minute, period;
+  // Expected format HH:mm or HH:mm:ss or "h:mm am/pm"
+  let hour, minute, period;
 
-    if (time.toLowerCase().includes('am') || time.toLowerCase().includes('pm')) {
-        // "4:10 pm" format
-        const parts = time.toLowerCase().split(/[:\s]/);
-        hour = parts[0];
-        minute = parts[1];
-        period = parts[2];
+  if (time.toLowerCase().includes("am") || time.toLowerCase().includes("pm")) {
+    // "4:10 pm" format
+    const parts = time.toLowerCase().split(/[:\s]/);
+    hour = parts[0];
+    minute = parts[1];
+    period = parts[2];
+  } else {
+    // "HH:mm" format
+    const parts = time.split(":");
+    if (parts.length < 2) return;
+    let hNum = parseInt(parts[0]);
+    minute = parts[1].padStart(2, "0");
+
+    if (hNum >= 12) {
+      period = "pm";
+      if (hNum > 12) hNum -= 12;
     } else {
-        // "HH:mm" format
-        const parts = time.split(':');
-        if (parts.length < 2) return;
-        let hNum = parseInt(parts[0]);
-        minute = parts[1].padStart(2, '0');
-        
-        if (hNum >= 12) {
-            period = 'pm';
-            if (hNum > 12) hNum -= 12;
-        } else {
-            period = 'am';
-            if (hNum === 0) hNum = 12;
-        }
-        hour = hNum.toString();
+      period = "am";
+      if (hNum === 0) hNum = 12;
     }
+    hour = hNum.toString();
+  }
 
-    // Round minute to nearest 5
-    const minNum = parseInt(minute);
-    const roundedMin = (Math.round(minNum / 5) * 5 % 60).toString().padStart(2, '0');
+  // Round minute to nearest 5
+  const minNum = parseInt(minute);
+  const roundedMin = ((Math.round(minNum / 5) * 5) % 60)
+    .toString()
+    .padStart(2, "0");
 
-    // Select buttons
-    container.querySelectorAll('.hours .time-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.textContent === hour);
-    });
-    container.querySelectorAll('.minutes .time-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.textContent === roundedMin);
-    });
-    container.querySelectorAll('.time-picker-ampm .time-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.textContent.toLowerCase() === period.toLowerCase());
-    });
+  // Select buttons
+  container.querySelectorAll(".hours .time-btn").forEach((btn) => {
+    btn.classList.toggle("selected", btn.textContent === hour);
+  });
+  container.querySelectorAll(".minutes .time-btn").forEach((btn) => {
+    btn.classList.toggle("selected", btn.textContent === roundedMin);
+  });
+  container.querySelectorAll(".time-picker-ampm .time-btn").forEach((btn) => {
+    btn.classList.toggle(
+      "selected",
+      btn.textContent.toLowerCase() === period.toLowerCase(),
+    );
+  });
 
-    updateTimeValue(containerId);
+  updateTimeValue(containerId);
 }
 
 // Export for window

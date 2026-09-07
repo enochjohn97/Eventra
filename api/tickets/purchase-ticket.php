@@ -310,12 +310,26 @@ try {
         $allTicketData[] = $ticketData;
     }
 
-    // Send one email per ticket (each has its own QR code)
+    // Send one email per purchase with one PDF attachment per ticket.
+    $emailData = null;
+    $emailAttachments = [];
     foreach ($allTicketData as $ticketData) {
         try {
-            EmailHelper::sendTicketEmailFull($user['email'], $ticketData, []);
+            $pdfPath = generateTicketPDF($ticketData);
+            $pdfs = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
+            if ($emailData === null) {
+                $emailData = $ticketData;
+            }
+            $emailAttachments = array_merge($emailAttachments, $pdfs);
         } catch (\Throwable $mailErr) {
             error_log("[purchase-ticket.php] Email FAILED | barcode={$ticketData['barcode']} error=" . $mailErr->getMessage());
+        }
+    }
+    if ($emailData !== null) {
+        try {
+            EmailHelper::sendTicketEmailFull($user['email'], $emailData, $emailAttachments);
+        } catch (\Throwable $mailErr) {
+            error_log('[purchase-ticket.php] Consolidated email FAILED: ' . $mailErr->getMessage());
         }
     }
 

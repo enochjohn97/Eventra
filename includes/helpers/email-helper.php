@@ -769,14 +769,6 @@ class EmailHelper
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<style>
-  @media only screen and (max-width: 750px) {
-    .ticket-desktop { width: 100% !important; max-width: 100% !important; }
-    .ticket-desktop td[width="550"] { width: 73% !important; }
-    .ticket-desktop td[width="198"] { width: 27% !important; padding: 12px 8px !important; }
-  }
-  a, a[href] { color: inherit !important; text-decoration: none !important; }
-</style>
 </head>
 <body style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
 
@@ -948,13 +940,9 @@ HTML;
 </style>
 </head>
 <body>
-<table width="760" height="340" cellpadding="0" cellspacing="0" border="0" style="width:760pt;height:340pt;border-collapse:collapse;margin:125pt auto 0;padding:0;{$ticketBackground}">
+<table width="760" height="340" cellpadding="0" cellspacing="0" border="0" style="width:760pt;height:340pt;border-collapse:collapse;margin:0 auto;padding:0;{$ticketBackground}">
   <tr>
     <!-- Event Image Panel (Left 165pt) -->
-        <td width="0" valign="top" style="width:0;height:0;padding:0;display:none;">
-      {$imgCellContent}
-    </td>
-
     <!-- Main Body Section (330pt) -->
         <td width="575" valign="top" style="padding:26pt 28pt;width:575pt;background-color:rgba(11,19,36,0.88);">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">

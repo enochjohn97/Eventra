@@ -88,7 +88,9 @@ foreach ($files as $jobFile) {
 
         error_log("[process-ticket-queue.php] Processing job for reference: $reference");
 
-        // Generate QR codes and PDFs and send emails for all tickets
+        // Generate each ticket, then send one email with all ticket PDFs attached.
+        $emailData = null;
+        $emailAttachments = [];
         foreach ($barcodes as $index => $barcode) {
             try {
                 $ticketDataForLoop = array_merge($ticketData, ['barcode' => $barcode]);
@@ -126,12 +128,10 @@ foreach ($files as $jobFile) {
                     }
                 }
 
-                // Send one email per ticket with its own QR code and PDF
-                try {
-                    EmailHelper::sendTicketEmailFull($user_email, $sendData, $currentPdf);
-                } catch (Exception $e) {
-                    error_log("[process-ticket-queue.php] Email send failed for barcode $barcode: " . $e->getMessage());
+                if ($emailData === null) {
+                    $emailData = $sendData;
                 }
+                $emailAttachments = array_merge($emailAttachments, $currentPdf);
 
             } catch (\Throwable $genError) {
                 // Log structured failure
@@ -146,6 +146,14 @@ foreach ($files as $jobFile) {
                 $failedJobFile = str_replace('.json', '.failed.json', $jobFile);
                 @rename($jobFile, $failedJobFile);
                 continue 2; // Skip processing the rest of this job's barcodes
+            }
+        }
+
+        if ($emailData !== null) {
+            try {
+                EmailHelper::sendTicketEmailFull($user_email, $emailData, $emailAttachments);
+            } catch (Exception $e) {
+                error_log("[process-ticket-queue.php] Email send failed for reference $reference: " . $e->getMessage());
             }
         }
 

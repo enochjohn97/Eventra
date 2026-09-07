@@ -1,183 +1,294 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Login to your Eventra account to manage and discover experiences"
+    />
+    <title>Client Login - Eventra</title>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Login to your Eventra account to manage and discover experiences" />
-  <title>Client Login - Eventra</title>
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../../public/css/login-style.css" />
+    <link rel="stylesheet" href="../../public/css/login.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+    />
 
-  <!-- Stylesheets -->
-  <link rel="stylesheet" href="../../public/css/login-style.css" />
-  <link rel="stylesheet" href="../../public/css/login.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
-
-  <style>
-    body { overflow: hidden; }
-    .login-container {
+    <style>
+      body {
+        overflow: hidden;
+      }
+      .login-container {
         position: relative;
-        background: radial-gradient(circle at 15% 25%, rgba(124,58,237,0.08) 0%, transparent 45%),
-                    radial-gradient(circle at 85% 75%, rgba(167,139,250,0.08) 0%, transparent 45%),
-                    #0a0a0f;
-    }
-    .login-left {
+        background:
+          radial-gradient(
+            circle at 15% 25%,
+            rgba(124, 58, 237, 0.08) 0%,
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 85% 75%,
+            rgba(167, 139, 250, 0.08) 0%,
+            transparent 45%
+          ),
+          #0a0a0f;
+      }
+      .login-left {
         flex: 0 0 50%;
         background: transparent;
         border-right: none;
-    }
-    .login-right {
+      }
+      .login-right {
         flex: 0 0 50%;
         display: flex !important;
         align-items: center;
         justify-content: center;
         padding: 2rem;
         background: transparent;
-    }
-    .slider-images {
+      }
+      .slider-images {
         position: relative;
         width: 100%;
         max-width: 620px;
         height: 84vh;
         border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 32px 64px rgba(0,0,0,0.5);
-    }
-    .login-right .overlay-gradient { display: none; }
-    .login-container { flex-direction: row-reverse; background: #fff; }
-    .login-left { background: #fff; order: 2; }
-    .login-right { order: 1; background: #fff; }
-    .login-form-container { background: #fff !important; border: 1px solid #e5e7eb; box-shadow: 0 20px 50px rgba(15,23,42,.08); }
-    .login-title, .form-label { color: #111827 !important; }
-    .login-signup-prompt { color: #64748b !important; }
-    .form-input { background: #fff !important; color: #111827 !important; border-color: #d1d5db !important; }
-    .form-input::placeholder { color: #9ca3af !important; }
-    .signup-link, .forgot-password { color: #6366f1 !important; }
-    .brand-mark { position: absolute; top: 24px; left: 28px; display:flex; align-items:center; gap:10px; color:#111827; font-size:1.25rem; font-weight:800; z-index:5; }
-    .brand-mark img { width:38px; height:38px; border-radius:50%; object-fit:cover; }
-  </style>
-</head>
+        box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
+      }
+      .login-right .overlay-gradient {
+        display: none;
+      }
+      .login-container {
+        flex-direction: row-reverse;
+        background: #fff;
+      }
+      .login-left {
+        background: #fff;
+        order: 2;
+      }
+      .login-right {
+        order: 1;
+        background: #fff;
+      }
+      .login-form-container {
+        background: #fff !important;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+      }
+      .login-title,
+      .form-label {
+        color: #111827 !important;
+      }
+      .login-signup-prompt {
+        color: #64748b !important;
+      }
+      .form-input {
+        background: #fff !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
+      }
+      .form-input::placeholder {
+        color: #9ca3af !important;
+      }
+      .signup-link,
+      .forgot-password {
+        color: #6366f1 !important;
+      }
+      .brand-mark {
+        position: absolute;
+        top: 24px;
+        left: 28px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 800;
+        z-index: 5;
+      }
+      .brand-mark img {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+    </style>
+  </head>
 
-<body>
-  <div class="login-container">
-    <div class="brand-mark"><img src="../../public/assets/logo1.png" alt="Eventra logo"><span>Eventra</span></div>
-    <!-- Left Side: Login Form with Glassmorphism -->
-    <div class="login-left">
-      <div class="login-form-container glass-effect">
-        <div id="successMessage" class="success-message"></div>
+  <body>
+    <div class="login-container">
+      <div class="brand-mark">
+        <img src="../../public/assets/logo1.png" alt="Eventra logo" /><span
+          >Eventra</span
+        >
+      </div>
+      <!-- Left Side: Login Form with Glassmorphism -->
+      <div class="login-left">
+        <div class="login-form-container glass-effect">
+          <div id="successMessage" class="success-message"></div>
 
-        <!-- System Error Banner -->
-        <div id="databaseErrorBanner" class="error-message" style="
+          <!-- System Error Banner -->
+          <div
+            id="databaseErrorBanner"
+            class="error-message"
+            style="
               margin-bottom: 1rem;
               padding: 0.75rem;
               border: 1px solid var(--login-error);
               border-radius: 8px;
               background: rgba(220, 38, 38, 0.1);
               text-align: center;
-            "></div>
+            "
+          ></div>
 
-        <header class="login-header">
-          <h1 class="login-title" style="color: #eee;">Welcome Back!</h1>
-          <p class="login-signup-prompt" id="signupPrompt">
-            Don't have an account?
-            <a href="signup.html" class="signup-link">Sign Up</a>
+          <header class="login-header">
+            <h1 class="login-title" style="color: #eee">Welcome Back!</h1>
+            <p class="login-signup-prompt" id="signupPrompt">
+              Don't have an account?
+              <a href="signup.html" class="signup-link">Sign Up</a>
+            </p>
+          </header>
+
+          <form id="loginForm" class="login-form" autocomplete="off" novalidate>
+            <!-- Email Field -->
+            <div class="form-group">
+              <label for="email" class="form-label">Email</label>
+              <div class="input-wrapper">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  class="form-input"
+                  placeholder="m@example.com"
+                  autocomplete="off"
+                  required
+                />
+                <span class="input-icon"
+                  ><i
+                    data-lucide="mail"
+                    style="width: 18px; height: 18px; color: #0a0a0f"
+                  ></i
+                ></span>
+              </div>
+              <div id="emailError" class="error-message"></div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+              <label for="password" class="form-label">Password</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  class="form-input"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+                  required
+                />
+                <span id="togglePassword" class="toggle-password"
+                  ><i
+                    data-lucide="eye"
+                    style="width: 18px; height: 18px; color: #111827"
+                  ></i
+                ></span>
+              </div>
+              <div id="passwordError" class="error-message"></div>
+            </div>
+
+            <!-- Options -->
+            <div class="form-options">
+              <a
+                href="../../public/pages/forgot-password.html"
+                class="forgot-password"
+                style="color: #fff"
+                >Forgot Password?</a
+              >
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="loginButton" class="login-button">
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right Side: Event Image Slider -->
+      <div class="login-right" id="eventSlider">
+        <div class="slider-images">
+          <img
+            src="../../public/assets/imgs/login.png"
+            alt="Eventra experiences"
+            class="slider-img active"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- OTP Modal -->
+    <div id="otpModal" class="modal-overlay" style="display: none">
+      <div class="modal-content glass-effect">
+        <header class="modal-header">
+          <h2 class="modal-title" style="color: #fff !important">
+            Secure Verification
+          </h2>
+          <p class="modal-subtitle" style="color: #fff !important">
+            A 6-digit code has been sent to your email.
           </p>
         </header>
 
-        <form id="loginForm" class="login-form" autocomplete="off" novalidate>
-          <!-- Email Field -->
-          <div class="form-group">
-            <label for="email" class="form-label">Email</label>
-            <div class="input-wrapper">
-              <input type="email" id="email" name="email" class="form-input" placeholder="m@example.com"
-                autocomplete="off" required />
-              <span class="input-icon"><i data-lucide="mail" style="width: 18px; height: 18px; color: #0a0a0f;"></i></span>
-            </div>
-            <div id="emailError" class="error-message"></div>
+        <form id="otpForm" class="otp-form">
+          <div class="otp-input-wrapper">
+            <input
+              type="text"
+              id="otpCode"
+              class="otp-input"
+              placeholder="000000"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              inputmode="numeric"
+              required
+              autocomplete="one-time-code"
+            />
           </div>
+          <div id="otpError" class="error-message"></div>
 
-          <!-- Password Field -->
-          <div class="form-group">
-            <label for="password" class="form-label">Password</label>
-            <div class="input-wrapper">
-              <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
-                autocomplete="new-password" required />
-              <span id="togglePassword" class="toggle-password"><i data-lucide="eye"
-                  style="width: 18px; height: 18px; color: #111827"></i></span>
-            </div>
-            <div id="passwordError" class="error-message"></div>
+          <div class="modal-actions">
+            <button type="submit" id="verifyOtpButton" class="login-button">
+              Verify & Sign In
+            </button>
+            <button type="button" id="cancelOtpButton" class="cancel-link">
+              Cancel
+            </button>
           </div>
-
-          <!-- Options -->
-          <div class="form-options">
-            <a href="../../public/pages/forgot-password.html" class="forgot-password" style="color: #fff;">Forgot Password?</a>
-          </div>
-
-          <!-- Submit Button -->
-          <button type="submit" id="loginButton" class="login-button">
-            Login
-          </button>
         </form>
-      </div>
-    </div>
 
-    <!-- Right Side: Event Image Slider -->
-    <div class="login-right" id="eventSlider">
-      <div class="slider-images">
-        <img src="../../public/assets/imgs/login.png" alt="Eventra experiences" class="slider-img active">
-      </div>
-    </div>
-  </div>
-
-  <!-- OTP Modal -->
-  <div id="otpModal" class="modal-overlay" style="display: none">
-    <div class="modal-content glass-effect">
-      <header class="modal-header">
-        <h2 class="modal-title" style="color: #fff !important">
-          Secure Verification
-        </h2>
-        <p class="modal-subtitle" style="color: #fff !important">
-          A 6-digit code has been sent to your email.
+        <p class="resend-prompt">
+          Didn't receive a code? <a href="#" id="resendOtpLink">Resend Code</a>
         </p>
-      </header>
-
-      <form id="otpForm" class="otp-form">
-        <div class="otp-input-wrapper">
-          <input type="text" id="otpCode" class="otp-input" placeholder="000000" maxlength="6" pattern="\d{6}" required
-            autocomplete="off" />
-        </div>
-        <div id="otpError" class="error-message"></div>
-
-        <div class="modal-actions">
-          <button type="submit" id="verifyOtpButton" class="login-button">
-            Verify & Sign In
-          </button>
-          <button type="button" id="cancelOtpButton" class="cancel-link">
-            Cancel
-          </button>
-        </div>
-      </form>
-
-      <p class="resend-prompt">
-        Didn't receive a code? <a href="#" id="resendOtpLink">Resend Code</a>
-      </p>
+      </div>
     </div>
-  </div>
 
-  <!-- Scripts -->
-  <script src="../../public/js/storage.js"></script>
-  <script src="../../public/js/utils.js"></script>
-  <script src="../../public/js/auth-controller.js"></script>
-  <script src="../js/clientLogin.js?v=2"></script>
-  <script>
-  document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
-</script>
-</body>
-
+    <!-- Scripts -->
+    <script src="../../public/js/storage.js"></script>
+    <script src="../../public/js/utils.js"></script>
+    <script src="../../public/js/auth-controller.js"></script>
+    <script src="../js/clientLogin.js?v=2"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.lucide) lucide.createIcons();
+      });
+    </script>
+  </body>
 </html>
