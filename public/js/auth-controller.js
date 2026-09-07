@@ -248,7 +248,7 @@ class AuthController {
    * @param {string} containerId
    */
   initGoogle(clientId, containerId = "googleSignInContainer") {
-    if (!clientId) {
+    if (!clientId || this.googleInitialized) {
       return;
     }
 

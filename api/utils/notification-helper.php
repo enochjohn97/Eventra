@@ -10,10 +10,10 @@ require_once __DIR__ . '/../../config/database.php';
 /**
  * Ensure recipient/sender IDs are auth_accounts.id (not clients.id profile IDs).
  */
-function normalizeAuthAccountId(int $id, string $role = 'client'): int
+function normalizeAuthAccountId(int $id, string $role = 'client'): ?int
 {
     if ($id <= 0) {
-        return $id;
+        return null;
     }
 
     global $pdo;
@@ -50,7 +50,7 @@ function normalizeAuthAccountId(int $id, string $role = 'client'): int
         }
     }
 
-    return $id;
+    return null;
 }
 
 /**
@@ -79,6 +79,9 @@ function createNotification($recipient_id, $message, $type = 'info', $sender_id 
     try {
         // Ensure IDs are numeric and stored as auth_accounts.id
         $recipient_id = normalizeAuthAccountId((int) $recipient_id, $recipient_role);
+        if (!$recipient_id) {
+            return false;
+        }
         $sender_id = $sender_id ? normalizeAuthAccountId((int) $sender_id, $sender_role ?? $recipient_role) : null;
 
         $metadataJson = $metadata ? json_encode($metadata) : null;

@@ -490,17 +490,22 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("just_logged_in", "true");
 
     setTimeout(() => {
-      const redirectUrl =
-        result.redirect || "/client/pages/clientDashboard.html";
+      const redirectUrl = new URL(
+        result.redirect || "/client/pages/clientDashboard.html",
+        window.location.origin,
+      );
+      redirectUrl.searchParams.set("session_refresh", Date.now().toString());
 
       // Use unified redirect handler if available for consistency
       if (
         window.authController &&
         typeof window.authController.handleRedirect === "function"
       ) {
-        window.authController.handleRedirect(redirectUrl);
+        window.authController.handleRedirect(
+          redirectUrl.pathname + redirectUrl.search,
+        );
       } else {
-        window.location.href = redirectUrl;
+        window.location.replace(redirectUrl.pathname + redirectUrl.search);
       }
     }, 1600);
   }
