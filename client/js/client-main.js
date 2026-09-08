@@ -3,9 +3,12 @@
  * Common functionality across all client pages
  */
 window.openSupportCenter = function () {
-  document.dispatchEvent(new CustomEvent('EventraOpenSupportCenter', { detail: { role: 'client' } }));
-  if (typeof window.showDisputeCenter === 'function') return window.showDisputeCenter();
-  window.location.assign('/client/pages/payments.html?tab=refunds');
+  document.dispatchEvent(
+    new CustomEvent("EventraOpenSupportCenter", { detail: { role: "client" } }),
+  );
+  if (typeof window.showDisputeCenter === "function")
+    return window.showDisputeCenter();
+  window.location.assign("/client/pages/payments.html?tab=refunds");
 };
 
 // Track all active interval IDs to clear on logout
@@ -50,29 +53,30 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Global Modal Close Handler
-document.addEventListener("click", function(e) {
-    // Close on backdrop click (only when clicking directly on the backdrop element itself)
-    if (e.target.classList.contains("modal-backdrop")) {
-        // For persistent modals that use .active class, remove active rather than removing from DOM
-        if (e.target.id === 'folderContentsModal') {
-            if (typeof closeFolderContentsModal === 'function') closeFolderContentsModal();
-        } else if (e.target.id === 'profileEditModal') {
-            if (typeof closeProfileEditModal === 'function') closeProfileEditModal();
-        } else if (e.target.id === 'exportModal') {
-            e.target.classList.remove('active');
-        } else if (e.target.classList.contains('active')) {
-            // Generic active-class modal — remove active
-            e.target.classList.remove('active');
-        } else {
-            // Dynamically injected modals (no persistent ID) — safe to remove
-            e.target.remove();
-        }
+document.addEventListener("click", function (e) {
+  // Close on backdrop click (only when clicking directly on the backdrop element itself)
+  if (e.target.classList.contains("modal-backdrop")) {
+    // For persistent modals that use .active class, remove active rather than removing from DOM
+    if (e.target.id === "folderContentsModal") {
+      if (typeof closeFolderContentsModal === "function")
+        closeFolderContentsModal();
+    } else if (e.target.id === "profileEditModal") {
+      if (typeof closeProfileEditModal === "function") closeProfileEditModal();
+    } else if (e.target.id === "exportModal") {
+      e.target.classList.remove("active");
+    } else if (e.target.classList.contains("active")) {
+      // Generic active-class modal — remove active
+      e.target.classList.remove("active");
+    } else {
+      // Dynamically injected modals (no persistent ID) — safe to remove
+      e.target.remove();
     }
+  }
 });
 
 function initInactivityMonitor() {
-  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 mins
-  const WARNING_TIME = 28 * 60 * 1000; // 28 mins
+  const SESSION_TIMEOUT = 60 * 60 * 1000;
+  const WARNING_TIME = 58 * 60 * 1000;
   let inactivityTimer;
   let warningTimer;
   let isWarningShown = false;
@@ -91,14 +95,14 @@ function initInactivityMonitor() {
       if (window.logout) window.logout();
       else window.location.href = "../../client/pages/clientLogin.html";
     }, SESSION_TIMEOUT);
-    
+
     if (Date.now() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
-        lastHeartbeatTime = Date.now();
-        if (typeof apiFetch !== 'undefined') {
-            apiFetch('/api/utils/heartbeat.php').catch(() => {});
-        } else {
-            fetch('/api/utils/heartbeat.php').catch(() => {});
-        }
+      lastHeartbeatTime = Date.now();
+      if (typeof apiFetch !== "undefined") {
+        apiFetch("/api/utils/heartbeat.php").catch(() => {});
+      } else {
+        fetch("/api/utils/heartbeat.php").catch(() => {});
+      }
     }
   }
 
@@ -265,16 +269,25 @@ async function logout() {
 
   // Full localStorage wipe of all known session keys (cross-role)
   const ALL_SESSION_KEYS = [
-    "admin_user", "admin_auth_token",
-    "client_user", "client_auth_token",
-    "user", "auth_token",
-    "login_timestamp", "redirect_after_login", "export_visible"
+    "admin_user",
+    "admin_auth_token",
+    "client_user",
+    "client_auth_token",
+    "user",
+    "auth_token",
+    "login_timestamp",
+    "redirect_after_login",
+    "export_visible",
   ];
-  ALL_SESSION_KEYS.forEach(key => {
-    try { localStorage.removeItem(key); } catch (e) {}
+  ALL_SESSION_KEYS.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {}
   });
   // Full sessionStorage wipe
-  try { sessionStorage.clear(); } catch (e) {}
+  try {
+    sessionStorage.clear();
+  } catch (e) {}
 
   try {
     // Call server-side logout (fire-and-forget; we proceed regardless)
@@ -284,7 +297,10 @@ async function logout() {
   }
 
   // Clear authController state
-  if (window.authController && typeof window.authController.clearSession === "function") {
+  if (
+    window.authController &&
+    typeof window.authController.clearSession === "function"
+  ) {
     window.authController.clearSession();
   }
 
@@ -853,47 +869,52 @@ window.closeMobileSidebar = closeMobileSidebar;
 // ============================================================================
 // Network State Resync Hook
 // ============================================================================
-window.addEventListener('online', async () => {
-  console.log('Network connection restored. Syncing offline states...');
-  if (typeof showNotification === 'function') {
-    showNotification('Back online. Syncing changes...', 'success');
+window.addEventListener("online", async () => {
+  console.log("Network connection restored. Syncing offline states...");
+  if (typeof showNotification === "function") {
+    showNotification("Back online. Syncing changes...", "success");
   }
-  
+
   // Example offline action track: JSON array in localStorage
-  const offlineActionsStr = localStorage.getItem('eventra_offline_actions');
+  const offlineActionsStr = localStorage.getItem("eventra_offline_actions");
   if (offlineActionsStr) {
     try {
       const actions = JSON.parse(offlineActionsStr);
       if (Array.isArray(actions) && actions.length > 0) {
         // Sync with PHP backend
-        const response = await fetch('/api/health.php?sync=true', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ actions })
+        const response = await fetch("/api/health.php?sync=true", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actions }),
         });
-        
+
         if (response.ok) {
-          console.log('Offline actions synced successfully.');
-          localStorage.removeItem('eventra_offline_actions');
-          if (typeof showNotification === 'function') {
-             showNotification('Offline changes synced successfully.', 'success');
+          console.log("Offline actions synced successfully.");
+          localStorage.removeItem("eventra_offline_actions");
+          if (typeof showNotification === "function") {
+            showNotification("Offline changes synced successfully.", "success");
           }
           // Trigger UI notification refresh
-          if (window.notificationManager && typeof window.notificationManager.fetchNotifications === 'function') {
-             window.notificationManager.fetchNotifications();
+          if (
+            window.notificationManager &&
+            typeof window.notificationManager.fetchNotifications === "function"
+          ) {
+            window.notificationManager.fetchNotifications();
           }
         }
       }
     } catch (e) {
-      console.error('Failed to sync offline actions', e);
+      console.error("Failed to sync offline actions", e);
     }
   }
 });
 
-window.addEventListener('offline', () => {
-  console.warn('Network connection lost. Actions will be tracked offline.');
-  if (typeof showNotification === 'function') {
-    showNotification('You are offline. Changes will sync when connection is restored.', 'warning');
+window.addEventListener("offline", () => {
+  console.warn("Network connection lost. Actions will be tracked offline.");
+  if (typeof showNotification === "function") {
+    showNotification(
+      "You are offline. Changes will sync when connection is restored.",
+      "warning",
+    );
   }
 });
-

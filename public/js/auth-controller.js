@@ -370,7 +370,8 @@ class AuthController {
 
     state.initPromise = Promise.resolve()
       .then(() => {
-        if (shouldInitialize) {
+        if (shouldInitialize && !window.__eventra_gsi_initialize_called) {
+          window.__eventra_gsi_initialize_called = true;
           google.accounts.id.initialize({
             client_id: clientId,
             callback: (res) => state.controller?.handleGoogleResponse(res),
