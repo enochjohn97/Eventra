@@ -134,7 +134,7 @@ try {
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
                             <h2 style='color: #ff5a5f;'>Event Reminder</h2>
                             <p>Hi <strong>{$attendee['name']}</strong>,</p>
-                            <p>This is a friendly reminder that <strong>$eventName</strong> is starting in just 20 minutes!</p>
+                            <p>This is a friendly reminder that <strong>{$eventName}</strong> is starting in just 20 minutes!</p>
                             <div style='background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;'>
                                 <p style='margin: 5px 0;'><strong>Time:</strong> " . date('g:i A', $locStartTimestamp) . "</p>
                                 <p style='margin: 5px 0;'><strong>Location:</strong> {$matchingLoc['address']}, {$matchingLoc['state']}</p>
