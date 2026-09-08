@@ -34,11 +34,15 @@ class AuthController {
 
     // Public and login pages must start without browser-persisted tenant state.
     const path = window.location.pathname.toLowerCase();
-    const isPublicRoute =
-      path.includes("/public/pages/") ||
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceLogin = urlParams.get("trigger") === "login";
+
+    const isLoginRoute =
       path.includes("clientlogin.html") ||
-      path.includes("adminlogin.html");
-    if (isPublicRoute) {
+      path.includes("adminlogin.html") ||
+      forceLogin;
+
+    if (isLoginRoute) {
       this.clearSession();
       try {
         sessionStorage.clear();
@@ -361,10 +365,12 @@ class AuthController {
     state.initializing = true;
     this.googleInitializing = true;
 
+    const shouldInitialize = !window.__eventra_gsi_initialized_latch;
+    window.__eventra_gsi_initialized_latch = true;
+
     state.initPromise = Promise.resolve()
       .then(() => {
-        if (!window.__eventra_gsi_initialized_latch) {
-          window.__eventra_gsi_initialized_latch = true;
+        if (shouldInitialize) {
           google.accounts.id.initialize({
             client_id: clientId,
             callback: (res) => state.controller?.handleGoogleResponse(res),
