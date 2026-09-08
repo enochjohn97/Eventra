@@ -899,7 +899,7 @@ HTML;
   html, body {
     margin: 0;
     padding: 0;
-    background-color: #ffffff;
+    background-color: #0f172a;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
   }
@@ -1283,8 +1283,7 @@ PDF;
             $dompdf = new \Dompdf\Dompdf($options);
             $dompdf->loadHtml($html);
             // Keep every generated ticket print-ready and horizontally fitted.
-            $pdfOrientation = 'landscape';
-            $dompdf->setPaper('A4', $pdfOrientation);
+            $dompdf->setPaper([0, 0, 760, 340]);
             $dompdf->render();
 
             $output = $dompdf->output();
