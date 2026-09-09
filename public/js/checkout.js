@@ -214,26 +214,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderEventSummary(event, quantity, ticketType = 'regular') {
     let price = parseFloat(event.price || 0);
 
-    // Dynamic price lookup
-    if (ticketType === 'vip' && event.vip_price) price = parseFloat(event.vip_price);
-    else if (ticketType === 'premium' && event.premium_price) price = parseFloat(event.premium_price);
-    else if (ticketType === 'regular' && event.regular_price) price = parseFloat(event.regular_price);
+    // Dynamic price lookup — use explicit check so 0-values from metadata are handled
+    const regularPrice = event.regular_price !== undefined && event.regular_price !== null ? parseFloat(event.regular_price) : null;
+    const vipPrice     = event.vip_price     !== undefined && event.vip_price     !== null ? parseFloat(event.vip_price)     : null;
+    const premiumPrice = event.premium_price !== undefined && event.premium_price !== null ? parseFloat(event.premium_price) : null;
+
+    if (ticketType === 'vip'     && vipPrice     !== null) price = vipPrice;
+    else if (ticketType === 'premium' && premiumPrice !== null) price = premiumPrice;
+    else if (ticketType === 'regular' && regularPrice !== null) price = regularPrice;
+    // If price is still 0 but one of the tier prices is positive, use the highest available as effective price
+    else if (price === 0 && (regularPrice > 0 || vipPrice > 0 || premiumPrice > 0)) {
+        price = Math.max(regularPrice ?? 0, vipPrice ?? 0, premiumPrice ?? 0);
+    }
 
     const baseTotal = price * quantity;
     const surcharge = baseTotal * 0.10;
     const total = baseTotal + surcharge;
 
-    // Use absolute URL from API with fallback
+    // Use absolute image URL from API — only the actual event image
     const summaryImg = document.getElementById('summaryImg');
-    const relPath = event.image_path ? `../../${event.image_path.replace(/^\/+/ , '')}` : null;
-    const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop';
-    const imgUrl = encodeURI(relPath || event.absolute_image_url || fallback);
-    
+    const imgUrl = event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
     summaryImg.src = imgUrl;
     summaryImg.loading = 'lazy'; // Performance: Lazy load
-    summaryImg.onerror = () => {
-        summaryImg.src = fallback;
-    };
+    summaryImg.onerror = () => { summaryImg.style.display = 'none'; };
 
     const elTitle = document.getElementById('summaryTitle');
     if (elTitle) elTitle.innerHTML = `<strong>${escapeHTML((event.event_name || '').replace(/\s*#\d+$/, ''))}</strong>`;
@@ -272,7 +275,12 @@ function renderEventSummary(event, quantity, ticketType = 'regular') {
 
     const elCat = document.getElementById('summaryCategory');
     if (elCat) {
-        if (price === 0) {
+        // Check all ticket tier prices; an event is only free if ALL applicable prices are 0
+        const anyPrice = price > 0
+            || parseFloat(event.regular_price || 0) > 0
+            || parseFloat(event.vip_price || 0) > 0
+            || parseFloat(event.premium_price || 0) > 0;
+        if (!anyPrice) {
             elCat.textContent = 'Free';
         } else {
             elCat.textContent = (ticketType.charAt(0).toUpperCase() + ticketType.slice(1)) + ' Ticket';

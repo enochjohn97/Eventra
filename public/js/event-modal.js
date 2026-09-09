@@ -91,7 +91,7 @@ async function openEventDetailsModal(eventIdOrData) {
 }
 
 function renderModalContent(container, eventData) {
-  const eventImage = eventData.absolute_image_url || (eventData.image_path ? '/' + eventData.image_path : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop');
+  const eventImage = eventData.absolute_image_url || (eventData.image_path ? '/' + eventData.image_path.replace(/^[/\\]+/, '') : '');
   
   // Format Date and Time safely
   let eventDate = 'Date TBA';

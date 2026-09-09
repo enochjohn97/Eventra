@@ -1805,17 +1805,13 @@ function showEventModal(eventId) {
   const modal = document.getElementById("eventDetailsModal");
   const modalImage = document.getElementById("modalEventImage");
   if (modalImage) {
-    const fallback =
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop";
     const eventImage =
       typeof getImageUrl === "function"
         ? getImageUrl(event.image_path)
-        : event.absolute_image_url || fallback;
+        : event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
     modalImage.src = encodeURI(eventImage);
     modalImage.loading = "lazy";
-    modalImage.onerror = () => {
-      modalImage.src = fallback;
-    };
+    modalImage.onerror = () => { modalImage.style.display = 'none'; };
   }
 
   // Populate overlay badges on modal hero image
@@ -2274,12 +2270,10 @@ function updateCartUI() {
           !event.price || parseFloat(event.price) === 0
             ? "Free"
             : `₦${parseFloat(event.price).toLocaleString()}`;
-        const fallback =
-          "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&h=100&fit=crop";
         const eventImage =
           typeof getImageUrl === "function"
             ? getImageUrl(event.image_path)
-            : event.absolute_image_url || fallback;
+            : event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
 
         let eventDate = "Date TBA";
         if (event.event_date) {

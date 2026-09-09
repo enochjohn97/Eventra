@@ -373,9 +373,7 @@ function renderSummary(event, qty, ticketType = 'regular') {
     const container = document.getElementById('summaryContent');
     if (!container) return;
     
-    const relPath = event.image_path ? `../../${event.image_path.replace(/^\/+/ , '')}` : null;
-    const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop';
-    const imgUrl = (relPath || event.absolute_image_url || fallback);
+    const imgUrl = event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
     const cleanEventName = (event.event_name || '').replace(/\s*#\d+$/, '');
     
     // Normalize address/location
@@ -460,9 +458,7 @@ function prepareTicketForDownload(order, barcode) {
     // Set banner image
     const banner = document.getElementById('ticketEventBanner');
     if (banner) {
-        const relPath = order.image_path ? `../../${order.image_path.replace(/^\/+/ , '')}` : null;
-        const fallback = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop';
-        const imgUrl = (relPath || order.absolute_image_url || fallback);
+        const imgUrl = order.absolute_image_url || (order.image_path ? '/' + order.image_path.replace(/^\/+/, '') : '');
         banner.style.backgroundImage = `url('${imgUrl}')`;
     }
 

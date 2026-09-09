@@ -232,6 +232,23 @@ class EmailHelper
         }
 
         if ($foundPath === null) {
+            // Fallback: try fetching via APP_URL (handles missing local files on dev/deploy)
+            $appUrl = rtrim(defined('APP_URL') ? APP_URL : ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: ''), '/');
+            if ($appUrl !== '') {
+                $webPath = $cleanedPath ?? ltrim(str_replace($projectRoot, '', $localPath), '/\\');
+                $remoteUrl = $appUrl . '/' . ltrim($webPath, '/');
+
+                $ctx = stream_context_create(['http' => ['timeout' => 5]]);
+                $data = @file_get_contents($remoteUrl, false, $ctx);
+                if ($data !== false && $data !== '') {
+                    if (strlen($data) > $maxBytes) {
+                        error_log("[EmailHelper] imageToDataUri: remote fallback image too large (" . strlen($data) . " bytes), skipping.");
+                        return '';
+                    }
+                    $mime = self::guessMime($remoteUrl);
+                    return 'data:' . $mime . ';base64,' . base64_encode($data);
+                }
+            }
             error_log("[EmailHelper] imageToDataUri: file not found in checked paths for: {$path}");
             return '';
         }
@@ -872,126 +889,159 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        $safeImgSrc = '';
+        // ── wkhtmltopdf SAFE: always convert bgImage to a data: URI ──────────────
+        // Local paths and remote URLs both get embedded; wkhtmltopdf cannot reliably
+        // resolve absolute server paths or relative URLs in background-image CSS.
+        $bgDataUri = '';
         if ($bgImage !== '') {
-            $safeImgSrc = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
+            if (str_starts_with($bgImage, 'data:image/')) {
+                $bgDataUri = $bgImage; // already a data URI
+            } elseif (file_exists($bgImage) && filesize($bgImage) > 0) {
+                // Local absolute path — embed directly
+                $raw = @file_get_contents($bgImage);
+                if ($raw !== false && $raw !== '') {
+                    $ext = strtolower(pathinfo($bgImage, PATHINFO_EXTENSION));
+                    $mimeMap = ['jpg' => 'image/jpeg','jpeg' => 'image/jpeg','png' => 'image/png','gif' => 'image/gif','webp' => 'image/webp'];
+                    $mime = $mimeMap[$ext] ?? 'image/jpeg';
+                    $bgDataUri = 'data:' . $mime . ';base64,' . base64_encode($raw);
+                }
+            } else {
+                // Try via imageToDataUri (handles remote URLs, relative paths, etc.)
+                $bgDataUri = self::imageToDataUri($bgImage, 2000000);
+            }
         }
 
-        $ticketBackground = $safeImgSrc !== ''
-            ? "background-image:url('{$safeImgSrc}');background-size:cover;background-position:center;"
-            : 'background-color:#0f172a;';
+        // Build background style — only use data URI; avoid bare file paths
+        $bgImgStyle = $bgDataUri !== ''
+            ? "background-image:url('{$bgDataUri}');background-size:cover;background-position:center center;background-repeat:no-repeat;"
+            : '';
+
+        // Solid-colour layers for the two sections (wkhtmltopdf drops rgba() alpha reliably)
+        // We use a semi-opaque PNG overlay trick via a 1×1 data URI OR just solid dark colors
+        $bodyBg    = '#0b1324'; // ~rgba(11,19,36,1)  — main body section
+        $stubBg    = '#1e2b3e'; // ~rgba(30,41,59,1)  — stub / QR section
 
         return <<<PDF
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ticket — {$eventTitle}</title>
+<title>Ticket</title>
 <style>
-  @page { margin: 0; size: 800px 400px; }
-  * { box-sizing: border-box; }
+  @page { margin: 0mm; size: 211.7mm 105.8mm; }
+  * { box-sizing: border-box !important; }
   html, body {
-    margin: 0;
-    padding: 0;
-    width: 800px;
-    height: 400px;
-    background-color: #0f172a;
-    font-family: Helvetica, Arial, sans-serif;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 800px !important;
+    background: #0f172a !important;
+    font-family: Arial, Helvetica, sans-serif;
     color: #ffffff;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  a, a:link, a:visited, a[href] { color: #ffffff !important; text-decoration: none !important; }
-  table { border-collapse: collapse; }
-  .event-title {
-    font-size: 24px;
-    font-weight: 900;
-    text-transform: uppercase;
-    line-height: 1.1;
-    color: #ffffff;
+  a, a:link, a:visited, a:hover, a[href] {
+    color: #ffffff !important;
+    text-decoration: none !important;
   }
-  .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #94a3b8;
-    font-weight: 700;
-  }
-  .holder-name {
-    font-size: 18px;
-    font-weight: 800;
-    color: #ffffff;
-  }
-  .ticket-id {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 12px;
-    font-weight: 700;
-    color: #ffffff;
-  }
-  .barcode-text {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 10px;
-    color: #ffffff;
-    text-align: center;
-    margin-top: 6px;
-  }
+  table { border-collapse: collapse !important; }
 </style>
 </head>
 <body>
-<table width="800" height="400" cellpadding="0" cellspacing="0" border="0" style="width:800px;height:400px;border-collapse:collapse;margin:0 auto;padding:0;{$ticketBackground}">
+<!--
+  Outermost wrapper: 800×400 ticket, background-image set here.
+  position:relative so the overlay <td> cells can sit on top.
+-->
+<table width="800" cellpadding="0" cellspacing="0" border="0"
+       style="width:800px !important;height:400px !important;border-collapse:collapse !important;margin:0;padding:0;{$bgImgStyle}background-color:#0f172a;">
   <tr>
-    <!-- Main Body Section -->
-    <td width="600" valign="top" style="padding:26px 28px;width:600px;background-color:rgba(11,19,36,0.88);">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+    <!-- ░░ MAIN BODY (left 600 px) ░░ -->
+    <td width="600" valign="top"
+        style="width:600px !important;padding:26px 28px !important;background-color:{$bodyBg} !important;-webkit-print-color-adjust:exact !important;">
+
+      <table width="544" cellpadding="0" cellspacing="0" border="0"
+             style="width:544px;border-collapse:collapse;">
+
+        <!-- Badge + Event title -->
         <tr>
-          <td valign="top">
+          <td valign="top" style="padding-bottom:9px;">
             {$badgeHtml}
-            <div class="event-title" style="margin-top:5px;font-size:24px;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:900;
+                        text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;
+                        margin-top:5px;">{$eventTitle}</div>
           </td>
         </tr>
-        <tr><td height="9" style="font-size:0;line-height:0;">&nbsp;</td></tr>
+
+        <!-- Detail columns -->
         <tr>
-          <td valign="top">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+          <td valign="top" style="padding-bottom:10px;">
+            <table width="544" cellpadding="0" cellspacing="0" border="0"
+                   style="width:544px;border-collapse:collapse;">
               <tr>
-                <td width="50%" valign="top" style="padding-right:12px;">{$colA}</td>
-                <td width="50%" valign="top" style="padding-left:12px;">{$colB}</td>
+                <td width="272" valign="top" style="width:272px;padding-right:12px;">{$colA}</td>
+                <td width="272" valign="top" style="width:272px;padding-left:12px;">{$colB}</td>
               </tr>
             </table>
           </td>
         </tr>
-        <tr><td height="10" style="font-size:0;line-height:0;">&nbsp;</td></tr>
+
+        <!-- Footer: Holder + Ticket ID -->
         <tr>
-          <td style="border-top:1px solid rgba(255,255,255,0.15);padding-top:10px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+          <td style="border-top:1px solid #3a4a60;padding-top:10px;">
+            <table width="544" cellpadding="0" cellspacing="0" border="0"
+                   style="width:544px;border-collapse:collapse;">
               <tr>
-                <td valign="bottom" width="60%">
-                  <div class="label">Ticket Holder</div>
-                  <div class="holder-name" style="margin-top:2px;font-size:16px;">{$userName}</div>
+                <td width="326" valign="bottom" style="width:326px;">
+                  <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:700;
+                              letter-spacing:2px;text-transform:uppercase;color:#94a3b8;
+                              margin-bottom:2px;">Ticket Holder</div>
+                  <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:800;
+                              color:#ffffff;">{$userName}</div>
                 </td>
-                <td valign="bottom" width="40%" align="right">
-                  <div class="label">Ticket ID</div>
-                  <div class="ticket-id" style="margin-top:2px;font-size:12px;">{$ticketId}</div>
+                <td width="218" valign="bottom" align="right" style="width:218px;">
+                  <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:700;
+                              letter-spacing:2px;text-transform:uppercase;color:#94a3b8;
+                              margin-bottom:2px;">Ticket ID</div>
+                  <div style="font-family:'Courier New',Courier,monospace;font-size:11px;font-weight:700;
+                              color:#ffffff;line-height:1.2;">{$ticketId}</div>
                 </td>
               </tr>
             </table>
           </td>
         </tr>
+
       </table>
     </td>
 
-    <!-- Perforated Divider -->
-    <td width="2" style="width:2px;border-left:2px dashed rgba(255,255,255,0.35);font-size:0;line-height:0;background-color:transparent;">&nbsp;</td>
+    <!-- ░░ PERFORATED DIVIDER (2 px) ░░ -->
+    <td width="2" style="width:2px !important;font-size:0;line-height:0;
+                         border-left:2px dashed #4a5568;background-color:transparent !important;">&nbsp;</td>
 
-    <!-- Stub Section -->
-    <td width="198" valign="middle" align="center" style="padding:20px 12px;width:198px;background-color:rgba(30,41,59,0.9);">
+    <!-- ░░ QR STUB (right 198 px) ░░ -->
+    <td width="198" valign="middle" align="center"
+        style="width:198px !important;padding:20px 12px !important;background-color:{$stubBg} !important;
+               -webkit-print-color-adjust:exact !important;">
+
+      <!-- SCAN QRCODE label -->
       <div style="margin-bottom:10px;text-align:center;">
-        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
+        <span style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:900;
+                     letter-spacing:4px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>
-      <div style="display:inline-block;padding:8px;background:#ffffff;border-radius:10px;margin-bottom:8px;text-align:center;">
-        {$qrHtml}
-      </div>
-      <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 4px;text-align:center;width:100%;">
-        {$ticketId}
-      </div>
+
+      <!-- QR white box — use a table to avoid inline-block rendering bugs in wkhtmltopdf -->
+      <table cellpadding="8" cellspacing="0" border="0" align="center"
+             style="border-collapse:collapse;background:#ffffff;border-radius:8px;margin:0 auto 8px auto;">
+        <tr>
+          <td align="center" valign="middle" style="padding:8px;">
+            {$qrHtml}
+          </td>
+        </tr>
+      </table>
+
+      <!-- Ticket ID below QR -->
+      <div style="font-family:'Courier New',Courier,monospace;font-size:9px;font-weight:700;
+                  color:#ffffff;letter-spacing:1px;word-break:break-all;padding:0 4px;
+                  text-align:center;line-height:1.3;">{$ticketId}</div>
     </td>
   </tr>
 </table>
@@ -1280,8 +1330,10 @@ PDF;
             $wkhtmltopdf = 'wkhtmltopdf';
             $cmd = escapeshellcmd($wkhtmltopdf)
                 . ' --enable-local-file-access --margin-top 0 --margin-right 0 --margin-bottom 0 --margin-left 0'
-                . ' --page-width 800px --page-height 400px --disable-smart-shrinking --enable-background '
-                . escapeshellarg($tmpHtml) . ' ' . escapeshellarg($outputPath) . ' 2>&1';
+                . ' --page-width 800px --page-height 400px --disable-smart-shrinking --enable-background'
+                . ' --print-media-type --no-stop-slow-scripts --javascript-delay 0'
+                . ' --images --background'
+                . ' ' . escapeshellarg($tmpHtml) . ' ' . escapeshellarg($outputPath) . ' 2>&1';
 
             $output    = [];
             $returnVar = -1;
