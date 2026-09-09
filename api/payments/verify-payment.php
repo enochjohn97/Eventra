@@ -1,15 +1,5 @@
 <?php
 
-/**
- * Verify Payment API — Idempotent Fallback
- *
- * Called by the frontend after Paystack redirect.
- * If the webhook already processed the payment, returns the existing order state.
- * If not (webhook delay), verifies with Paystack and runs post-payment processing.
- */
-
-// ── Shutdown handler: catch fatal errors before any require can output ────────
-// Must be registered BEFORE any require_once so fatal errors always return JSON.
 register_shutdown_function(function () {
     $err = error_get_last();
     if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
@@ -31,11 +21,8 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/payment.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
-// ticket-helper, email-helper, sms-helper are ONLY needed inside the background
-// job processor — NOT during the synchronous verify flow. Loading them here
-// causes a fatal error on live servers where the chillerlan/QRCode vendor
-// package is absent, which kills the script before the try-catch runs.
-// They are require_once'd lazily inside the try block, only when needed.
+
+
 require_once __DIR__ . '/../../api/utils/notification-helper.php';
 
 // Load shared webhook helper (processSuccessfulPayment is defined there)
@@ -363,48 +350,41 @@ try {
             $ticketJobReady = true;
         } else {
             $pdo->commit();
-            $barcode = $existingTickets[0]['barcode']; 
+            $barcode = $existingTickets[0]['barcode'];
         }
 
         $responsePayload = json_encode([
-            'success' => true,
-            'status' => 'success',
-            'message' => 'Payment verified successfully.',
-            'reference' => $reference,
-            'amount' => (float) $order['amount'],
+            'success'    => true,
+            'status'     => 'success',
+            'message'    => 'Payment verified successfully.',
+            'reference'  => $reference,
+            'amount'     => (float) $order['amount'],
             'event_name' => $order['event_name'],
-            'barcode' => $barcode,
+            'barcode'    => $barcode,
         ]);
 
         echo $responsePayload;
+
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
-            if (!empty($ticketJobReady ?? false) && ($runTicketJobInline ?? false)) {
-                if (!defined('RUNNING_INLINE')) {
-                    define('RUNNING_INLINE', true);
-                }
+            if (!empty($ticketJobReady)) {
+                if (!defined('RUNNING_INLINE')) { define('RUNNING_INLINE', true); }
                 global $globalJobData;
                 $globalJobData = $jobData;
                 include_once $processorPath;
             }
         } else {
-            if (!empty($ticketJobReady ?? false) && ($runTicketJobInline ?? false)) {
-                if (!defined('RUNNING_INLINE')) {
-                    define('RUNNING_INLINE', true);
-                }
+            // Non-FPM: flush output to browser then process the job inline
+            while (ob_get_level() > 0) { ob_end_flush(); }
+            flush();
+            ignore_user_abort(true);
+            set_time_limit(120);
+
+            if (!empty($ticketJobReady)) {
+                if (!defined('RUNNING_INLINE')) { define('RUNNING_INLINE', true); }
                 global $globalJobData;
                 $globalJobData = $jobData;
                 include_once $processorPath;
-            } elseif (!empty($ticketJobReady ?? false)) {
-                // Trigger asynchronously via cURL to prevent blocking checkout
-                $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/api/utils/process-ticket-queue.php';
-                $ch = curl_init($url);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-                curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_exec($ch);
-                curl_close($ch);
             }
         }
     } catch (Exception $e) {
@@ -418,7 +398,7 @@ try {
         $pdo->rollBack();
     }
     error_log('[verify-payment.php] Fatal error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    http_response_code(400); // 400 to ensure client gets JSON instead of intercept HTML
+    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => 'Verification failed. Please contact support if the issue persists.'

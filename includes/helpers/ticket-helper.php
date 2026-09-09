@@ -1,13 +1,5 @@
 <?php
 
-/**
- * Ticket Helper for generating secure QR codes and PDF tickets
- *
- * QR Code payload is a signed token (HMAC-SHA256) to prevent forgery.
- * PDF tickets include: event name, date, time, location, attendee name,
- * ticket ID, and an embedded QR code image.
- */
-
 $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
 if (file_exists($autoloadPath)) {
     require_once $autoloadPath;
@@ -352,7 +344,7 @@ function generateTicketPDF(array $ticketData): string
         return '';
     }
 
-    if (!file_exists($filePath) || filesize($filePath) < 1000) {
+    if (!file_exists($filePath) || filesize($filePath) < 500) {
         error_log('[TicketHelper] PDF missing or too small after generation: ' . $filePath);
         return '';
     }

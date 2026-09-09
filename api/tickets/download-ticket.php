@@ -132,7 +132,7 @@ try {
     // Use the canonical barcode from the database so aliases cannot select another file.
     $barcode = trim((string)$ticket['barcode']);
     $pdfPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '_v2.pdf';
-    $minPdfBytes = 1000;
+    $minPdfBytes = 500;
     $needsRegeneration = !file_exists($pdfPath) || filesize($pdfPath) < $minPdfBytes;
 
     if ($needsRegeneration) {

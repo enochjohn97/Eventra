@@ -1197,8 +1197,10 @@ PDF;
             }
         }
 
-        // Always provide a real attachment when the caller did not pass one (the
-        // normal purchase flow intentionally passes [] after creating the ticket).
+        // Only auto-generate a PDF attachment when the caller passed none at all
+        // (e.g. the plain sendTicketEmailFull($to, $data) call without an explicit path).
+        // We deliberately do NOT scan the tickets directory — that avoids accidentally
+        // attaching PDFs from previous purchases.
         if (!$validPdfPaths && $barcode !== '') {
             $ticketDir = __DIR__ . '/../../public/assets/event_assets/tickets';
             if (!is_dir($ticketDir)) {
@@ -1206,10 +1208,10 @@ PDF;
             }
             $generatedPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '.pdf';
             try {
-                if (!file_exists($generatedPath) || filesize($generatedPath) < 1000) {
+                if (!file_exists($generatedPath) || filesize($generatedPath) < 500) {
                     self::regeneratePdf($ticketData, $generatedPath);
                 }
-                if (file_exists($generatedPath) && filesize($generatedPath) >= 1000) {
+                if (file_exists($generatedPath) && filesize($generatedPath) >= 500) {
                     $validPdfPaths[] = $generatedPath;
                 }
             } catch (\Throwable $pdfEx) {
@@ -1252,40 +1254,51 @@ PDF;
     {
         try {
             $outputDir = dirname($outputPath);
-            if (!is_dir($outputDir) || !is_writable($outputDir)) {
-                throw new \Exception("Output directory is not writable: {$outputDir}");
+            if (!is_dir($outputDir)) {
+                @mkdir($outputDir, 0775, true);
+            }
+            if (!is_writable($outputDir)) {
+                error_log("[EmailHelper] Output directory not writable: {$outputDir}. Using fallback PDF.");
+                return self::writeFallbackPdf($ticketData, $outputPath);
+            }
+
+            // Only attempt wkhtmltopdf if exec() is available
+            if (!function_exists('exec') || !@shell_exec('which wkhtmltopdf 2>/dev/null || where wkhtmltopdf 2>NUL')) {
+                error_log('[EmailHelper] wkhtmltopdf not available. Using fallback PDF.');
+                return self::writeFallbackPdf($ticketData, $outputPath);
             }
 
             // Generate raw HTML for the PDF using the existing builder
             $html = self::buildTicketHtml($ticketData, true);
 
             $tmpHtml = tempnam(sys_get_temp_dir(), 'ticket_html_') . '.html';
-            file_put_contents($tmpHtml, $html);
-
-            $wkhtmltopdf = 'wkhtmltopdf'; // Replace with absolute path if needed
-            
-            // Build the wkhtmltopdf command with necessary arguments for a pixel-perfect ticket
-            $cmd = escapeshellcmd($wkhtmltopdf) . " --enable-local-file-access --margin-top 0 --margin-right 0 --margin-bottom 0 --margin-left 0 --page-width 800px --page-height 400px --disable-smart-shrinking --enable-background " . escapeshellarg($tmpHtml) . " " . escapeshellarg($outputPath) . " 2>&1";
-            
-            $output = [];
-            $returnVar = 0;
-            exec($cmd, $output, $returnVar);
-
-            @unlink($tmpHtml);
-
-            if ($returnVar !== 0) {
-                error_log("[EmailHelper] wkhtmltopdf failed with code {$returnVar}. Output: " . implode("\n", $output));
+            if ($tmpHtml === false || !@file_put_contents($tmpHtml, $html)) {
+                error_log('[EmailHelper] Could not write temp HTML. Using fallback PDF.');
                 return self::writeFallbackPdf($ticketData, $outputPath);
             }
 
-            if (!file_exists($outputPath) || filesize($outputPath) === 0) {
-                throw new \Exception('Generated PDF file is empty (0 bytes).');
+            $wkhtmltopdf = 'wkhtmltopdf';
+            $cmd = escapeshellcmd($wkhtmltopdf)
+                . ' --enable-local-file-access --margin-top 0 --margin-right 0 --margin-bottom 0 --margin-left 0'
+                . ' --page-width 800px --page-height 400px --disable-smart-shrinking --enable-background '
+                . escapeshellarg($tmpHtml) . ' ' . escapeshellarg($outputPath) . ' 2>&1';
+
+            $output    = [];
+            $returnVar = -1;
+            @exec($cmd, $output, $returnVar);
+
+            @unlink($tmpHtml);
+
+            // Use fallback whenever wkhtmltopdf fails OR produces no/empty output
+            if ($returnVar !== 0 || !file_exists($outputPath) || filesize($outputPath) < 500) {
+                error_log('[EmailHelper] wkhtmltopdf result unsatisfactory (code ' . $returnVar . '). Using fallback PDF.');
+                return self::writeFallbackPdf($ticketData, $outputPath);
             }
-            
+
             return true;
         } catch (\Throwable $e) {
-            error_log('[EmailHelper] PDF regeneration error: ' . $e->getMessage());
-            throw new \Exception('PDF generation failed: ' . $e->getMessage());
+            error_log('[EmailHelper] regeneratePdf exception: ' . $e->getMessage() . '. Using fallback PDF.');
+            return self::writeFallbackPdf($ticketData, $outputPath);
         }
     }
 
