@@ -872,15 +872,9 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        // Build DomPDF-safe event image cell: no CSS background-image, use inline <img> instead
+        $safeImgSrc = '';
         if ($bgImage !== '') {
             $safeImgSrc = htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8');
-            $imgCellContent = "<img src=\"{$safeImgSrc}\" alt=\"Event\" width=\"165\" height=\"315\""
-                . " style=\"width:165pt;height:315pt;display:block;\">";
-        } else {
-            $imgCellContent = '<div style="width:165pt;height:315pt;background:#1e3a5f;display:block;text-align:center;vertical-align:middle;">'
-                . '<span style="color:#d4af37;font-family:Arial,sans-serif;font-size:8pt;letter-spacing:3px;text-transform:uppercase;">EVENTRA</span>'
-                . '</div>';
         }
 
         $ticketBackground = $safeImgSrc !== ''
@@ -894,62 +888,63 @@ HTML;
 <meta charset="UTF-8">
 <title>Ticket — {$eventTitle}</title>
 <style>
-  @page { margin: 0; }
+  @page { margin: 0; size: 800px 400px; }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     padding: 0;
+    width: 800px;
+    height: 400px;
     background-color: #0f172a;
     font-family: Helvetica, Arial, sans-serif;
     color: #ffffff;
   }
-  a, a[href] { color: inherit !important; text-decoration: none !important; }
+  a, a:link, a:visited, a[href] { color: #ffffff !important; text-decoration: none !important; }
   table { border-collapse: collapse; }
   .event-title {
-    font-size: 20pt;
+    font-size: 24px;
     font-weight: 900;
     text-transform: uppercase;
     line-height: 1.1;
     color: #ffffff;
   }
   .label {
-    font-size: 7pt;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: #94a3b8;
     font-weight: 700;
   }
   .holder-name {
-    font-size: 15pt;
+    font-size: 18px;
     font-weight: 800;
     color: #ffffff;
   }
   .ticket-id {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 9pt;
+    font-size: 12px;
     font-weight: 700;
     color: #ffffff;
   }
   .barcode-text {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 8pt;
+    font-size: 10px;
     color: #ffffff;
     text-align: center;
-    margin-top: 5pt;
+    margin-top: 6px;
   }
 </style>
 </head>
 <body>
-<table width="760" height="340" cellpadding="0" cellspacing="0" border="0" style="width:760pt;height:340pt;border-collapse:collapse;margin:0 auto;padding:0;{$ticketBackground}">
+<table width="800" height="400" cellpadding="0" cellspacing="0" border="0" style="width:800px;height:400px;border-collapse:collapse;margin:0 auto;padding:0;{$ticketBackground}">
   <tr>
-    <!-- Event Image Panel (Left 165pt) -->
-    <!-- Main Body Section (330pt) -->
-        <td width="575" valign="top" style="padding:26pt 28pt;width:575pt;background-color:rgba(11,19,36,0.88);">
+    <!-- Main Body Section -->
+    <td width="600" valign="top" style="padding:26px 28px;width:600px;background-color:rgba(11,19,36,0.88);">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
         <tr>
           <td valign="top">
             {$badgeHtml}
-            <div class="event-title" style="margin-top:5pt;font-size:20pt;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
+            <div class="event-title" style="margin-top:5px;font-size:24px;font-weight:900;text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;">{$eventTitle}</div>
           </td>
         </tr>
         <tr><td height="9" style="font-size:0;line-height:0;">&nbsp;</td></tr>
@@ -957,24 +952,24 @@ HTML;
           <td valign="top">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
               <tr>
-                <td width="50%" valign="top" style="padding-right:12pt;">{$colA}</td>
-                <td width="50%" valign="top" style="padding-left:12pt;">{$colB}</td>
+                <td width="50%" valign="top" style="padding-right:12px;">{$colA}</td>
+                <td width="50%" valign="top" style="padding-left:12px;">{$colB}</td>
               </tr>
             </table>
           </td>
         </tr>
         <tr><td height="10" style="font-size:0;line-height:0;">&nbsp;</td></tr>
         <tr>
-          <td style="border-top:1px solid #334155;padding-top:10pt;">
+          <td style="border-top:1px solid rgba(255,255,255,0.15);padding-top:10px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
               <tr>
                 <td valign="bottom" width="60%">
                   <div class="label">Ticket Holder</div>
-                  <div class="holder-name" style="margin-top:2pt;">{$userName}</div>
+                  <div class="holder-name" style="margin-top:2px;font-size:16px;">{$userName}</div>
                 </td>
                 <td valign="bottom" width="40%" align="right">
                   <div class="label">Ticket ID</div>
-                  <div class="ticket-id" style="margin-top:2pt;">{$ticketId}</div>
+                  <div class="ticket-id" style="margin-top:2px;font-size:12px;">{$ticketId}</div>
                 </td>
               </tr>
             </table>
@@ -984,17 +979,17 @@ HTML;
     </td>
 
     <!-- Perforated Divider -->
-    <td width="2" style="width:2pt;border-left:2pt dashed #94a3b8;font-size:0;line-height:0;background-color:transparent;">&nbsp;</td>
+    <td width="2" style="width:2px;border-left:2px dashed rgba(255,255,255,0.35);font-size:0;line-height:0;background-color:transparent;">&nbsp;</td>
 
-    <!-- Stub Section (178pt) -->
-    <td width="183" valign="middle" align="center" style="padding:20pt 12pt;width:183pt;background-color:rgba(30,41,59,0.9);">
-      <div style="margin-bottom:10pt;text-align:center;">
-        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:9pt;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
+    <!-- Stub Section -->
+    <td width="198" valign="middle" align="center" style="padding:20px 12px;width:198px;background-color:rgba(30,41,59,0.9);">
+      <div style="margin-bottom:10px;text-align:center;">
+        <span style="display:inline-block;font-family:Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:4px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>
-      <div style="display:inline-block;padding:6pt;background:#ffffff;border-radius:8pt;margin-bottom:8pt;text-align:center;">
+      <div style="display:inline-block;padding:8px;background:#ffffff;border-radius:10px;margin-bottom:8px;text-align:center;">
         {$qrHtml}
       </div>
-      <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 4pt;text-align:center;width:100%;">
+      <div class="barcode-text" style="letter-spacing:1px;word-break:break-all;line-height:1.3;padding:0 4px;text-align:center;width:100%;">
         {$ticketId}
       </div>
     </td>
@@ -1249,22 +1244,13 @@ PDF;
     }
 
     /**
-     * Attempt to (re)generate a PDF at $outputPath using Node.js script.
+     * Attempt to (re)generate a PDF at $outputPath using wkhtmltopdf.
      *
      * Returns true if the PDF was written successfully.
      */
     public static function regeneratePdf(array $ticketData, string $outputPath): bool
     {
         try {
-            $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
-            if (file_exists($autoloadPath)) {
-                require_once $autoloadPath;
-            }
-
-            if (!class_exists('Dompdf\Dompdf')) {
-                return self::writeFallbackPdf($ticketData, $outputPath);
-            }
-
             $outputDir = dirname($outputPath);
             if (!is_dir($outputDir) || !is_writable($outputDir)) {
                 throw new \Exception("Output directory is not writable: {$outputDir}");
@@ -1273,24 +1259,26 @@ PDF;
             // Generate raw HTML for the PDF using the existing builder
             $html = self::buildTicketHtml($ticketData, true);
 
-            // Configure Dompdf
-            $options = new \Dompdf\Options();
-            $options->set('isRemoteEnabled', true);
-            $options->set('isHtml5ParserEnabled', true);
-            $options->set('chroot', realpath(__DIR__ . '/../../'));
-            $options->set('defaultFont', 'Helvetica');
+            $tmpHtml = tempnam(sys_get_temp_dir(), 'ticket_html_') . '.html';
+            file_put_contents($tmpHtml, $html);
 
-            $dompdf = new \Dompdf\Dompdf($options);
-            $dompdf->loadHtml($html);
-            // Keep every generated ticket print-ready and horizontally fitted.
-            $dompdf->setPaper([0, 0, 760, 340]);
-            $dompdf->render();
+            $wkhtmltopdf = 'wkhtmltopdf'; // Replace with absolute path if needed
+            
+            // Build the wkhtmltopdf command with necessary arguments for a pixel-perfect ticket
+            $cmd = escapeshellcmd($wkhtmltopdf) . " --enable-local-file-access --margin-top 0 --margin-right 0 --margin-bottom 0 --margin-left 0 --page-width 800px --page-height 400px --disable-smart-shrinking --enable-background " . escapeshellarg($tmpHtml) . " " . escapeshellarg($outputPath) . " 2>&1";
+            
+            $output = [];
+            $returnVar = 0;
+            exec($cmd, $output, $returnVar);
 
-            $output = $dompdf->output();
-            if ($output === null || file_put_contents($outputPath, $output) === false) {
-                throw new \Exception('Failed to write PDF file to disk.');
+            @unlink($tmpHtml);
+
+            if ($returnVar !== 0) {
+                error_log("[EmailHelper] wkhtmltopdf failed with code {$returnVar}. Output: " . implode("\n", $output));
+                return self::writeFallbackPdf($ticketData, $outputPath);
             }
-            if (filesize($outputPath) === 0) {
+
+            if (!file_exists($outputPath) || filesize($outputPath) === 0) {
                 throw new \Exception('Generated PDF file is empty (0 bytes).');
             }
             
