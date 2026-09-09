@@ -108,7 +108,12 @@ class EmailHelper
             $mail->isHTML(true);
             $mail->Subject = $subject;
             $mail->Body = $body;
-            $mail->AltBody = $altBody ?: strip_tags($body);
+            if ($altBody !== '') {
+                $mail->AltBody = $altBody;
+            } else {
+                $cleanBody = preg_replace('/<(style|head|script)\b[^>]*>.*?<\/\1>/is', '', $body);
+                $mail->AltBody = trim(html_entity_decode(strip_tags($cleanBody), ENT_QUOTES, 'UTF-8'));
+            }
 
             $sent = @$mail->send();
 
@@ -138,7 +143,7 @@ class EmailHelper
         string $barcode,
         string $pdfPath = ''
     ): array {
-        $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for {$eventName} — Eventra") . "?=";
+        $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for {$eventName} - Eventra") . "?=";
         $safeUser = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
         $safeEvent = htmlspecialchars($eventName, ENT_QUOTES, 'UTF-8');
         $safeBarcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
@@ -817,6 +822,9 @@ class EmailHelper
 </style>
 </head>
 <body id="body" style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
+<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
+&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;
+</div>
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
 <tr><td align="center">
@@ -1239,7 +1247,7 @@ PDF;
             ENT_QUOTES,
             'UTF-8'
         );
-        $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for " . ($ticketData['event_name'] ?? 'Event') . " — Eventra") . "?=";
+        $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for " . ($ticketData['event_name'] ?? 'Event') . " - Eventra") . "?=";
 
         /* ── 3. Validate / regenerate PDF files ── */
         $rawPaths = is_array($pdfPath) ? $pdfPath : [$pdfPath];
