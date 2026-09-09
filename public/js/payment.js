@@ -3,6 +3,8 @@
  * Handles: Paystack redirect callback, order polling, and success UI.
  */
 
+const fallback = "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&h=1080&fit=crop";
+
 document.addEventListener('DOMContentLoaded', async () => {
     // 0. Wait for AuthController to be ready to ensure tokens/session are synced
     if (window.authController) {
@@ -24,6 +26,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (paymentLoading) paymentLoading.style.display = 'none';
         if (paymentForm) paymentForm.style.display = 'none';
         if (statusContainer) statusContainer.style.display = 'block';
+
+        // Pre-load summary if session orderData exists
+        if (orderData && orderData.eventId) {
+            apiFetch(`/api/events/get-event-details.php?event_id=${orderData.eventId}`)
+                .then(r => r ? r.json() : null)
+                .then(res => {
+                    if (res && res.success && res.event && typeof renderSummary === 'function') {
+                        renderSummary(res.event, orderData.quantity || 1, orderData.ticket_type || 'regular');
+                    }
+                }).catch(() => {});
+        }
 
         // Trigger server-side verification (Idempotent)
         (async () => {
@@ -186,14 +199,17 @@ async function showPaymentSuccess(reference, barcode) {
         };
     }
 
-    if (order && order.event_id) {
-        try {
-            const evRes = await apiFetch(`/api/events/get-event-details.php?event_id=${order.event_id}`);
-            const evResult = await evRes.json();
-            if (evResult.success && evResult.event && typeof renderSummary === 'function') {
-                renderSummary(evResult.event, order.quantity || 1, order.ticket_type || 'regular');
-            }
-        } catch(e) {}
+    if (order && typeof renderSummary === 'function') {
+        renderSummary(order, order.quantity || 1, order.ticket_type || 'regular');
+        if (order.event_id) {
+            try {
+                const evRes = await apiFetch(`/api/events/get-event-details.php?event_id=${order.event_id}`);
+                const evResult = evRes ? await evRes.json() : null;
+                if (evResult && evResult.success && evResult.event) {
+                    renderSummary({ ...order, ...evResult.event }, order.quantity || 1, order.ticket_type || 'regular');
+                }
+            } catch(e) {}
+        }
     }
 }
 

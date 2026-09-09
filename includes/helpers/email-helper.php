@@ -159,8 +159,7 @@ class EmailHelper
         </div>
         HTML;
 
-        $attachments = ($pdfPath !== '' && file_exists($pdfPath)) ? [$pdfPath] : [];
-        return self::sendEmail($to, $subject, $body, $attachments);
+        return self::sendEmail($to, $subject, $body, []);
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────
@@ -689,15 +688,17 @@ class EmailHelper
                     $stateStyle = 'font-family:Arial,sans-serif;font-size:12pt;font-weight:700;color:#ffffff;line-height:1.3;display:block;';
                     $addrStyle = 'font-family:Arial,sans-serif;font-size:10pt;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
                     $itemMargin = 'margin-bottom:9pt;';
+                    $aDisplay = $a;
                 } else {
                     $stateStyle = 'font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;line-height:1.3;display:block;';
-                    $addrStyle = 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;line-height:1.4;display:block;';
+                    $addrStyle = 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff !important;line-height:1.4;display:block;';
                     $itemMargin = 'margin-bottom:12px;';
+                    $aDisplay = '<a href="https://maps.google.com/?q=' . urlencode(strip_tags($a)) . '" target="_blank" style="color:#ffffff !important;text-decoration:none !important;font-weight:400;"><span style="color:#ffffff !important;text-decoration:none !important;">' . $a . '</span></a>';
                 }
 
                 $colA .= '<div style="' . $itemMargin . '">'
                     . '<span style="' . $stateStyle . '">' . $s . '</span>'
-                    . '<span style="' . $addrStyle . '">' . $a . '</span>'
+                    . '<span style="' . $addrStyle . '">' . $aDisplay . '</span>'
                     . '</div>';
             }
             $colA .= '</div>';
@@ -713,15 +714,21 @@ class EmailHelper
                     : 'font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;display:block;';
                 $addrStyle = $forPdf
                     ? 'font-family:Arial,sans-serif;font-size:10pt;font-weight:400;color:#ffffff;display:block;'
-                    : 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff;display:block;';
-                $colA .= '<div style="margin-bottom:' . ($forPdf ? '10pt' : '14px') . ';word-break:break-word;">'
+                    : 'font-family:Arial,sans-serif;font-size:13px;font-weight:400;color:#ffffff !important;display:block;';
+                $adDisplay = $forPdf 
+                    ? self::esc($ad) 
+                    : '<a href="https://maps.google.com/?q=' . urlencode(strip_tags($ad)) . '" target="_blank" style="color:#ffffff !important;text-decoration:none !important;font-weight:400;"><span style="color:#ffffff !important;text-decoration:none !important;">' . self::esc($ad) . '</span></a>';
+                $colA .= '<div style="' . ($forPdf ? 'margin-bottom:10pt;' : 'margin-bottom:14px;') . ';word-break:break-word;">'
                     . '<span style="' . $labelStyle . '">Venue &amp; Location</span>'
-                    . '<div style="margin-bottom:' . ($forPdf ? '9pt' : '12px') . ';">'
+                    . '<div style="' . ($forPdf ? 'margin-bottom:9pt;' : 'margin-bottom:12px;') . ';">'
                     . '<span style="' . $stateStyle . '">' . self::esc($st) . '</span>'
-                    . '<span style="' . $addrStyle . '">' . self::esc($ad) . '</span>'
+                    . '<span style="' . $addrStyle . '">' . $adDisplay . '</span>'
                     . '</div></div>';
             } else {
-                $colA .= self::detailRow('Venue', self::esc($ad), false, $forPdf);
+                $adDisplay = $forPdf
+                    ? self::esc($ad)
+                    : '<a href="https://maps.google.com/?q=' . urlencode(strip_tags($ad)) . '" target="_blank" style="color:#ffffff !important;text-decoration:none !important;font-weight:400;"><span style="color:#ffffff !important;text-decoration:none !important;">' . self::esc($ad) . '</span></a>';
+                $colA .= self::detailRow('Venue', $adDisplay, false, $forPdf);
                 if (!empty($st)) {
                     $colA .= self::detailRow('Location', self::esc($st), false, $forPdf);
                 }
@@ -786,8 +793,30 @@ class EmailHelper
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+  a, a:link, a:visited, a:hover, a:active {
+    color: #ffffff !important;
+    text-decoration: none !important;
+  }
+  a[x-apple-data-detectors] {
+    color: #ffffff !important;
+    text-decoration: none !important;
+    font-size: inherit !important;
+    font-family: inherit !important;
+    font-weight: inherit !important;
+    line-height: inherit !important;
+  }
+  u + #body a {
+    color: #ffffff !important;
+    text-decoration: none !important;
+  }
+  #MessageViewBody a {
+    color: #ffffff !important;
+    text-decoration: none !important;
+  }
+</style>
 </head>
-<body style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
+<body id="body" style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
 <tr><td align="center">
@@ -1291,8 +1320,8 @@ PDF;
         // Keep qr_base64 if available to ensure the unique QR code displays correctly
         $body = self::buildTicketHtml($emailTicketData, false);
 
-        /* ── 4. Send with file attachments ───────── */
-        return self::sendEmail($to, $subject, $body, $validPdfPaths, '', $embeddedImages);
+        /* ── 4. Send email without PDF attachment (embedded HTML card only) ───────── */
+        return self::sendEmail($to, $subject, $body, [], '', $embeddedImages);
     }
 
     /**
