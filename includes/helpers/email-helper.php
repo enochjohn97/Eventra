@@ -143,13 +143,15 @@ class EmailHelper
         string $barcode,
         string $pdfPath = ''
     ): array {
-        $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for {$eventName} - Eventra") . "?=";
+        $cleanEvent = trim($eventName);
+        $subject = "Your Ticket for {$cleanEvent} - Eventra";
         $safeUser = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
-        $safeEvent = htmlspecialchars($eventName, ENT_QUOTES, 'UTF-8');
+        $safeEvent = htmlspecialchars($cleanEvent, ENT_QUOTES, 'UTF-8');
         $safeBarcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
         $year = date('Y');
 
         $body = <<<HTML
+        <span style="display:none !important; visibility:hidden; mso-hide:all; font-size:1px; color:#ffffff; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">Your ticket confirmation for {$safeEvent}.</span>
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;">
             <h2 style="color:#2ecc71;">Ticket Confirmation</h2>
             <p>Hi <strong>{$safeUser}</strong>,</p>
@@ -529,6 +531,7 @@ class EmailHelper
         $ticketId = self::esc($ticketIdRaw);
         
         $eventTitle = self::esc($ticketData['event_name'] ?? '');
+        $eventName = self::esc(trim((string) ($ticketData['event_name'] ?? 'Event')));
         // Use buyer_name if available from checkout info, otherwise user_name
         $userName = self::esc($ticketData['buyer_name'] ?? $ticketData['user_name'] ?? 'Attendee');
         $venue = self::esc($ticketData['address'] ?? '—');
@@ -822,6 +825,7 @@ class EmailHelper
 </style>
 </head>
 <body id="body" style="margin:0;padding:40px 10px;background-color:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
+<span style="display:none !important; visibility:hidden; mso-hide:all; font-size:1px; color:#ffffff; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">Your ticket confirmation for {$eventName}.</span>
 <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
 &#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;&#847;&zwnj;&nbsp;&#8199;&shy;
 </div>
@@ -1242,12 +1246,8 @@ PDF;
         }
 
         /* ── 2. Subject ──────────────────────────────────────────── */
-        $eventName = htmlspecialchars(
-            $ticketData['event_name'] ?? 'Your Event',
-            ENT_QUOTES,
-            'UTF-8'
-        );
-        $subject = "=?UTF-8?B?" . base64_encode("Your Ticket for " . ($ticketData['event_name'] ?? 'Event') . " - Eventra") . "?=";
+        $eventName = trim((string) ($ticketData['event_name'] ?? 'Event'));
+        $subject = "Your Ticket for {$eventName} - Eventra";
 
         /* ── 3. Validate / regenerate PDF files ── */
         $rawPaths = is_array($pdfPath) ? $pdfPath : [$pdfPath];

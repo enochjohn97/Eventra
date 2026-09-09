@@ -165,6 +165,7 @@ try {
         'success' => true,
         'user' => [
             'id'            => $user['id'],
+            'profile_id'    => $user['profile_id'] ?? $user_id,
             'name'          => $user['name'],
             'email'         => $user['email'],
             'phone'         => $user['phone'] ?? null,
@@ -175,6 +176,15 @@ try {
             'city'          => $user['city'] ?? null,
             'state'         => $user['state'] ?? null,
             'address'       => $user['address'] ?? null,
+            'profile_pic'   => (function ($pic) {
+                if (!$pic) {
+                    return null;
+                }
+                if (preg_match('/^(https?:\/\/|data:)/i', $pic)) {
+                    return $pic;
+                }
+                return '/' . ltrim($pic, '/');
+            })($user['profile_pic'] ?? null),
             'profile_image' => (function ($pic) {
                 if (!$pic) {
                     return null;

@@ -66,6 +66,7 @@ function resolveEntity($identifier, $role = null)
     // CRITICAL: Ensure 'id' always refers to auth_accounts.id (the global auth ID)
     // role-specific tables also have an 'id' which can overwrite the auth ID during merge.
     $merged['id'] = $userId;
+    $merged['profile_id'] = $profile['id'] ?? null;
 
     // Ensure account email/username always wins as it is the auth source of truth
     if (isset($account['email'])) {

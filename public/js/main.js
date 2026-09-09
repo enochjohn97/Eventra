@@ -637,9 +637,24 @@ function initUserIcon() {
       e.preventDefault();
       const formData = new FormData(profileEditForm);
 
-      // Ensure all fields are included (even if some are disabled, though disabled fields aren't sent by default)
-      // We manually add name if it's there, etc.
-      // Actually FormData(profileEditForm) gets all named inputs.
+      // Ensure disabled fields like Profile ID and email are included
+      const customIdInput = document.getElementById("profileCustomId");
+      if (customIdInput && customIdInput.value) {
+        formData.set("custom_id", customIdInput.value);
+        formData.set("profile_id", customIdInput.value);
+      }
+      const emailInput = document.getElementById("profileEmail");
+      if (emailInput && emailInput.value) {
+        formData.set("email", emailInput.value);
+      }
+      const currentUser = (window.authController && window.authController.user) ||
+                          (window.storage && window.storage.getUser()) || {};
+      if (currentUser.profile_id && !formData.has("profile_id")) {
+        formData.set("profile_id", currentUser.profile_id);
+      }
+      if (currentUser.custom_id && !formData.has("custom_id")) {
+        formData.set("custom_id", currentUser.custom_id);
+      }
 
       const keys =
         typeof getRoleKeys === "function" ? getRoleKeys() : { user: "user" };
@@ -652,8 +667,17 @@ function initUserIcon() {
         const result = await response.json();
 
         if (result.success) {
-          if (window.storage) window.storage.set(keys.user, result.user);
-          if (window.authController) window.authController.user = result.user;
+          const updatedUser = { ...currentUser, ...result.user };
+          if (window.storage) {
+            window.storage.set(keys.user, updatedUser);
+            if (typeof window.storage.setUser === "function") {
+              window.storage.setUser(updatedUser);
+            }
+          }
+          if (window.authController) {
+            window.authController.user = updatedUser;
+            window.authController.setState(window.authController.states.AUTHENTICATED);
+          }
           showNotification("Profile updated successfully!", "success");
           if (profileSideModal) profileSideModal.classList.remove("open");
           setupUI(); // Refresh icon and label immediately
@@ -2182,6 +2206,13 @@ async function initUserLogin() {
           if (window.storage) {
             window.storage.set(keys.user, result.user);
             window.storage.set(keys.token, result.user.token);
+            if (typeof window.storage.setUser === "function") {
+              window.storage.setUser(result.user);
+            }
+          }
+          if (window.authController) {
+            window.authController.user = result.user;
+            window.authController.setState(window.authController.states.AUTHENTICATED);
           }
           showNotification("Sign in successful!", "success");
 

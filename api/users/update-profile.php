@@ -31,9 +31,27 @@ if (stripos($contentType, 'application/json') !== false) {
 
 $input = array_merge($_POST, $jsonBody);
 
-$stmt_existing = $pdo->prepare("SELECT * FROM users WHERE user_auth_id = ?");
-$stmt_existing->execute([$user_auth_id]);
+$profile_id = $input['profile_id'] ?? $input['id'] ?? $user_id;
+$custom_id = trim((string)($input['custom_id'] ?? ''));
+
+$stmt_existing = $pdo->prepare("
+    SELECT * FROM users 
+    WHERE id = ? 
+       OR (custom_id IS NOT NULL AND custom_id != '' AND custom_id = ?) 
+       OR user_auth_id = ?
+    LIMIT 1
+");
+$stmt_existing->execute([$profile_id, $custom_id, $user_auth_id]);
 $existing = $stmt_existing->fetch() ?: [];
+
+if (!$existing) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'message' => 'User profile not found']);
+    exit;
+}
+
+$targetProfileId = (int)$existing['id'];
+$user_auth_id = $existing['user_auth_id'];
 
 $name    = isset($input['name']) && trim((string)$input['name']) !== '' ? trim((string)$input['name']) : ($existing['name'] ?? '');
 $phone   = isset($input['phone']) ? trim((string)$input['phone']) : ($existing['phone'] ?? '');
@@ -98,8 +116,8 @@ try {
         $params[] = $profile_pic;
     }
 
-    $query .= " WHERE user_auth_id = ?";
-    $params[] = $user_auth_id;
+    $query .= " WHERE id = ?";
+    $params[] = $targetProfileId;
 
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
@@ -108,9 +126,9 @@ try {
         SELECT u.*, a.email, a.username, a.role
         FROM users u
         JOIN auth_accounts a ON u.user_auth_id = a.id
-        WHERE u.user_auth_id = ?
+        WHERE u.id = ?
     ");
-    $stmt->execute([$user_auth_id]);
+    $stmt->execute([$targetProfileId]);
     $updated_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($updated_user) {
@@ -121,11 +139,14 @@ try {
         if (!empty($updated_user['profile_pic']) && !preg_match('/^(https?:\/\/|data:)/i', $updated_user['profile_pic'])) {
             $updated_user['profile_pic'] = '/' . ltrim($updated_user['profile_pic'], '/');
         }
+        $updated_user['profile_image'] = $updated_user['profile_pic'];
         unset($updated_user['password']);
     }
 
     if (session_status() === PHP_SESSION_ACTIVE) {
         $_SESSION['last_activity'] = time();
+        $_SESSION['user_name'] = $name;
+        $_SESSION['user_id'] = $targetProfileId;
     }
 
     $pdo->commit();

@@ -265,6 +265,22 @@ try {
             $redirect = '/client/pages/clientDashboard.html';
         }
 
+        // Fetch fresh user profile directly from database for clean hydration
+        $freshProfile = [];
+        if ($userRole === 'user') {
+            $stmtProfile = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+            $stmtProfile->execute([$profileId]);
+            $freshProfile = $stmtProfile->fetch(PDO::FETCH_ASSOC) ?: [];
+        } elseif ($userRole === 'client') {
+            $stmtProfile = $pdo->prepare("SELECT * FROM clients WHERE id = ?");
+            $stmtProfile->execute([$profileId]);
+            $freshProfile = $stmtProfile->fetch(PDO::FETCH_ASSOC) ?: [];
+        } elseif ($userRole === 'admin') {
+            $stmtProfile = $pdo->prepare("SELECT * FROM admins WHERE id = ?");
+            $stmtProfile->execute([$profileId]);
+            $freshProfile = $stmtProfile->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+
         echo json_encode([
             'success' => true,
             'next_step' => 'complete',
@@ -274,11 +290,18 @@ try {
             'user' => [
                 'id' => $user['id'],
                 'profile_id' => $profileId,
-                'name' => $user['name'],
+                'name' => $freshProfile['name'] ?? $user['name'],
                 'email' => $user['email'],
+                'phone' => $freshProfile['phone'] ?? $user['phone'] ?? null,
+                'dob' => $freshProfile['dob'] ?? $user['dob'] ?? null,
+                'gender' => $freshProfile['gender'] ?? $user['gender'] ?? null,
+                'address' => $freshProfile['address'] ?? $user['address'] ?? null,
+                'city' => $freshProfile['city'] ?? $user['city'] ?? null,
+                'state' => $freshProfile['state'] ?? $user['state'] ?? null,
+                'country' => $freshProfile['country'] ?? $user['country'] ?? null,
                 'role' => $userRole,
-                'custom_id' => $user['custom_id'] ?? null,
-                'bvn' => $user['bvn'] ?? null,
+                'custom_id' => $freshProfile['custom_id'] ?? $user['custom_id'] ?? null,
+                'bvn' => $freshProfile['bvn'] ?? $user['bvn'] ?? null,
                 'profile_pic' => (function ($pic) {
                     if (!$pic) {
                         return null;
@@ -287,7 +310,7 @@ try {
                         return $pic;
                     }
                     return '/' . ltrim($pic, '/');
-                })($user['profile_pic'] ?? null),
+                })($freshProfile['profile_pic'] ?? $user['profile_pic'] ?? null),
                 'profile_image' => (function ($pic) {
                     if (!$pic) {
                         return null;
@@ -296,7 +319,7 @@ try {
                         return $pic;
                     }
                     return '/' . ltrim($pic, '/');
-                })($user['profile_pic'] ?? null),
+                })($freshProfile['profile_pic'] ?? $user['profile_pic'] ?? null),
                 'token' => $token
             ]
         ]);
