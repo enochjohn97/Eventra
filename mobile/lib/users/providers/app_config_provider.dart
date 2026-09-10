@@ -17,6 +17,7 @@ class AppConfigProvider extends ChangeNotifier {
     snackbar = null;
     notifyListeners();
     try {
+      await GoogleAuthService.configure();
       final config = await AppConfigService.load();
       googleClientId = config.googleClientId;
       mapsApiKey = config.mapsApiKey;
@@ -28,7 +29,6 @@ class AppConfigProvider extends ChangeNotifier {
           'Server googleClientId is empty, but continuing with native config.',
         );
       }
-      await GoogleAuthService.configure();
       isLoaded = true;
     } catch (e) {
       snackbar = e.toString().replaceFirst('Exception: ', '');

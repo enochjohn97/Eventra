@@ -40,17 +40,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _toast('Please fix the highlighted fields.', Colors.red);
+      return;
+    }
     final auth = context.read<AuthProvider>();
     final ok = await auth.updateProfile(
       name: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim(),
+      phone: _phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
     );
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
+      _toast('Profile updated and synced.', Colors.green);
+    } else {
+      _toast(auth.error ?? 'Could not sync your profile.', Colors.red);
     }
+  }
+
+  void _toast(String message, Color color) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  }
+
+  InputDecoration _fieldDecoration(
+    String label,
+    TextEditingController controller,
+  ) {
+    final color = controller.text.trim().isEmpty ? Colors.amber : Colors.green;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: color, width: 1.5),
+    );
+    return InputDecoration(
+      labelText: label,
+      enabledBorder: border,
+      focusedBorder: border,
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+    );
   }
 
   Future<void> _logout() async {
@@ -82,26 +117,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 44,
                 backgroundImage: _profileImage(user?.profilePic),
-                child: user?.profilePic == null ? const Icon(Icons.person, size: 40) : null,
+                child: user?.profilePic == null
+                    ? const Icon(Icons.person, size: 40)
+                    : null,
               ),
               if (user?.customId != null) ...[
                 const SizedBox(height: 8),
-                Text(user!.customId!, style: const TextStyle(color: Colors.grey)),
+                Text(
+                  user!.customId!,
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Full Name *'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                decoration: _fieldDecoration('Full Name *', _nameCtrl),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                onChanged: (_) => setState(() {}),
+                validator: (v) {
+                  final value = v?.trim() ?? '';
+                  if (value.isEmpty) return 'Required';
+                  if (value.length < 2) return 'Enter your full name';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email *'),
+                decoration: _fieldDecoration('Email *', _emailCtrl),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                onChanged: (_) => setState(() {}),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Required';
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) return 'Invalid email';
+                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim()))
+                    return 'Invalid email';
                   return null;
                 },
               ),
@@ -109,15 +159,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextFormField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone *'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                decoration: _fieldDecoration('Phone *', _phoneCtrl),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                onChanged: (_) => setState(() {}),
+                validator: (v) {
+                  final value = v?.trim() ?? '';
+                  if (value.isEmpty) return 'Required';
+                  final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (digits.length < 10 || digits.length > 11)
+                    return 'Invalid phone number';
+                  return null;
+                },
               ),
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: auth.isLoading ? null : _save,
-                  child: auth.isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Changes'),
+                  child: auth.isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Save Changes'),
                 ),
               ),
               const SizedBox(height: 12),
@@ -125,7 +193,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: auth.isLoading ? null : _logout,
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                  ),
                   child: const Text('Log Out'),
                 ),
               ),

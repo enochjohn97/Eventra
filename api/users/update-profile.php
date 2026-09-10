@@ -75,6 +75,14 @@ if (isset($input['email']) && trim((string)$input['email']) !== '') {
         echo json_encode(['success' => false, 'message' => 'Invalid email address']);
         exit;
     }
+    $duplicate = $pdo->prepare(
+        'SELECT id FROM auth_accounts WHERE email = ? AND id <> ? AND deleted_at IS NULL LIMIT 1'
+    );
+    $duplicate->execute([$email, $user_auth_id]);
+    if ($duplicate->fetchColumn()) {
+        echo json_encode(['success' => false, 'message' => 'That email is already linked to another account.']);
+        exit;
+    }
     $pdo->prepare('UPDATE auth_accounts SET email = ? WHERE id = ?')->execute([$email, $user_auth_id]);
 }
 

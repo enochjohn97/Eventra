@@ -85,9 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const CupertinoActivityIndicator()
                             : const CircularProgressIndicator(),
                       )
-                    : _GoogleButton(
-                        onPressed: () => _handleLogin(context),
-                      ),
+                    : _GoogleButton(onPressed: () => _handleLogin(context)),
               ),
               const SizedBox(height: 16),
             ],
@@ -100,10 +98,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin(BuildContext context) async {
     setState(() => _isLoggingIn = true);
     try {
-      final config = context.read<AppConfigProvider>();
-      if (!config.isLoaded) {
-        await config.load();
-      }
       if (!GoogleAuthService.isConfigured) {
         await GoogleAuthService.configure();
       }
@@ -159,13 +153,37 @@ class _GoogleLogoPainter extends CustomPainter {
     }
 
     // Red segment
-    canvas.drawArc(rect, -math.pi * 0.25, math.pi * 0.25, false, createPaint(const Color(0xFFEA4335)));
+    canvas.drawArc(
+      rect,
+      -math.pi * 0.25,
+      math.pi * 0.25,
+      false,
+      createPaint(const Color(0xFFEA4335)),
+    );
     // Blue segment
-    canvas.drawArc(rect, 0, math.pi * 0.3, false, createPaint(const Color(0xFF4285F4)));
+    canvas.drawArc(
+      rect,
+      0,
+      math.pi * 0.3,
+      false,
+      createPaint(const Color(0xFF4285F4)),
+    );
     // Green segment
-    canvas.drawArc(rect, math.pi * 0.3, math.pi * 0.45, false, createPaint(const Color(0xFF34A853)));
+    canvas.drawArc(
+      rect,
+      math.pi * 0.3,
+      math.pi * 0.45,
+      false,
+      createPaint(const Color(0xFF34A853)),
+    );
     // Yellow segment
-    canvas.drawArc(rect, math.pi * 0.75, math.pi * 1.0, false, createPaint(const Color(0xFFFBBC05)));
+    canvas.drawArc(
+      rect,
+      math.pi * 0.75,
+      math.pi * 1.0,
+      false,
+      createPaint(const Color(0xFFFBBC05)),
+    );
 
     // Blue crossbar for the 'G'
     final barPaint = Paint()..color = const Color(0xFF4285F4);
@@ -237,4 +255,3 @@ class _GoogleButton extends StatelessWidget {
     );
   }
 }
-

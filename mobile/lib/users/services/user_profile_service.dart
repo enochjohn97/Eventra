@@ -39,7 +39,7 @@ class UserProfileService {
       'city': ?city,
       'state': ?state,
       'country': ?country,
-    });
+    }, options: Options(receiveTimeout: const Duration(seconds: 20)));
     final data = _toMap(response.data);
     if (data['success'] != true) {
       throw Exception(data['message']?.toString() ?? 'Failed to update profile');

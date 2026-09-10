@@ -42,9 +42,10 @@ class _EventraUserAppState extends State<EventraUserApp> {
 
   Future<void> _initializeAuthAndConfig() async {
     try {
-      await _configProvider.load();
       await GoogleAuthService.configure();
-      // signInSilently() removed – Google sign-in only triggers on button press.
+    } catch (_) {}
+    try {
+      await _configProvider.load();
     } catch (_) {}
   }
 
