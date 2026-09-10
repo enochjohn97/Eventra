@@ -6,15 +6,13 @@ class AppConfigProvider extends ChangeNotifier {
   bool isLoaded = false;
   bool isLoading = false;
   String? snackbar;
-  String googleClientId =
-      '76953809917-o7bf7c7qbvpu7qglejqe77as5gb609fb.apps.googleusercontent.com';
-  String mapsApiKey = '[GCP_API_KEY]';
-  String paystackPublicKey =
-      'pk_test_ba48887507e3b7e82566b3b5fec96edf38d5007b';
-  String appUrl = 'https://eventra-website.liveblog365.com/api/';
+  String googleClientId = '';
+  String mapsApiKey = '';
+  String paystackPublicKey = '';
+  String appUrl = '';
 
   Future<void> load({bool force = false}) async {
-    if ((isLoaded && !force) || isLoading) return; 
+    if ((isLoaded && !force) || isLoading) return;
     isLoading = true;
     snackbar = null;
     notifyListeners();

@@ -13,32 +13,39 @@ Flutter companion app for Eventra attendees.
    - Android emulator: `--dart-define=API_BASE_URL=http://10.0.2.2:8000/api`
    - iOS simulator: `--dart-define=API_BASE_URL=http://127.0.0.1:8000/api`
    - Physical device: use your machine LAN IP, e.g. `http://192.168.1.5:8000/api`
+   - Production: `https://eventra-website.liveblog365.com/api` (default)
+   - Add `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID` for the native
+     OAuth clients, plus `GOOGLE_SERVER_CLIENT_ID` for the backend web client.
 
 ## Run
 
 ```bash
 cd mobile
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+flutter run \
+   --dart-define=API_BASE_URL=http://10.0.2.2:8000/api \
+   --dart-define=GOOGLE_ANDROID_CLIENT_ID=your-android-client-id \
+   --dart-define=GOOGLE_IOS_CLIENT_ID=your-ios-client-id \
+   --dart-define=GOOGLE_SERVER_CLIENT_ID=your-web-server-client-id
 ```
 
 Entry point: `lib/main.dart` (user app only).
 
 ## REST API (via `server/index.php`)
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/api/auth/google` | Google sign-in → Bearer token |
-| GET | `/api/events` | Paginated events (`search`, `sort`, `page`, `limit`) |
-| GET | `/api/events/{id}` | Event details |
-| POST | `/api/favorites/toggle` | Toggle favorite |
-| GET | `/api/favorites` | User favorites |
-| GET/PUT | `/api/profile` | Get/update profile |
-| POST | `/api/payments/initialize` | Paystack init |
-| POST | `/api/payments/verify` | Verify payment |
-| POST | `/api/tickets/send` | Resend ticket email |
-| GET | `/api/tickets` | User tickets |
-| GET | `/api/config/app` | Google client ID, Maps key, Paystack public key |
+| Method  | Path                       | Purpose                                              |
+| ------- | -------------------------- | ---------------------------------------------------- |
+| POST    | `/api/auth/google`         | Google sign-in → Bearer token                        |
+| GET     | `/api/events`              | Paginated events (`search`, `sort`, `page`, `limit`) |
+| GET     | `/api/events/{id}`         | Event details                                        |
+| POST    | `/api/favorites/toggle`    | Toggle favorite                                      |
+| GET     | `/api/favorites`           | User favorites                                       |
+| GET/PUT | `/api/profile`             | Get/update profile                                   |
+| POST    | `/api/payments/initialize` | Paystack init                                        |
+| POST    | `/api/payments/verify`     | Verify payment                                       |
+| POST    | `/api/tickets/send`        | Resend ticket email                                  |
+| GET     | `/api/tickets`             | User tickets                                         |
+| GET     | `/api/config/app`          | Google client ID, Maps key, Paystack public key      |
 
 Legacy `.php` endpoints remain for the web app.
 
@@ -46,5 +53,9 @@ Legacy `.php` endpoints remain for the web app.
 
 ```bash
 flutter analyze --no-fatal-infos --no-fatal-warnings
-flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+flutter build apk --debug \
+   --dart-define=API_BASE_URL=http://10.0.2.2:8000/api \
+   --dart-define=GOOGLE_ANDROID_CLIENT_ID=your-android-client-id \
+   --dart-define=GOOGLE_IOS_CLIENT_ID=your-ios-client-id \
+   --dart-define=GOOGLE_SERVER_CLIENT_ID=your-web-server-client-id
 ```

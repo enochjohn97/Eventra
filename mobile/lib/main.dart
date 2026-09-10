@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -14,12 +13,6 @@ import 'users/services/google_auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  if (kDebugMode) {
-    debugPrint('\n======================================================');
-    debugPrint('This will NOT work on a physical device. Ensure you are on an Android Emulator.');
-    debugPrint('======================================================\n');
-  }
 
   ApiClient();
   runApp(const EventraUserApp());
@@ -43,7 +36,7 @@ class _EventraUserAppState extends State<EventraUserApp> {
     _authProvider = AuthProvider();
     _router = createUserRouter(_authProvider);
     _configProvider = AppConfigProvider();
-    
+
     _initializeAuthAndConfig();
   }
 

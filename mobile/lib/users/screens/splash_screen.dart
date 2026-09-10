@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -30,11 +29,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _initBypass() {
-    if (kDebugMode) {
-      _boot();
-      return;
-    }
-
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -66,7 +60,13 @@ class _SplashScreenState extends State<SplashScreen> {
         ),
       );
 
-    _bypassTimeout = Timer(const Duration(seconds: 8), () {
+    _webViewController.loadRequest(
+      Uri.parse(
+        ApiClient().baseOrigin ?? 'https://eventra-website.liveblog365.com',
+      ),
+    );
+
+    _bypassTimeout = Timer(const Duration(seconds: 15), () {
       if (!_bypassed) {
         _bypassed = true;
         _boot();
@@ -83,7 +83,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _boot() async {
     final config = context.read<AppConfigProvider>();
     final auth = context.read<AuthProvider>();
-    await config.load();
+    try {
+      await config.load().timeout(const Duration(seconds: 8));
+    } catch (_) {}
     await auth.bootstrap();
     if (!mounted) return;
 
@@ -110,17 +112,16 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          if (!kDebugMode)
-            Positioned(
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 1,
-              child: Opacity(
-                opacity: 0.01,
-                child: WebViewWidget(controller: _webViewController),
-              ),
+          Positioned(
+            top: 0,
+            left: 0,
+            width: 1,
+            height: 1,
+            child: Opacity(
+              opacity: 0.01,
+              child: WebViewWidget(controller: _webViewController),
             ),
+          ),
 
           Container(
             width: double.infinity,

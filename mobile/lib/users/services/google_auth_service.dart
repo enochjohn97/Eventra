@@ -56,50 +56,21 @@ class GoogleAuthService {
     };
 
     // Retry on HTML responses (WAF challenge) — same logic as ApiClient.
-    dio.interceptors.add(InterceptorsWrapper(
-      onResponse: (response, handler) async {
-        final ct = (response.headers.value('content-type') ?? '').toLowerCase();
-        if (ct.contains('text/html') ||
-            [502, 503, 504].contains(response.statusCode)) {
-          final retryCount =
-              (response.requestOptions.extra['_retryCount'] as int? ?? 0);
-          if (retryCount < _retryDelays.length) {
-            await Future.delayed(
-                Duration(seconds: _retryDelays[retryCount]));
-            final reqOpts = response.requestOptions
-              ..extra['_retryCount'] = retryCount + 1;
-            try {
-              // Fresh Dio for the retry — no interceptors to avoid loops.
-              final retryDio = Dio(opts);
-              (retryDio.httpClientAdapter as IOHttpClientAdapter)
-                  .createHttpClient = () {
-                final c = HttpClient();
-                c.idleTimeout = const Duration(milliseconds: 1);
-                return c;
-              };
-              return handler.resolve(await retryDio.fetch(reqOpts));
-            } catch (e) {
-              return handler.reject(e is DioException
-                  ? e
-                  : DioException(requestOptions: reqOpts, error: e));
-            }
-          }
-        }
-        return handler.next(response);
-      },
-      onError: (error, handler) async {
-        if (error.response != null) {
-          final ct = (error.response!.headers.value('content-type') ?? '')
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onResponse: (response, handler) async {
+          final ct = (response.headers.value('content-type') ?? '')
               .toLowerCase();
           if (ct.contains('text/html') ||
-              [502, 503, 504].contains(error.response!.statusCode)) {
+              [502, 503, 504].contains(response.statusCode)) {
             final retryCount =
-                (error.requestOptions.extra['_retryCount'] as int? ?? 0);
+                (response.requestOptions.extra['_retryCount'] as int? ?? 0);
             if (retryCount < _retryDelays.length) {
-              await Future.delayed(
-                  Duration(seconds: _retryDelays[retryCount]));
-              error.requestOptions.extra['_retryCount'] = retryCount + 1;
+              await Future.delayed(Duration(seconds: _retryDelays[retryCount]));
+              final reqOpts = response.requestOptions
+                ..extra['_retryCount'] = retryCount + 1;
               try {
+                // Fresh Dio for the retry — no interceptors to avoid loops.
                 final retryDio = Dio(opts);
                 (retryDio.httpClientAdapter as IOHttpClientAdapter)
                     .createHttpClient = () {
@@ -107,20 +78,59 @@ class GoogleAuthService {
                   c.idleTimeout = const Duration(milliseconds: 1);
                   return c;
                 };
-                return handler
-                    .resolve(await retryDio.fetch(error.requestOptions));
+                return handler.resolve(await retryDio.fetch(reqOpts));
               } catch (e) {
-                return handler.next(e is DioException
-                    ? e
-                    : DioException(
-                        requestOptions: error.requestOptions, error: e));
+                return handler.reject(
+                  e is DioException
+                      ? e
+                      : DioException(requestOptions: reqOpts, error: e),
+                );
               }
             }
           }
-        }
-        return handler.next(error);
-      },
-    ));
+          return handler.next(response);
+        },
+        onError: (error, handler) async {
+          if (error.response != null) {
+            final ct = (error.response!.headers.value('content-type') ?? '')
+                .toLowerCase();
+            if (ct.contains('text/html') ||
+                [502, 503, 504].contains(error.response!.statusCode)) {
+              final retryCount =
+                  (error.requestOptions.extra['_retryCount'] as int? ?? 0);
+              if (retryCount < _retryDelays.length) {
+                await Future.delayed(
+                  Duration(seconds: _retryDelays[retryCount]),
+                );
+                error.requestOptions.extra['_retryCount'] = retryCount + 1;
+                try {
+                  final retryDio = Dio(opts);
+                  (retryDio.httpClientAdapter as IOHttpClientAdapter)
+                      .createHttpClient = () {
+                    final c = HttpClient();
+                    c.idleTimeout = const Duration(milliseconds: 1);
+                    return c;
+                  };
+                  return handler.resolve(
+                    await retryDio.fetch(error.requestOptions),
+                  );
+                } catch (e) {
+                  return handler.next(
+                    e is DioException
+                        ? e
+                        : DioException(
+                            requestOptions: error.requestOptions,
+                            error: e,
+                          ),
+                  );
+                }
+              }
+            }
+          }
+          return handler.next(error);
+        },
+      ),
+    );
 
     return dio;
   }
@@ -134,16 +144,32 @@ class GoogleAuthService {
   static Future<void> configure() async {
     if (_initialized) return;
 
+    const serverClientId = String.fromEnvironment(
+      'GOOGLE_SERVER_CLIENT_ID',
+      defaultValue:
+          '76953809917-o7bf7c7qbvpu7qglejqe77as5gb609fb.apps.googleusercontent.com',
+    );
+
+    const androidClientId = String.fromEnvironment(
+      'GOOGLE_ANDROID_CLIENT_ID',
+      defaultValue:
+          '76953809917-eetkrdqtda43el15vir4dpghhml53dnr.apps.googleusercontent.com',
+    );
+    const iosClientId = String.fromEnvironment(
+      'GOOGLE_IOS_CLIENT_ID',
+      defaultValue:
+          '76953809917-eguefgb6sgetu8a7g5grjh966il7slq6.apps.googleusercontent.com',
+    );
     String? clientId;
     if (defaultTargetPlatform == TargetPlatform.iOS) {
-      clientId = '76953809917-eguefgb6sgetu8a7g5grjh966il7slq6.apps.googleusercontent.com';
+      clientId = iosClientId.isEmpty ? null : iosClientId;
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      clientId = '76953809917-eetkrdqtda43el15vir4dpghhml53dnr.apps.googleusercontent.com';
+      clientId = androidClientId.isEmpty ? null : androidClientId;
     }
 
     await _googleSignIn.initialize(
       clientId: clientId,
-      serverClientId: '76953809917-o7bf7c7qbvpu7qglejqe77as5gb609fb.apps.googleusercontent.com',
+      serverClientId: serverClientId,
     );
     _initialized = true;
   }
@@ -222,7 +248,9 @@ class GoogleAuthService {
     final dio = _newAuthDio();
     try {
       print('------------------- [API REQUEST LOG] -------------------');
-      print('Sending Request to: ${dio.options.baseUrl}/auth/google-handler.php');
+      print(
+        'Sending Request to: ${dio.options.baseUrl}/auth/google-handler.php',
+      );
 
       response = await dio.post(
         '/auth/google-handler.php',
