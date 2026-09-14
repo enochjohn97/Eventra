@@ -38,21 +38,16 @@ class ApiClient {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'Connection': 'close',
-          // Mimic a real mobile browser — WAF on liveblog365.com fingerprints
-          // Dart's default UA ("Dart/x.y (dart:io)") and serves an HTML challenge.
-          'User-Agent':
-              'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+          'User-Agent': 'Dart/3.12.2 (Eventra Mobile)',
+          'X-Requested-With': 'XMLHttpRequest',
         },
       ),
     );
 
-    // Prevent stale-socket "unsolicited response" on shared/WAF hosts.
-    // A short idle timeout ensures pooled connections are dropped before
-    // the server closes them on its side (common on liveblog365.com / shared hosts).
+    // Keep connections alive long enough for the shared host to finish responses.
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
-      client.idleTimeout = const Duration(milliseconds: 1);
+      client.idleTimeout = const Duration(seconds: 30);
       return client;
     };
 
@@ -70,9 +65,18 @@ class ApiClient {
         onResponse: (response, handler) async {
           final contentType = (response.headers.value('content-type') ?? '')
               .toLowerCase();
-          final isColdStart =
-              contentType.contains('text/html') ||
-              [502, 503, 504].contains(response.statusCode);
+          final isColdStart = [502, 503, 504].contains(response.statusCode);
+          if (contentType.contains('text/html')) {
+            return handler.reject(
+              DioException(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioExceptionType.badResponse,
+                message:
+                    'Eventra API is blocked by the hosting security challenge.',
+              ),
+            );
+          }
           if (isColdStart) {
             // Render cold-start: retry with backoff
             final retryCount =
@@ -113,9 +117,22 @@ class ApiClient {
             final contentType =
                 (error.response?.headers.value('content-type') ?? '')
                     .toLowerCase();
-            final isColdStart =
-                contentType.contains('text/html') ||
-                [502, 503, 504].contains(error.response?.statusCode);
+            final isColdStart = [
+              502,
+              503,
+              504,
+            ].contains(error.response?.statusCode);
+            if (contentType.contains('text/html')) {
+              return handler.next(
+                DioException(
+                  requestOptions: error.requestOptions,
+                  response: error.response,
+                  type: DioExceptionType.badResponse,
+                  message:
+                      'Eventra API is blocked by the hosting security challenge.',
+                ),
+              );
+            }
             if (isColdStart) {
               final retryCount =
                   (error.requestOptions.extra['_retryCount'] as int? ?? 0);

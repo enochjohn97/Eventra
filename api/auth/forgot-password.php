@@ -70,8 +70,7 @@ try {
         INSERT INTO auth_tokens (auth_id, token, type, expires_at)
         VALUES (?, ?, 'otp', DATE_ADD(NOW(), INTERVAL 15 MINUTE))
     ");
-    $stmt->execute([$authId, $otp]); // Storing plaintext as requested by the verification logic?
-    // Wait, verify-password-reset-otp.php (line 31) uses token = ? (plaintext).
+    $stmt->execute([$authId, $otpHash]);
 
     $userEmail = $account['email'];
     finishResponseThen(json_encode([

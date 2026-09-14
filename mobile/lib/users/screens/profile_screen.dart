@@ -150,8 +150,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onChanged: (_) => setState(() {}),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Required';
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim()))
+                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
                     return 'Invalid email';
+                  }
                   return null;
                 },
               ),
@@ -166,8 +167,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final value = v?.trim() ?? '';
                   if (value.isEmpty) return 'Required';
                   final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-                  if (digits.length < 10 || digits.length > 11)
+                  if (digits.length < 10 || digits.length > 11) {
                     return 'Invalid phone number';
+                  }
                   return null;
                 },
               ),

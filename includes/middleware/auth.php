@@ -263,14 +263,7 @@ function checkAuth($requiredRole = null)
             $reason = !$userId ? 'Session expired or invalid token' : 'Insufficient permissions';
             echo json_encode([
                 'success' => false, 
-                'message' => "Unauthorized: $reason. Please log in again.",
-                'debug_info' => [
-                    'userId_found' => !!$userId,
-                    'role_match' => $hasAuthorizedRole,
-                    'required_role' => $requiredRole,
-                    'actual_role' => $role ?? 'none',
-                    'has_token' => !!getBearerToken()
-                ]
+                'message' => "Unauthorized: $reason. Please log in again."
             ]);
             exit;
         }

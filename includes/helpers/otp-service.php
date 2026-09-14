@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../middleware/rate-limit.php';
 require_once __DIR__ . '/validation.php';
+require_once __DIR__ . '/sms-helper.php';
 
 class OTPService
 {
@@ -69,8 +70,11 @@ class OTPService
             $stmt->execute([$normalizedPhone, $otpHash, $purpose, $authId, $expiresAt]);
             $otpId = $pdo->lastInsertId();
 
-            // Delivery is intentionally skipped here to keep OTP generation fast and reliable.
-            // The code is still stored and can be verified immediately.
+            $delivery = sendSMS($normalizedPhone, "Your Eventra verification code is {$otp}. It expires in 5 minutes.");
+            if (!$delivery['success']) {
+                $pdo->prepare('DELETE FROM otp_requests WHERE id = ?')->execute([$otpId]);
+                return ['success' => false, 'message' => 'We could not send the verification code. Please try again later.', 'otp_id' => null];
+            }
             return [
                 'success' => true,
                 'message' => 'OTP sent successfully',

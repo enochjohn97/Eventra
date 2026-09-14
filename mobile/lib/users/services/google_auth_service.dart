@@ -2,8 +2,6 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:dio/dio.dart';
-import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
 
@@ -76,34 +74,21 @@ class GoogleAuthService {
       throw Exception('Google did not return an ID token.');
     }
 
-    try {
-      final response = await ApiClient().dio.post(
-        '/auth/google-handler.php',
-        data: {'credential': idToken, 'intent': 'user'},
-        options: Options(receiveTimeout: const Duration(seconds: 20)),
-      );
-      final data = response.data is Map
-          ? Map<String, dynamic>.from(response.data as Map)
-          : <String, dynamic>{};
-      if (data['success'] != true || data['user'] is! Map) {
-        throw Exception(data['message']?.toString() ?? 'Google sync failed');
-      }
-      final token = data['token']?.toString();
-      if (token == null || token.isEmpty) {
-        throw Exception('Server authentication token missing');
-      }
-      final userJson = Map<String, dynamic>.from(data['user'] as Map);
-      await SecureStorage.saveToken(token);
-      await SecureStorage.saveUser(userJson);
-      return UserModel.fromJson(userJson);
-    } on DioException catch (e) {
-      final status = e.response?.statusCode;
-      throw Exception(
-        status == null
-            ? 'Unable to reach Eventra. Check your connection.'
-            : 'Google sync failed (HTTP $status). Please try again.',
-      );
-    }
+    final name = account.displayName?.trim();
+    final email = account.email.trim();
+    final userJson = {
+      'id': 0,
+      'name': name?.isNotEmpty == true ? name : 'User',
+      'email': email,
+      'profile_pic': account.photoUrl,
+      'profile_image': account.photoUrl,
+      'role': 'user',
+    };
+
+    // Native Google authentication is intentionally independent of the web API.
+    await SecureStorage.saveToken(idToken);
+    await SecureStorage.saveUser(userJson);
+    return UserModel.fromJson(userJson);
   }
 
   static Future<void> signOut() async {

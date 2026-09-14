@@ -34,6 +34,7 @@ body {
   display: flex;
   height: 100vh;
   width: 100%;
+  background: #11111a;
 }
 
 /* Left Side - Form Area */
@@ -50,7 +51,7 @@ body {
       rgba(167, 139, 250, 0.15) 0%,
       transparent 40%
     ),
-    #000;
+    #11111a;
   display: flex;
   align-items: center;
   justify-content: center;

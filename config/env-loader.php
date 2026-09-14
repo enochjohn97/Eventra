@@ -6,19 +6,14 @@
 
 function loadEnv($path = null)
 {
-    // Fallback logic: try .env then .env.example if no path provided
+    // Never load example values as runtime configuration.
     if ($path === null) {
         $primary = __DIR__ . '/../.env';
-        $fallback = __DIR__ . '/../.env.example';
-        
+
         if (file_exists($primary)) {
             $path = $primary;
-        } elseif (file_exists($fallback)) {
-            $path = $fallback;
-            // Note: In a real production environment, we'd usually log a warning 
-            // but here we allow it for the user's testing flexibility.
         } else {
-            return; // No env files found
+            return;
         }
     } elseif (!file_exists($path)) {
         return;
@@ -63,7 +58,7 @@ $envKeys = [
     'PAYSTACK_PUBLIC_KEY', 'PAYSTACK_SECRET_KEY',
     'MAIL_HOST', 'MAIL_PORT', 'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_ENCRYPTION', 'MAIL_FROM_ADDRESS', 'MAIL_FROM_NAME',
     'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI', 'GOOGLE_MAPS_API_KEY', 'GOOGLE_CALENDAR_API_KEY', 'GOOGLE_WEBHOOK_SECRET',
-    'TERMII_API_KEY', 'TERMII_SECRET_KEY', 'TERMII_SENDER_ID',
+    'BREVO_API_KEY', 'BREVO_SMS_SENDER',
     'CRON_SECRET', 'UPLOAD_MAX_SIZE', 'QR_SECRET'
 ];
 
