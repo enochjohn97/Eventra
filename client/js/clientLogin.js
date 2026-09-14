@@ -562,7 +562,7 @@ document.addEventListener("DOMContentLoaded", () => {
         events = [
           {
             event_name: "Eventra experiences",
-            image_path: "../../public/assets/imgs/login.png",
+            image_path: "../../public/assets/imgs/admin.png",
           },
           {
             event_name: "Eventra venues",
@@ -614,7 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (events.length > 1) setInterval(updateSlider, 5000);
     } catch (error) {
       sliderContainer.innerHTML =
-        '<img src="../../public/assets/imgs/login.png" alt="Eventra experience" class="slider-img active">';
+        '<img src="../../public/assets/imgs/admin.png" alt="Eventra experience" class="slider-img active">';
     }
   }
 
