@@ -137,5 +137,10 @@ php_value post_max_size 6M
     ExpiresByType application/font-woff2 "access plus 1 year"
 </IfModule>
 
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^public/(assets/.*)$ $1 [L]
+</IfModule>
+
 # ETag Headers
 FileETag None

@@ -6,12 +6,14 @@
 
 function loadEnv($path = null)
 {
-    // Never load example values as runtime configuration.
     if ($path === null) {
         $primary = __DIR__ . '/../.env';
+        $fallback = __DIR__ . '/../.env.example';
 
         if (file_exists($primary)) {
             $path = $primary;
+        } elseif (file_exists($fallback)) {
+            $path = $fallback;
         } else {
             return;
         }

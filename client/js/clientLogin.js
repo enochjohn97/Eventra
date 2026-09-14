@@ -558,18 +558,8 @@ document.addEventListener("DOMContentLoaded", () => {
         data.success && Array.isArray(data.events)
           ? data.events.filter((e) => e.image_path)
           : [];
-      if (events.length === 0) {
-        events = [
-          {
-            event_name: "Eventra experiences",
-            image_path: "../../public/assets/imgs/admin.png",
-          },
-          {
-            event_name: "Eventra venues",
-            image_path: "../../public/assets/imgs/admin.png",
-          },
-        ];
-      }
+
+      if (events.length === 0) return;
 
       // Shuffle events for random display
       events = events.sort(() => 0.5 - Math.random());
@@ -613,8 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (events.length > 1) setInterval(updateSlider, 5000);
     } catch (error) {
-      sliderContainer.innerHTML =
-        '<img src="../../public/assets/imgs/admin.png" alt="Eventra experience" class="slider-img active">';
+      sliderContainer.innerHTML = "";
     }
   }
 
