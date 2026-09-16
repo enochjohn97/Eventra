@@ -32,8 +32,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.initState();
     final user = context.read<AuthProvider>().user;
     final parts = (user?.name ?? '').split(' ');
-    _fnameCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
-    _lnameCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _fnameCtrl = TextEditingController(
+      text: parts.isNotEmpty ? parts.first : '',
+    );
+    _lnameCtrl = TextEditingController(
+      text: parts.length > 1 ? parts.sublist(1).join(' ') : '',
+    );
     _emailCtrl = TextEditingController(text: user?.email ?? '');
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
   }
@@ -86,12 +90,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
 
       final reference = result['reference']?.toString() ?? '';
-      final isFree = result['is_free'] == true || (result['amount'] is num && (result['amount'] as num) <= 0);
+      final isFree =
+          result['is_free'] == true ||
+          (result['amount'] is num && (result['amount'] as num) <= 0);
 
       if (!mounted) return;
 
       if (isFree) {
-        await _verifyAndFinish(reference);
+        _showPaymentPending(reference, result);
         return;
       }
 
@@ -110,31 +116,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
 
       if (completed == true) {
-        await _verifyAndFinish(reference);
+        _showPaymentPending(reference, result);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
       }
     } finally {
       if (mounted) setState(() => _processing = false);
     }
   }
 
-  Future<void> _verifyAndFinish(String reference) async {
-    final verify = await UserPaymentService.verifyPayment(reference);
+  void _showPaymentPending(String reference, Map<String, dynamic> result) {
     if (!mounted) return;
-    context.pushReplacement('/payment-success', extra: {
-      'reference': reference,
-      'event_name': verify['event_name']?.toString() ?? widget.event.eventName,
-      'amount': verify['amount'] ?? _total,
-      'barcode': verify['barcode']?.toString(),
-    });
+    context.pushReplacement(
+      '/payment-success',
+      extra: {
+        'reference': reference,
+        'event_name':
+            result['event_name']?.toString() ?? widget.event.eventName,
+        'amount': result['amount'] ?? _total,
+        'payment_pending': true,
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = widget.event.absoluteImageUrl ?? ApiClient().absoluteUrl(widget.event.imagePath);
+    final imageUrl =
+        widget.event.absoluteImageUrl ??
+        ApiClient().absoluteUrl(widget.event.imagePath);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Checkout')),
@@ -153,8 +166,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: imageUrl.isNotEmpty
-                            ? Image.network(imageUrl, width: 80, height: 80, fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => _thumbPlaceholder())
+                            ? Image.network(
+                                imageUrl,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => _thumbPlaceholder(),
+                              )
                             : _thumbPlaceholder(),
                       ),
                       const SizedBox(width: 14),
@@ -162,10 +180,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(widget.event.eventName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            Text(
+                              widget.event.eventName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text(EventUtils.formatDate(widget.event.eventDate), style: const TextStyle(color: AppTheme.textMuted)),
-                            Text(EventUtils.venueLine(widget.event), style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                            Text(
+                              EventUtils.formatDate(widget.event.eventDate),
+                              style: const TextStyle(color: AppTheme.textMuted),
+                            ),
+                            Text(
+                              EventUtils.venueLine(widget.event),
+                              style: const TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -174,29 +207,75 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('Contact Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text(
+                'Contact Information',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: TextFormField(controller: _fnameCtrl, decoration: const InputDecoration(labelText: 'First Name *'), validator: _req)),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _fnameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'First Name *',
+                      ),
+                      validator: _req,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: TextFormField(controller: _lnameCtrl, decoration: const InputDecoration(labelText: 'Last Name *'), validator: _req)),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lnameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Last Name *',
+                      ),
+                      validator: _req,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              TextFormField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email *'), keyboardType: TextInputType.emailAddress, validator: _email),
+              TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(labelText: 'Email *'),
+                keyboardType: TextInputType.emailAddress,
+                validator: _email,
+              ),
               const SizedBox(height: 12),
-              TextFormField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Phone *'), keyboardType: TextInputType.phone, validator: _req),
+              TextFormField(
+                controller: _phoneCtrl,
+                decoration: const InputDecoration(labelText: 'Phone *'),
+                keyboardType: TextInputType.phone,
+                validator: _req,
+              ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Quantity', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Quantity',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   Row(
                     children: [
-                      IconButton(onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null, icon: const Icon(Icons.remove_circle_outline)),
-                      Text('$_quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      IconButton(onPressed: () => setState(() => _quantity++), icon: const Icon(Icons.add_circle_outline)),
+                      IconButton(
+                        onPressed: _quantity > 1
+                            ? () => setState(() => _quantity--)
+                            : null,
+                        icon: const Icon(Icons.remove_circle_outline),
+                      ),
+                      Text(
+                        '$_quantity',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => _quantity++),
+                        icon: const Icon(Icons.add_circle_outline),
+                      ),
                     ],
                   ),
                 ],
@@ -212,8 +291,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: ElevatedButton(
                   onPressed: _processing ? null : _pay,
                   child: _processing
-                      ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(_total <= 0 ? 'Get Free Ticket' : 'Pay with Paystack'),
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _total <= 0 ? 'Get Free Ticket' : 'Pay with Paystack',
+                        ),
                 ),
               ),
             ],
@@ -223,7 +311,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _thumbPlaceholder() => Container(width: 80, height: 80, color: AppTheme.primary.withValues(alpha: 0.1), child: const Icon(Icons.event));
+  Widget _thumbPlaceholder() => Container(
+    width: 80,
+    height: 80,
+    color: AppTheme.primary.withValues(alpha: 0.1),
+    child: const Icon(Icons.event),
+  );
 
   Widget _priceRow(String label, double amount, {bool bold = false}) {
     return Padding(
@@ -231,20 +324,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
           Text(
             amount <= 0 ? 'Free' : '₦${amount.toStringAsFixed(0)}',
-            style: TextStyle(fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: bold ? AppTheme.primary : AppTheme.textMain),
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+              color: bold ? AppTheme.primary : AppTheme.textMain,
+            ),
           ),
         ],
       ),
     );
   }
 
-  String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'Required' : null;
+  String? _req(String? v) =>
+      (v == null || v.trim().isEmpty) ? 'Required' : null;
   String? _email(String? v) {
     if (v == null || v.trim().isEmpty) return 'Required';
-    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) return 'Invalid email';
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
+      return 'Invalid email';
+    }
     return null;
   }
 }

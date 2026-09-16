@@ -107,11 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final ok = await auth.signInWithGoogle();
       if (!context.mounted) return;
       if (!ok) return;
-      if (auth.status == AuthStatus.profileIncomplete) {
-        context.go('/profile-complete');
-      } else {
-        context.go('/home');
-      }
+      context.go('/home');
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);
     }

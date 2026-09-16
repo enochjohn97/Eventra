@@ -15,6 +15,7 @@ class EventsProvider extends ChangeNotifier {
   static const int _pageSize = 12;
 
   Future<void> loadEvents({bool refresh = false}) async {
+    if (isLoading || isLoadingMore) return;
     if (refresh) {
       _page = 1;
       hasMore = true;

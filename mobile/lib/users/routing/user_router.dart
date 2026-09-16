@@ -21,19 +21,27 @@ GoRouter createUserRouter(AuthProvider authProvider) {
     redirect: (context, state) {
       final path = state.matchedLocation;
       final status = authProvider.status;
-      final isPublic = path == '/' ||
+      final isPublic =
+          path == '/' ||
           path.startsWith('/welcome') ||
           path.startsWith('/onboarding') ||
           path.startsWith('/login');
 
       if (status == AuthStatus.unknown) return null;
-      if (status == AuthStatus.unauthenticated && !isPublic && path != '/profile-complete') {
+      if (status == AuthStatus.unauthenticated &&
+          !isPublic &&
+          path != '/profile-complete') {
         return '/login';
       }
-      if (status == AuthStatus.profileIncomplete && path != '/profile-complete' && !isPublic) {
+      if (status == AuthStatus.profileIncomplete &&
+          path != '/profile-complete' &&
+          path != '/home' &&
+          path != '/checkout' &&
+          !isPublic) {
         return '/profile-complete';
       }
-      if (status == AuthStatus.authenticated && (path == '/login' || path == '/profile-complete')) {
+      if (status == AuthStatus.authenticated &&
+          (path == '/login' || path == '/profile-complete')) {
         return '/home';
       }
       return null;
@@ -43,7 +51,10 @@ GoRouter createUserRouter(AuthProvider authProvider) {
       GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/profile-complete', builder: (_, _) => const ProfileCompleteScreen()),
+      GoRoute(
+        path: '/profile-complete',
+        builder: (_, _) => const ProfileCompleteScreen(),
+      ),
       GoRoute(path: '/home', builder: (_, _) => const UserShellScreen()),
       GoRoute(
         path: '/checkout',

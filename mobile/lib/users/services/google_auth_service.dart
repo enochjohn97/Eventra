@@ -2,11 +2,14 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:dio/dio.dart';
+import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
 
 class GoogleAuthService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  static final Dio _dio = ApiClient().dio;
 
   static bool _initialized = false;
 
@@ -74,19 +77,25 @@ class GoogleAuthService {
       throw Exception('Google did not return an ID token.');
     }
 
-    final name = account.displayName?.trim();
-    final email = account.email.trim();
-    final userJson = {
-      'id': 0,
-      'name': name?.isNotEmpty == true ? name : 'User',
-      'email': email,
-      'profile_pic': account.photoUrl,
-      'profile_image': account.photoUrl,
-      'role': 'user',
-    };
+    final response = await _dio.post(
+      '/auth/google',
+      data: {'credential': idToken, 'intent': 'user'},
+    );
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : <String, dynamic>{};
+    final userJson = data['user'] is Map
+        ? Map<String, dynamic>.from(data['user'] as Map)
+        : null;
+    final serverToken = data['token']?.toString();
+    if (data['success'] != true || serverToken == null || userJson == null) {
+      throw Exception(
+        data['message']?.toString() ??
+            'Eventra could not complete Google sign-in.',
+      );
+    }
 
-    // Native Google authentication is intentionally independent of the web API.
-    await SecureStorage.saveToken(idToken);
+    await SecureStorage.saveToken(serverToken);
     await SecureStorage.saveUser(userJson);
     return UserModel.fromJson(userJson);
   }
