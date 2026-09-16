@@ -346,9 +346,9 @@ try {
     $callbackUrl = SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference);
 
     // ── Choose Paystack secret key: organizer's connected key (v2) or platform key fallback ──
-    $activePaystackKey = ($isOrganizerConnected && !empty($event['paystack_auth_token']))
-        ? $event['paystack_auth_token']
-        : PAYSTACK_SECRET_KEY;
+    $activePaystackKey = selectPaystackSecretKey(
+        $isOrganizerConnected ? $event['paystack_auth_token'] : null
+    );
 
     $contactInfo  = $body['contact_info'] ?? [];
     $buyerFname   = trim($contactInfo['fname'] ?? '');

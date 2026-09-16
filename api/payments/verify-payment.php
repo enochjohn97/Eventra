@@ -118,12 +118,11 @@ try {
     ");
     $verifyKeyStmt->execute([$reference]);
     $orgPaystack = $verifyKeyStmt->fetch(PDO::FETCH_ASSOC);
-    $activeVerifyKey = PAYSTACK_SECRET_KEY;
-    if ($orgPaystack
-        && ($orgPaystack['paystack_connection_status'] ?? '') === 'connected'
-        && !empty($orgPaystack['paystack_auth_token'])) {
-        $activeVerifyKey = $orgPaystack['paystack_auth_token'];
-    }
+    $activeVerifyKey = selectPaystackSecretKey(
+        $orgPaystack && ($orgPaystack['paystack_connection_status'] ?? '') === 'connected'
+            ? $orgPaystack['paystack_auth_token']
+            : null
+    );
 
     // ── Verify with Paystack ─────────────────────────────────────────────────
     $url = 'https://api.paystack.co/transaction/verify/' . rawurlencode($reference);
@@ -330,7 +329,7 @@ try {
                 'barcodes' => $barcodes,
                 'ticket_ids' => $ticket_ids,
                 'ticket_data' => $ticketData,
-                'user_email' => $order['user_email'],
+                'user_email' => $metadata['buyer_email'] ?? $order['user_email'],
                 'user_phone' => $order['user_phone'],
                 'user_auth_accounts_id' => $user_auth_accounts_id,
                 'organizer_auth_id' => $order['organizer_auth_id'] ?? null,

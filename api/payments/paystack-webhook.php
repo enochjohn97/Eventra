@@ -38,7 +38,7 @@ if ($reference) {
     $keyStmt->execute([$reference]);
     $orgPaystack = $keyStmt->fetch(PDO::FETCH_ASSOC);
     if ($orgPaystack && ($orgPaystack['paystack_connection_status'] ?? '') === 'connected' && !empty($orgPaystack['paystack_auth_token'])) {
-        $activeSecretKey = $orgPaystack['paystack_auth_token'];
+        $activeSecretKey = selectPaystackSecretKey($orgPaystack['paystack_auth_token']);
     }
 }
 

@@ -6,6 +6,22 @@ define('PAYSTACK_PUBLIC_KEY', $_ENV['PAYSTACK_PUBLIC_KEY'] ?? '');
 define('PAYSTACK_SECRET_KEY', $_ENV['PAYSTACK_SECRET_KEY'] ?? '');
 define('PAYSTACK_WEBHOOK_SECRET', $_ENV['PAYSTACK_WEBHOOK_SECRET'] ?? '');
 
+function selectPaystackSecretKey(?string $organizerKey = null): string
+{
+    $platformKey = PAYSTACK_SECRET_KEY;
+    $organizerKey = trim((string) $organizerKey);
+
+    if ($organizerKey !== '' && $platformKey !== '') {
+        $platformMode = str_starts_with($platformKey, 'sk_live_') ? 'live' : 'test';
+        $organizerMode = str_starts_with($organizerKey, 'sk_live_') ? 'live' : 'test';
+        if ($platformMode === $organizerMode) {
+            return $organizerKey;
+        }
+    }
+
+    return $platformKey;
+}
+
 /**
  * Helper: call Paystack API
  */
