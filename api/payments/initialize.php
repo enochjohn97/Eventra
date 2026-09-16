@@ -345,7 +345,8 @@ try {
     // ── Initialize Paystack transaction ──────────────────────────────────────
     $callbackUrl = SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference);
 
-    // ── Choose Paystack secret key: organizer's connected key (v2) or platform key fallback ──
+    // Client is the primary Paystack account; Eventra receives the split via
+    // its subaccount created under that client account.
     $activePaystackKey = selectPaystackSecretKey(
         $isOrganizerConnected ? $event['paystack_auth_token'] : null
     );
@@ -382,22 +383,11 @@ try {
     ];
 
     $commissionKobo = (int) round($surcharge * 100);
-    if ($isOrganizerConnected && $commissionKobo > 0) {
-        // Organizer's own Paystack account is used as primary key;
-        // Eventra's platform share is charged as a split.
-        $paystackPayload['transaction_charge'] = $commissionKobo;
-        $paystackPayload['bearer']             = 'account';
-        error_log(sprintf(
-            '[initialize.php] Split: total=%d kobo, platform_commission=%d kobo',
-            $amount_kobo, $commissionKobo
-        ));
-    } elseif (!$isOrganizerConnected && !empty($event['subaccount_code'])
+    if ($isOrganizerConnected && !empty($event['subaccount_code'])
         && !str_starts_with($event['subaccount_code'], 'SETTLE_MOCK_')) {
-        // Subaccount split: organizer receives funds via their subaccount;
-        // Eventra is the main account (platform) and earns the commission.
-        // Works in both test and live mode.
         $paystackPayload['subaccount'] = $event['subaccount_code'];
         $paystackPayload['bearer']     = 'subaccount';
+        $paystackPayload['transaction_charge'] = $commissionKobo;
     }
 
     $ch = curl_init('https://api.paystack.co/transaction/initialize');

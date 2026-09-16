@@ -107,8 +107,7 @@ try {
         exit;
     }
 
-    // ── Determine which Paystack key to use for verification ────────────────
-    // If organizer used their own connected key to initialize, we must verify with the same key.
+    // Verify with the same standalone client account that initialized payment.
     $verifyKeyStmt = $pdo->prepare("
         SELECT c.paystack_connection_status, c.paystack_auth_token
         FROM orders o
@@ -313,14 +312,6 @@ try {
             $barcode = $barcodes[0]; 
             $pdo->commit();
 
-            $jobDir = __DIR__ . '/../../jobs/';
-            if (!is_dir($jobDir)) {
-                if (!@mkdir($jobDir, 0775, true) && !is_dir($jobDir)) {
-                    error_log('[verify-payment.php] Failed to create jobs directory: ' . $jobDir);
-                    // We will fall back to passing data in-memory without a job file.
-                }
-            }
-
             $jobData = [
                 'type' => 'generate_tickets_and_notify',
                 'reference' => $reference,
@@ -335,15 +326,6 @@ try {
                 'organizer_auth_id' => $order['organizer_auth_id'] ?? null,
                 'quantity' => $quantity
             ];
-
-            $jobFile = '';
-            if (is_dir($jobDir)) {
-                $jobFile = $jobDir . 'ticket_' . $reference . '.json';
-                if (@file_put_contents($jobFile, json_encode($jobData), LOCK_EX) === false) {
-                    $jobFile = '';
-                }
-            }
-            $runTicketJobInline = ($jobFile === '');
 
             $processorPath = __DIR__ . '/../utils/process-ticket-queue.php';
             $ticketJobReady = true;
@@ -362,30 +344,14 @@ try {
             'barcode'    => $barcode,
         ]);
 
-        echo $responsePayload;
-
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-            if (!empty($ticketJobReady)) {
-                if (!defined('RUNNING_INLINE')) { define('RUNNING_INLINE', true); }
-                global $globalJobData;
-                $globalJobData = $jobData;
-                include_once $processorPath;
-            }
-        } else {
-            // Non-FPM: flush output to browser then process the job inline
-            while (ob_get_level() > 0) { ob_end_flush(); }
-            flush();
-            ignore_user_abort(true);
-            set_time_limit(120);
-
-            if (!empty($ticketJobReady)) {
-                if (!defined('RUNNING_INLINE')) { define('RUNNING_INLINE', true); }
-                global $globalJobData;
-                $globalJobData = $jobData;
-                include_once $processorPath;
-            }
+        if (!empty($ticketJobReady)) {
+            if (!defined('RUNNING_INLINE')) { define('RUNNING_INLINE', true); }
+            global $globalJobData;
+            $globalJobData = $jobData;
+            include_once $processorPath;
         }
+
+        echo $responsePayload;
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

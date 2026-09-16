@@ -18,21 +18,18 @@ $input = file_get_contents('php://input');
 $signature = $_SERVER['HTTP_X_PAYSTACK_SIGNATURE'] ?? '';
 
 // ── Dynamic Signature Verification ───────────────────────────────────────────
-// We need to know which key signed this payload. We parse the unverified payload
-// just to extract the reference, look up the order, and get the organizer's key.
+// Client Paystack accounts sign their own webhook payloads.
 $unverified_event = json_decode($input, true);
 $reference = $unverified_event['data']['reference'] ?? '';
 
 $activeSecretKey = !empty(PAYSTACK_WEBHOOK_SECRET) ? PAYSTACK_WEBHOOK_SECRET : PAYSTACK_SECRET_KEY;
 
 if ($reference) {
-    // Shared helper fetchOrder is defined below, but we need it here.
-    // Let's do a quick inline query just for the key.
     $keyStmt = $pdo->prepare("
-        SELECT c.paystack_connection_status, c.paystack_auth_token 
-        FROM orders o 
-        JOIN clients c ON o.organizer_id = c.id 
-        WHERE o.transaction_reference = ? 
+        SELECT c.paystack_connection_status, c.paystack_auth_token
+        FROM orders o
+        JOIN clients c ON o.organizer_id = c.id
+        WHERE o.transaction_reference = ?
         LIMIT 1
     ");
     $keyStmt->execute([$reference]);
