@@ -82,7 +82,8 @@ try {
                e.metadata, e.client_id AS organizer_id,
                c.subaccount_code, c.verification_status, c.business_name AS organizer_business_name, c.name AS organizer_name,
                c.paystack_connection_status, c.paystack_auth_token, c.paystack_public_key,
-               c.paystack_merchant_id, c.platform_commission_percent, c.admin_status AS organizer_admin_status
+               c.paystack_merchant_id, c.platform_commission_percent, c.admin_status AS organizer_admin_status,
+               c.settlement_bank_name, c.settlement_account_name, c.settlement_account_number
         FROM events e
         JOIN clients c ON e.client_id = c.id
         WHERE e.id = ? AND e.deleted_at IS NULL
@@ -330,8 +331,8 @@ try {
     // ── Insert pending order ─────────────────────────────────────────────────
     $oStmt = $pdo->prepare("
         INSERT INTO orders
-            (user_id, event_id, organizer_id, subaccount_code, amount, transaction_reference, payment_status, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+            (user_id, event_id, organizer_id, subaccount_code, amount, transaction_reference, payment_status, payment_method, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
     ");
     $oStmt->execute([
         $user_id,
@@ -340,9 +341,33 @@ try {
         $event['subaccount_code'],
         $total,
         $reference,
+        ($body['payment_method'] ?? 'paystack') === 'bank_transfer' ? 'bank_transfer' : 'paystack',
         json_encode($order_metadata)
     ]);
     $order_id = $pdo->lastInsertId();
+
+    if (($body['payment_method'] ?? '') === 'bank_transfer') {
+        if (empty($event['settlement_bank_name']) || empty($event['settlement_account_name']) || empty($event['settlement_account_number'])) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'The organizer has not provided bank transfer details.']);
+            exit;
+        }
+
+        $pdo->commit();
+        echo json_encode([
+            'success' => true,
+            'payment_method' => 'bank_transfer',
+            'reference' => $reference,
+            'order_id' => (int)$order_id,
+            'amount' => $total,
+            'bank_details' => [
+                'bank_name' => $event['settlement_bank_name'],
+                'account_name' => $event['settlement_account_name'],
+                'account_number' => $event['settlement_account_number'],
+            ],
+        ]);
+        exit;
+    }
 
 
     // ── Initialize Paystack transaction ──────────────────────────────────────

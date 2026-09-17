@@ -141,6 +141,60 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 4. Setup Payment Action
   const payBtn = document.getElementById("paystackBtn");
+  const bankTransferBtn = document.getElementById("bankTransferBtn");
+  if (bankTransferBtn) {
+    bankTransferBtn.addEventListener("click", async () => {
+      const phone = document.getElementById("phoneNum")?.value.trim();
+      const email = document.getElementById("emailAdd")?.value.trim();
+      const fname = document.getElementById("firstName")?.value.trim();
+      const lname = document.getElementById("lastName")?.value.trim();
+      if (!phone || !email || !fname || !lname) {
+        showNotification("Please provide all contact information.", "error");
+        return;
+      }
+
+      bankTransferBtn.disabled = true;
+      bankTransferBtn.textContent = "Loading account details...";
+      try {
+        const res = await apiFetch("/api/payments/initialize.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_id: eventId,
+            quantity: currentQuantity,
+            ticket_type: currentTicketType,
+            payment_method: "bank_transfer",
+            selected_locs: selectedLocsParam,
+            contact_info: { fname, lname, email, phone },
+          }),
+        });
+        const result = await res.json();
+        if (!result.success)
+          throw new Error(result.message || "Could not load bank details.");
+        const details = result.bank_details;
+        const safeText = (value) =>
+          String(value ?? "").replace(
+            /[&<>"']/g,
+            (character) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[character],
+          );
+        const panel = document.getElementById("bankTransferDetails");
+        panel.innerHTML = `<strong>Transfer ₦${Number(result.amount).toLocaleString()} to:</strong><br><br>${safeText(details.bank_name)}<br>Account name: <strong>${safeText(details.account_name)}</strong><br>Account number: <strong>${safeText(details.account_number)}</strong><br><br>Reference: <strong>${safeText(result.reference)}</strong><br><small>Payment will remain pending until the transfer is confirmed.</small>`;
+        panel.style.display = "block";
+      } catch (error) {
+        showNotification(error.message, "error");
+      } finally {
+        bankTransferBtn.disabled = false;
+        bankTransferBtn.textContent = "Pay by bank transfer";
+      }
+    });
+  }
   if (payBtn) {
     payBtn.addEventListener("click", async (e) => {
       e.preventDefault();

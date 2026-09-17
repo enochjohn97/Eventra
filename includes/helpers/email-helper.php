@@ -160,7 +160,7 @@ class EmailHelper
                 <p style="margin-bottom:5px;color:#666;">Ticket ID</p>
                 <div style="font-size:24px;font-weight:bold;letter-spacing:5px;color:#2ecc71;">{$safeBarcode}</div>
             </div>
-            <p>Your PDF ticket is attached. Please present the QR code at the venue entrance.</p>
+            <p>Please present the QR code at the venue entrance.</p>
             <hr style="border:0;border-top:1px solid #eee;margin:20px 0;">
             <p style="font-size:12px;color:#999;text-align:center;">&copy; {$year} Eventra. All rights reserved.</p>
         </div>
@@ -1198,13 +1198,7 @@ PDF;
 
     // ── sendTicketEmailFull ────────────────────────────────────────────────────
 
-    /**
-     * Send a full rich ticket email + attach a PDF.
-     *
-     * KEY FIX: PDF is now generated from buildTicketHtml(..., forPdf: true)
-     * which uses a DomPDF-safe flat layout — no overflow:hidden, no CSS gradients
-     * on table backgrounds, no object-fit — so it renders correctly.
-     */
+    /** Send a full rich ticket email without a file attachment. */
     public static function sendTicketEmailFull(
         string $to,
         array $ticketData,
@@ -1270,68 +1264,7 @@ PDF;
         $eventName = trim((string) ($ticketData['event_name'] ?? 'Event'));
         $subject = "Your Ticket for {$eventName} - Eventra";
 
-        /* ── 3. Validate / regenerate PDF files ── */
-        $rawPaths = is_array($pdfPath) ? $pdfPath : [$pdfPath];
-        $validPdfPaths = [];
-
-        foreach ($rawPaths as $path) {
-            $path = trim((string) $path);
-            if ($path === '') {
-                continue;
-            }
-
-            $shouldRegenerate = false;
-            if (!file_exists($path)) {
-                error_log("[EmailHelper] PDF not found, will attempt regeneration: {$path}");
-                $shouldRegenerate = true;
-            } elseif (filesize($path) === 0) {
-                error_log("[EmailHelper] PDF is empty (0 bytes), will attempt regeneration: {$path}");
-                $shouldRegenerate = true;
-            }
-
-            if ($shouldRegenerate) {
-                // Attempt to generate the PDF using the PDF-safe HTML
-                $regenerated = self::regeneratePdf($ticketData, $path);
-                if ($regenerated && file_exists($path) && filesize($path) > 0) {
-                    error_log("[EmailHelper] PDF regenerated successfully: {$path}");
-                } else {
-                    error_log("[EmailHelper] PDF regeneration failed, skipping: {$path}");
-                    continue;
-                }
-            }
-
-            if (file_exists($path) && filesize($path) > 0) {
-                $validPdfPaths[] = $path;
-            }
-        }
-
-        // Only auto-generate a PDF attachment when the caller passed none at all
-        // (e.g. the plain sendTicketEmailFull($to, $data) call without an explicit path).
-        // We deliberately do NOT scan the tickets directory — that avoids accidentally
-        // attaching PDFs from previous purchases.
-        if (!$validPdfPaths && $barcode !== '') {
-            $ticketDir = __DIR__ . '/../../public/assets/event_assets/tickets';
-            if (!is_dir($ticketDir)) {
-                @mkdir($ticketDir, 0755, true);
-            }
-            $generatedPath = $ticketDir . '/ticket_' . preg_replace('/[^A-Za-z0-9_-]/', '', $barcode) . '.pdf';
-            try {
-                if (!file_exists($generatedPath) || filesize($generatedPath) < 500) {
-                    self::regeneratePdf($ticketData, $generatedPath);
-                }
-                if (file_exists($generatedPath) && filesize($generatedPath) >= 500) {
-                    $validPdfPaths[] = $generatedPath;
-                }
-            } catch (\Throwable $pdfEx) {
-                error_log('[EmailHelper] Ticket PDF attachment generation failed: ' . $pdfEx->getMessage());
-            }
-        }
-
         $embeddedImages = [];
-
-        $qrPathRaw = $ticketData['qr_path'] ?? $ticketData['qr_code_path'] ?? '';
-        $resolvedQrPath = self::resolveLocalPath($qrPathRaw);
-        // QR Code attachment removed as requested. Ticket PDF is attached via $validPdfPaths.
 
         $eventImgRaw = $ticketData['event_image'] ?? '';
         $resolvedEventImgPath = self::resolveLocalPath($eventImgRaw);
@@ -1349,7 +1282,7 @@ PDF;
         // Keep qr_base64 if available to ensure the unique QR code displays correctly
         $body = self::buildTicketHtml($emailTicketData, false);
 
-        /* ── 4. Send email without PDF attachment (embedded HTML card only) ───────── */
+        /* ── 3. Send email through SMTP without file attachments ─────────── */
         return self::sendEmail($to, $subject, $body, [], '', $embeddedImages);
     }
 
