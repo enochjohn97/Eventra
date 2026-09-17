@@ -15,7 +15,8 @@ require_once '../../config/database.php';
 try {
     $paystackConfig = [
         'success' => true,
-        'public_key' => $_ENV['PAYSTACK_PUBLIC_KEY'] ?? ''
+        'public_key' => $_ENV['PAYSTACK_PUBLIC_KEY'] ?? '',
+        'is_test_mode' => str_starts_with($_ENV['PAYSTACK_PUBLIC_KEY'] ?? '', 'pk_test_')
     ];
 
     if (empty($paystackConfig['public_key'])) {

@@ -114,7 +114,7 @@ try {
                         </td>
                         <td width='50%' style='vertical-align: top; text-align: right; font-size: 14px; color: #555;'>
                             Have any questions?<br>
-                            <a href='mailto:testalive57@gmail.com' style='color: #3b82f6; text-decoration: none;'>Contact support</a>
+                            <a href='mailto:attoneex@gmail.com' style='color: #3b82f6; text-decoration: none;'>Contact support</a>
                         </td>
                     </tr>
                 </table>

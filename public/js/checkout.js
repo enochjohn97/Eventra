@@ -1,337 +1,445 @@
 // Eventra Checkout Logic v1.0.1 (Resolving ReferenceError)
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Initial State & URL Parsing
-    const urlParams = new URLSearchParams(window.location.search);
-    const eventId = urlParams.get('id');
-    const quantityParam = urlParams.get('quantity') || '1';
-    const ticketType = urlParams.get('type') || urlParams.get('ticket_type') || 'regular';
-    const selectedLocsParam = urlParams.get('selected_locs');
-    let currentQuantity = parseInt(quantityParam, 10);
-    
-    if (isNaN(currentQuantity) || currentQuantity < 1) currentQuantity = 1;
+document.addEventListener("DOMContentLoaded", async () => {
+  // 1. Initial State & URL Parsing
+  const urlParams = new URLSearchParams(window.location.search);
+  const eventId = urlParams.get("id");
+  const quantityParam = urlParams.get("quantity") || "1";
+  const ticketType =
+    urlParams.get("type") || urlParams.get("ticket_type") || "regular";
+  const selectedLocsParam = urlParams.get("selected_locs");
+  let currentQuantity = parseInt(quantityParam, 10);
 
-    let eventData = null;
-    window._checkoutEventData = null; // module-scope reference for helpers
-    let paystackPublicKey = null;
-    let currentUser = null;
-    let currentTicketType = ticketType;
+  if (isNaN(currentQuantity) || currentQuantity < 1) currentQuantity = 1;
 
-    if (!eventId) {
-        const isFromSuccess = sessionStorage.getItem('purchase_success_redirection');
-        if (isFromSuccess) {
-            sessionStorage.removeItem('purchase_success_redirection');
-            window.location.href = 'index.html';
-            return;
-        }
-        showErrorAndRedirect('No event specified for checkout', 'index.html');
-        return;
+  let eventData = null;
+  window._checkoutEventData = null; // module-scope reference for helpers
+  let paystackPublicKey = null;
+  let currentUser = null;
+  let currentTicketType = ticketType;
+
+  if (!eventId) {
+    const isFromSuccess = sessionStorage.getItem(
+      "purchase_success_redirection",
+    );
+    if (isFromSuccess) {
+      sessionStorage.removeItem("purchase_success_redirection");
+      window.location.href = "index.html";
+      return;
+    }
+    showErrorAndRedirect("No event specified for checkout", "index.html");
+    return;
+  }
+
+  // 2. Auth Check - Initialize and ensure AuthController has finished syncing
+  authController.init();
+  await authController.ready;
+
+  if (!isAuthenticated()) {
+    sessionStorage.setItem("redirect_after_login", window.location.href);
+    window.location.href = "index.html"; // Trigger index.html login modal logic
+    return;
+  }
+
+  try {
+    // Fetch User Data from storage
+    const keys =
+      typeof getRoleKeys === "function" ? getRoleKeys() : { user: "user" };
+    currentUser = window.storage?.get(keys.user) || window.storage?.get("user");
+
+    if (currentUser) {
+      const saved = JSON.parse(
+        sessionStorage.getItem("checkout_contact") || "null",
+      );
+      document.getElementById("firstName").value =
+        saved?.fname ||
+        (currentUser.name ? currentUser.name.split(" ")[0] : "");
+      document.getElementById("lastName").value =
+        saved?.lname ||
+        (currentUser.name && currentUser.name.includes(" ")
+          ? currentUser.name.split(" ").slice(1).join(" ")
+          : "");
+      document.getElementById("emailAdd").value =
+        saved?.email || currentUser.email || "";
+      document.getElementById("phoneNum").value =
+        saved?.phone || currentUser.phone || "";
     }
 
+    // Fetch Event Data
+    const eventRes = await apiFetch(
+      `/api/events/get-event-details.php?event_id=${eventId}`,
+    );
+    const eventResult = await eventRes.json();
 
-    // 2. Auth Check - Initialize and ensure AuthController has finished syncing
-    authController.init();
-    await authController.ready;
-    
-    if (!isAuthenticated()) {
-        sessionStorage.setItem('redirect_after_login', window.location.href);
-        window.location.href = 'index.html'; // Trigger index.html login modal logic
-        return;
+    if (!eventResult.success || !eventResult.event) {
+      showErrorAndRedirect("Event not found or unavailable", "index.html");
+      return;
     }
+
+    eventData = eventResult.event;
+    window._checkoutEventData = eventData; // expose for out-of-scope helpers
+
+    // Block checkout if event is past (Strict Timestamp Validation)
+    const eventEndDateTime = new Date(eventData.event_end_datetime);
+    const now = new Date();
+
+    if (now > eventEndDateTime) {
+      showErrorAndRedirect("This event has already concluded", "index.html");
+      return;
+    }
+
+    // Output Event Data to UI
+    renderEventSummary(eventData, currentQuantity, currentTicketType);
+
+    // Fetch Paystack Config
+    const paystackRes = await apiFetch("/api/payments/paystack.php");
+    const paystackResult = await paystackRes.json();
+
+    if (paystackResult.success && paystackResult.public_key) {
+      paystackPublicKey = paystackResult.public_key;
+      if (paystackResult.is_test_mode) {
+        document
+          .getElementById("paystackTestCard")
+          ?.style.setProperty("display", "block");
+      }
+    } else {
+      showNotification("Payment system is currently unavailable", "error");
+      document.getElementById("paystackBtn").disabled = true;
+    }
+
+    // Hide overlay once everything is loaded
+    document.getElementById("loadingOverlay").style.display = "none";
+  } catch (error) {
+    showErrorAndRedirect(
+      "Failed to initialize checkout secure environment",
+      "index.html",
+    );
+  }
+
+  // 3. Setup Quantity Controls
+  const btnMinus = document.getElementById("qtyMinus");
+  const btnPlus = document.getElementById("qtyPlus");
+
+  if (btnMinus && btnPlus) {
+    btnMinus.addEventListener("click", () => {
+      if (currentQuantity > 1) {
+        currentQuantity--;
+        renderEventSummary(eventData, currentQuantity, currentTicketType);
+      }
+    });
+    btnPlus.addEventListener("click", () => {
+      if (
+        eventData.max_capacity &&
+        eventData.attendee_count + currentQuantity >= eventData.max_capacity
+      ) {
+        showNotification("Max capacity reached for this event", "warning");
+        return;
+      }
+      currentQuantity++;
+      renderEventSummary(eventData, currentQuantity, currentTicketType);
+    });
+  }
+
+  // 4. Setup Payment Action
+  const payBtn = document.getElementById("paystackBtn");
+  if (payBtn) {
+    payBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      // 1. Basic Validation
+      const phone = document.getElementById("phoneNum")?.value.trim();
+      const email = document.getElementById("emailAdd")?.value.trim();
+      const fname = document.getElementById("firstName")?.value.trim();
+      const lname = document.getElementById("lastName")?.value.trim();
+
+      if (!phone || !email || !fname || !lname) {
+        showNotification("Please provide all contact information.", "error");
+        return;
+      }
+
+      // 2. Event Conclusion Check
+      const eventEndDateTime = new Date(
+        eventData.event_end_datetime ||
+          eventData.event_date + "T" + (eventData.event_time || "23:59:59"),
+      );
+      if (new Date() > eventEndDateTime) {
+        showNotification("This event has already concluded.", "error");
+        return;
+      }
+
+      // 3. Proceed to payment directly
+      sessionStorage.setItem(
+        "checkout_contact",
+        JSON.stringify({ fname, lname, email, phone }),
+      );
+      await proceedToPayment(
+        eventId,
+        currentQuantity,
+        currentTicketType,
+        fname,
+        lname,
+        email,
+        phone,
+        payBtn,
+        eventData,
+        null,
+        selectedLocsParam,
+      );
+    });
+  }
+
+  async function proceedToPayment(
+    eventId,
+    currentQuantity,
+    currentTicketType,
+    fname,
+    lname,
+    email,
+    phone,
+    payBtn,
+    eventData,
+    otpReference = null,
+    selectedLocs = null,
+  ) {
+    // Disable button & show loading
+    payBtn.disabled = true;
+    payBtn.innerHTML = '<span class="btn-spinner"></span> Initializing...';
 
     try {
-        // Fetch User Data from storage
-        const keys = typeof getRoleKeys === 'function' ? getRoleKeys() : { user: 'user' };
-        currentUser = (window.storage?.get(keys.user)) || (window.storage?.get('user'));
-        
-        if (currentUser) {
-            const saved = JSON.parse(sessionStorage.getItem('checkout_contact') || 'null');
-            document.getElementById('firstName').value = saved?.fname || (currentUser.name ? currentUser.name.split(' ')[0] : '');
-            document.getElementById('lastName').value = saved?.lname || (currentUser.name && currentUser.name.includes(' ') ? currentUser.name.split(' ').slice(1).join(' ') : '');
-            document.getElementById('emailAdd').value = saved?.email || currentUser.email || '';
-            document.getElementById('phoneNum').value = saved?.phone || currentUser.phone || '';
-        }
+      // Initialize Order via Marketplace API
+      const res = await apiFetch("/api/payments/initialize.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          quantity: currentQuantity,
+          ticket_type: currentTicketType,
+          otp_reference: otpReference,
+          selected_locs: selectedLocs,
+          contact_info: { fname, lname, email, phone },
+        }),
+      });
 
-        // Fetch Event Data
-        const eventRes = await apiFetch(`/api/events/get-event-details.php?event_id=${eventId}`);
-        const eventResult = await eventRes.json();
+      const result = await res.json();
 
-        if (!eventResult.success || !eventResult.event) {
-            showErrorAndRedirect('Event not found or unavailable', 'index.html');
-            return;
-        }
-        
-        eventData = eventResult.event;
-        window._checkoutEventData = eventData; // expose for out-of-scope helpers
-        
-        // Block checkout if event is past (Strict Timestamp Validation)
-        const eventEndDateTime = new Date(eventData.event_end_datetime);
-        const now = new Date();
-
-        if (now > eventEndDateTime) {
-            showErrorAndRedirect('This event has already concluded', 'index.html');
-            return;
-        }
-
-        // Output Event Data to UI
-        renderEventSummary(eventData, currentQuantity, currentTicketType);
-
-        // Fetch Paystack Config
-        const paystackRes = await apiFetch('/api/payments/paystack.php');
-        const paystackResult = await paystackRes.json();
-
-        if (paystackResult.success && paystackResult.public_key) {
-            paystackPublicKey = paystackResult.public_key;
-        } else {
-            showNotification('Payment system is currently unavailable', 'error');
-            document.getElementById('paystackBtn').disabled = true;
-        }
-
-        // Hide overlay once everything is loaded
-        document.getElementById('loadingOverlay').style.display = 'none';
-
-    } catch (error) {
-        showErrorAndRedirect('Failed to initialize checkout secure environment', 'index.html');
+      if (result.success) {
+        // Paid or Free event — store order and redirect to payment processor or success page
+        const orderData = {
+          eventId: eventId,
+          quantity: currentQuantity,
+          ticket_type: currentTicketType,
+          order_id: result.order_id,
+          reference: result.reference,
+          authorization_url: result.authorization_url,
+          amount: result.amount,
+          is_free: result.is_free,
+          contactInfo: {
+            firstName: fname,
+            lastName: lname,
+            email: email,
+            phone: phone,
+          },
+        };
+        sessionStorage.setItem("pending_order", JSON.stringify(orderData));
+        window.location.href = result.authorization_url;
+      } else {
+        Swal.fire(
+          "Error",
+          result.message || "Payment initialization failed.",
+          "error",
+        );
+        let price = parseFloat(eventData.price || 0);
+        if (currentTicketType === "vip" && eventData.vip_price)
+          price = parseFloat(eventData.vip_price);
+        else if (currentTicketType === "premium" && eventData.premium_price)
+          price = parseFloat(eventData.premium_price);
+        else if (currentTicketType === "regular" && eventData.regular_price)
+          price = parseFloat(eventData.regular_price);
+        resetPayBtn(price, currentQuantity);
+      }
+    } catch (err) {
+      const errMsg =
+        err?.message ||
+        "Could not connect to payment server. Please check your connection and try again.";
+      Swal.fire("Error", errMsg, "error");
+      let price = parseFloat(eventData.price || 0);
+      if (currentTicketType === "vip" && eventData.vip_price)
+        price = parseFloat(eventData.vip_price);
+      else if (currentTicketType === "premium" && eventData.premium_price)
+        price = parseFloat(eventData.premium_price);
+      else if (currentTicketType === "regular" && eventData.regular_price)
+        price = parseFloat(eventData.regular_price);
+      resetPayBtn(price, currentQuantity);
     }
+  }
 
-    // 3. Setup Quantity Controls
-    const btnMinus = document.getElementById('qtyMinus');
-    const btnPlus = document.getElementById('qtyPlus');
-    
-    if (btnMinus && btnPlus) {
-        btnMinus.addEventListener('click', () => {
-            if (currentQuantity > 1) {
-                currentQuantity--;
-                renderEventSummary(eventData, currentQuantity, currentTicketType);
-            }
-        });
-        btnPlus.addEventListener('click', () => {
-            if (eventData.max_capacity && (eventData.attendee_count + currentQuantity) >= eventData.max_capacity) {
-                showNotification('Max capacity reached for this event', 'warning');
-                return;
-            }
-            currentQuantity++;
-            renderEventSummary(eventData, currentQuantity, currentTicketType);
-        });
-    }
-
-    // 4. Setup Payment Action
-    const payBtn = document.getElementById('paystackBtn');
-    if (payBtn) {
-        payBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            
-            // 1. Basic Validation
-            const phone = document.getElementById('phoneNum')?.value.trim();
-            const email = document.getElementById('emailAdd')?.value.trim();
-            const fname = document.getElementById('firstName')?.value.trim();
-            const lname = document.getElementById('lastName')?.value.trim();
-
-            if (!phone || !email || !fname || !lname) {
-                showNotification('Please provide all contact information.', 'error');
-                return;
-            }
-
-            // 2. Event Conclusion Check
-            const eventEndDateTime = new Date(eventData.event_end_datetime || eventData.event_date + 'T' + (eventData.event_time || '23:59:59'));
-            if (new Date() > eventEndDateTime) {
-                showNotification('This event has already concluded.', 'error');
-                return;
-            }
-
-            // 3. Proceed to payment directly
-            sessionStorage.setItem('checkout_contact', JSON.stringify({fname, lname, email, phone}));
-            await proceedToPayment(eventId, currentQuantity, currentTicketType, fname, lname, email, phone, payBtn, eventData, null, selectedLocsParam);
-
-        });
-    }
-
-    async function proceedToPayment(eventId, currentQuantity, currentTicketType, fname, lname, email, phone, payBtn, eventData, otpReference = null, selectedLocs = null) {
-        // Disable button & show loading
-        payBtn.disabled = true;
-        payBtn.innerHTML = '<span class="btn-spinner"></span> Initializing...';
-        
-        try {
-            // Initialize Order via Marketplace API
-            const res = await apiFetch('/api/payments/initialize.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    event_id: eventId,
-                    quantity: currentQuantity,
-                    ticket_type: currentTicketType,
-                    otp_reference: otpReference,
-                    selected_locs: selectedLocs,
-                    contact_info: { fname, lname, email, phone }
-                })
-            });
-            
-            const result = await res.json();
-            
-            if (result.success) {
-                // Paid or Free event — store order and redirect to payment processor or success page
-                const orderData = {
-                    eventId: eventId,
-                    quantity: currentQuantity,
-                    ticket_type: currentTicketType,
-                    order_id: result.order_id,
-                    reference: result.reference,
-                    authorization_url: result.authorization_url,
-                    amount: result.amount,
-                    is_free: result.is_free,
-                    contactInfo: {
-                        firstName: fname,
-                        lastName: lname,
-                        email: email,
-                        phone: phone
-                    }
-                };
-                sessionStorage.setItem('pending_order', JSON.stringify(orderData));
-                window.location.href = result.authorization_url;
-
-            } else {
-                Swal.fire('Error', result.message || 'Payment initialization failed.', 'error');
-                let price = parseFloat(eventData.price || 0);
-                if (currentTicketType === 'vip' && eventData.vip_price) price = parseFloat(eventData.vip_price);
-                else if (currentTicketType === 'premium' && eventData.premium_price) price = parseFloat(eventData.premium_price);
-                else if (currentTicketType === 'regular' && eventData.regular_price) price = parseFloat(eventData.regular_price);
-                resetPayBtn(price, currentQuantity);
-            }
-        } catch (err) {
-            const errMsg = err?.message || 'Could not connect to payment server. Please check your connection and try again.';
-            Swal.fire('Error', errMsg, 'error');
-            let price = parseFloat(eventData.price || 0);
-            if (currentTicketType === 'vip' && eventData.vip_price) price = parseFloat(eventData.vip_price);
-            else if (currentTicketType === 'premium' && eventData.premium_price) price = parseFloat(eventData.premium_price);
-            else if (currentTicketType === 'regular' && eventData.regular_price) price = parseFloat(eventData.regular_price);
-            resetPayBtn(price, currentQuantity);
-        }
-    }
-
-    // Modals and Flow code removed - Moved to payment.html/payment.js
+  // Modals and Flow code removed - Moved to payment.html/payment.js
 });
 
 // Helper: Render Left Column
-function renderEventSummary(event, quantity, ticketType = 'regular') {
-    let price = parseFloat(event.price || 0);
+function renderEventSummary(event, quantity, ticketType = "regular") {
+  let price = parseFloat(event.price || 0);
 
-    // Dynamic price lookup — use explicit check so 0-values from metadata are handled
-    const regularPrice = event.regular_price !== undefined && event.regular_price !== null ? parseFloat(event.regular_price) : null;
-    const vipPrice     = event.vip_price     !== undefined && event.vip_price     !== null ? parseFloat(event.vip_price)     : null;
-    const premiumPrice = event.premium_price !== undefined && event.premium_price !== null ? parseFloat(event.premium_price) : null;
+  // Dynamic price lookup — use explicit check so 0-values from metadata are handled
+  const regularPrice =
+    event.regular_price !== undefined && event.regular_price !== null
+      ? parseFloat(event.regular_price)
+      : null;
+  const vipPrice =
+    event.vip_price !== undefined && event.vip_price !== null
+      ? parseFloat(event.vip_price)
+      : null;
+  const premiumPrice =
+    event.premium_price !== undefined && event.premium_price !== null
+      ? parseFloat(event.premium_price)
+      : null;
 
-    if (ticketType === 'vip'     && vipPrice     !== null) price = vipPrice;
-    else if (ticketType === 'premium' && premiumPrice !== null) price = premiumPrice;
-    else if (ticketType === 'regular' && regularPrice !== null) price = regularPrice;
-    // If price is still 0 but one of the tier prices is positive, use the highest available as effective price
-    else if (price === 0 && (regularPrice > 0 || vipPrice > 0 || premiumPrice > 0)) {
-        price = Math.max(regularPrice ?? 0, vipPrice ?? 0, premiumPrice ?? 0);
+  if (ticketType === "vip" && vipPrice !== null) price = vipPrice;
+  else if (ticketType === "premium" && premiumPrice !== null)
+    price = premiumPrice;
+  else if (ticketType === "regular" && regularPrice !== null)
+    price = regularPrice;
+  // If price is still 0 but one of the tier prices is positive, use the highest available as effective price
+  else if (
+    price === 0 &&
+    (regularPrice > 0 || vipPrice > 0 || premiumPrice > 0)
+  ) {
+    price = Math.max(regularPrice ?? 0, vipPrice ?? 0, premiumPrice ?? 0);
+  }
+
+  const baseTotal = price * quantity;
+  const surcharge = baseTotal * 0.1;
+  const total = baseTotal + surcharge;
+
+  // Use absolute image URL from API — only the actual event image
+  const summaryImg = document.getElementById("summaryImg");
+  const imgUrl =
+    event.absolute_image_url ||
+    (event.image_path ? "/" + event.image_path.replace(/^\/+/, "") : "");
+  summaryImg.src = imgUrl;
+  summaryImg.loading = "lazy"; // Performance: Lazy load
+  summaryImg.onerror = () => {
+    summaryImg.style.display = "none";
+  };
+
+  const elTitle = document.getElementById("summaryTitle");
+  if (elTitle)
+    elTitle.innerHTML = `<strong>${escapeHTML((event.event_name || "").replace(/\s*#\d+$/, ""))}</strong>`;
+
+  const elDate = document.getElementById("summaryDate");
+  if (elDate)
+    elDate.textContent = `${formatDate(event.event_date)} • ${event.event_time || "TBA"}`;
+
+  const elLoc = document.getElementById("summaryLocation");
+  if (elLoc) {
+    // Parse locations JSON
+    let locs = null;
+    try {
+      locs = event.locations
+        ? typeof event.locations === "string"
+          ? JSON.parse(event.locations)
+          : event.locations
+        : null;
+    } catch (e) {
+      console.error("Error parsing event locations:", e);
     }
 
-    const baseTotal = price * quantity;
-    const surcharge = baseTotal * 0.10;
-    const total = baseTotal + surcharge;
+    const states = (event.state || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isMultiple =
+      (Array.isArray(locs) && locs.length > 1) ||
+      (states.length > 1 && !states.includes("All States"));
 
-    // Use absolute image URL from API — only the actual event image
-    const summaryImg = document.getElementById('summaryImg');
-    const imgUrl = event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
-    summaryImg.src = imgUrl;
-    summaryImg.loading = 'lazy'; // Performance: Lazy load
-    summaryImg.onerror = () => { summaryImg.style.display = 'none'; };
+    if (isMultiple) {
+      const locList =
+        Array.isArray(locs) && locs.length > 0
+          ? locs
+          : states.map((s) => ({ state: s, address: "" }));
 
-    const elTitle = document.getElementById('summaryTitle');
-    if (elTitle) elTitle.innerHTML = `<strong>${escapeHTML((event.event_name || '').replace(/\s*#\d+$/, ''))}</strong>`;
-
-    const elDate = document.getElementById('summaryDate');
-    if (elDate) elDate.textContent = `${formatDate(event.event_date)} • ${event.event_time || 'TBA'}`;
-
-    const elLoc = document.getElementById('summaryLocation');
-    if (elLoc) {
-        // Parse locations JSON
-        let locs = null;
-        try {
-            locs = event.locations ? (typeof event.locations === 'string' ? JSON.parse(event.locations) : event.locations) : null;
-        } catch (e) {
-            console.error("Error parsing event locations:", e);
-        }
-
-        const states = (event.state || '').split(',').map(s => s.trim()).filter(Boolean);
-        const isMultiple = (Array.isArray(locs) && locs.length > 1) || (states.length > 1 && !states.includes('All States'));
-
-        if (isMultiple) {
-            const locList = Array.isArray(locs) && locs.length > 0 
-                ? locs 
-                : states.map(s => ({ state: s, address: '' }));
-
-            elLoc.innerHTML = typeof buildMultiLocationHTML === 'function'
-                ? buildMultiLocationHTML(locList, { expandable: true, idPrefix: 'checkoutMloc' })
-                : `${locList.map(loc => loc.state).join(', ')}`;
-        } else {
-            // Single location UI
-            const stateText = event.state || 'Nigeria';
-            const addressText = event.address ? `${event.address}, ` : '';
-            elLoc.textContent = `${addressText}${stateText}`;
-        }
+      elLoc.innerHTML =
+        typeof buildMultiLocationHTML === "function"
+          ? buildMultiLocationHTML(locList, {
+              expandable: true,
+              idPrefix: "checkoutMloc",
+            })
+          : `${locList.map((loc) => loc.state).join(", ")}`;
+    } else {
+      // Single location UI
+      const stateText = event.state || "Nigeria";
+      const addressText = event.address ? `${event.address}, ` : "";
+      elLoc.textContent = `${addressText}${stateText}`;
     }
+  }
 
-    const elCat = document.getElementById('summaryCategory');
-    if (elCat) {
-        // Check all ticket tier prices; an event is only free if ALL applicable prices are 0
-        const anyPrice = price > 0
-            || parseFloat(event.regular_price || 0) > 0
-            || parseFloat(event.vip_price || 0) > 0
-            || parseFloat(event.premium_price || 0) > 0;
-        if (!anyPrice) {
-            elCat.textContent = 'Free';
-        } else {
-            elCat.textContent = (ticketType.charAt(0).toUpperCase() + ticketType.slice(1)) + ' Ticket';
-        }
+  const elCat = document.getElementById("summaryCategory");
+  if (elCat) {
+    // Check all ticket tier prices; an event is only free if ALL applicable prices are 0
+    const anyPrice =
+      price > 0 ||
+      parseFloat(event.regular_price || 0) > 0 ||
+      parseFloat(event.vip_price || 0) > 0 ||
+      parseFloat(event.premium_price || 0) > 0;
+    if (!anyPrice) {
+      elCat.textContent = "Free";
+    } else {
+      elCat.textContent =
+        ticketType.charAt(0).toUpperCase() + ticketType.slice(1) + " Ticket";
     }
+  }
 
-    const elDesc = document.getElementById('summaryDescription');
-    if (elDesc) elDesc.textContent = event.description || '';
-    
-    const elPrice = document.getElementById('summaryPrice');
-    if (elPrice) elPrice.textContent = price === 0 ? 'FREE' : `₦${price.toLocaleString()}`;
-    const elQty = document.getElementById('summaryQty');
-    if (elQty) elQty.textContent = `x${quantity}`;
+  const elDesc = document.getElementById("summaryDescription");
+  if (elDesc) elDesc.textContent = event.description || "";
 
-    const elTotal = document.getElementById('summaryTotal');
-    if (elTotal) elTotal.textContent = total === 0 ? 'FREE' : `₦${total.toLocaleString()}`;
+  const elPrice = document.getElementById("summaryPrice");
+  if (elPrice)
+    elPrice.textContent = price === 0 ? "FREE" : `₦${price.toLocaleString()}`;
+  const elQty = document.getElementById("summaryQty");
+  if (elQty) elQty.textContent = `x${quantity}`;
 
-    // Update button text
-    resetPayBtn(price, quantity);
+  const elTotal = document.getElementById("summaryTotal");
+  if (elTotal)
+    elTotal.textContent = total === 0 ? "FREE" : `₦${total.toLocaleString()}`;
+
+  // Update button text
+  resetPayBtn(price, quantity);
 }
 
 function resetPayBtn(price, quantity) {
-     const payBtn = document.getElementById('paystackBtn');
-     if (!payBtn) return;
-     const baseTotal = price * quantity;
-     const surcharge = baseTotal * 0.10;
-     const total = baseTotal + surcharge;
-     payBtn.disabled = false;
-     payBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        Checkout <span id="btnPayAmount">${total === 0 ? 'FREE (Claim)' : `₦${total.toLocaleString()}`}</span>`;
+  const payBtn = document.getElementById("paystackBtn");
+  if (!payBtn) return;
+  const baseTotal = price * quantity;
+  const surcharge = baseTotal * 0.1;
+  const total = baseTotal + surcharge;
+  payBtn.disabled = false;
+  payBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        Checkout <span id="btnPayAmount">${total === 0 ? "FREE (Claim)" : `₦${total.toLocaleString()}`}</span>`;
 }
 
 // Helper: createTicket function removed - now handled by payment.html / payment.js
 
 function showErrorAndRedirect(msg, url) {
-    document.getElementById('loadingOverlay').style.display = 'none';
-    Swal.fire({
-        title: 'Notice',
-        text: msg,
-        icon: 'warning',
-        confirmButtonColor: '#ff5a5f'
-    }).then(() => {
-        window.location.href = url;
-    });
+  document.getElementById("loadingOverlay").style.display = "none";
+  Swal.fire({
+    title: "Notice",
+    text: msg,
+    icon: "warning",
+    confirmButtonColor: "#ff5a5f",
+  }).then(() => {
+    window.location.href = url;
+  });
 }
 
 // 5. Cleanup
-sessionStorage.removeItem('pending_order_initialized');
+sessionStorage.removeItem("pending_order_initialized");
 
-window.addEventListener('pageshow', (event) => {
-    if (event.persisted || (window.performance && window.performance.navigation && window.performance.navigation.type === 2)) {
-        window.location.reload();
-    }
+window.addEventListener("pageshow", (event) => {
+  if (
+    event.persisted ||
+    (window.performance &&
+      window.performance.navigation &&
+      window.performance.navigation.type === 2)
+  ) {
+    window.location.reload();
+  }
 });
