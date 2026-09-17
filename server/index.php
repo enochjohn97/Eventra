@@ -46,6 +46,12 @@ if ($requestIsHttps) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
 }
 
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if ($uri === '/' || $uri === '/index.php' || $uri === '/server/index.php') {
+    header('Location: /public/pages/index.html', true, 302);
+    exit;
+}
+
 // Handle static files for PHP built-in server
 if (php_sapi_name() === 'cli-server') {
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -301,12 +307,6 @@ if (strpos($uri, '/api/') === 0) {
     // fallback
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'API Route not found: ' . $uri]);
-    exit;
-}
-
-// Fallback for non-API routes (e.g. root)
-if ($uri === '/' || $uri === '/index.php' || $uri === '/server/index.php') {
-    header('Location: /public/pages/index.html');
     exit;
 }
 
