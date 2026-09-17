@@ -10,8 +10,9 @@ error_reporting(E_ALL);
 
 // Database configuration
 require_once __DIR__ . '/env-loader.php';
-// Session configuration is deferred - endpoints should handle session initialization explicitly
-// require_once __DIR__ . '/session-config.php'; // DEFERRED: Moved to individual endpoints
+if (!file_exists(__DIR__ . '/../.env') && file_exists(__DIR__ . '/../.env.example')) {
+    loadEnv(__DIR__ . '/../.env.example');
+}
 require_once __DIR__ . '/cors-config.php'; // CORS handling for API requests
 
 
@@ -36,12 +37,9 @@ if (!function_exists('formatDbErrorMessage')) {
     {
         $msg = $e->getMessage();
         if (strpos($msg, '1142') !== false || strpos($msg, '1044') !== false || strpos($msg, '1045') !== false) {
-            return 'Database permission error. In MySQL Workbench (as root), run: '
-                . "GRANT ALL PRIVILEGES ON `" . DB_NAME . "`.* TO '" . DB_USER . "'@'localhost'; "
-                . "GRANT ALL PRIVILEGES ON `" . DB_NAME . "`.* TO '" . DB_USER . "'@'127.0.0.1'; "
-                . 'FLUSH PRIVILEGES;';
+            return 'We could not access the database. Please check the database username, password, and permissions.';
         }
-        return 'Database error: ' . $msg;
+        return 'We are having trouble connecting to the database. Please try again shortly.';
     }
 }
 
@@ -71,8 +69,10 @@ function getPDO() {
     $baseRetryDelay = 500000; // 500ms
 
     while ($attempts < $maxAttempts) {
+        // Shared hosts often expose MySQL locally even when their public SQL hostname is unavailable.
+        $connectionHost = ($attempts === 1 && DB_HOST !== 'localhost') ? 'localhost' : DB_HOST;
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            $dsn = "mysql:host=" . $connectionHost . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
             $instance = new PDO($dsn, DB_USER, DB_PASS, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -108,7 +108,7 @@ function getPDO() {
                 continue;
             }
 
-            error_log("[" . date('Y-m-d H:i:s') . "] Database connection failed (Attempt $attempts): " . $e->getMessage());
+            error_log("[" . date('Y-m-d H:i:s') . "] Database connection failed (Attempt $attempts, host $connectionHost): " . $e->getMessage());
 
             if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/api/') !== false) {
                 if (function_exists('ob_get_length') && ob_get_length()) { ob_clean(); }
@@ -116,15 +116,17 @@ function getPDO() {
                 http_response_code(503);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Service temporarily unavailable. Please try again.',
+                    'message' => $isRetryable
+                        ? 'The service is temporarily unavailable. Please try again shortly.'
+                        : 'We could not connect to the database. Please check your configuration or contact support.',
                     'code' => $isRetryable ? 'DB_CONNECT_ERROR' : 'DB_ERROR'
                 ]);
                 exit;
             }
 
-            if ($attempts >= $maxAttempts) {
-                die("Database connection failed after $maxAttempts attempts. Please check error logs.");
-            }
+            die($isRetryable
+                ? 'The service is temporarily unavailable. Please try again shortly.'
+                : 'We could not connect to the database. Please check your configuration or contact support.');
         }
     }
 }
