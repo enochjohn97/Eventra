@@ -189,6 +189,9 @@ async function loadEvents() {
       // Categorized Rendering with Cross-Category Deduplication
       renderAllCategories();
 
+      // Recently-viewed strip (only for returning browsers; fresh → hidden)
+      renderRecentlyViewedStrip();
+
       // Update cart with favorites
       if (typeof updateCartUI === "function") {
         updateCartUI();
@@ -207,6 +210,43 @@ async function loadEvents() {
   }
 }
 
+/**
+ * Recently-Viewed Images Strip
+ * Shows event images THIS browser previously opened. Fresh browsers have no
+ * stored UUID/cookie, so the strip stays hidden (nothing displayed).
+ */
+function renderRecentlyViewedStrip() {
+  const section = document.getElementById("recentlyViewedSection");
+  const grid = document.getElementById("recentlyViewedGrid");
+  if (!section || !grid) return;
+
+  const viewed =
+    typeof window.getRecentlyViewedEvents === "function"
+      ? window.getRecentlyViewedEvents()
+      : [];
+
+  // Fresh browser (or nothing viewed yet) → keep hidden, show nothing
+  if (!viewed.length) {
+    section.style.display = "none";
+    grid.innerHTML = "";
+    return;
+  }
+
+  grid.innerHTML = viewed
+    .map(
+      (v) => `
+      <a href="/public/pages/event-details.html?event_id=${encodeURIComponent(
+        v.id,
+      )}" style="flex:0 0 auto;scroll-snap-align:start;display:block;width:190px;height:110px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-card);background:#e5e7eb;">
+        <img src="${getImageUrl(v.image)}" alt="Event you viewed" loading="lazy"
+             style="width:100%;height:100%;object-fit:cover;display:block;"
+             onerror="this.parentElement.style.display='none'">
+      </a>`,
+    )
+    .join("");
+  section.style.display = "block";
+}
+
 function initHeroBackground() {
   const heroSection = document.getElementById("home");
   const wrapper = document.getElementById("heroCarouselWrapper");
@@ -219,8 +259,11 @@ function initHeroBackground() {
       ? eligibleEvents[Math.floor(Math.random() * eligibleEvents.length)]
       : null;
 
+  // Local splash fallback (allowed per requirements) — no external dummy images
   const fallback =
-    "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&h=1080&fit=crop";
+    typeof getImageUrl === "function"
+      ? getImageUrl("/public/assets/imgs/login.png")
+      : "/public/assets/imgs/login.png";
   let eventImage = fallback;
 
   if (randomEvent) {
@@ -232,7 +275,7 @@ function initHeroBackground() {
 
   wrapper.innerHTML = `
         <div class="hero-slide-static">
-            <img src="${eventImage}" alt="Event Background" class="hero-background" fetchpriority="high" onerror="this.src='${fallback}'">
+            <img src="${eventImage}" alt="Event Background" class="hero-background" fetchpriority="high" onerror="this.onerror=null;this.src='${fallback}'">
             <div class="hero-overlay"></div>
             <div class="hero-gradient"></div>
             <div class="hero-content">

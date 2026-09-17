@@ -4,7 +4,7 @@ class NotificationManager {
         this.notifications = [];
         this.unreadCount = 0;
         this.pollingInterval = null;
-        this.pollingDelay = 10000; // 10 seconds
+        this.pollingDelay = 20000; // 20s — keeps sections in near-real-time without hammering the DB under load
     }
 
     async fetchNotifications() {

@@ -328,6 +328,20 @@ class EmailHelper
     }
 
     /**
+     * Convert an SVG file to a PNG data-URI via base64 embed when possible.
+     * PDF renderers (Dompdf) handle SVG <img> poorly; PNG is preferred.
+     */
+    private static function svgToPngDataUri(string $svgPath): string
+    {
+        // Dompdf >= 2.x renders inline SVG; embed as data URI directly.
+        $data = @file_get_contents($svgPath);
+        if ($data === false || $data === '') {
+            return '';
+        }
+        return 'data:image/svg+xml;base64,' . base64_encode($data);
+    }
+
+    /**
      * Convert a local path to an absolute URL for use in emails.
      */
     private static function pathToUrl(string $path): string
@@ -450,21 +464,28 @@ class EmailHelper
         // 3. Priority: Generate QR code dynamically via chillerlan/php-qrcode if available
         $verificationUrl = self::buildVerificationUrl($ticketData);
         if (class_exists('chillerlan\QRCode\QRCode')) {
-            try {
-                $options = new \chillerlan\QRCode\QROptions([
-                    'outputType' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
-                    'eccLevel' => \chillerlan\QRCode\Common\EccLevel::H,
-                    'imageBase64' => true,
-                    'scale' => 6,
-                    'imageTransparent' => false,
-                ]);
-                $qr = new \chillerlan\QRCode\QRCode($options);
-                $rendered = $qr->render($verificationUrl);
-                if (is_string($rendered) && $rendered !== '') {
-                    return $rendered;
+            // GD PNG first, SVG fallback for hosts without GD
+            $attempts = [
+                ['output' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG, 'mime' => 'image/png'],
+                ['output' => \chillerlan\QRCode\Output\QROutputInterface::MARKUP_SVG, 'mime' => 'image/svg+xml'],
+            ];
+            foreach ($attempts as $attempt) {
+                try {
+                    $options = new \chillerlan\QRCode\QROptions([
+                        'outputType' => $attempt['output'],
+                        'eccLevel' => \chillerlan\QRCode\Common\EccLevel::H,
+                        'imageBase64' => true,
+                        'scale' => 6,
+                        'imageTransparent' => false,
+                    ]);
+                    $qr = new \chillerlan\QRCode\QRCode($options);
+                    $rendered = $qr->render($verificationUrl);
+                    if (is_string($rendered) && $rendered !== '') {
+                        return $rendered;
+                    }
+                } catch (\Throwable $e) {
+                    error_log('[EmailHelper] chillerlan/php-qrcode attempt failed: ' . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                error_log('[EmailHelper] chillerlan/php-qrcode failed: ' . $e->getMessage());
             }
         }
 

@@ -110,6 +110,6 @@ try {
 } catch (PDOException $e) {
     echo json_encode([
         'success' => false,
-        'message' => 'Logout failed: ' . $e->getMessage()
+        'message' => 'Logout failed. Please try again.'
     ]);
 }

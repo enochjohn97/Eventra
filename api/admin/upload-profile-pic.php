@@ -197,9 +197,9 @@ try {
 
     error_log("Profile pic update failed: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error. Please try again or contact support if it persists.']);
 } catch (Exception $e) {
     error_log("General error in profile upload: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Internal server error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Internal server error. Please try again.']);
 }

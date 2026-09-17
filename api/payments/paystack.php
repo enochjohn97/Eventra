@@ -7,8 +7,10 @@
  */
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-require_once '../../config/env-loader.php';
+// NOTE: '*' was removed — a wildcard with credentials leaks the public key
+// context cross-origin. Same-origin + allowlisted origins are enough (checkout
+// is always served from this app).
+require_once '../../config/database.php';
 
 try {
     $paystackConfig = [

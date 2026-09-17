@@ -304,9 +304,12 @@ try {
 
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => formatDbErrorMessage($e)]);
-} catch (Exception $e) {
+    error_log('[get-events.php] DB error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'General error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Unable to load events right now. Please try again shortly.']);
+} catch (Exception $e) {
+    error_log('[get-events.php] Error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Unable to load events right now. Please try again shortly.']);
 }
 

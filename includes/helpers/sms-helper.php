@@ -5,13 +5,57 @@
 require_once __DIR__ . '/../../config/sms.php';
 
 /**
- * Send an SMS using Brevo API.
+ * Record an SMS delivery attempt in sms_logs so every send (or failure)
+ * has an auditable trail. Logging failures must never break the caller.
+ *
+ * @param string $phone       Normalized recipient number
+ * @param string $message     Message body
+ * @param string $messageType sms_logs.message_type enum value
+ * @param string $status      'sent' or 'failed'
+ * @param string|null $sid    Provider message id on success
+ * @param string|null $error  Failure detail
+ * @param array  $context     Optional ['auth_id' => int, 'user_id' => int, 'client_id' => int]
+ */
+if (!function_exists('logSmsAttempt')) {
+    function logSmsAttempt(string $phone, string $message, string $messageType, string $status, ?string $sid, ?string $error, array $context = []): void
+    {
+        if (!function_exists('getPDO')) {
+            return; // No DB layer available (should not happen in request flows)
+        }
+        try {
+            $pdo = getPDO();
+            $pdo->prepare(
+                "INSERT INTO sms_logs (auth_id, user_id, client_id, phone_number, message_type, message_body, termii_sid, termii_status, termii_error_message)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $context['auth_id'] ?? null,
+                $context['user_id'] ?? null,
+                $context['client_id'] ?? null,
+                substr($phone, 0, 20),
+                in_array($messageType, ['otp', 'event_reminder', 'payment_confirmation', 'ticket_confirmation', 'admin_notification'], true)
+                    ? $messageType
+                    : 'ticket_confirmation',
+                substr($message, 0, 1000),
+                $sid !== null ? substr($sid, 0, 100) : null,
+                $status,
+                $error !== null ? substr($error, 0, 255) : null,
+            ]);
+        } catch (\Throwable $logError) {
+            error_log('[SMS] Failed to record sms_logs entry: ' . $logError->getMessage());
+        }
+    }
+}
+
+/**
+ * Send an SMS using Brevo API and record the outcome in sms_logs.
  *
  * @param string $phoneNumber Recipient phone number
- * @param string $message SMS message content
+ * @param string $message     SMS message content
+ * @param string $messageType sms_logs.message_type enum value (default: ticket_confirmation)
+ * @param array  $context     Optional recipient context: auth_id, user_id, client_id
  * @return array ['success' => bool, 'message' => string, 'message_id' => string|null]
  */
-function sendSMS($phoneNumber, $message)
+function sendSMS($phoneNumber, $message, $messageType = 'ticket_confirmation', array $context = [])
 {
     if (BREVO_SMS_DISABLED) {
         return ['success' => false, 'message' => 'SMS service is not configured.'];
@@ -23,6 +67,7 @@ function sendSMS($phoneNumber, $message)
     } elseif (str_starts_with($phoneNumber, '234') && strlen($phoneNumber) === 13) {
         // Already normalized.
     } else {
+        logSmsAttempt($phoneNumber, (string) $message, $messageType, 'failed', null, 'Invalid phone number format', $context);
         return ['success' => false, 'message' => 'Enter a valid Nigerian phone number.'];
     }
 
@@ -51,23 +96,34 @@ function sendSMS($phoneNumber, $message)
 
     if ($error) {
         error_log('Brevo SMS transport error: ' . $error);
+        logSmsAttempt($phoneNumber, (string) $message, $messageType, 'failed', null, 'Transport error: ' . $error, $context);
         return ['success' => false, 'message' => 'SMS delivery is temporarily unavailable.'];
     }
 
     $result = json_decode($response, true);
 
     if ($httpCode === 201) {
+        $messageId = $result['message_id'] ?? null;
+        logSmsAttempt($phoneNumber, (string) $message, $messageType, 'sent', $messageId, null, $context);
         return [
             'success' => true,
             'message' => 'SMS sent successfully',
-            'message_id' => $result['message_id'] ?? null
-        ];
-    } else {
-        error_log('Brevo SMS API error: HTTP ' . $httpCode . ' ' . substr((string) $response, 0, 500));
-        return [
-            'success' => false,
-            'message' => 'SMS delivery failed. Please try again later.'
+            'message_id' => $messageId
         ];
     }
+
+    error_log('Brevo SMS API error: HTTP ' . $httpCode . ' ' . substr((string) $response, 0, 500));
+    logSmsAttempt(
+        $phoneNumber,
+        (string) $message,
+        $messageType,
+        'failed',
+        null,
+        'HTTP ' . $httpCode . ': ' . substr((string) $response, 0, 250),
+        $context
+    );
+    return [
+        'success' => false,
+        'message' => 'SMS delivery failed. Please try again later.'
+    ];
 }
-?>

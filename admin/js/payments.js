@@ -351,7 +351,7 @@ function openDetailModal(payment) {
         : `<strong>₦${parseFloat(payment.amount).toLocaleString()}</strong>`;
 
     // Proper image path resolution for payment modal
-    let imageUrl = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop';
+    let imageUrl = (typeof getImageUrl === 'function' ? getImageUrl('/public/assets/imgs/login.png') : '/public/assets/imgs/login.png');
     if (payment.event_image) {
         if (payment.event_image.startsWith('http') || payment.event_image.startsWith('data:')) {
             imageUrl = payment.event_image;

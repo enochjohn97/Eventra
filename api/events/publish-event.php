@@ -109,5 +109,5 @@ try {
     }
     ob_end_clean();
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Server error. Please try again.']);
 }

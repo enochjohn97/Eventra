@@ -894,7 +894,7 @@ async function previewEvent(eventId) {
                 attendees: data.attendee_count,
                 category: data.category || data.event_type || 'General',
                 status: data.status ? data.status.charAt(0).toUpperCase() + data.status.slice(1) : 'Draft',
-                image: data.image_path || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop',
+                image: data.image_path || (typeof getImageUrl === 'function' ? getImageUrl('/public/assets/imgs/login.png') : '/public/assets/imgs/login.png'),
                 tag: data.tag || 'Standard',
                 description: data.description,
                 address: data.address,

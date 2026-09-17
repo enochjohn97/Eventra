@@ -1,5 +1,23 @@
 <?php
-// Router for PHP built-in server — lives in server/ but serves the project root
+/**
+ * Eventra Front Controller — the single router for the whole app.
+ *
+ * Used by BOTH servers:
+ *   • Apache — .htaccess rewrites all non-file requests here (short URLs,
+ *     clean routing, and pretty 404s work identically locally and live).
+ *   • PHP built-in server — `php -S localhost:8080 server/index.php`
+ *
+ * Provides clean, short URLs so share links and QR codes never expose
+ * the real folder structure (e.g. /e/concert-night instead of
+ * /public/pages/event-details.html?event=concert-night&client=x).
+ *
+ * Short routes:
+ *   /e/{tag}                     → public event details page
+ *   /e/{tag}/pay                 → checkout page for the event
+ *   /t/{code}                    → ticket proof-of-purchase (QR target)
+ *   /r/{ref}                     → payment receipt / callback resolver
+ *   /go/{admin|client|user}      → portal shortcuts (login or dashboard)
+ */
 
 // Project root is one level up from server/
 $rootDir = dirname(__DIR__);
@@ -52,8 +70,10 @@ if (php_sapi_name() === 'cli-server') {
     // All other requests fall through to the router
 }
 
-// Debug logging
-file_put_contents($rootDir . '/logs/router.log', date('[Y-m-d H:i:s] ') . $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'] . PHP_EOL, FILE_APPEND);
+// Debug logging (disabled by default — enable only when debugging locally)
+if (($_ENV['APP_DEBUG'] ?? 'false') === 'true' && is_dir($rootDir . '/logs')) {
+    @file_put_contents($rootDir . '/logs/router.log', date('[Y-m-d H:i:s] ') . $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'] . PHP_EOL, FILE_APPEND);
+}
 
 require_once $rootDir . '/includes/core/Autoloader.php';
 require_once $rootDir . '/config/database.php';
@@ -62,6 +82,35 @@ require_once $rootDir . '/config/session-config.php';
 
 // Dispatch routing
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// ── Short URL routes (mirror of root index.php for the built-in server) ────
+if (preg_match('#^/e/([A-Za-z0-9\-_]{1,150})$#', $uri, $m)) {
+    header('Location: /public/pages/event-details.html?event=' . rawurlencode($m[1]), true, 302);
+    exit;
+}
+if (preg_match('#^/e/([A-Za-z0-9\-_]{1,150})/pay$#', $uri, $m)) {
+    header('Location: /public/pages/checkout.html?event=' . rawurlencode($m[1]), true, 302);
+    exit;
+}
+if (preg_match('#^/t/([A-Za-z0-9\-_]{1,120})$#', $uri, $m)) {
+    header('Location: /api/tickets/validate-ticket.php?barcode=' . rawurlencode($m[1]), true, 302);
+    exit;
+}
+if (preg_match('#^/r/([A-Za-z0-9\-_]{1,190})$#', $uri, $m)) {
+    header('Location: /public/pages/payment.html?reference=' . rawurlencode($m[1]), true, 302);
+    exit;
+}
+if (preg_match('#^/go/(admin|client|user)$#', $uri, $m)) {
+    $portal = strtolower($m[1]);
+    if ($portal === 'admin') {
+        header('Location: /admin/pages/adminLogin.html', true, 302);
+    } elseif ($portal === 'client') {
+        header('Location: /client/pages/clientLogin.html', true, 302);
+    } else {
+        header('Location: /public/pages/index.html', true, 302);
+    }
+    exit;
+}
 
 // Portal entry point redirects (formerly index.php in /client and /admin)
 if ($uri === '/client' || $uri === '/client/') {
@@ -261,7 +310,11 @@ if ($uri === '/' || $uri === '/index.php' || $uri === '/server/index.php') {
     exit;
 }
 
-// If no route matches, 404
+// If no route matches, show the branded 404 page
 http_response_code(404);
-echo "404 Not Found (" . htmlspecialchars($uri) . ")";
+header('Content-Type: text/html; charset=utf-8');
+echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>404 — Eventra</title>'
+   . '<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0f172a;color:#f8fafc;text-align:center}a{color:#ff5a5f}</style></head>'
+   . '<body><div><h1 style="font-size:4rem;margin:0 0 .5rem">404</h1><p>Page not found.</p>'
+   . '<p><a href="/public/pages/index.html">Back to Eventra</a></p></div></body></html>';
 exit;

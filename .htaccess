@@ -1,10 +1,31 @@
 Options -Indexes
 
 # Protect sensitive files
-<FilesMatch "^(\.env|env_loader\.php)$">
+<FilesMatch "^(\.env|\.env\.local|env_loader\.php)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
+
+# Block direct web access to internals (logs, queue files, scratch work, cron jobs,
+# config, includes, and the front controller itself). Matches the ORIGINAL client
+# request only, so internal rewrites to server/index.php still work.
+<IfModule mod_rewrite.c>
+    RewriteCond %{THE_REQUEST} "\s/(logs|jobs|scratch|database|cron|config|includes|server)/[^\s]*"
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+# Never serve raw secrets or internal files even if a rule above is bypassed
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(log|json)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(log|json)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
 
 # PHP Settings — enforces 5MB upload limit at the server level (HTTP 413 for violations)
 php_value upload_max_filesize 5M
@@ -31,10 +52,10 @@ php_value post_max_size 6M
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Handle Front Controller...
+    # Handle Front Controller (short URLs: /e/{tag}, /t/{code}, /r/{ref}, /go/{portal})
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
+    RewriteRule ^ server/index.php [L]
 </IfModule>
 
 # ─── Security Headers ───────────────────────────────────────────────────────

@@ -52,13 +52,10 @@ if (!defined('DB_NAME')) define('DB_NAME', get_env_var('DB_DATABASE', 'eventra_d
 if (!defined('DB_USER')) define('DB_USER', get_env_var('DB_USERNAME', 'eventra'));
 if (!defined('DB_PASS')) define('DB_PASS', get_env_var('DB_PASSWORD', ''));
 
-/**
- * Singleton Database Connection Provider
- * 
- * NOTE: If you encounter "Too many connections", execute this SQL in your database:
- * SET GLOBAL max_connections = 500;
- * Or update your my.cnf / my.ini: [mysqld] max_connections = 500
- */
+
+date_default_timezone_set(get_env_var('APP_TIMEZONE', 'UTC'));
+
+
 function getPDO() {
     if (defined('BYPASS_DB_CONN') && BYPASS_DB_CONN) {
         return null;
@@ -80,7 +77,11 @@ function getPDO() {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_PERSISTENT => false,
-                PDO::ATTR_TIMEOUT => 5
+                PDO::ATTR_TIMEOUT => 5,
+                // Pin the DB session time zone to UTC so SQL NOW() / CURDATE()
+                // always match PHP's clock (pinned above), regardless of the
+                // server's SYSTEM time zone (local Windows machine or live host).
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00'"
             ]);
 
             return $instance;

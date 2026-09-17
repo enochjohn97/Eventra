@@ -2,7 +2,7 @@
 // Utility function to resolve image paths correctly
 function resolveImagePath(imagePath) {
     if (!imagePath) {
-        return 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop';
+        return (typeof getImageUrl === 'function' ? getImageUrl('/public/assets/imgs/login.png') : '/public/assets/imgs/login.png');
     }
     // If it's an absolute URL, use as-is
     if (imagePath.startsWith('http')) {
@@ -144,7 +144,7 @@ async function previewEvent(eventId) {
         <div class="event-preview-container" style="font-family: 'Plus Jakarta Sans', sans-serif;">
             <!-- Hero Header -->
             <div style="position: relative; height: 300px; border-radius: 0 0 32px 32px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);">
-                <img src="${eventImage}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onerror="this.src='https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop'" alt="Event">
+                <img src="${eventImage}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onerror="this.src=(typeof getImageUrl === 'function' ? getImageUrl('/public/assets/imgs/login.png') : '/public/assets/imgs/login.png')" alt="Event">
                 <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);"></div>
                 
                 <div style="position: absolute; top: 1.5rem; left: 1.5rem; display: flex; gap: 10px;">

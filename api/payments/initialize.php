@@ -159,7 +159,10 @@ try {
     }
 
     // ── Generate unique reference ────────────────────────────────────────────
-    $reference = ($amount_kobo <= 0 ? 'FREE-' : 'EVT-') . $event_id . '-' . strtoupper(substr(uniqid(), -8));
+    // Cryptographically random — the previous uniqid()-based suffix was
+    // microtime-derived and predictable (enumeration risk on get-order).
+    $reference = ($amount_kobo <= 0 ? 'FREE-' : 'EVT-') . $event_id . '-'
+        . strtoupper(bin2hex(random_bytes(8)));
 
     if ($amount_kobo <= 0) {
         // --- FREE EVENT PATH ---
@@ -450,5 +453,5 @@ try {
     }
     error_log('[initialize.php] Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Initialization failed: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Initialization failed. Please try again.']);
 }

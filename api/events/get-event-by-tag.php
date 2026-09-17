@@ -36,7 +36,8 @@ try {
             $event['absolute_image_url'] = $baseUrl . $path;
         } else {
             $event['image_path'] = null;
-            $event['absolute_image_url'] = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=800&fit=crop';
+            // Local splash placeholder (allowed) — no external dummy image
+            $event['absolute_image_url'] = rtrim($baseUrl, '/') . '/public/assets/imgs/login.png';
         }
 
         echo json_encode(['success' => true, 'event' => $event]);
@@ -44,5 +45,5 @@ try {
         echo json_encode(['success' => false, 'message' => 'Event not found or not published']);
     }
 } catch (PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error. Please try again or contact support if it persists.']);
 }

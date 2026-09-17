@@ -62,7 +62,7 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error: ' . $e->getMessage(),
+        'message' => 'Request failed. Please try again.',
         'templates' => []
     ]);
 }

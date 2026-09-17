@@ -126,6 +126,11 @@ function renderEvent(event) {
     
     hero.style.backgroundImage = `url('${heroImg}')`;
 
+    // Track the view for this browser's "recently viewed" strip
+    if (typeof window.recordEventView === 'function' && event.image_path) {
+        window.recordEventView(event.id, event.image_path);
+    }
+
     // Priority badge style
     const badge = document.getElementById('priorityBadge');
     badge.textContent = event.priority || 'Event';

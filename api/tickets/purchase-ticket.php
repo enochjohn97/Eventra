@@ -367,11 +367,11 @@ try {
         $pdo->rollBack();
     }
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error. Please try again or contact support if it persists.']);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'General error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Unexpected error. Please try again.']);
 }

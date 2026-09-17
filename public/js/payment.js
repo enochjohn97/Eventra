@@ -3,7 +3,8 @@
  * Handles: Paystack redirect callback, order polling, and success UI.
  */
 
-const fallback = "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&h=1080&fit=crop";
+// Local splash fallback — no external dummy images
+const fallback = "/public/assets/imgs/login.png";
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 0. Wait for AuthController to be ready to ensure tokens/session are synced
@@ -156,7 +157,8 @@ async function showPaymentSuccess(reference, barcode) {
 
     const cleanedName = (order?.event_name || '').replace(/\s*#\d+$/, '');
     const finalBarcode = barcode || (order?.barcode) || (order?.tickets?.[0]?.barcode) || (order?.ticket_id) || reference || 'N/A';
-    const qrPayload = `https://eventra-website.liveblog365.com/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(finalBarcode)}`;
+    // Short QR target — environment-agnostic (works local + live)
+    const qrPayload = `${window.location.origin}/t/${encodeURIComponent(finalBarcode)}`;
 
     icon.innerHTML = `<div style="font-size:4rem;margin-bottom:1rem;">🎉</div>`;
 
@@ -474,8 +476,8 @@ function prepareTicketForDownload(order, barcode) {
     // Set banner image
     const banner = document.getElementById('ticketEventBanner');
     if (banner) {
-        const imgUrl = order.absolute_image_url || (order.image_path ? '/' + order.image_path.replace(/^\/+/, '') : '');
-        banner.style.backgroundImage = `url('${imgUrl}')`;
+    const imgUrl = order.absolute_image_url || (order.image_path ? '/' + order.image_path.replace(/^\/+/, '') : '');
+    banner.style.backgroundImage = `url('${imgUrl}'), url('${fallback}')`;
     }
 
     // Generate QR Code for the ticket
@@ -483,7 +485,7 @@ function prepareTicketForDownload(order, barcode) {
     if (qrContainer && typeof QRCode !== 'undefined') {
         qrContainer.innerHTML = '';
         new QRCode(qrContainer, {
-            text: 'https://eventra-website.liveblog365.com/api/tickets/validate-ticket.php?barcode=' + encodeURIComponent(barcode || ''),
+            text: `${window.location.origin}/t/` + encodeURIComponent(barcode || ''),
             width: 140,
             height: 130,
             colorDark: "#000000",

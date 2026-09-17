@@ -308,6 +308,19 @@ try {
 
     if (empty($scheduled_publish_time)) {
         $scheduled_publish_time = null;
+    } else {
+        // Scheduled publishing: an event with a FUTURE publish time stays as a
+        // draft until cron/notify-pre-event.php auto-publishes it at that time
+        // (Lagos local time — the same convention used for all event dates).
+        // A past/equal time publishes immediately.
+        try {
+            $schedTz = new DateTimeZone('Africa/Lagos');
+            $schedAt = new DateTime((string) $scheduled_publish_time, $schedTz);
+            $schedNow = new DateTime('now', $schedTz);
+            $status = ($schedAt > $schedNow) ? 'draft' : 'published';
+        } catch (Exception $schedEx) {
+            $scheduled_publish_time = null; // Unparsable value — ignore the schedule
+        }
     }
 
     // Nigerian State Centroid Mapping (Approximate coordinates)
@@ -377,12 +390,29 @@ try {
         exit;
     }
 
-    // Auto-generate tag from event name (lowercase, hyphenated)
+    // Auto-generate tag from event name (lowercase, hyphenated) — guaranteed unique
     $tag = strtolower(str_replace(' ', '-', preg_replace('/[^A-Za-z0-9 ]/', '', $event_name)));
+    $tag = substr($tag, 0, 80);
+    if ($tag === '') {
+        $tag = 'event';
+    }
+    $baseTag = $tag;
+    $suffix = 1;
+    $tagCheck = $pdo->prepare("SELECT id FROM events WHERE tag = ? AND deleted_at IS NULL LIMIT 1");
+    while (true) {
+        $tagCheck->execute([$tag]);
+        if (!$tagCheck->fetch()) break;
+        $tag = $baseTag . '-' . (++$suffix);
+    }
 
-    $base_url = $_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com';
+    $base_url = $_ENV['APP_URL'] ?? '';
+    if ($base_url === '') {
+        $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+    $base_url = rtrim($base_url, '/');
     $dashboard_link = $base_url . '/client/pages/events.html';
-    $external_link = $base_url . '/public/pages/event-details.html?event=' . $tag . '&client=' . $client_name;
+    // Short share URL — clean, hides folder structure, works locally and live
+    $external_link = $base_url . '/e/' . $tag;
 
     if (!empty($access_token) && !empty($google_event_start) && !empty($google_event_end)) {
         $calendar_payload = [
@@ -525,5 +555,5 @@ try {
     } else {
         http_response_code(500);
     }
-    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Request failed. Please try again.']);
 }

@@ -334,7 +334,7 @@ CREATE TABLE orders (
     subaccount_code         VARCHAR(100) DEFAULT NULL,
     amount                  DECIMAL(12, 2) NOT NULL,
     transaction_reference   VARCHAR(191) NOT NULL,
-    payment_status          ENUM('pending', 'success', 'failed', 'refunded') NOT NULL DEFAULT 'pending',
+    payment_status          ENUM('pending', 'processing', 'success', 'failed', 'refunded') NOT NULL DEFAULT 'pending',
     payment_method          VARCHAR(50) DEFAULT NULL,
     refund_status           ENUM('none', 'requested', 'approved', 'declined', 'processed') NOT NULL DEFAULT 'none',
     refund_reason           TEXT DEFAULT NULL,

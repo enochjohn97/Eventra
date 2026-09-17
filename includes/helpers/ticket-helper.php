@@ -59,6 +59,14 @@ function base64_encode_image($path) {
     $resolvedPath = $path;
     $root = realpath(__DIR__ . '/../../');
     
+    // Handle SVG files directly (QR fallback when GD is unavailable)
+    if (str_ends_with(strtolower($path), '.svg') && file_exists($path)) {
+        $data = @file_get_contents($path);
+        if ($data !== false && $data !== '') {
+            return 'data:image/svg+xml;base64,' . base64_encode($data);
+        }
+    }
+    
     // If path starts with / or \, it might be relative to root or already absolute
     if (str_starts_with($path, '/') || str_starts_with($path, '\\')) {
         // Check if $path already contains the $root prefix
@@ -195,25 +203,39 @@ function generateTicketQRCode(array $ticketData): string
         $verificationUrl = $baseAppUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($ticketData['barcode'] ?? '');
 
         $bin = '';
+        $isSvg = false;
         if (class_exists('chillerlan\\QRCode\\QRCode') && class_exists('chillerlan\\QRCode\\QROptions')) {
-            try {
-                $options = new \chillerlan\QRCode\QROptions([
-                    'outputType'      => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
-                    'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::H,
-                    'scale'           => 6,
-                    'imageBase64'     => true,
-                    'imageTransparent'=> false,
-                ]);
-                $qrcode = new \chillerlan\QRCode\QRCode($options);
-                $rendered = $qrcode->render($verificationUrl);
-                if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
-                    $parts = explode(',', $rendered, 2);
-                    $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
-                } else {
-                    $bin = is_string($rendered) ? $rendered : '';
+            // Try GD PNG first (best for email embedding), then fall back to SVG
+            // (works on hosts without the GD extension), then to an external API.
+            $attempts = [
+                ['output' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG, 'svg' => false],
+                ['output' => \chillerlan\QRCode\Output\QROutputInterface::MARKUP_SVG, 'svg' => true],
+            ];
+            foreach ($attempts as $attempt) {
+                try {
+                    $options = new \chillerlan\QRCode\QROptions([
+                        'outputType'      => $attempt['output'],
+                        'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::H,
+                        'scale'           => 6,
+                        'imageBase64'     => true,
+                        'imageTransparent'=> false,
+                    ]);
+                    $qrcode = new \chillerlan\QRCode\QRCode($options);
+                    $rendered = $qrcode->render($verificationUrl);
+                    if (is_string($rendered) && str_starts_with($rendered, 'data:image/')) {
+                        $parts = explode(',', $rendered, 2);
+                        $bin = isset($parts[1]) ? base64_decode($parts[1]) : '';
+                        $isSvg = $attempt['svg'];
+                    } else {
+                        $bin = is_string($rendered) ? $rendered : '';
+                        $isSvg = $attempt['svg'] && $bin !== '';
+                    }
+                    if ($bin !== '') {
+                        break;
+                    }
+                } catch (\Throwable $e) {
+                    error_log('[TicketHelper] QR generation attempt failed: ' . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                error_log('[TicketHelper] Local QR generation failed: ' . $e->getMessage() . '. Falling back to external API.');
             }
         }
         if ($bin === '') {
@@ -227,6 +249,9 @@ function generateTicketQRCode(array $ticketData): string
         }
 
         $fileName = 'qr_' . ($ticketData['barcode'] ?? uniqid('qr_')) . '.png';
+        if ($isSvg) {
+            $fileName = 'qr_' . ($ticketData['barcode'] ?? uniqid('qr_')) . '.svg';
+        }
         $root = realpath(__DIR__ . '/../../');
         $dir = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR . 'qrcodes' . DIRECTORY_SEPARATOR;
         if (!is_dir($dir)) {

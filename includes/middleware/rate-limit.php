@@ -54,8 +54,11 @@ class RateLimiter
         global $pdo;
 
         try {
-            // Clean old records (older than 1 hour)
-            $pdo->exec("DELETE FROM rate_limits WHERE UNIX_TIMESTAMP(last_attempt_at) < UNIX_TIMESTAMP(NOW()) - 3600");
+            // Clean old records (older than 1 hour) — probabilistic to avoid a
+            // full-table delete on EVERY request (a heavy write on hot endpoints)
+            if (random_int(1, 100) <= 5) {
+                $pdo->exec("DELETE FROM rate_limits WHERE last_attempt_at < (NOW() - INTERVAL 1 HOUR)");
+            }
 
             // Get current attempt count
             $stmt = $pdo->prepare("
@@ -160,6 +163,10 @@ class RateLimiter
     }
 }
 
-// Initialize table on first load
-RateLimiter::init();
+// Table creation is lazy: only run when the rate limiter is actually used
+// (prevents a CREATE TABLE on every request that merely includes this file).
+if (!defined('RATE_LIMIT_TABLE_READY')) {
+    define('RATE_LIMIT_TABLE_READY', true);
+    RateLimiter::init();
+}
 

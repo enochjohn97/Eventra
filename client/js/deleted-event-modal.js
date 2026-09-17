@@ -91,7 +91,7 @@ class DeletedEventModal {
 
     renderEventDetails(event) {
         const content = this.modal.querySelector('#deletedEventContent');
-        const eventImage = event.image_path || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&fit=crop';
+        const eventImage = event.image_path || (typeof getImageUrl === 'function' ? getImageUrl('/public/assets/imgs/login.png') : '/public/assets/imgs/login.png');
         
         content.innerHTML = `
             <div style="margin-bottom: 1.5rem;">

@@ -1,19 +1,20 @@
 <?php
 /**
  * Environment Variable Loader
- * Loads .env file and populates $_ENV superglobal
+ * Loads .env (and .env.local for local development overrides) and populates $_ENV.
+ *
+ * .env.local is ONLY read when the request comes from a local host
+ * (localhost / 127.0.0.1). This lets one commit work for both the live
+ * platform and local development without swapping files manually.
  */
 
 function loadEnv($path = null)
 {
     if ($path === null) {
         $primary = __DIR__ . '/../.env';
-        $fallback = __DIR__ . '/../.env.example';
 
         if (file_exists($primary)) {
             $path = $primary;
-        } elseif (file_exists($fallback)) {
-            $path = $fallback;
         } else {
             return;
         }
@@ -37,7 +38,7 @@ function loadEnv($path = null)
             $value = trim($value);
 
             // Remove quotes if present
-            $value = trim($value, '"\'');
+            $value = trim($value, "\"'");
 
             // Set variables if they aren't already set in the environment (system level)
             if (getenv($key) === false) {
@@ -53,15 +54,28 @@ function loadEnv($path = null)
     }
 }
 
+/**
+ * Detect local dev server (localhost / 127.0.0.1, any port).
+ */
+function isLocalHost(): bool
+{
+    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+    // CLI (cron, queue workers) counts as local tooling unless APP_ENV says otherwise.
+    if ($host === '' && PHP_SAPI === 'cli') {
+        return ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'local') === 'local';
+    }
+    return (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+}
+
 // Handle system environment variables (for production like Render or InfinityFree)
 $envKeys = [
     'DB_HOST', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD', 'DB_PORT', 'DB_CONNECTION',
     'APP_URL', 'APP_ENV', 'APP_DEBUG',
-    'PAYSTACK_PUBLIC_KEY', 'PAYSTACK_SECRET_KEY',
+    'PAYSTACK_PUBLIC_KEY', 'PAYSTACK_SECRET_KEY', 'PAYSTACK_WEBHOOK_SECRET',
     'MAIL_HOST', 'MAIL_PORT', 'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_ENCRYPTION', 'MAIL_FROM_ADDRESS', 'MAIL_FROM_NAME',
     'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI', 'GOOGLE_MAPS_API_KEY', 'GOOGLE_CALENDAR_API_KEY', 'GOOGLE_WEBHOOK_SECRET',
     'BREVO_API_KEY', 'BREVO_SMS_SENDER',
-    'CRON_SECRET', 'UPLOAD_MAX_SIZE', 'QR_SECRET'
+    'CRON_SECRET', 'UPLOAD_MAX_SIZE', 'QR_SECRET', 'ALLOWED_ORIGINS'
 ];
 
 foreach ($envKeys as $key) {
@@ -77,15 +91,6 @@ foreach ($envKeys as $key) {
 
 // Auto-load when this file is included
 loadEnv();
-
-/**
- * Detect local dev server (localhost / 127.0.0.1, any port).
- */
-function isLocalHost(): bool
-{
-    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
-    return (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
-}
 
 /**
  * Resolve APP_URL: localhost always uses the current request host;
@@ -114,7 +119,7 @@ function resolveAppUrl(): string
         return rtrim($detectProtocol() . $host, '/');
     }
 
-    return rtrim($fromEnv !== '' ? $fromEnv : 'https://eventra-website.liveblog365.com', '/');
+    return rtrim($fromEnv !== '' ? $fromEnv : 'http://localhost:8080', '/');
 }
 
 $_ENV['APP_URL'] = resolveAppUrl();
@@ -124,6 +129,31 @@ putenv('APP_URL=' . $_ENV['APP_URL']);
 if (!isset($_ENV['APP_ENV']) || $_ENV['APP_ENV'] === '') {
     $_ENV['APP_ENV'] = isLocalHost() ? 'local' : 'production';
     putenv('APP_ENV=' . $_ENV['APP_ENV']);
+}
+
+// ── Local development overrides (.env.local) ────────────────────────────────
+// Loaded AFTER the main .env so it wins. Never loaded on live hosts.
+if (isLocalHost()) {
+    $localOverride = __DIR__ . '/../.env.local';
+    if (file_exists($localOverride)) {
+        $lines = file($localOverride, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            $t = trim($line);
+            if ($t === '' || $t[0] === '#') continue;
+            if (strpos($line, '=') === false) continue;
+            list($k, $v) = explode('=', $line, 2);
+            $k = trim($k);
+            $v = trim(trim($v), "\"'");
+            if ($k === '') continue;
+            $_ENV[$k] = $v;
+            $_SERVER[$k] = $v;
+            putenv("$k=$v");
+        }
+        // APP_URL must follow the local host even if .env.local set something odd
+        $_ENV['APP_URL'] = resolveAppUrl();
+        $_SERVER['APP_URL'] = $_ENV['APP_URL'];
+        putenv('APP_URL=' . $_ENV['APP_URL']);
+    }
 }
 
 // Dynamic Live DB swap when running in production/live host
@@ -144,5 +174,3 @@ if (!isLocalHost()) {
         }
     }
 }
-
-

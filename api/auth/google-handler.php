@@ -8,7 +8,7 @@ header("Cross-Origin-Opener-Policy: same-origin-allow-popups");
 // Enforce JSON outputs under all circumstances (even on fatal database errors)
 set_exception_handler(function($e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Server error. Please try again.']);
     exit;
 });
 set_error_handler(function($severity, $message, $file, $line) {

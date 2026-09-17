@@ -106,14 +106,19 @@ if ($intent === 'client_login_otp') {
         $stmt = $pdo->prepare("INSERT INTO auth_tokens (auth_id, token, expires_at, type) VALUES (?, ?, ?, 'access')");
         $stmt->execute([$auth_id, $token, $expires_at]);
 
-        // 8. Initialize session
-        session_name('EVENTRA_CLIENT_SESS');
+        // 8. Initialize session — close any auto-started session with the wrong
+        //    name first (PHP ignores session_name() while a session is active,
+        //    which previously wrote the client session under EVENTRA_USER_SESS).
+        if (session_status() === PHP_SESSION_ACTIVE && session_name() !== 'EVENTRA_CLIENT_SESS') {
+            session_write_close();
+        }
+        if (session_name() !== 'EVENTRA_CLIENT_SESS') {
+            session_name('EVENTRA_CLIENT_SESS');
+        }
         if (session_status() === PHP_SESSION_NONE) {
-            require_once __DIR__ . '/../../server/config.php';
+            session_start();
         }
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            session_regenerate_id(true);
-        }
+        session_regenerate_id(true);
         $_SESSION['auth_id'] = $user['id'];
         $_SESSION['client_id'] = $user['client_id'];
         $_SESSION['user_role'] = 'client';
@@ -409,7 +414,7 @@ try {
     }
 } catch (PDOException $e) {
     error_log("Verify OTP Error: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error. Please try again or contact support if it persists.']);
 } catch (Throwable $e) {
     error_log("Verify OTP Critical Error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Internal server error.']);

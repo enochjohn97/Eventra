@@ -193,7 +193,47 @@ try {
     }
 
     // ── Paystack confirmed success — run post-payment processing ─────────────
-    // (Same logic as webhook; fully idempotent)
+    // (Same logic as webhook; fully idempotent via atomic claim)
+
+    // ── ATOMIC CLAIM: only ONE worker (webhook or verify) fulfills this order ──
+    // If the webhook already claimed/is processing it, return success — the
+    // tickets will exist momentarily and the polling UI will pick them up.
+    $claim = $pdo->prepare("
+        UPDATE orders
+        SET payment_status = 'processing'
+        WHERE id = ? AND payment_status = 'pending'
+    ");
+    $claim->execute([$order['id']]);
+    if ($claim->rowCount() === 0) {
+        $current = $pdo->prepare("SELECT payment_status FROM orders WHERE id = ?");
+        $current->execute([$order['id']]);
+        $statusNow = (string) $current->fetchColumn();
+
+        if ($statusNow === 'success') {
+            // Webhook finished first
+            echo json_encode([
+                'success'    => true,
+                'status'     => 'success',
+                'message'    => 'Payment verified successfully.',
+                'reference'  => $reference,
+                'amount'     => (float) $order['amount'],
+                'event_name' => $order['event_name'],
+            ]);
+            exit;
+        }
+        if ($statusNow === 'processing') {
+            // Webhook is mid-flight — client should poll get-order.php
+            echo json_encode([
+                'success'    => true,
+                'status'     => 'processing',
+                'message'    => 'Payment confirmed; tickets are being finalized.',
+                'reference'  => $reference,
+            ]);
+            exit;
+        }
+        // 'failed' — but Paystack just confirmed success, so fulfill anyway
+        // (covers a transient webhook failure that mis-marked the order).
+    }
 
     $pdo->beginTransaction();
 
@@ -205,10 +245,10 @@ try {
         $dbMeta = json_decode($order['metadata'] ?? '{}', true) ?? [];
         $ticket_user_name = $metadata['user_name'] ?? $dbMeta['user_name'] ?? $order['user_name'] ?? 'Guest';
 
-        // 1. Update order status
+        // 1. Update order status (now 'processing' from the claim)
         $pdo->prepare("
             UPDATE orders SET payment_status = 'success', payment_method = ?, updated_at = NOW()
-            WHERE id = ? AND payment_status != 'success'
+            WHERE id = ?
         ")->execute([$result['data']['channel'] ?? 'card', $order['id']]);
 
         // 2. Atomic ticket decrement and attendee/sales count increment
@@ -223,8 +263,10 @@ try {
         $stmt->execute([$quantity, $quantity, $quantity, $order['event_id'], $quantity]);
 
         if ($stmt->rowCount() === 0) {
-            // Check if it's because it's sold out or event doesn't exist
+            // Sold out — release claim and record failure
             $pdo->rollBack();
+            $pdo->prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?")
+                ->execute([$order['id']]);
             http_response_code(409); // Conflict
             echo json_encode(['success' => false, 'message' => 'Event sold out or tickets are no longer available in the requested quantity.']);
             exit;
@@ -356,6 +398,9 @@ try {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        // Release the processing claim so a retry can re-process this order
+        $pdo->prepare("UPDATE orders SET payment_status = 'pending' WHERE id = ? AND payment_status = 'processing'")
+            ->execute([$order['id']]);
         throw $e;
     }
 } catch (Throwable $e) {

@@ -74,9 +74,21 @@ function fetchOrder(PDO $pdo, string $reference): ?array
 // ── Shared helper: post-payment processing (idempotent) ──────────────────────
 function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
 {
-    // Idempotency guard: already processed?
+    // Idempotency guard (fast path): already processed?
     if ($order['payment_status'] === 'success') {
         return;
+    }
+
+    // ── ATOMIC CLAIM: prevent webhook/verify-payment races double-issuing tickets ──
+    // Only ONE worker may win this claim; the loser exits quietly.
+    $claim = $pdo->prepare("
+        UPDATE orders
+        SET payment_status = 'processing'
+        WHERE id = ? AND payment_status = 'pending'
+    ");
+    $claim->execute([$order['id']]);
+    if ($claim->rowCount() === 0) {
+        return; // Another request already claimed/is processing this order
     }
 
     $pdo->beginTransaction();
@@ -115,10 +127,18 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         ");
         $stmtStock->execute([$quantity, $quantity, $quantity, $order['event_id'], $quantity]);
         if ($stmtStock->rowCount() === 0) {
-            // Already handled by idempotency or sold out
+            // Sold out — release the processing claim and record failure
             $pdo->rollBack();
+            $pdo->prepare("UPDATE orders SET payment_status = 'failed', updated_at = NOW() WHERE id = ?")
+                ->execute([$order['id']]);
+            error_log('[Webhook] Sold out during fulfillment for order ' . $order['id']);
             return;
         }
+
+        // Initialize delivery collections so the idempotent-replay branch below
+        // (tickets already exist) still reaches post-commit without undefined vars.
+        $barcodes = [];
+        $ticketDataMap = [];
 
         // Check if tickets already exist (idempotency) via payment reference
         $tStmt = $pdo->prepare("
@@ -232,7 +252,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             $barcode = $barcodes[0]; // Primary for email notified
         } else {
             $barcode = $existingTickets[0]['barcode'];
-            $pdfPath = __DIR__ . '/../../uploads/tickets/pdfs/ticket_' . $barcode . '.pdf';
+            $pdfPath = __DIR__ . '/../../public/assets/event_assets/tickets/ticket_' . $barcode . '.pdf';
             if (!file_exists($pdfPath)) {
                 $ticketData = [
                     'barcode'        => $barcode,
@@ -255,62 +275,78 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             $barcode = $existingTickets[0]['barcode'];
         }
 
+        // ── Post-commit: notifications + email/SMS run AFTER the transaction commits ──
+        // Captured in a closure so the DB transaction can commit instantly and the
+        // buyer's ticket data is durable before any slow network I/O happens.
+        $GLOBALS['_webhook_post_commit'] = function () use ($barcodes, $ticketDataMap, $buyerName, $buyerEmail, $order) {
+            // Send one email per purchase with one PDF attachment per ticket.
+            $emailData = null;
+            $emailAttachments = [];
+            foreach ($barcodes as $bc) {
+                $td = $ticketDataMap[$bc] ?? [
+                    'barcode'     => $bc,
+                    'ticket_id'   => $bc,
+                    'custom_id'   => $bc,
+                    'event_name'  => $order['event_name'],
+                    'event_date'  => $order['event_date'],
+                    'event_time'  => $order['event_time'],
+                    'location'    => $order['location'] ?? $order['state'] ?? 'Nigeria',
+                    'address'     => $order['address'],
+                    'event_image' => $order['image_path'],
+                    'user_name'   => $buyerName,
+                    'buyer_name'  => $buyerName,
+                    'buyer_email' => $buyerEmail,
+                    'order_id'    => $order['id'],
+                    'amount'      => $order['amount'],
+                ];
+                $sendTo = $td['buyer_email'] ?? $order['user_email'];
+
+                $pdfPath = generateTicketPDF($td);
+                $currentPdf = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
+
+                if ($emailData === null) {
+                    $emailData = $td;
+                    $emailRecipient = $sendTo;
+                }
+                $emailAttachments = array_merge($emailAttachments, $currentPdf);
+            }
+            if ($emailData !== null) {
+                EmailHelper::sendTicketEmailFull($emailRecipient, $emailData, $emailAttachments);
+            }
+
+            // SMS to buyer
+            if (!empty($order['user_phone'])) {
+                sendSMS(
+                    $order['user_phone'],
+                    "Hi {$order['user_name']}, your ticket for {$order['event_name']} is confirmed! Check your email for the PDF ticket.",
+                    'ticket_confirmation',
+                    ['auth_id' => (int) $order['user_auth_id']]
+                );
+            }
+
+            // In-app: buyer
+            createPaymentSuccessNotification($order['user_auth_id'], $order['event_name'], $order['amount']);
+            createTicketIssuedNotification($order['user_auth_id'], $order['event_name'], $barcodes[0] ?? '');
+
+            // In-app: organizer (new sale alert)
+            createNewSaleNotification($order['organizer_auth_id'], $order['user_name'], $order['event_name'], $order['amount'], $order['user_auth_id']);
+        };
+
         $pdo->commit();
 
-        // ── Send notifications (outside transaction) ──────────────────────────
-        // Send one email per purchase with one PDF attachment per ticket.
-        $emailData = null;
-        $emailAttachments = [];
-        foreach ($barcodes as $bc) {
-            $td = $ticketDataMap[$bc] ?? [
-                'barcode'     => $bc,
-                'ticket_id'   => $bc,
-                'custom_id'   => $bc,
-                'event_name'  => $order['event_name'],
-                'event_date'  => $order['event_date'],
-                'event_time'  => $order['event_time'],
-                'location'    => $order['location'] ?? $order['state'] ?? 'Nigeria',
-                'address'     => $order['address'],
-                'event_image' => $order['image_path'],
-                'user_name'   => $buyerName,
-                'buyer_name'  => $buyerName,
-                'buyer_email' => $buyerEmail,
-                'order_id'    => $order['id'],
-                'amount'      => $order['amount'],
-            ];
-            $sendTo = $td['buyer_email'] ?? $order['user_email'];
-            
-            $pdfPath = generateTicketPDF($td);
-            $currentPdf = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
-            
-            if ($emailData === null) {
-                $emailData = $td;
-                $emailRecipient = $sendTo;
-            }
-            $emailAttachments = array_merge($emailAttachments, $currentPdf);
+        // Run post-commit delivery work (email, SMS, notifications)
+        if (isset($GLOBALS['_webhook_post_commit'])) {
+            $postCommit = $GLOBALS['_webhook_post_commit'];
+            unset($GLOBALS['_webhook_post_commit']);
+            $postCommit();
         }
-        if ($emailData !== null) {
-            EmailHelper::sendTicketEmailFull($emailRecipient, $emailData, $emailAttachments);
-        }
-
-        // SMS to buyer
-        if (!empty($order['user_phone'])) {
-            sendSMS(
-                $order['user_phone'],
-                "Hi {$order['user_name']}, your ticket for {$order['event_name']} is confirmed! Check your email for the PDF ticket."
-            );
-        }
-
-        // In-app: buyer
-        createPaymentSuccessNotification($order['user_auth_id'], $order['event_name'], $order['amount']);
-        createTicketIssuedNotification($order['user_auth_id'], $order['event_name'], $barcode ?? '');
-
-        // In-app: organizer (new sale alert)
-        createNewSaleNotification($order['organizer_auth_id'], $order['user_name'], $order['event_name'], $order['amount'], $order['user_auth_id']);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        // Release the processing claim so a retry can re-process this order
+        $pdo->prepare("UPDATE orders SET payment_status = 'pending' WHERE id = ? AND payment_status = 'processing'")
+            ->execute([$order['id']]);
         error_log('[Webhook] processSuccessfulPayment error: ' . $e->getMessage());
     }
 }

@@ -515,5 +515,5 @@ try {
     }
     error_log("[Update Event Global Error] " . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Internal server error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Internal server error. Please try again.']);
 }

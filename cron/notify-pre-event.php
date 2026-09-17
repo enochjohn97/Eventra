@@ -10,6 +10,21 @@ require_once __DIR__ . '/../includes/helpers/email-helper.php';
 require_once __DIR__ . '/../includes/helpers/sms-helper.php';
 require_once __DIR__ . '/../api/utils/notification-helper.php';
 
+// ── CRON GUARD ──────────────────────────────────────────────────────────────
+// When invoked over HTTP, require the CRON_SECRET so the endpoint cannot be
+// triggered (and reminders re-sent / SMS billed) by arbitrary visitors.
+// CLI invocations (crontab) are always allowed.
+if (PHP_SAPI !== 'cli') {
+    $expectedSecret = ($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
+    $providedSecret = $_GET['secret'] ?? $_SERVER['HTTP_X_CRON_SECRET'] ?? '';
+    if ($expectedSecret === '' || !is_string($providedSecret) || !hash_equals($expectedSecret, $providedSecret)) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Unauthorized cron invocation.']);
+        exit;
+    }
+}
+
 // Set timezone to Africa/Lagos
 date_default_timezone_set('Africa/Lagos');
 
@@ -24,6 +39,7 @@ try {
         FROM events e
         JOIN clients c ON e.client_id = c.id
         WHERE e.status = 'published'
+           OR (e.status = 'draft' AND e.scheduled_publish_time IS NOT NULL)
     ");
     $stmt->execute();
     $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -35,6 +51,41 @@ try {
     $now = time();
 
     foreach ($events as $event) {
+
+        // ── Scheduled publishing: auto-publish drafts whose publish time has arrived ──
+        // create-event.php stores a future scheduled_publish_time with status='draft';
+        // this flips it to 'published' at the scheduled moment (Lagos local time).
+        if ($event['status'] === 'draft' && !empty($event['scheduled_publish_time'])) {
+            try {
+                $schedAt = new DateTime($event['scheduled_publish_time'], new DateTimeZone('Africa/Lagos'));
+                if ($schedAt <= new DateTime('now', new DateTimeZone('Africa/Lagos'))) {
+                    $pdo->prepare("UPDATE events SET status = 'published' WHERE id = ?")
+                        ->execute([$event['id']]);
+                    $event['status'] = 'published';
+                    echo "Auto-published scheduled event '{$event['event_name']}' (id={$event['id']}).\n";
+
+                    // Notify the organizer that their event is now live
+                    if (!empty($event['client_auth_id'])) {
+                        createNotification(
+                            (int) $event['client_auth_id'],
+                            "Your event '{$event['event_name']}' is now live (scheduled publish).",
+                            'event_published',
+                            null,
+                            'client',
+                            'system',
+                            ['event_id' => (int) $event['id']]
+                        );
+                    }
+                }
+            } catch (Exception $schedEx) {
+                error_log('[Cron] Bad scheduled_publish_time for event ' . $event['id'] . ': ' . $schedEx->getMessage());
+            }
+        }
+
+        // Skip the rest of the reminder workflow for events still in draft
+        if ($event['status'] !== 'published') {
+            continue;
+        }
         $eventId = $event['id'];
         $eventName = $event['event_name'];
         $metadata = json_decode($event['metadata'] ?? '{}', true);
@@ -73,18 +124,20 @@ try {
             echo "Sent starting notifications to Admin and Client for '{$eventName}'\n";
         }
 
-        // 3. Fetch attendees for 20m reminder
+        // 3. Fetch attendees for 20m reminder — per-ticket dedupe prevents
+        //    double-sends across cron runs and multi-location events.
         if (empty($event['user_reminder_sent'])) {
             $ticketStmt = $pdo->prepare("
-                SELECT t.id as ticket_id, t.barcode, u.name, u.phone, aa.email, aa.id as auth_id, p.paystack_response
+                SELECT t.id as ticket_id, t.barcode, t.reminder_sent, u.name, u.phone, aa.email, aa.id as auth_id, p.paystack_response
                 FROM tickets t
                 JOIN users u ON t.user_id = u.id
                 JOIN auth_accounts aa ON u.user_auth_id = aa.id
                 LEFT JOIN payments p ON t.payment_id = p.id
-                WHERE t.event_id = ? AND t.status = 'valid'
+                WHERE t.event_id = ? AND t.status = 'valid' AND t.reminder_sent = 0
             ");
             $ticketStmt->execute([$eventId]);
             $attendees = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
+            $markedTicketIds = [];
 
             $notifiedCount = 0;
 
@@ -154,7 +207,12 @@ try {
                         $smsMessage = "Reminder: {$eventName} starts in 20 minutes! Time: "
                             . date('g:i A', $locStartTimestamp)
                             . " at {$matchingLoc['address']}, {$matchingLoc['state']}. Please have your ticket ready.";
-                        sendSMS($attendee['phone'], $smsMessage);
+                        sendSMS(
+                            $attendee['phone'],
+                            $smsMessage,
+                            'event_reminder',
+                            ['auth_id' => (int) $attendee['auth_id']]
+                        );
                     }
 
                     // Create In-app Notification
@@ -168,15 +226,31 @@ try {
                         ['event_id' => $eventId]
                     );
 
+                    // Mark THIS ticket as reminded immediately — a per-ticket dedupe
+                    // flag that survives cron restarts and multi-location events.
+                    $markedTicketIds[] = (int) $attendee['ticket_id'];
                     $notifiedCount++;
                 }
             }
 
+            // Persist per-ticket dedupe flags (chunked IN clause)
+            if (!empty($markedTicketIds)) {
+                foreach (array_chunk($markedTicketIds, 200) as $chunk) {
+                    $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                    $pdo->prepare("UPDATE tickets SET reminder_sent = 1 WHERE id IN ($placeholders)")
+                        ->execute($chunk);
+                }
+            }
+
             if ($notifiedCount > 0) {
-                // If this is a single location event, we can safely flag it as done.
-                // For multi-location, we might need a more complex solution, but for now we follow the requirement.
-                $updateFlagStmt = $pdo->prepare("UPDATE events SET user_reminder_sent = 1 WHERE id = ?");
-                $updateFlagStmt->execute([$eventId]);
+                // Event-level flag: only mark when NO un-reminded valid tickets remain,
+                // so multi-window / multi-location reminders still fire correctly.
+                $remainingStmt = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE event_id = ? AND status = 'valid' AND reminder_sent = 0");
+                $remainingStmt->execute([$eventId]);
+                if ((int) $remainingStmt->fetchColumn() === 0) {
+                    $updateFlagStmt = $pdo->prepare("UPDATE events SET user_reminder_sent = 1 WHERE id = ?");
+                    $updateFlagStmt->execute([$eventId]);
+                }
                 echo "Successfully sent $notifiedCount reminders for event '$eventName'.\n";
             }
         }

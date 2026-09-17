@@ -230,6 +230,6 @@ try {
 
 } catch (PDOException $e) {
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database error. Please try again or contact support if it persists.']);
 }
 
