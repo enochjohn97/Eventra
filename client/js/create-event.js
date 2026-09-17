@@ -1,28 +1,32 @@
 function showCreateEventModal(eventToEdit = null) {
-    const user = storage.getUser();
-    if (!user) return;
+  const user = storage.getUser();
+  if (!user) return;
 
-    if (!user.verification_status || user.verification_status !== 'verified') {
-        Swal.fire({
-            title: 'Account Not Approved',
-            html: user.verification_status === 'rejected'
-                ? '<strong>Your account was rejected.</strong><br>Please update your profile and resubmit for administrator review before creating events.'
-                : '<strong>Your account is pending approval.</strong><br>You cannot create events until an administrator approves your profile.',
-            icon: 'warning',
-            confirmButtonColor: '#722f37',
-            confirmButtonText: 'Update My Profile',
-            showCancelButton: true,
-            cancelButtonText: 'Close',
-            cancelButtonColor: '#9ca3af'
-        }).then((result) => {
-            if (result.isConfirmed && typeof window.showProfileEditModal === 'function') {
-                window.showProfileEditModal();
-            }
-        });
-        return;
-    }
+  if (!user.verification_status || user.verification_status !== "verified") {
+    Swal.fire({
+      title: "Account Not Approved",
+      html:
+        user.verification_status === "rejected"
+          ? "<strong>Your account was rejected.</strong><br>Please update your profile and resubmit for administrator review before creating events."
+          : "<strong>Your account is pending approval.</strong><br>You cannot create events until an administrator approves your profile.",
+      icon: "warning",
+      confirmButtonColor: "#722f37",
+      confirmButtonText: "Update My Profile",
+      showCancelButton: true,
+      cancelButtonText: "Close",
+      cancelButtonColor: "#9ca3af",
+    }).then((result) => {
+      if (
+        result.isConfirmed &&
+        typeof window.showProfileEditModal === "function"
+      ) {
+        window.showProfileEditModal();
+      }
+    });
+    return;
+  }
 
-    const modalHTML = `
+  const modalHTML = `
         <link rel="stylesheet" href="../../public/css/time-picker.css">
         <div id="createEventModal" class="modal-backdrop active" role="dialog" aria-modal="true" aria-hidden="false" 
              style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(8px);">
@@ -169,11 +173,11 @@ function showCreateEventModal(eventToEdit = null) {
                                             <div id="eventTimePickerDropdown" class="time-picker-dropdown">
                                                 <div class="time-picker-section">
                                                     <span class="time-picker-label">Hours</span>
-                                                    <div class="time-picker-grid hours">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => `<button type="button" class="time-btn" onclick="selectHour('${h}','eventTimePickerContainer')">${h}</button>`).join('')}</div>
+                                                    <div class="time-picker-grid hours">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => `<button type="button" class="time-btn" onclick="selectHour('${h}','eventTimePickerContainer')">${h}</button>`).join("")}</div>
                                                 </div>
                                                 <div class="time-picker-section">
                                                     <span class="time-picker-label">Minutes</span>
-                                                    <div class="time-picker-grid minutes">${['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => `<button type="button" class="time-btn" onclick="selectMinute('${m}','eventTimePickerContainer')">${m}</button>`).join('')}</div>
+                                                    <div class="time-picker-grid minutes">${["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((m) => `<button type="button" class="time-btn" onclick="selectMinute('${m}','eventTimePickerContainer')">${m}</button>`).join("")}</div>
                                                 </div>
                                                 <div class="time-picker-section">
                                                     <div class="time-picker-ampm">
@@ -208,12 +212,16 @@ function showCreateEventModal(eventToEdit = null) {
                                             </div>
                                             <div id="stateSelectDropdown" class="state-select-dropdown">
                                                 <div style="display: grid; gap: 4px;">
-                                                    ${getNigerianStates(false).map(state => `
+                                                    ${getNigerianStates(false)
+                                                      .map(
+                                                        (state) => `
                                                         <label class="state-option-label">
                                                             <input type="checkbox" class="state-checkbox state-checkbox-custom" value="${state}" onchange="updateSelectedStates()">
                                                             <span class="state-option-text">${state}</span>
                                                         </label>
-                                                    `).join('')}
+                                                    `,
+                                                      )
+                                                      .join("")}
                                                 </div>
                                             </div>
                                             <input type="hidden" name="state" id="eventStateInput" required>
@@ -455,609 +463,823 @@ function showCreateEventModal(eventToEdit = null) {
         </style>
     `;
 
-    // Remove existing modal if any
-    const existing = document.getElementById('createEventModal');
-    if (existing) existing.remove();
+  // Remove existing modal if any
+  const existing = document.getElementById("createEventModal");
+  if (existing) existing.remove();
 
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  // Add modal to body
+  document.body.insertAdjacentHTML("beforeend", modalHTML);
 
-    const createEventForm = document.getElementById('createEventForm');
+  const createEventForm = document.getElementById("createEventForm");
 
-    // If editing, populate form and change title
-    if (eventToEdit) {
-        document.querySelector('#createEventModal h2').textContent = 'Edit Event';
-        createEventForm.setAttribute('data-event-id', eventToEdit.id);
+  // If editing, populate form and change title
+  if (eventToEdit) {
+    document.querySelector("#createEventModal h2").textContent = "Edit Event";
+    createEventForm.setAttribute("data-event-id", eventToEdit.id);
 
-        // Basic fields
-        document.getElementById('eventNameInput').value = (eventToEdit.event_name || '').replace(/\s*#\d+$/, '');
-        createEventForm.querySelector('select[name="event_type"]').value = eventToEdit.event_type || '';
-        createEventForm.querySelector('textarea[name="description"]').value = eventToEdit.description || '';
-        createEventForm.querySelector('input[name="phone_contact_1"]').value = eventToEdit.phone_contact_1 || '';
+    // Basic fields
+    document.getElementById("eventNameInput").value = (
+      eventToEdit.event_name || ""
+    ).replace(/\s*#\d+$/, "");
+    createEventForm.querySelector('select[name="event_type"]').value =
+      eventToEdit.event_type || "";
+    createEventForm.querySelector('textarea[name="description"]').value =
+      eventToEdit.description || "";
+    createEventForm.querySelector('input[name="phone_contact_1"]').value =
+      eventToEdit.phone_contact_1 || "";
 
-        // Secondary contact
-        const phone2Input = createEventForm.querySelector('input[name="phone_contact_2"]');
-        if (phone2Input) phone2Input.value = eventToEdit.phone_contact_2 || '';
+    // Secondary contact
+    const phone2Input = createEventForm.querySelector(
+      'input[name="phone_contact_2"]',
+    );
+    if (phone2Input) phone2Input.value = eventToEdit.phone_contact_2 || "";
 
-        // Address
-        const addressInput = createEventForm.querySelector('textarea[name="address"]');
-        if (addressInput) addressInput.value = eventToEdit.address || '';
+    // Address
+    const addressInput = createEventForm.querySelector(
+      'textarea[name="address"]',
+    );
+    if (addressInput) addressInput.value = eventToEdit.address || "";
 
-        // States
-        if (eventToEdit.state) {
-            const stateInput = document.getElementById('eventStateInput');
-            if (stateInput) stateInput.value = eventToEdit.state;
-            
-            const stateNames = eventToEdit.state.split(',').map(s => s.trim()).filter(Boolean);
-            const stateDisplayText = document.getElementById('selectedStatesText');
-            if (stateDisplayText) {
-                stateDisplayText.textContent = stateNames.length > 0 ? stateNames.join(', ') : 'Select State(s)';
-            }
-            
-            // Check the corresponding checkboxes
-            document.querySelectorAll('.state-checkbox').forEach(cb => {
-                if (stateNames.includes(cb.value)) {
-                    cb.checked = true;
-                }
-            });
+    // States
+    if (eventToEdit.state) {
+      const stateInput = document.getElementById("eventStateInput");
+      if (stateInput) stateInput.value = eventToEdit.state;
+
+      const stateNames = eventToEdit.state
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const stateDisplayText = document.getElementById("selectedStatesText");
+      if (stateDisplayText) {
+        stateDisplayText.textContent =
+          stateNames.length > 0 ? stateNames.join(", ") : "Select State(s)";
+      }
+
+      // Check the corresponding checkboxes
+      document.querySelectorAll(".state-checkbox").forEach((cb) => {
+        if (stateNames.includes(cb.value)) {
+          cb.checked = true;
         }
-
-        // Visibility
-        const visibilitySelect = document.getElementById('eventVisibilitySelect');
-        if (visibilitySelect && eventToEdit.event_visibility) visibilitySelect.value = eventToEdit.event_visibility;
-
-        // Status
-        const statusSelect = createEventForm.querySelector('select[name="status"]');
-        if (statusSelect && eventToEdit.status) statusSelect.value = eventToEdit.status;
-
-        // Free event checkbox
-        const freeCheckbox = document.getElementById('freeEventCheckbox');
-        if (freeCheckbox) {
-            const basePrice = parseFloat(eventToEdit.price) || 0;
-            const isFreeEvent = basePrice === 0 && !eventToEdit.regular_price && !eventToEdit.vip_price && !eventToEdit.premium_price;
-            freeCheckbox.checked = !!eventToEdit.is_free || isFreeEvent;
-        }
-
-        // Date & Time (global)
-        const displayDate = document.getElementById('customDateDisplay');
-        const hiddenDate = document.getElementById('eventDateInput');
-        if (displayDate && hiddenDate) {
-            hiddenDate.value = eventToEdit.event_date || '';
-            displayDate.value = eventToEdit.event_date || '';
-        }
-
-        if (eventToEdit.event_time) {
-            document.getElementById('eventTimeInput').value = eventToEdit.event_time;
-            const displaySpan = document.getElementById('eventTimeDisplay');
-            if (displaySpan) {
-                displaySpan.textContent = eventToEdit.event_time;
-                displaySpan.style.color = '#1f2937'; // Active color
-            }
-            if (typeof setTimePickerValue === 'function') {
-                setTimePickerValue('eventTimePickerContainer', eventToEdit.event_time);
-            }
-        }
-
-        // Generate Event Tag and Link
-        setTimeout(() => {
-            const eventNameInput = document.getElementById('eventNameInput');
-            if (eventNameInput && typeof generateEventTagAndLink === 'function') {
-                generateEventTagAndLink();
-            }
-        }, 100);
-
-        // Image
-        if (eventToEdit.image_path) {
-            document.getElementById('eventImagePreview').src = (typeof getImageUrl === 'function')
-                ? getImageUrl(eventToEdit.image_path)
-                : (eventToEdit.image_path.startsWith('/') ? eventToEdit.image_path : '/' + eventToEdit.image_path);
-            document.getElementById('eventImageInput').removeAttribute('required');
-        }
-
-        // Parse metadata to extract ticket data
-        let metadata = {};
-        if (eventToEdit.metadata) {
-            try {
-                metadata = typeof eventToEdit.metadata === 'string' ? JSON.parse(eventToEdit.metadata) : eventToEdit.metadata;
-            } catch (e) { }
-        }
-
-        // Tickets & Prices
-        if (metadata.ticket_type_mode) {
-            const modes = metadata.ticket_type_mode.toLowerCase();
-            document.querySelectorAll('.ticket-type-checkbox').forEach(cb => {
-                if (modes.includes('all') && cb.value === 'all') cb.checked = true;
-                if (modes.includes('regular') && cb.value === 'regular') cb.checked = true;
-                if (modes.includes('vip') && cb.value === 'vip') cb.checked = true;
-                if (modes.includes('premium') && cb.value === 'premium') cb.checked = true;
-            });
-            updateTicketTypeSections();
-        }
-
-        if (document.getElementById('regularPriceInput') && metadata.regular_price) document.getElementById('regularPriceInput').value = metadata.regular_price;
-        if (document.getElementById('vipPriceInput') && metadata.vip_price) document.getElementById('vipPriceInput').value = metadata.vip_price;
-        if (document.getElementById('premiumPriceInput') && metadata.premium_price) document.getElementById('premiumPriceInput').value = metadata.premium_price;
-        if (document.getElementById('allPriceInput') && eventToEdit.price) document.getElementById('allPriceInput').value = eventToEdit.price;
-
-        // Ticket quantities
-        const regularQtyInput = createEventForm.querySelector('input[name="regular_quantity"]');
-        if (regularQtyInput && metadata.regular_quantity) regularQtyInput.value = metadata.regular_quantity;
-        const vipQtyInput = createEventForm.querySelector('input[name="vip_quantity"]');
-        if (vipQtyInput && metadata.vip_quantity) vipQtyInput.value = metadata.vip_quantity;
-        const premiumQtyInput = createEventForm.querySelector('input[name="premium_quantity"]');
-        if (premiumQtyInput && metadata.premium_quantity) premiumQtyInput.value = metadata.premium_quantity;
-
-        // Total Tickets
-        if (eventToEdit.total_tickets) {
-            createEventForm.querySelector('input[name="total_tickets"]').value = eventToEdit.total_tickets;
-        }
-
-        // Location / States
-        if (eventToEdit.state) {
-            const states = eventToEdit.state.split(',').map(s => s.trim());
-            document.querySelectorAll('.state-checkbox').forEach(cb => {
-                if (states.includes(cb.value)) cb.checked = true;
-            });
-            updateSelectedStates();
-
-            // Per-state logic
-            setTimeout(() => {
-                const mainAddressTextarea = document.getElementById('mainAddressTextarea');
-                if (states.length === 1) {
-                    if (mainAddressTextarea) mainAddressTextarea.value = eventToEdit.address || '';
-                } else if (states.length > 1 && eventToEdit.locations) {
-                    let locs = [];
-                    try {
-                        locs = typeof eventToEdit.locations === 'string' ? JSON.parse(eventToEdit.locations) : eventToEdit.locations;
-                    } catch (e) { }
-
-                    let hasCustomDates = false;
-                    locs.forEach(loc => {
-                        const ta = document.querySelector(`textarea[data-state="${loc.state}"]`);
-                        if (ta) ta.value = loc.address || '';
-
-                        if (loc.date || loc.time) hasCustomDates = true;
-
-                        if (loc.date) {
-                            const di = document.querySelector(`input[data-type="date"][data-state="${loc.state}"]`);
-                            if (di) di.value = loc.date;
-                        }
-                        if (loc.time) {
-                            const ti = document.querySelector(`input[data-type="time"][data-state="${loc.state}"]`);
-                            if (ti) ti.value = loc.time;
-                        }
-                    });
-
-                    if (hasCustomDates) {
-                        const customizeCb = document.getElementById('customizeDatesPerStateCheckbox');
-                        if (customizeCb) {
-                            customizeCb.checked = true;
-                            togglePerStateDateTimeFields();
-                        }
-                    }
-                }
-            }, 100);
-        }
-
-        // Change Submit Button text
-        const submitBtn = createEventForm.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.textContent = 'Save Changes';
+      });
     }
 
+    // Visibility
+    const visibilitySelect = document.getElementById("eventVisibilitySelect");
+    if (visibilitySelect && eventToEdit.event_visibility)
+      visibilitySelect.value = eventToEdit.event_visibility;
 
-    // Set minimum date to today is handled by the new Material DatePicker JS component
-    // Close date picker when clicking outside
-    document.addEventListener('click', (e) => {
-        const dp = document.getElementById('materialDatePicker');
-        const display = document.getElementById('customDateDisplay');
-        if (dp && dp.classList.contains('active')) {
-            if (!dp.contains(e.target) && e.target !== display) {
-                closeMaterialDatePicker();
+    // Status
+    const statusSelect = createEventForm.querySelector('select[name="status"]');
+    if (statusSelect && eventToEdit.status)
+      statusSelect.value = eventToEdit.status;
+
+    // Free event checkbox
+    const freeCheckbox = document.getElementById("freeEventCheckbox");
+    if (freeCheckbox) {
+      const basePrice = parseFloat(eventToEdit.price) || 0;
+      const isFreeEvent =
+        basePrice === 0 &&
+        !eventToEdit.regular_price &&
+        !eventToEdit.vip_price &&
+        !eventToEdit.premium_price;
+      freeCheckbox.checked = !!eventToEdit.is_free || isFreeEvent;
+    }
+
+    // Date & Time (global)
+    const displayDate = document.getElementById("customDateDisplay");
+    const hiddenDate = document.getElementById("eventDateInput");
+    if (displayDate && hiddenDate) {
+      hiddenDate.value = eventToEdit.event_date || "";
+      displayDate.value = eventToEdit.event_date || "";
+    }
+
+    if (eventToEdit.event_time) {
+      document.getElementById("eventTimeInput").value = eventToEdit.event_time;
+      const displaySpan = document.getElementById("eventTimeDisplay");
+      if (displaySpan) {
+        displaySpan.textContent = eventToEdit.event_time;
+        displaySpan.style.color = "#1f2937"; // Active color
+      }
+      if (typeof setTimePickerValue === "function") {
+        setTimePickerValue("eventTimePickerContainer", eventToEdit.event_time);
+      }
+    }
+
+    // Generate Event Tag and Link
+    setTimeout(() => {
+      const eventNameInput = document.getElementById("eventNameInput");
+      if (eventNameInput && typeof generateEventTagAndLink === "function") {
+        generateEventTagAndLink();
+      }
+    }, 100);
+
+    // Image
+    if (eventToEdit.image_path) {
+      document.getElementById("eventImagePreview").src =
+        typeof getImageUrl === "function"
+          ? getImageUrl(eventToEdit.image_path)
+          : eventToEdit.image_path.startsWith("/")
+            ? eventToEdit.image_path
+            : "/" + eventToEdit.image_path;
+      document.getElementById("eventImageInput").removeAttribute("required");
+    }
+
+    // Parse metadata to extract ticket data
+    let metadata = {};
+    if (eventToEdit.metadata) {
+      try {
+        metadata =
+          typeof eventToEdit.metadata === "string"
+            ? JSON.parse(eventToEdit.metadata)
+            : eventToEdit.metadata;
+      } catch (e) {}
+    }
+
+    // Tickets & Prices
+    if (metadata.ticket_type_mode) {
+      const modes = metadata.ticket_type_mode.toLowerCase();
+      document.querySelectorAll(".ticket-type-checkbox").forEach((cb) => {
+        if (modes.includes("all") && cb.value === "all") cb.checked = true;
+        if (modes.includes("regular") && cb.value === "regular")
+          cb.checked = true;
+        if (modes.includes("vip") && cb.value === "vip") cb.checked = true;
+        if (modes.includes("premium") && cb.value === "premium")
+          cb.checked = true;
+      });
+      updateTicketTypeSections();
+    }
+
+    if (document.getElementById("regularPriceInput") && metadata.regular_price)
+      document.getElementById("regularPriceInput").value =
+        metadata.regular_price;
+    if (document.getElementById("vipPriceInput") && metadata.vip_price)
+      document.getElementById("vipPriceInput").value = metadata.vip_price;
+    if (document.getElementById("premiumPriceInput") && metadata.premium_price)
+      document.getElementById("premiumPriceInput").value =
+        metadata.premium_price;
+    if (document.getElementById("allPriceInput") && eventToEdit.price)
+      document.getElementById("allPriceInput").value = eventToEdit.price;
+
+    // Ticket quantities
+    const regularQtyInput = createEventForm.querySelector(
+      'input[name="regular_quantity"]',
+    );
+    if (regularQtyInput && metadata.regular_quantity)
+      regularQtyInput.value = metadata.regular_quantity;
+    const vipQtyInput = createEventForm.querySelector(
+      'input[name="vip_quantity"]',
+    );
+    if (vipQtyInput && metadata.vip_quantity)
+      vipQtyInput.value = metadata.vip_quantity;
+    const premiumQtyInput = createEventForm.querySelector(
+      'input[name="premium_quantity"]',
+    );
+    if (premiumQtyInput && metadata.premium_quantity)
+      premiumQtyInput.value = metadata.premium_quantity;
+
+    // Total Tickets
+    if (eventToEdit.total_tickets) {
+      createEventForm.querySelector('input[name="total_tickets"]').value =
+        eventToEdit.total_tickets;
+    }
+
+    // Location / States
+    if (eventToEdit.state) {
+      const states = eventToEdit.state.split(",").map((s) => s.trim());
+      document.querySelectorAll(".state-checkbox").forEach((cb) => {
+        if (states.includes(cb.value)) cb.checked = true;
+      });
+      updateSelectedStates();
+
+      // Per-state logic
+      setTimeout(() => {
+        const mainAddressTextarea = document.getElementById(
+          "mainAddressTextarea",
+        );
+        if (states.length === 1) {
+          if (mainAddressTextarea)
+            mainAddressTextarea.value = eventToEdit.address || "";
+        } else if (states.length > 1 && eventToEdit.locations) {
+          let locs = [];
+          try {
+            locs =
+              typeof eventToEdit.locations === "string"
+                ? JSON.parse(eventToEdit.locations)
+                : eventToEdit.locations;
+          } catch (e) {}
+
+          let hasCustomDates = false;
+          locs.forEach((loc) => {
+            const ta = document.querySelector(
+              `textarea[data-state="${loc.state}"]`,
+            );
+            if (ta) ta.value = loc.address || "";
+
+            if (loc.date || loc.time) hasCustomDates = true;
+
+            if (loc.date) {
+              const di = document.querySelector(
+                `input[data-type="date"][data-state="${loc.state}"]`,
+              );
+              if (di) di.value = loc.date;
             }
+            if (loc.time) {
+              const ti = document.querySelector(
+                `input[data-type="time"][data-state="${loc.state}"]`,
+              );
+              if (ti) ti.value = loc.time;
+            }
+          });
+
+          if (hasCustomDates) {
+            const customizeCb = document.getElementById(
+              "customizeDatesPerStateCheckbox",
+            );
+            if (customizeCb) {
+              customizeCb.checked = true;
+              togglePerStateDateTimeFields();
+            }
+          }
         }
+      }, 100);
+    }
+
+    // Change Submit Button text
+    const submitBtn = createEventForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = "Save Changes";
+  }
+
+  // Set minimum date to today is handled by the new Material DatePicker JS component
+  // Close date picker when clicking outside
+  document.addEventListener("click", (e) => {
+    const dp = document.getElementById("materialDatePicker");
+    const display = document.getElementById("customDateDisplay");
+    if (dp && dp.classList.contains("active")) {
+      if (!dp.contains(e.target) && e.target !== display) {
+        closeMaterialDatePicker();
+      }
+    }
+  });
+
+  // Add form submit handler
+  createEventForm.addEventListener("submit", handleGoogleCalendarSchedule);
+
+  // Inject the per-state address container below the main address textarea
+  injectPerStateContainer();
+
+  // Add persistence: save on input
+  createEventForm.addEventListener("input", () =>
+    saveFormState("createEventForm"),
+  );
+  createEventForm.addEventListener("change", () =>
+    saveFormState("createEventForm"),
+  );
+
+  // Restore saved state
+  restoreFormState("createEventForm");
+
+  // Sync date display after restoration
+  const restoredDate = document.getElementById("eventDateInput")?.value;
+  if (restoredDate) {
+    const dateObj = new Date(restoredDate + "T00:00:00");
+    if (!isNaN(dateObj.getTime())) {
+      const displayOpts = { month: "long", day: "numeric", year: "numeric" };
+      document.getElementById("customDateDisplay").value =
+        dateObj.toLocaleDateString("en-US", displayOpts);
+      window.mdpSelectedDate = dateObj;
+    }
+  }
+
+  // Sync time picker UI with restored value if it exists
+  const restoredTime = document.getElementById("eventTimeInput")?.value;
+  if (restoredTime && typeof setTimePickerValue === "function") {
+    setTimePickerValue("eventTimePickerContainer", restoredTime);
+  }
+
+  // Free Event Checkbox Handler — mutual exclusivity with paid ticket types
+  const freeCheckbox = document.getElementById("freeEventCheckbox");
+  const ticketConfig = document.getElementById("ticketTypeConfigSection");
+  const _priceInputIds = [
+    "regularPriceInput",
+    "vipPriceInput",
+    "premiumPriceInput",
+    "allPriceInput",
+  ];
+
+  function _setFreeMode(isFree) {
+    if (ticketConfig) ticketConfig.style.display = isFree ? "none" : "block";
+    _priceInputIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = isFree ? "0" : "";
+        el.disabled = isFree;
+      }
+    });
+    document.querySelectorAll(".ticket-type-checkbox").forEach((cb) => {
+      cb.disabled = isFree;
+    });
+    if (isFree) {
+      document
+        .querySelectorAll('#ticketTypeConfigSection input[name$="quantity"]')
+        .forEach((i) => {
+          i.value = "";
+        });
+    }
+  }
+
+  freeCheckbox.addEventListener("change", function () {
+    _setFreeMode(this.checked);
+    if (!this.checked) updateTicketTypeSections();
+  });
+
+  // When any paid ticket type is selected, uncheck Free
+  document.querySelectorAll(".ticket-type-checkbox").forEach((cb) => {
+    cb.addEventListener("change", function () {
+      if (this.checked && freeCheckbox.checked) {
+        freeCheckbox.checked = false;
+        _setFreeMode(false);
+      }
+    });
+  });
+
+  const statusInput = document.querySelector('input[name="status"]');
+  if (statusInput) statusInput.value = "draft";
+
+  // Ticket Type Mode Handler — multi-checkbox variant
+  const ticketTypeCheckboxes = document.querySelectorAll(
+    ".ticket-type-checkbox",
+  );
+  const regularPriceSection = document.getElementById("regularPriceSection");
+  const vipPriceSection = document.getElementById("vipPriceSection");
+  const premiumPriceSection = document.getElementById("premiumPriceSection");
+  const allPriceSection = document.getElementById("allPriceSection");
+
+  const regularPriceInput = document.getElementById("regularPriceInput");
+  const vipPriceInput = document.getElementById("vipPriceInput");
+  const premiumPriceInput = document.getElementById("premiumPriceInput");
+  const allPriceInput = document.getElementById("allPriceInput");
+
+  function updateTicketTypeSections() {
+    // Collect ALL currently-checked ticket type checkboxes
+    const checkedBoxes = document.querySelectorAll(
+      ".ticket-type-checkbox:checked",
+    );
+    const selectedModes = Array.from(checkedBoxes).map((cb) => cb.value);
+
+    // ── Fix: When "All" is checked, auto-select regular/vip/premium ──────
+    const allCb = document.querySelector('.ticket-type-checkbox[value="all"]');
+    const individualTypes = ["regular", "vip", "premium"];
+    if (allCb && allCb.checked) {
+      // Force-check the three individual checkboxes
+      individualTypes.forEach((type) => {
+        const cb = document.querySelector(
+          `.ticket-type-checkbox[value="${type}"]`,
+        );
+        if (cb && !cb.checked) cb.checked = true;
+      });
+      // Hide the "allConfig" panel — we show the three individual panels instead
+      const allPanel = document.getElementById("allConfig");
+      if (allPanel) allPanel.style.display = "none";
+    } else if (allCb && !allCb.checked) {
+      // When "All" is unchecked, uncheck and hide the individual types only if
+      // they were selected solely because of "All" (i.e. no independent reason)
+      // We do nothing here — user may have individually selected them
+    }
+
+    // Re-collect after possible auto-check above
+    const finalCheckedBoxes = document.querySelectorAll(
+      ".ticket-type-checkbox:checked",
+    );
+    const finalModes = Array.from(finalCheckedBoxes).map((cb) => cb.value);
+
+    // Show / hide each price config panel based on final selection
+    const sections = {
+      regular: document.getElementById("regularConfig"),
+      vip: document.getElementById("vipConfig"),
+      premium: document.getElementById("premiumConfig"),
+      all: document.getElementById("allConfig"),
+    };
+
+    // Always hide allConfig — individual panels used instead
+    if (sections["all"]) sections["all"].style.display = "none";
+    ["regular", "vip", "premium"].forEach((key) => {
+      if (sections[key]) {
+        sections[key].style.display = finalModes.includes(key)
+          ? "block"
+          : "none";
+      }
     });
 
-    // Add form submit handler
-    createEventForm.addEventListener('submit', handleGoogleCalendarSchedule);
-
-    // Inject the per-state address container below the main address textarea
-    injectPerStateContainer();
-
-    // Add persistence: save on input
-    createEventForm.addEventListener('input', () => saveFormState('createEventForm'));
-    createEventForm.addEventListener('change', () => saveFormState('createEventForm'));
-
-    // Restore saved state
-    restoreFormState('createEventForm');
-
-    // Sync date display after restoration
-    const restoredDate = document.getElementById('eventDateInput')?.value;
-    if (restoredDate) {
-        const dateObj = new Date(restoredDate + 'T00:00:00');
-        if (!isNaN(dateObj.getTime())) {
-            const displayOpts = { month: 'long', day: 'numeric', year: 'numeric' };
-            document.getElementById('customDateDisplay').value = dateObj.toLocaleDateString('en-US', displayOpts);
-            window.mdpSelectedDate = dateObj;
-        }
-    }
-
-    // Sync time picker UI with restored value if it exists
-    const restoredTime = document.getElementById('eventTimeInput')?.value;
-    if (restoredTime && typeof setTimePickerValue === 'function') {
-        setTimePickerValue('eventTimePickerContainer', restoredTime);
-    }
-
-    // Free Event Checkbox Handler — mutual exclusivity with paid ticket types
-    const freeCheckbox = document.getElementById('freeEventCheckbox');
-    const ticketConfig = document.getElementById('ticketTypeConfigSection');
-    const _priceInputIds = ['regularPriceInput', 'vipPriceInput', 'premiumPriceInput', 'allPriceInput'];
-
-    function _setFreeMode(isFree) {
-        if (ticketConfig) ticketConfig.style.display = isFree ? 'none' : 'block';
-        _priceInputIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) { el.value = isFree ? '0' : ''; el.disabled = isFree; }
-        });
-        document.querySelectorAll('.ticket-type-checkbox').forEach(cb => {
-            cb.disabled = isFree;
-        });
-        if (isFree) {
-            document.querySelectorAll('#ticketTypeConfigSection input[name$="quantity"]').forEach(i => { i.value = ''; });
-        }
-    }
-
-    freeCheckbox.addEventListener('change', function () {
-        _setFreeMode(this.checked);
-        if (!this.checked) updateTicketTypeSections();
+    // Update label highlight styles
+    document.querySelectorAll(".ticket-type-label").forEach((label) => {
+      const input = label.querySelector("input");
+      if (input && input.checked) {
+        label.style.borderColor = "#2563eb";
+        label.style.background = "#eff6ff";
+      } else {
+        label.style.borderColor = "#e5e7eb";
+        label.style.background = "transparent";
+      }
     });
 
-    // When any paid ticket type is selected, uncheck Free
-    document.querySelectorAll('.ticket-type-checkbox').forEach(cb => {
-        cb.addEventListener('change', function () {
-            if (this.checked && freeCheckbox.checked) {
-                freeCheckbox.checked = false;
-                _setFreeMode(false);
-            }
-        });
+    // Update required attribute only for visible (checked) price inputs
+    const rpi = document.getElementById("regularPriceInput");
+    const vpi = document.getElementById("vipPriceInput");
+    const ppi = document.getElementById("premiumPriceInput");
+    const api = document.getElementById("allPriceInput");
+
+    if (rpi) rpi.required = finalModes.includes("regular");
+    if (vpi) vpi.required = finalModes.includes("vip");
+    if (ppi) ppi.required = finalModes.includes("premium");
+    if (api) api.required = false; // allConfig is hidden, never required
+  }
+
+  ticketTypeCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", updateTicketTypeSections);
+  });
+
+  // Sync prices when inputs change
+  if (regularPriceInput)
+    regularPriceInput.addEventListener("change", updateTicketTypeSections);
+  if (vipPriceInput)
+    vipPriceInput.addEventListener("change", updateTicketTypeSections);
+  if (premiumPriceInput)
+    premiumPriceInput.addEventListener("change", updateTicketTypeSections);
+  if (allPriceInput)
+    allPriceInput.addEventListener("change", updateTicketTypeSections);
+
+  // Initial render
+  updateTicketTypeSections();
+
+  // Only validate a field after the user has interacted with that field.
+  createEventForm
+    .querySelectorAll('input:not([type="hidden"]), select, textarea')
+    .forEach((field) => {
+      if (field.disabled || field.readOnly) return;
+      const group = field.closest(".form-group") || field.parentElement;
+      if (!group) return;
+      group.style.position = "relative";
+      const icon = document.createElement("span");
+      icon.className = "field-validation-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.style.cssText =
+        "display:none;position:absolute;right:14px;top:43px;color:#10b981;font-size:1.1rem;font-weight:700;pointer-events:none;";
+      field.insertAdjacentElement("afterend", icon);
+      const updateValidationIcon = () => {
+        const touched = field.dataset.touched === "true";
+        const valid = field.checkValidity() && field.value.trim() !== "";
+        icon.textContent = valid ? "✓" : "";
+        icon.style.display = touched && valid ? "block" : "none";
+      };
+      field.addEventListener("input", () => {
+        field.dataset.touched = "true";
+        updateValidationIcon();
+      });
+      field.addEventListener("change", () => {
+        field.dataset.touched = "true";
+        updateValidationIcon();
+      });
+      field.addEventListener("blur", () => {
+        field.dataset.touched = "true";
+        updateValidationIcon();
+      });
     });
 
-    const statusInput = document.querySelector('input[name="status"]');
-    if (statusInput) statusInput.value = 'draft';
+  // ── Paste suppression
+  createEventForm.addEventListener(
+    "paste",
+    () => {
+      window._isPasting = true;
+      setTimeout(() => {
+        window._isPasting = false;
+      }, 300);
+    },
+    true,
+  );
 
-    // Ticket Type Mode Handler — multi-checkbox variant
-    const ticketTypeCheckboxes = document.querySelectorAll('.ticket-type-checkbox');
-    const regularPriceSection = document.getElementById('regularPriceSection');
-    const vipPriceSection = document.getElementById('vipPriceSection');
-    const premiumPriceSection = document.getElementById('premiumPriceSection');
-    const allPriceSection = document.getElementById('allPriceSection');
-
-    const regularPriceInput = document.getElementById('regularPriceInput');
-    const vipPriceInput = document.getElementById('vipPriceInput');
-    const premiumPriceInput = document.getElementById('premiumPriceInput');
-    const allPriceInput = document.getElementById('allPriceInput');
-
-    function updateTicketTypeSections() {
-        // Collect ALL currently-checked ticket type checkboxes
-        const checkedBoxes = document.querySelectorAll('.ticket-type-checkbox:checked');
-        const selectedModes = Array.from(checkedBoxes).map(cb => cb.value);
-
-        // ── Fix: When "All" is checked, auto-select regular/vip/premium ──────
-        const allCb = document.querySelector('.ticket-type-checkbox[value="all"]');
-        const individualTypes = ['regular', 'vip', 'premium'];
-        if (allCb && allCb.checked) {
-            // Force-check the three individual checkboxes
-            individualTypes.forEach(type => {
-                const cb = document.querySelector(`.ticket-type-checkbox[value="${type}"]`);
-                if (cb && !cb.checked) cb.checked = true;
-            });
-            // Hide the "allConfig" panel — we show the three individual panels instead
-            const allPanel = document.getElementById('allConfig');
-            if (allPanel) allPanel.style.display = 'none';
-        } else if (allCb && !allCb.checked) {
-            // When "All" is unchecked, uncheck and hide the individual types only if
-            // they were selected solely because of "All" (i.e. no independent reason)
-            // We do nothing here — user may have individually selected them
-        }
-
-        // Re-collect after possible auto-check above
-        const finalCheckedBoxes = document.querySelectorAll('.ticket-type-checkbox:checked');
-        const finalModes = Array.from(finalCheckedBoxes).map(cb => cb.value);
-
-        // Show / hide each price config panel based on final selection
-        const sections = {
-            'regular': document.getElementById('regularConfig'),
-            'vip': document.getElementById('vipConfig'),
-            'premium': document.getElementById('premiumConfig'),
-            'all': document.getElementById('allConfig')
-        };
-
-        // Always hide allConfig — individual panels used instead
-        if (sections['all']) sections['all'].style.display = 'none';
-        ['regular', 'vip', 'premium'].forEach(key => {
-            if (sections[key]) {
-                sections[key].style.display = finalModes.includes(key) ? 'block' : 'none';
-            }
-        });
-
-        // Update label highlight styles
-        document.querySelectorAll('.ticket-type-label').forEach(label => {
-            const input = label.querySelector('input');
-            if (input && input.checked) {
-                label.style.borderColor = '#2563eb';
-                label.style.background = '#eff6ff';
-            } else {
-                label.style.borderColor = '#e5e7eb';
-                label.style.background = 'transparent';
-            }
-        });
-
-        // Update required attribute only for visible (checked) price inputs
-        const rpi = document.getElementById('regularPriceInput');
-        const vpi = document.getElementById('vipPriceInput');
-        const ppi = document.getElementById('premiumPriceInput');
-        const api = document.getElementById('allPriceInput');
-
-        if (rpi) rpi.required = finalModes.includes('regular');
-        if (vpi) vpi.required = finalModes.includes('vip');
-        if (ppi) ppi.required = finalModes.includes('premium');
-        if (api) api.required = false; // allConfig is hidden, never required
-    }
-
-    ticketTypeCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateTicketTypeSections);
+  // ── Price input validation: block non-numeric, enforce max 10 digits ─────
+  const priceRegex = /^\d{0,10}(\.\d{0,2})?$/;
+  function attachPriceGuard(inputId, errorId) {
+    const inp = document.getElementById(inputId);
+    const err = document.getElementById(errorId);
+    if (!inp) return;
+    inp.addEventListener("keydown", (e) => {
+      const allowed = [
+        "Backspace",
+        "Delete",
+        "Tab",
+        "Escape",
+        "Enter",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+        ".",
+        " ",
+      ];
+      if (allowed.includes(e.key)) return;
+      if (e.key === "." && inp.value.includes(".")) {
+        e.preventDefault();
+        return;
+      }
+      if (!/^\d$/.test(e.key)) {
+        e.preventDefault();
+        return;
+      }
     });
+    inp.addEventListener("input", () => {
+      const digits = inp.value
+        .replace(".", "")
+        .replace("-", "")
+        .replace(/\D/g, "");
+      const valid = priceRegex.test(inp.value) && digits.length <= 10;
+      if (err) err.style.display = valid ? "none" : "block";
+      inp.style.borderColor = valid ? "" : "#ef4444";
+    });
+  }
+  attachPriceGuard("regularPriceInput", "regularPriceError");
+  attachPriceGuard("vipPriceInput", "vipPriceError");
+  attachPriceGuard("premiumPriceInput", "premiumPriceError");
+  attachPriceGuard("allPriceInput", "allPriceError");
 
-    // Sync prices when inputs change
-    if (regularPriceInput) regularPriceInput.addEventListener('change', updateTicketTypeSections);
-    if (vipPriceInput) vipPriceInput.addEventListener('change', updateTicketTypeSections);
-    if (premiumPriceInput) premiumPriceInput.addEventListener('change', updateTicketTypeSections);
-    if (allPriceInput) allPriceInput.addEventListener('change', updateTicketTypeSections);
-
-    // Initial render
-    updateTicketTypeSections();
-
-    // ── Paste suppression
-    createEventForm.addEventListener('paste', () => {
-        window._isPasting = true;
-        setTimeout(() => { window._isPasting = false; }, 300);
-    }, true);
-
-    // ── Price input validation: block non-numeric, enforce max 10 digits ─────
-    const priceRegex = /^\d{0,10}(\.\d{0,2})?$/;
-    function attachPriceGuard(inputId, errorId) {
-        const inp = document.getElementById(inputId);
-        const err = document.getElementById(errorId);
-        if (!inp) return;
-        inp.addEventListener('keydown', (e) => {
-            const allowed = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','.',' '];
-            if (allowed.includes(e.key)) return;
-            if (e.key === '.' && inp.value.includes('.')) { e.preventDefault(); return; }
-            if (!/^\d$/.test(e.key)) { e.preventDefault(); return; }
-        });
-        inp.addEventListener('input', () => {
-            const digits = inp.value.replace('.', '').replace('-', '').replace(/\D/g,'');
-            const valid = priceRegex.test(inp.value) && digits.length <= 10;
-            if (err) err.style.display = valid ? 'none' : 'block';
-            inp.style.borderColor = valid ? '' : '#ef4444';
-        });
-    }
-    attachPriceGuard('regularPriceInput', 'regularPriceError');
-    attachPriceGuard('vipPriceInput',     'vipPriceError');
-    attachPriceGuard('premiumPriceInput', 'premiumPriceError');
-    attachPriceGuard('allPriceInput',     'allPriceError');
-
-    // ── Date change → restrict time picker to future times if today is selected
-    document.getElementById('eventDateInput')?.addEventListener('input', function () {
-        const selectedDate = this.value;
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const timeInput = document.getElementById('eventTimeInput');
-        if (!timeInput) return;
-        if (selectedDate === todayStr) {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() + 5);
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            timeInput.dataset.minTime = `${hh}:${mm}`;
-        } else {
-            delete timeInput.dataset.minTime;
-        }
+  // ── Date change → restrict time picker to future times if today is selected
+  document
+    .getElementById("eventDateInput")
+    ?.addEventListener("input", function () {
+      const selectedDate = this.value;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const timeInput = document.getElementById("eventTimeInput");
+      if (!timeInput) return;
+      if (selectedDate === todayStr) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 5);
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        timeInput.dataset.minTime = `${hh}:${mm}`;
+      } else {
+        delete timeInput.dataset.minTime;
+      }
     });
 }
 
-
 function closeCreateEventModal() {
-    const modal = document.getElementById('createEventModal');
-    if (modal) modal.remove();
+  const modal = document.getElementById("createEventModal");
+  if (modal) modal.remove();
 }
 
 function previewEventImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            document.getElementById('eventImagePreview').src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      document.getElementById("eventImagePreview").src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function generateEventTagAndLink() {
-    const eventNameInput = document.getElementById('eventNameInput');
-    const eventName = eventNameInput.value.trim();
+  const eventNameInput = document.getElementById("eventNameInput");
+  const eventName = eventNameInput.value.trim();
 
-    if (!eventName) {
-        document.getElementById('eventTagField').value = '';
-        document.getElementById('eventLinkField').value = '';
-        return;
-    }
+  if (!eventName) {
+    document.getElementById("eventTagField").value = "";
+    document.getElementById("eventLinkField").value = "";
+    return;
+  }
 
-    // Generate tag: lowercase, remove special chars, replace spaces with hyphens
-    const tag = eventName
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
+  // Generate tag: lowercase, remove special chars, replace spaces with hyphens
+  const tag = eventName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 
-    // Get client name from stored user data
-    const user = storage.getUser();
-    const clientName = user.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
+  // Get client name from stored user data
+  const user = storage.getUser();
+  const clientName = user.name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 
-    // Generate external link
-    const baseUrl = window.location.origin;
-    const externalLink = `${baseUrl}/public/pages/event-details.html?event=${tag}&client=${clientName}`;
+  // Generate external link
+  const baseUrl = window.location.origin;
+  const externalLink = `${baseUrl}/public/pages/event-details.html?event=${tag}&client=${clientName}`;
 
-    // Update fields
-    document.getElementById('eventTagField').value = tag;
-    document.getElementById('eventLinkField').value = externalLink;
+  // Update fields
+  document.getElementById("eventTagField").value = tag;
+  document.getElementById("eventLinkField").value = externalLink;
 }
 
 async function handleGoogleCalendarSchedule(e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    const isGoogleCalendar = e.submitter && e.submitter.textContent.includes('Schedule via Google Calendar');
-    const formData = new FormData(e.target);
+  const isGoogleCalendar =
+    e.submitter &&
+    e.submitter.textContent.includes("Schedule via Google Calendar");
+  const formData = new FormData(e.target);
 
-    if (isGoogleCalendar) {
-        formData.set('status', 'draft');
-        const now = new Date();
-        const startDateTime = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
-        const endDateTime = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
-        formData.set('event_start', startDateTime);
-        formData.set('event_end', endDateTime);
-        formData.set('event_date', startDateTime.slice(0, 10));
-        formData.set('event_time', startDateTime.slice(11, 16));
+  if (isGoogleCalendar) {
+    formData.set("status", "draft");
+    const now = new Date();
+    const startDateTime = new Date(
+      now.getTime() + 60 * 60 * 1000,
+    ).toISOString();
+    const endDateTime = new Date(
+      now.getTime() + 2 * 60 * 60 * 1000,
+    ).toISOString();
+    formData.set("event_start", startDateTime);
+    formData.set("event_end", endDateTime);
+    formData.set("event_date", startDateTime.slice(0, 10));
+    formData.set("event_time", startDateTime.slice(11, 16));
+  }
+
+  const perStateTextareas = document.querySelectorAll(
+    "#perStateAddressContainer textarea[data-state]",
+  );
+  if (perStateTextareas.length > 0) {
+    const locations = Array.from(perStateTextareas)
+      .map((ta) => ({
+        state: ta.dataset.state,
+        address: ta.value.trim(),
+      }))
+      .filter((l) => l.state);
+
+    if (locations.length > 0) {
+      const missing = locations.filter((l) => !l.address);
+      if (missing.length > 0) {
+        showNotification(
+          `Please enter the venue address for: ${missing.map((l) => l.state).join(", ")}`,
+          "error",
+        );
+        return;
+      }
+      formData.set("locations_json", JSON.stringify(locations));
+      if (locations[0] && !formData.get("address")) {
+        formData.set("address", locations[0].address);
+      }
     }
-
-    const perStateTextareas = document.querySelectorAll('#perStateAddressContainer textarea[data-state]');
-    if (perStateTextareas.length > 0) {
-        const locations = Array.from(perStateTextareas).map(ta => ({
-            state: ta.dataset.state,
-            address: ta.value.trim()
-        })).filter(l => l.state);
-
-        if (locations.length > 0) {
-            const missing = locations.filter(l => !l.address);
-            if (missing.length > 0) {
-                showNotification(`Please enter the venue address for: ${missing.map(l => l.state).join(', ')}`, 'error');
-                return;
-            }
-            formData.set('locations_json', JSON.stringify(locations));
-            if (locations[0] && !formData.get('address')) {
-                formData.set('address', locations[0].address);
-            }
-        }
-    } else {
-        const singleState = formData.get('state') || '';
-        const singleAddr = formData.get('address') || '';
-        if (singleState && singleAddr) {
-            formData.set('locations_json', JSON.stringify([{ state: singleState, address: singleAddr }]));
-        }
+  } else {
+    const singleState = formData.get("state") || "";
+    const singleAddr = formData.get("address") || "";
+    if (singleState && singleAddr) {
+      formData.set(
+        "locations_json",
+        JSON.stringify([{ state: singleState, address: singleAddr }]),
+      );
     }
+  }
 
-    const eventId = e.target.getAttribute('data-event-id');
-    if (eventId) {
-        formData.append('event_id', eventId);
-    }
+  const eventId = e.target.getAttribute("data-event-id");
+  if (eventId) {
+    formData.append("event_id", eventId);
+  }
 
-    const endpoint = eventId ? '/api/events/update-event.php' : '/api/events/create-event.php';
-    const submitBtn = e.submitter || e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = isGoogleCalendar ? 'Connecting to Google...' : 'Saving...';
-    submitBtn.disabled = true;
+  const endpoint = eventId
+    ? "/api/events/update-event.php"
+    : "/api/events/create-event.php";
+  const submitBtn =
+    e.submitter || e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = isGoogleCalendar
+    ? "Connecting to Google..."
+    : "Saving...";
+  submitBtn.disabled = true;
 
-    if (isGoogleCalendar) {
-        try {
-            const configResponse = await apiFetch('/api/config/get-google-config.php');
-            const configResult = await configResponse.json();
-            if (!configResult.success || !configResult.client_id) {
-                throw new Error(configResult.message || 'Google Calendar is not configured');
+  if (isGoogleCalendar) {
+    try {
+      const configResponse = await apiFetch(
+        "/api/config/get-google-config.php",
+      );
+      const configResult = await configResponse.json();
+      if (!configResult.success || !configResult.client_id) {
+        throw new Error(
+          configResult.message || "Google Calendar is not configured",
+        );
+      }
+
+      if (!window.google?.accounts?.oauth2) {
+        await new Promise((resolve, reject) => {
+          if (document.getElementById("google-gsi-script")) {
+            const check = () => {
+              if (window.google?.accounts?.oauth2) resolve();
+              else setTimeout(check, 200);
+            };
+            check();
+            return;
+          }
+          const script = document.createElement("script");
+          script.id = "google-gsi-script";
+          script.src = "https://accounts.google.com/gsi/client";
+          script.async = true;
+          script.defer = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Google SDK failed to load"));
+          document.head.appendChild(script);
+        });
+      }
+
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: configResult.client_id,
+        scope: "https://www.googleapis.com/auth/calendar.events",
+        callback: async (tokenResponse) => {
+          try {
+            if (tokenResponse.error) {
+              throw new Error(
+                tokenResponse.error_description ||
+                  "Google authorization was cancelled",
+              );
             }
-
-            if (!window.google?.accounts?.oauth2) {
-                await new Promise((resolve, reject) => {
-                    if (document.getElementById('google-gsi-script')) {
-                        const check = () => {
-                            if (window.google?.accounts?.oauth2) resolve(); else setTimeout(check, 200);
-                        };
-                        check();
-                        return;
-                    }
-                    const script = document.createElement('script');
-                    script.id = 'google-gsi-script';
-                    script.src = 'https://accounts.google.com/gsi/client';
-                    script.async = true;
-                    script.defer = true;
-                    script.onload = () => resolve();
-                    script.onerror = () => reject(new Error('Google SDK failed to load'));
-                    document.head.appendChild(script);
-                });
-            }
-
-            const tokenClient = window.google.accounts.oauth2.initTokenClient({
-                client_id: configResult.client_id,
-                scope: 'https://www.googleapis.com/auth/calendar.events',
-                callback: async (tokenResponse) => {
-                    try {
-                        if (tokenResponse.error) {
-                            throw new Error(tokenResponse.error_description || 'Google authorization was cancelled');
-                        }
-                        formData.set('access_token', tokenResponse.access_token);
-                        const response = await apiFetch(endpoint, {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const result = await response.json();
-                        if (result.success) {
-                            showNotification(eventId ? 'Event updated successfully!' : 'Event created successfully and queued in Google Calendar.', 'success');
-                            clearFormState('createEventForm');
-                            closeCreateEventModal();
-                            setTimeout(() => window.location.reload(), 1000);
-                        } else {
-                            showNotification((eventId ? 'Failed to update event: ' : 'Failed to create event: ') + result.message, 'error');
-                            submitBtn.textContent = originalText;
-                            submitBtn.disabled = false;
-                        }
-                    } catch (error) {
-                        showNotification(error.message || (eventId ? 'An error occurred while updating event' : 'An error occurred while creating event'), 'error');
-                        submitBtn.textContent = originalText;
-                        submitBtn.disabled = false;
-                    }
-                }
-            });
-
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        } catch (error) {
-            showNotification(error.message || 'Unable to connect Google Calendar right now.', 'error');
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-        }
-    } else {
-        try {
+            formData.set("access_token", tokenResponse.access_token);
             const response = await apiFetch(endpoint, {
-                method: 'POST',
-                body: formData
+              method: "POST",
+              body: formData,
             });
             const result = await response.json();
             if (result.success) {
-                showNotification(eventId ? 'Event updated successfully!' : 'Event created successfully!', 'success');
-                clearFormState('createEventForm');
-                closeCreateEventModal();
-                setTimeout(() => window.location.reload(), 1000);
+              showNotification(
+                eventId
+                  ? "Event updated successfully!"
+                  : "Event created successfully and queued in Google Calendar.",
+                "success",
+              );
+              clearFormState("createEventForm");
+              closeCreateEventModal();
+              setTimeout(() => window.location.reload(), 1000);
             } else {
-                showNotification((eventId ? 'Failed to update event: ' : 'Failed to create event: ') + result.message, 'error');
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
+              showNotification(
+                (eventId
+                  ? "Failed to update event: "
+                  : "Failed to create event: ") + result.message,
+                "error",
+              );
+              submitBtn.textContent = originalText;
+              submitBtn.disabled = false;
             }
-        } catch (error) {
-            showNotification(error.message || (eventId ? 'An error occurred while updating event' : 'An error occurred while creating event'), 'error');
+          } catch (error) {
+            showNotification(
+              error.message ||
+                (eventId
+                  ? "An error occurred while updating event"
+                  : "An error occurred while creating event"),
+              "error",
+            );
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
-        }
+          }
+        },
+      });
+
+      tokenClient.requestAccessToken({ prompt: "consent" });
+    } catch (error) {
+      showNotification(
+        error.message || "Unable to connect Google Calendar right now.",
+        "error",
+      );
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
     }
+  } else {
+    try {
+      const response = await apiFetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success) {
+        showNotification(
+          eventId
+            ? "Event updated successfully!"
+            : "Event created successfully!",
+          "success",
+        );
+        clearFormState("createEventForm");
+        closeCreateEventModal();
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        showNotification(
+          (eventId ? "Failed to update event: " : "Failed to create event: ") +
+            result.message,
+          "error",
+        );
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    } catch (error) {
+      showNotification(
+        error.message ||
+          (eventId
+            ? "An error occurred while updating event"
+            : "An error occurred while creating event"),
+        "error",
+      );
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  }
 }
 
 // Make functions globally available
@@ -1066,7 +1288,6 @@ window.closeCreateEventModal = closeCreateEventModal;
 window.previewEventImage = previewEventImage;
 window.generateEventTagAndLink = generateEventTagAndLink;
 
-
 // Global Material DatePicker Logic
 window.mdpCurrentDate = new Date();
 window.mdpSelectedDate = null;
@@ -1074,135 +1295,174 @@ window.mdpToday = new Date();
 window.mdpToday.setHours(0, 0, 0, 0);
 
 function openMaterialDatePicker() {
-    const dp = document.getElementById('materialDatePicker');
-    const display = document.getElementById('customDateDisplay');
-    if (!dp) return;
-    dp.classList.add('active');
-    if (display) display.setAttribute('aria-expanded', 'true');
-    if (!window.mdpSelectedDate) window.mdpSelectedDate = new Date();
-    window.mdpCurrentDate = new Date(window.mdpSelectedDate);
-    renderMaterialDatePicker();
-    const firstDay = dp.querySelector('.mdp-day:not(.disabled)');
-    if (firstDay) firstDay.focus();
+  const dp = document.getElementById("materialDatePicker");
+  const display = document.getElementById("customDateDisplay");
+  if (!dp) return;
+  dp.classList.add("active");
+  if (display) display.setAttribute("aria-expanded", "true");
+  if (!window.mdpSelectedDate) window.mdpSelectedDate = new Date();
+  window.mdpCurrentDate = new Date(window.mdpSelectedDate);
+  renderMaterialDatePicker();
+  const firstDay = dp.querySelector(".mdp-day:not(.disabled)");
+  if (firstDay) firstDay.focus();
 }
 
 function closeMaterialDatePicker() {
-    const dp = document.getElementById('materialDatePicker');
-    const display = document.getElementById('customDateDisplay');
-    dp.classList.remove('active');
-    if (display) {
-        display.setAttribute('aria-expanded', 'false');
-        display.focus();
-    }
+  const dp = document.getElementById("materialDatePicker");
+  const display = document.getElementById("customDateDisplay");
+  dp.classList.remove("active");
+  if (display) {
+    display.setAttribute("aria-expanded", "false");
+    display.focus();
+  }
 }
 
 function mdpChangeMonth(delta) {
-    window.mdpCurrentDate.setMonth(window.mdpCurrentDate.getMonth() + delta);
-    renderMaterialDatePicker();
+  window.mdpCurrentDate.setMonth(window.mdpCurrentDate.getMonth() + delta);
+  renderMaterialDatePicker();
 }
 
 function selectMdpDate(year, month, date) {
-    const selected = new Date(year, month, date);
-    if (selected < window.mdpToday) return; // Previous days not accessible
-    window.mdpSelectedDate = selected;
-    renderMaterialDatePicker();
+  const selected = new Date(year, month, date);
+  if (selected < window.mdpToday) return; // Previous days not accessible
+  window.mdpSelectedDate = selected;
+  renderMaterialDatePicker();
 
-    // Auto-confirm on click for smoother experience
-    setTimeout(() => {
-        confirmMaterialDatePicker();
-    }, 100);
+  // Auto-confirm on click for smoother experience
+  setTimeout(() => {
+    confirmMaterialDatePicker();
+  }, 100);
 }
 
 function confirmMaterialDatePicker() {
-    if (window.mdpSelectedDate) {
-        // Format YYYY-MM-DD for input value
-        const yyyy = window.mdpSelectedDate.getFullYear();
-        const mm = String(window.mdpSelectedDate.getMonth() + 1).padStart(2, '0');
-        const dd = String(window.mdpSelectedDate.getDate()).padStart(2, '0');
+  if (window.mdpSelectedDate) {
+    // Format YYYY-MM-DD for input value
+    const yyyy = window.mdpSelectedDate.getFullYear();
+    const mm = String(window.mdpSelectedDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(window.mdpSelectedDate.getDate()).padStart(2, "0");
 
-        const dateInput = document.getElementById('eventDateInput');
-        dateInput.value = `${yyyy}-${mm}-${dd}`;
-        dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const dateInput = document.getElementById("eventDateInput");
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+    dateInput.dispatchEvent(new Event("input", { bubbles: true }));
 
-        // Enforce time limits if selecting today
-        const timeInput = document.getElementById('eventTimeInput');
-        if (timeInput) {
-            const todayY = window.mdpToday.getFullYear();
-            const todayM = String(window.mdpToday.getMonth() + 1).padStart(2, '0');
-            const todayD = String(window.mdpToday.getDate()).padStart(2, '0');
-            const todayStr = `${todayY}-${todayM}-${todayD}`;
-            
-            if (dateInput.value === todayStr) {
-                const now = new Date();
-                timeInput.dataset.minTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-            } else {
-                delete timeInput.dataset.minTime;
-            }
-            // Trigger time display update if already selected
-            const timeContainer = document.getElementById('eventTimePickerContainer');
-            if (timeContainer && timeInput.value) {
-                _updateTimeDisplay('eventTimePickerContainer');
-            }
-        }
+    // Enforce time limits if selecting today
+    const timeInput = document.getElementById("eventTimeInput");
+    if (timeInput) {
+      const todayY = window.mdpToday.getFullYear();
+      const todayM = String(window.mdpToday.getMonth() + 1).padStart(2, "0");
+      const todayD = String(window.mdpToday.getDate()).padStart(2, "0");
+      const todayStr = `${todayY}-${todayM}-${todayD}`;
 
-        // Format display
-        const displayOpts = { month: 'long', day: 'numeric', year: 'numeric' };
-        const displayInput = document.getElementById('customDateDisplay');
-        displayInput.value = window.mdpSelectedDate.toLocaleDateString('en-US', displayOpts);
-        displayInput.dispatchEvent(new Event('input', { bubbles: true }));
+      if (dateInput.value === todayStr) {
+        const now = new Date();
+        timeInput.dataset.minTime =
+          String(now.getHours()).padStart(2, "0") +
+          ":" +
+          String(now.getMinutes()).padStart(2, "0");
+      } else {
+        delete timeInput.dataset.minTime;
+      }
+      // Trigger time display update if already selected
+      const timeContainer = document.getElementById("eventTimePickerContainer");
+      if (timeContainer && timeInput.value) {
+        _updateTimeDisplay("eventTimePickerContainer");
+      }
     }
-    closeMaterialDatePicker();
+
+    // Format display
+    const displayOpts = { month: "long", day: "numeric", year: "numeric" };
+    const displayInput = document.getElementById("customDateDisplay");
+    displayInput.value = window.mdpSelectedDate.toLocaleDateString(
+      "en-US",
+      displayOpts,
+    );
+    displayInput.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  closeMaterialDatePicker();
 }
 
 function renderMaterialDatePicker() {
-    const year = window.mdpCurrentDate.getFullYear();
-    const month = window.mdpCurrentDate.getMonth();
+  const year = window.mdpCurrentDate.getFullYear();
+  const month = window.mdpCurrentDate.getMonth();
 
-    // Update header (if selected date exists, use it, else current)
-    const refDate = window.mdpSelectedDate || window.mdpCurrentDate;
-    document.getElementById('mdpYear').textContent = refDate.getFullYear();
-    const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    document.getElementById('mdpDateDisplay').textContent = `${shortDays[refDate.getDay()]}, ${shortMonths[refDate.getMonth()]} ${refDate.getDate()}`;
+  // Update header (if selected date exists, use it, else current)
+  const refDate = window.mdpSelectedDate || window.mdpCurrentDate;
+  document.getElementById("mdpYear").textContent = refDate.getFullYear();
+  const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const shortMonths = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  document.getElementById("mdpDateDisplay").textContent =
+    `${shortDays[refDate.getDay()]}, ${shortMonths[refDate.getMonth()]} ${refDate.getDate()}`;
 
-    // Month Year display
-    const longMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    document.getElementById('mdpMonthYear').textContent = `${longMonths[month]} ${year}`;
+  // Month Year display
+  const longMonths = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  document.getElementById("mdpMonthYear").textContent =
+    `${longMonths[month]} ${year}`;
 
-    // generate grid
-    const grid = document.getElementById('mdpDaysGrid');
+  // generate grid
+  const grid = document.getElementById("mdpDaysGrid");
 
-    let html = '';
-    ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
-        html += `<div class="mdp-day-header">${d}</div>`;
-    });
+  let html = "";
+  ["S", "M", "T", "W", "T", "F", "S"].forEach((d) => {
+    html += `<div class="mdp-day-header">${d}</div>`;
+  });
 
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    for (let i = 0; i < firstDay; i++) {
-        html += `<div></div>`;
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(year, month, d);
+    const isPast = dateObj < window.mdpToday;
+
+    let classes = "mdp-day";
+    if (isPast) classes += " disabled";
+
+    if (
+      window.mdpSelectedDate &&
+      window.mdpSelectedDate.getFullYear() === year &&
+      window.mdpSelectedDate.getMonth() === month &&
+      window.mdpSelectedDate.getDate() === d
+    ) {
+      classes += " selected";
     }
 
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateObj = new Date(year, month, d);
-        const isPast = dateObj < window.mdpToday;
-
-        let classes = 'mdp-day';
-        if (isPast) classes += ' disabled';
-
-        if (window.mdpSelectedDate && window.mdpSelectedDate.getFullYear() === year && window.mdpSelectedDate.getMonth() === month && window.mdpSelectedDate.getDate() === d) {
-            classes += ' selected';
-        }
-
-        if (isPast) {
-            html += `<div class="${classes}" aria-disabled="true">${d}</div>`;
-        } else {
-            html += `<div class="${classes}" role="button" tabindex="0" aria-label="${longMonths[month]} ${d}, ${year}" onclick="selectMdpDate(${year}, ${month}, ${d})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectMdpDate(${year}, ${month}, ${d});}">${d}</div>`;
-        }
+    if (isPast) {
+      html += `<div class="${classes}" aria-disabled="true">${d}</div>`;
+    } else {
+      html += `<div class="${classes}" role="button" tabindex="0" aria-label="${longMonths[month]} ${d}, ${year}" onclick="selectMdpDate(${year}, ${month}, ${d})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectMdpDate(${year}, ${month}, ${d});}">${d}</div>`;
     }
+  }
 
-    grid.innerHTML = html;
+  grid.innerHTML = html;
 }
 
 window.openMaterialDatePicker = openMaterialDatePicker;
@@ -1213,93 +1473,105 @@ window.confirmMaterialDatePicker = confirmMaterialDatePicker;
 
 // ── Time Picker Functions ────────────────────────────────────────────────────
 function toggleTimePicker(dropdownId) {
-    const dropdown = document.getElementById(dropdownId);
-    if (!dropdown) return;
-    const isOpen = dropdown.classList.contains('active');
-    // close all time dropdowns first
-    document.querySelectorAll('.time-picker-dropdown.active').forEach(d => d.classList.remove('active'));
-    if (!isOpen) {
-        dropdown.classList.add('active');
-        const closeOnOutside = (e) => {
-            if (!dropdown.closest('.time-picker-container').contains(e.target)) {
-                dropdown.classList.remove('active');
-                document.removeEventListener('click', closeOnOutside);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closeOnOutside), 10);
-    }
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+  const isOpen = dropdown.classList.contains("active");
+  // close all time dropdowns first
+  document
+    .querySelectorAll(".time-picker-dropdown.active")
+    .forEach((d) => d.classList.remove("active"));
+  if (!isOpen) {
+    dropdown.classList.add("active");
+    const closeOnOutside = (e) => {
+      if (!dropdown.closest(".time-picker-container").contains(e.target)) {
+        dropdown.classList.remove("active");
+        document.removeEventListener("click", closeOnOutside);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeOnOutside), 10);
+  }
 }
 
 function _getTimeState(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return {};
-    return {
-        container,
-        display: container.querySelector('[id$="TimeDisplay"]') || container.querySelector('.time-picker-display span'),
-        hiddenInput: container.querySelector('input[type="hidden"]'),
-        hour: container.dataset.hour || null,
-        minute: container.dataset.minute || '00',
-        ampm: container.dataset.ampm || 'AM'
-    };
+  const container = document.getElementById(containerId);
+  if (!container) return {};
+  return {
+    container,
+    display:
+      container.querySelector('[id$="TimeDisplay"]') ||
+      container.querySelector(".time-picker-display span"),
+    hiddenInput: container.querySelector('input[type="hidden"]'),
+    hour: container.dataset.hour || null,
+    minute: container.dataset.minute || "00",
+    ampm: container.dataset.ampm || "AM",
+  };
 }
 
 function _updateTimeDisplay(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const h = container.dataset.hour;
-    const m = container.dataset.minute || '00';
-    const ap = container.dataset.ampm || 'AM';
-    const displayEl = container.querySelector('[id$="TimeDisplay"]') ||
-                      container.querySelector('.time-picker-display > span:first-child');
-    const hiddenInput = container.querySelector('input[type="hidden"]');
-    if (h) {
-        let h24 = parseInt(h);
-        if (ap.toUpperCase() === 'AM' && h24 === 12) h24 = 0;
-        if (ap.toUpperCase() === 'PM' && h24 !== 12) h24 += 12;
-        const selectedTimeStr = `${String(h24).padStart(2,'0')}:${m}`;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const h = container.dataset.hour;
+  const m = container.dataset.minute || "00";
+  const ap = container.dataset.ampm || "AM";
+  const displayEl =
+    container.querySelector('[id$="TimeDisplay"]') ||
+    container.querySelector(".time-picker-display > span:first-child");
+  const hiddenInput = container.querySelector('input[type="hidden"]');
+  if (h) {
+    let h24 = parseInt(h);
+    if (ap.toUpperCase() === "AM" && h24 === 12) h24 = 0;
+    if (ap.toUpperCase() === "PM" && h24 !== 12) h24 += 12;
+    const selectedTimeStr = `${String(h24).padStart(2, "0")}:${m}`;
 
-        // Reject past time if today is selected
-        const minTime = hiddenInput ? hiddenInput.dataset.minTime : null;
-        if (minTime && selectedTimeStr < minTime) {
-            if (displayEl) displayEl.textContent = 'Select a future time';
-            if (hiddenInput) hiddenInput.value = '';
-            return;
-        }
-
-        const text = `${h}:${m} ${ap}`;
-        if (displayEl) displayEl.textContent = text;
-        if (hiddenInput) hiddenInput.value = selectedTimeStr;
+    // Reject past time if today is selected
+    const minTime = hiddenInput ? hiddenInput.dataset.minTime : null;
+    if (minTime && selectedTimeStr < minTime) {
+      if (displayEl) displayEl.textContent = "Select a future time";
+      if (hiddenInput) hiddenInput.value = "";
+      return;
     }
+
+    const text = `${h}:${m} ${ap}`;
+    if (displayEl) displayEl.textContent = text;
+    if (hiddenInput) hiddenInput.value = selectedTimeStr;
+  }
 }
 
 function selectHour(h, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.dataset.hour = h;
-    container.querySelectorAll('.time-picker-grid.hours .time-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.trim() == h);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.dataset.hour = h;
+  container
+    .querySelectorAll(".time-picker-grid.hours .time-btn")
+    .forEach((btn) => {
+      btn.classList.toggle("active", btn.textContent.trim() == h);
     });
-    _updateTimeDisplay(containerId);
+  _updateTimeDisplay(containerId);
 }
 
 function selectMinute(m, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.dataset.minute = m;
-    container.querySelectorAll('.time-picker-grid.minutes .time-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.trim() == m);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.dataset.minute = m;
+  container
+    .querySelectorAll(".time-picker-grid.minutes .time-btn")
+    .forEach((btn) => {
+      btn.classList.toggle("active", btn.textContent.trim() == m);
     });
-    _updateTimeDisplay(containerId);
+  _updateTimeDisplay(containerId);
 }
 
 function selectAmPm(val, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.dataset.ampm = val.toUpperCase();
-    container.querySelectorAll('.ampm-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.trim().toUpperCase() === val.toUpperCase());
-    });
-    _updateTimeDisplay(containerId);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.dataset.ampm = val.toUpperCase();
+  container.querySelectorAll(".ampm-btn").forEach((btn) => {
+    btn.classList.toggle(
+      "active",
+      btn.textContent.trim().toUpperCase() === val.toUpperCase(),
+    );
+  });
+  _updateTimeDisplay(containerId);
 }
 
 window.toggleTimePicker = toggleTimePicker;
@@ -1311,71 +1583,77 @@ window.selectAmPm = selectAmPm;
  * Multi-select State Logic
  */
 function toggleStateSelect() {
-    const dropdown = document.getElementById('stateSelectDropdown');
-    const display = document.getElementById('stateSelectDisplay');
-    if (!dropdown || !display) return;
+  const dropdown = document.getElementById("stateSelectDropdown");
+  const display = document.getElementById("stateSelectDisplay");
+  if (!dropdown || !display) return;
 
-    // Close time picker if open
-    const timeDropdown = document.getElementById('eventTimePickerDropdown');
-    if (timeDropdown) timeDropdown.classList.remove('active');
+  // Close time picker if open
+  const timeDropdown = document.getElementById("eventTimePickerDropdown");
+  if (timeDropdown) timeDropdown.classList.remove("active");
 
-    dropdown.classList.toggle('active');
-    display.classList.toggle('active');
+  dropdown.classList.toggle("active");
+  display.classList.toggle("active");
 
-    if (dropdown.classList.contains('active')) {
-        const closeDropdown = (e) => {
-            const container = document.getElementById('stateSelectContainer');
-            if (!container) {
-                document.removeEventListener('click', closeDropdown);
-                return;
-            }
-            if (!container.contains(e.target)) {
-                dropdown.classList.remove('active');
-                display.classList.remove('active');
-                document.removeEventListener('click', closeDropdown);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closeDropdown), 10);
-    }
+  if (dropdown.classList.contains("active")) {
+    const closeDropdown = (e) => {
+      const container = document.getElementById("stateSelectContainer");
+      if (!container) {
+        document.removeEventListener("click", closeDropdown);
+        return;
+      }
+      if (!container.contains(e.target)) {
+        dropdown.classList.remove("active");
+        display.classList.remove("active");
+        document.removeEventListener("click", closeDropdown);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeDropdown), 10);
+  }
 }
 
 function updateSelectedStates() {
-    const checkboxes = document.querySelectorAll('.state-checkbox:checked');
-    const selectedValues = Array.from(checkboxes).map(cb => cb.value);
-    const displaySpan = document.getElementById('selectedStatesText');
-    const hiddenInput = document.getElementById('eventStateInput');
+  const checkboxes = document.querySelectorAll(".state-checkbox:checked");
+  const selectedValues = Array.from(checkboxes).map((cb) => cb.value);
+  const displaySpan = document.getElementById("selectedStatesText");
+  const hiddenInput = document.getElementById("eventStateInput");
 
-    if (selectedValues.length === 0) {
-        displaySpan.textContent = 'Select State(s)';
-        displaySpan.style.color = '#9ca3af';
-        hiddenInput.value = '';
-    } else {
-        displaySpan.textContent = selectedValues.join(', ');
-        displaySpan.style.color = '#334155';
-        hiddenInput.value = selectedValues.join(',');
-    }
+  if (selectedValues.length === 0) {
+    displaySpan.textContent = "Select State(s)";
+    displaySpan.style.color = "#9ca3af";
+    hiddenInput.value = "";
+  } else {
+    displaySpan.textContent = selectedValues.join(", ");
+    displaySpan.style.color = "#334155";
+    hiddenInput.value = selectedValues.join(",");
+  }
 
-    // Trigger input event for persistence
-    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+  // Trigger input event for persistence
+  hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
 
-    // ── Address textarea enable / disable logic ───────────────────────────────
-    // Enable  : no selection, exactly 1 state, or "All States" is chosen.
-    // Disable : 2+ individual states are selected (per-state fields are used instead).
-    const mainAddressTextarea = document.querySelector('#createEventForm textarea[name="address"]');
-    if (mainAddressTextarea) {
-        const hasMultipleIndividual =
-            selectedValues.length > 1 && !selectedValues.includes('All States');
-        mainAddressTextarea.disabled = hasMultipleIndividual;
-        mainAddressTextarea.style.background = hasMultipleIndividual ? '#f3f4f6' : 'white';
-        mainAddressTextarea.style.cursor = hasMultipleIndividual ? 'not-allowed' : 'text';
-        mainAddressTextarea.style.opacity = hasMultipleIndividual ? '0.6' : '1';
-        mainAddressTextarea.placeholder = hasMultipleIndividual
-            ? 'Using per-state addresses below…'
-            : 'Street address, landmarks…';
-    }
+  // ── Address textarea enable / disable logic ───────────────────────────────
+  // Enable  : no selection, exactly 1 state, or "All States" is chosen.
+  // Disable : 2+ individual states are selected (per-state fields are used instead).
+  const mainAddressTextarea = document.querySelector(
+    '#createEventForm textarea[name="address"]',
+  );
+  if (mainAddressTextarea) {
+    const hasMultipleIndividual =
+      selectedValues.length > 1 && !selectedValues.includes("All States");
+    mainAddressTextarea.disabled = hasMultipleIndividual;
+    mainAddressTextarea.style.background = hasMultipleIndividual
+      ? "#f3f4f6"
+      : "white";
+    mainAddressTextarea.style.cursor = hasMultipleIndividual
+      ? "not-allowed"
+      : "text";
+    mainAddressTextarea.style.opacity = hasMultipleIndividual ? "0.6" : "1";
+    mainAddressTextarea.placeholder = hasMultipleIndividual
+      ? "Using per-state addresses below…"
+      : "Street address, landmarks…";
+  }
 
-    // Inject per-state address fields if multiple states are selected
-    renderPerStateAddressFields(selectedValues);
+  // Inject per-state address fields if multiple states are selected
+  renderPerStateAddressFields(selectedValues);
 }
 
 /**
@@ -1384,33 +1662,35 @@ function updateSelectedStates() {
  * collected and serialised as a `locations` JSON blob on submit.
  */
 function renderPerStateAddressFields(states) {
-    const container = document.getElementById('perStateAddressContainer');
-    if (!container) return;
+  const container = document.getElementById("perStateAddressContainer");
+  if (!container) return;
 
-    if (!states || states.length <= 1) {
-        container.innerHTML = '';
-        container.style.display = 'none';
-        return;
-    }
+  if (!states || states.length <= 1) {
+    container.innerHTML = "";
+    container.style.display = "none";
+    return;
+  }
 
-    container.style.display = 'block';
+  container.style.display = "block";
 
-    // Preserve existing values before re-render
-    const existing = {};
-    const existingDate = {};
-    const existingTime = {};
-    const customizeDatesWasChecked = container.querySelector('#customizeDatesPerStateCheckbox')?.checked || false;
-    container.querySelectorAll('textarea[data-state]').forEach(ta => {
-        existing[ta.dataset.state] = ta.value;
-    });
-    container.querySelectorAll('input[data-date-state]').forEach(inp => {
-        existingDate[inp.dataset.dateState] = inp.value;
-    });
-    container.querySelectorAll('input[data-time-state]').forEach(inp => {
-        existingTime[inp.dataset.timeState] = inp.value;
-    });
+  // Preserve existing values before re-render
+  const existing = {};
+  const existingDate = {};
+  const existingTime = {};
+  const customizeDatesWasChecked =
+    container.querySelector("#customizeDatesPerStateCheckbox")?.checked ||
+    false;
+  container.querySelectorAll("textarea[data-state]").forEach((ta) => {
+    existing[ta.dataset.state] = ta.value;
+  });
+  container.querySelectorAll("input[data-date-state]").forEach((inp) => {
+    existingDate[inp.dataset.dateState] = inp.value;
+  });
+  container.querySelectorAll("input[data-time-state]").forEach((inp) => {
+    existingTime[inp.dataset.timeState] = inp.value;
+  });
 
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="per-state-section">
             <div class="per-state-header">
                 <span class="per-state-icon">📍</span>
@@ -1420,13 +1700,14 @@ function renderPerStateAddressFields(states) {
                 </div>
             </div>
             <label class="per-state-toggle">
-                <input type="checkbox" id="customizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? 'checked' : ''} onchange="togglePerStateDateTimeFields()">
+                <input type="checkbox" id="customizeDatesPerStateCheckbox" ${customizeDatesWasChecked ? "checked" : ""} onchange="togglePerStateDateTimeFields()">
                 <span>Use different dates &amp; times per state</span>
             </label>
             <div class="per-state-cards">
-        ${states.map(state => {
-        const sid = state.replace(/\s+/g, '_');
-        return `
+        ${states
+          .map((state) => {
+            const sid = state.replace(/\s+/g, "_");
+            return `
             <div class="per-state-card">
                 <div class="per-state-card-head">
                     <span class="per-state-badge">${escapeHTML(state)}</span>
@@ -1441,8 +1722,8 @@ function renderPerStateAddressFields(states) {
                     rows="2"
                     required
                     class="per-state-address-input"
-                >${existing[state] || ''}</textarea>
-                <div class="per-state-datetime" style="display:${customizeDatesWasChecked ? 'grid' : 'none'};">
+                >${existing[state] || ""}</textarea>
+                <div class="per-state-datetime" style="display:${customizeDatesWasChecked ? "grid" : "none"};">
                     <div class="per-state-field">
                         <label for="psDateDisp_${sid}">Date</label>
                         <div class="per-state-date-wrap">
@@ -1450,11 +1731,11 @@ function renderPerStateAddressFields(states) {
                                 role="button" tabindex="0" aria-haspopup="dialog" aria-label="Date for ${escapeHTML(state)}"
                                 onclick="openPerStateDatePicker('${sid}')"
                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPerStateDatePicker('${sid}');}"
-                                value="${existingDate[state] || ''}"
+                                value="${existingDate[state] || ""}"
                                 class="per-state-date-display">
                             <span aria-hidden="true">📅</span>
                         </div>
-                        <input type="hidden" data-date-state="${state}" id="psDateVal_${sid}" value="${existingDate[state] || ''}">
+                        <input type="hidden" data-date-state="${state}" id="psDateVal_${sid}" value="${existingDate[state] || ""}">
                         <div id="psMDP_${sid}" class="per-state-mdp" role="dialog" aria-modal="true" aria-label="Choose date for ${escapeHTML(state)}">
                             <div class="per-state-mdp-head">
                                 <div id="psMDPYear_${sid}"></div>
@@ -1484,11 +1765,11 @@ function renderPerStateAddressFields(states) {
                             <div id="psTD_${sid}" class="time-picker-dropdown">
                                 <div class="time-picker-section">
                                     <span class="time-picker-label">Hours</span>
-                                    <div class="time-picker-grid hours">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => `<button type="button" class="time-btn" onclick="selectHour('${h}','psTC_${sid}')">${h}</button>`).join('')}</div>
+                                    <div class="time-picker-grid hours">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => `<button type="button" class="time-btn" onclick="selectHour('${h}','psTC_${sid}')">${h}</button>`).join("")}</div>
                                 </div>
                                 <div class="time-picker-section">
                                     <span class="time-picker-label">Minutes</span>
-                                    <div class="time-picker-grid minutes">${['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => `<button type="button" class="time-btn" onclick="selectMinute('${m}','psTC_${sid}')">${m}</button>`).join('')}</div>
+                                    <div class="time-picker-grid minutes">${["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((m) => `<button type="button" class="time-btn" onclick="selectMinute('${m}','psTC_${sid}')">${m}</button>`).join("")}</div>
                                 </div>
                                 <div class="time-picker-section">
                                     <div class="time-picker-ampm">
@@ -1502,182 +1783,237 @@ function renderPerStateAddressFields(states) {
                     </div>
                 </div>
             </div>
-        `}).join('')}
+        `;
+          })
+          .join("")}
             </div>
         </div>
     `;
 
-    // Initialise per-state mini datepickers
-    if (!window._psDPState) window._psDPState = {};
-    states.forEach(state => {
-        const sid = state.replace(/\s+/g, '_');
-        const existing_date = existingDate[state] || null;
-        const now = existing_date ? new Date(existing_date + 'T00:00:00') : new Date();
-        window._psDPState[sid] = { month: now.getMonth(), year: now.getFullYear(), selected: existing_date, temp: existing_date };
-        renderPsDatePicker(sid);
-        if (existing_date) {
-            const d = new Date(existing_date + 'T00:00:00');
-            const dispEl = document.getElementById('psDateDisp_' + sid);
-            const yearEl = document.getElementById('psMDPYear_' + sid);
-            const dateEl = document.getElementById('psMDPDate_' + sid);
-            if (dispEl) dispEl.value = existing_date;
-            if (yearEl) yearEl.textContent = d.getFullYear();
-            if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        }
-    });
+  // Initialise per-state mini datepickers
+  if (!window._psDPState) window._psDPState = {};
+  states.forEach((state) => {
+    const sid = state.replace(/\s+/g, "_");
+    const existing_date = existingDate[state] || null;
+    const now = existing_date
+      ? new Date(existing_date + "T00:00:00")
+      : new Date();
+    window._psDPState[sid] = {
+      month: now.getMonth(),
+      year: now.getFullYear(),
+      selected: existing_date,
+      temp: existing_date,
+    };
+    renderPsDatePicker(sid);
+    if (existing_date) {
+      const d = new Date(existing_date + "T00:00:00");
+      const dispEl = document.getElementById("psDateDisp_" + sid);
+      const yearEl = document.getElementById("psMDPYear_" + sid);
+      const dateEl = document.getElementById("psMDPDate_" + sid);
+      if (dispEl) dispEl.value = existing_date;
+      if (yearEl) yearEl.textContent = d.getFullYear();
+      if (dateEl)
+        dateEl.textContent = d.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        });
+    }
+  });
 }
 
 function openPerStateDatePicker(sid) {
-    document.querySelectorAll('.per-state-mdp').forEach(el => el.classList.remove('open'));
-    const dp = document.getElementById('psMDP_' + sid);
-    if (dp) { dp.classList.add('open'); renderPsDatePicker(sid); }
+  document
+    .querySelectorAll(".per-state-mdp")
+    .forEach((el) => el.classList.remove("open"));
+  const dp = document.getElementById("psMDP_" + sid);
+  if (dp) {
+    dp.classList.add("open");
+    renderPsDatePicker(sid);
+  }
 }
 
 function closePsDatePicker(sid) {
-    const dp = document.getElementById('psMDP_' + sid);
-    if (dp) dp.classList.remove('open');
+  const dp = document.getElementById("psMDP_" + sid);
+  if (dp) dp.classList.remove("open");
 }
 
 function confirmPsDate(sid) {
-    const state = window._psDPState && window._psDPState[sid];
-    if (state && state.temp) {
-        state.selected = state.temp;
-        const valEl = document.getElementById('psDateVal_' + sid);
-        const dispEl = document.getElementById('psDateDisp_' + sid);
-        if (valEl) valEl.value = state.selected;
-        if (dispEl) dispEl.value = state.selected;
-    }
-    closePsDatePicker(sid);
+  const state = window._psDPState && window._psDPState[sid];
+  if (state && state.temp) {
+    state.selected = state.temp;
+    const valEl = document.getElementById("psDateVal_" + sid);
+    const dispEl = document.getElementById("psDateDisp_" + sid);
+    if (valEl) valEl.value = state.selected;
+    if (dispEl) dispEl.value = state.selected;
+  }
+  closePsDatePicker(sid);
 }
 
 function psChangeMonth(sid, delta) {
-    if (!window._psDPState || !window._psDPState[sid]) return;
-    const s = window._psDPState[sid];
-    s.month += delta;
-    if (s.month > 11) { s.month = 0; s.year++; }
-    if (s.month < 0) { s.month = 11; s.year--; }
-    renderPsDatePicker(sid);
+  if (!window._psDPState || !window._psDPState[sid]) return;
+  const s = window._psDPState[sid];
+  s.month += delta;
+  if (s.month > 11) {
+    s.month = 0;
+    s.year++;
+  }
+  if (s.month < 0) {
+    s.month = 11;
+    s.year--;
+  }
+  renderPsDatePicker(sid);
 }
 
 function psDaySelect(sid, dateStr) {
-    if (!window._psDPState || !window._psDPState[sid]) return;
-    const s = window._psDPState[sid];
-    s.temp = dateStr;
-    const d = new Date(dateStr + 'T00:00:00');
-    const yearEl = document.getElementById('psMDPYear_' + sid);
-    const dateEl = document.getElementById('psMDPDate_' + sid);
-    if (yearEl) yearEl.textContent = d.getFullYear();
-    if (dateEl) dateEl.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    renderPsDatePicker(sid);
+  if (!window._psDPState || !window._psDPState[sid]) return;
+  const s = window._psDPState[sid];
+  s.temp = dateStr;
+  const d = new Date(dateStr + "T00:00:00");
+  const yearEl = document.getElementById("psMDPYear_" + sid);
+  const dateEl = document.getElementById("psMDPDate_" + sid);
+  if (yearEl) yearEl.textContent = d.getFullYear();
+  if (dateEl)
+    dateEl.textContent = d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  renderPsDatePicker(sid);
 }
 
 function renderPsDatePicker(sid) {
-    if (!window._psDPState || !window._psDPState[sid]) return;
-    const s = window._psDPState[sid];
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const daysH = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    const myEl = document.getElementById('psMDPMY_' + sid);
-    const gridEl = document.getElementById('psMDPGrid_' + sid);
-    if (!myEl || !gridEl) return;
-    myEl.textContent = `${months[s.month]} ${s.year}`;
-    const firstDay = new Date(s.year, s.month, 1).getDay();
-    const daysInMonth = new Date(s.year, s.month + 1, 0).getDate();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    let html = daysH.map(d => `<div style="font-size:0.65rem;font-weight:700;color:#9ca3af;text-transform:uppercase;padding:2px;">${d}</div>`).join('');
-    for (let i = 0; i < firstDay; i++) html += '<div></div>';
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${s.year}-${String(s.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const isPast = new Date(s.year, s.month, d) < today;
-        const isSel = s.temp === dateStr || s.selected === dateStr;
-        const isToday = new Date(s.year, s.month, d).getTime() === today.getTime();
-        html += `<div onclick="${isPast ? '' : `psDaySelect('${sid}','${dateStr}')`}" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:auto;cursor:${isPast ? 'not-allowed' : 'pointer'};font-size:0.8rem;font-weight:500;${isSel ? 'background:#008080;color:white;' : isToday ? 'border:2px solid #008080;color:#008080;' : isPast ? 'color:#d1d5db;' : 'color:#374151;'}">${d}</div>`;
-    }
-    gridEl.innerHTML = html;
+  if (!window._psDPState || !window._psDPState[sid]) return;
+  const s = window._psDPState[sid];
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const daysH = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const myEl = document.getElementById("psMDPMY_" + sid);
+  const gridEl = document.getElementById("psMDPGrid_" + sid);
+  if (!myEl || !gridEl) return;
+  myEl.textContent = `${months[s.month]} ${s.year}`;
+  const firstDay = new Date(s.year, s.month, 1).getDay();
+  const daysInMonth = new Date(s.year, s.month + 1, 0).getDate();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let html = daysH
+    .map(
+      (d) =>
+        `<div style="font-size:0.65rem;font-weight:700;color:#9ca3af;text-transform:uppercase;padding:2px;">${d}</div>`,
+    )
+    .join("");
+  for (let i = 0; i < firstDay; i++) html += "<div></div>";
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${s.year}-${String(s.month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const isPast = new Date(s.year, s.month, d) < today;
+    const isSel = s.temp === dateStr || s.selected === dateStr;
+    const isToday = new Date(s.year, s.month, d).getTime() === today.getTime();
+    html += `<div onclick="${isPast ? "" : `psDaySelect('${sid}','${dateStr}')`}" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:auto;cursor:${isPast ? "not-allowed" : "pointer"};font-size:0.8rem;font-weight:500;${isSel ? "background:#008080;color:white;" : isToday ? "border:2px solid #008080;color:#008080;" : isPast ? "color:#d1d5db;" : "color:#374151;"}">${d}</div>`;
+  }
+  gridEl.innerHTML = html;
 }
 
 function togglePerStateDateTimeFields() {
-    const checkbox = document.getElementById('customizeDatesPerStateCheckbox');
-    const fields = document.querySelectorAll('#perStateAddressContainer .per-state-datetime');
-    const show = checkbox ? checkbox.checked : false;
-    fields.forEach(f => { f.style.display = show ? 'grid' : 'none'; });
+  const checkbox = document.getElementById("customizeDatesPerStateCheckbox");
+  const fields = document.querySelectorAll(
+    "#perStateAddressContainer .per-state-datetime",
+  );
+  const show = checkbox ? checkbox.checked : false;
+  fields.forEach((f) => {
+    f.style.display = show ? "grid" : "none";
+  });
 
-    // When per-state dates are active, the global date/time fields should be
-    // inaccessible (disabled + visually greyed out) to avoid confusion.
-    const globalDateInput = document.getElementById('customDateDisplay');
-    const globalTimeInput = document.getElementById('eventTimeInput');
-    const globalTimeBtn = document.getElementById('eventTimeDisplayBtn');
+  // When per-state dates are active, the global date/time fields should be
+  // inaccessible (disabled + visually greyed out) to avoid confusion.
+  const globalDateInput = document.getElementById("customDateDisplay");
+  const globalTimeInput = document.getElementById("eventTimeInput");
+  const globalTimeBtn = document.getElementById("eventTimeDisplayBtn");
 
-    if (globalDateInput) {
-        if (show) {
-            globalDateInput.style.backgroundColor = '#f3f4f6';
-            globalDateInput.style.cursor = 'not-allowed';
-            globalDateInput.style.opacity = '0.5';
-            globalDateInput.style.pointerEvents = 'none';
-            globalDateInput.disabled = true;
-        } else {
-            globalDateInput.style.backgroundColor = 'white';
-            globalDateInput.style.cursor = '';
-            globalDateInput.style.opacity = '';
-            globalDateInput.style.pointerEvents = '';
-            globalDateInput.disabled = false;
-        }
+  if (globalDateInput) {
+    if (show) {
+      globalDateInput.style.backgroundColor = "#f3f4f6";
+      globalDateInput.style.cursor = "not-allowed";
+      globalDateInput.style.opacity = "0.5";
+      globalDateInput.style.pointerEvents = "none";
+      globalDateInput.disabled = true;
+    } else {
+      globalDateInput.style.backgroundColor = "white";
+      globalDateInput.style.cursor = "";
+      globalDateInput.style.opacity = "";
+      globalDateInput.style.pointerEvents = "";
+      globalDateInput.disabled = false;
     }
-    if (globalTimeInput) {
-        if (show) {
-            globalTimeInput.style.backgroundColor = '#f3f4f6';
-            globalTimeInput.style.cursor = 'not-allowed';
-            globalTimeInput.style.opacity = '0.5';
-            globalTimeInput.style.pointerEvents = 'none';
-            globalTimeInput.disabled = true;
-        } else {
-            globalTimeInput.style.backgroundColor = 'white';
-            globalTimeInput.style.cursor = '';
-            globalTimeInput.style.opacity = '';
-            globalTimeInput.style.pointerEvents = '';
-            globalTimeInput.disabled = false;
-        }
+  }
+  if (globalTimeInput) {
+    if (show) {
+      globalTimeInput.style.backgroundColor = "#f3f4f6";
+      globalTimeInput.style.cursor = "not-allowed";
+      globalTimeInput.style.opacity = "0.5";
+      globalTimeInput.style.pointerEvents = "none";
+      globalTimeInput.disabled = true;
+    } else {
+      globalTimeInput.style.backgroundColor = "white";
+      globalTimeInput.style.cursor = "";
+      globalTimeInput.style.opacity = "";
+      globalTimeInput.style.pointerEvents = "";
+      globalTimeInput.disabled = false;
     }
-    if (globalTimeBtn) {
-        if (show) {
-            globalTimeBtn.style.backgroundColor = '#f3f4f6';
-            globalTimeBtn.style.cursor = 'not-allowed';
-            globalTimeBtn.style.opacity = '0.5';
-            globalTimeBtn.style.pointerEvents = 'none';
-        } else {
-            globalTimeBtn.style.backgroundColor = 'white';
-            globalTimeBtn.style.cursor = 'pointer';
-            globalTimeBtn.style.opacity = '';
-            globalTimeBtn.style.pointerEvents = '';
-        }
-        globalTimeBtn.disabled = show;
+  }
+  if (globalTimeBtn) {
+    if (show) {
+      globalTimeBtn.style.backgroundColor = "#f3f4f6";
+      globalTimeBtn.style.cursor = "not-allowed";
+      globalTimeBtn.style.opacity = "0.5";
+      globalTimeBtn.style.pointerEvents = "none";
+    } else {
+      globalTimeBtn.style.backgroundColor = "white";
+      globalTimeBtn.style.cursor = "pointer";
+      globalTimeBtn.style.opacity = "";
+      globalTimeBtn.style.pointerEvents = "";
     }
-    if (globalDateInput) globalDateInput.required = !show;
-    if (globalTimeInput) {
-        globalTimeInput.required = !show;
-        if (show) {
-            globalTimeInput.style.backgroundColor = '#f3f4f6';
-            globalTimeInput.style.cursor = 'not-allowed';
-            globalTimeInput.style.opacity = '0.5';
-            globalTimeInput.style.pointerEvents = 'none';
-        } else {
-            globalTimeInput.style.backgroundColor = '';
-            globalTimeInput.style.cursor = '';
-            globalTimeInput.style.opacity = '';
-            globalTimeInput.style.pointerEvents = '';
-        }
+    globalTimeBtn.disabled = show;
+  }
+  if (globalDateInput) globalDateInput.required = !show;
+  if (globalTimeInput) {
+    globalTimeInput.required = !show;
+    if (show) {
+      globalTimeInput.style.backgroundColor = "#f3f4f6";
+      globalTimeInput.style.cursor = "not-allowed";
+      globalTimeInput.style.opacity = "0.5";
+      globalTimeInput.style.pointerEvents = "none";
+    } else {
+      globalTimeInput.style.backgroundColor = "";
+      globalTimeInput.style.cursor = "";
+      globalTimeInput.style.opacity = "";
+      globalTimeInput.style.pointerEvents = "";
     }
+  }
 }
 
 // Expose per-state container placeholder in the form HTML (injected once the form opens)
 function injectPerStateContainer() {
-    const addressGroup = document.querySelector('#createEventForm .form-group textarea[name="address"]')?.closest('.form-group');
-    if (!addressGroup) return;
-    if (document.getElementById('perStateAddressContainer')) return;
-    const div = document.createElement('div');
-    div.id = 'perStateAddressContainer';
-    div.className = 'per-state-container';
-    div.style.display = 'none';
-    addressGroup.after(div);
+  const addressGroup = document
+    .querySelector('#createEventForm .form-group textarea[name="address"]')
+    ?.closest(".form-group");
+  if (!addressGroup) return;
+  if (document.getElementById("perStateAddressContainer")) return;
+  const div = document.createElement("div");
+  div.id = "perStateAddressContainer";
+  div.className = "per-state-container";
+  div.style.display = "none";
+  addressGroup.after(div);
 }
 
 window.toggleStateSelect = toggleStateSelect;

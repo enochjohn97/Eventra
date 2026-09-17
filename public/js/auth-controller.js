@@ -114,12 +114,12 @@ class AuthController {
       });
 
       if (!response) {
-        // No response – trust local auth if still within 1-hour session window
+        // No response - trust local auth if still within the session window
         const loginTs = parseInt(
           localStorage.getItem("login_timestamp") || "0",
           10,
         );
-        const withinWindow = Date.now() - loginTs < 60 * 60 * 1000;
+        const withinWindow = Date.now() - loginTs < 2 * 60 * 60 * 1000;
         if (window.storage?.getToken() && withinWindow) {
           this.setState(this.states.AUTHENTICATED);
         } else {
@@ -150,7 +150,7 @@ class AuthController {
           localStorage.getItem("login_timestamp") || "0",
           10,
         );
-        const withinWindow = Date.now() - loginTs < 60 * 60 * 1000;
+        const withinWindow = Date.now() - loginTs < 2 * 60 * 60 * 1000;
 
         if (
           this.state !== this.states.UNAUTHENTICATED &&
@@ -171,13 +171,13 @@ class AuthController {
         }
       }
     } catch (error) {
-      // On hard failure, trust local auth if still within 1-hour session window
+      // On hard failure, trust local auth if still within the session window
       const justLoggedIn = sessionStorage.getItem("just_logged_in");
       const loginTs = parseInt(
         localStorage.getItem("login_timestamp") || "0",
         10,
       );
-      const withinWindow = Date.now() - loginTs < 60 * 60 * 1000;
+      const withinWindow = Date.now() - loginTs < 2 * 60 * 60 * 1000;
       if (justLoggedIn || (window.storage?.getToken() && withinWindow)) {
         this.setState(this.states.AUTHENTICATED);
       } else {

@@ -11,16 +11,24 @@
   function ensureGuestUuid() {
     try {
       let uuid = localStorage.getItem("eventra_guest_uuid");
-      if (!uuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
+      if (
+        !uuid ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          uuid,
+        )
+      ) {
         if (window.crypto && crypto.randomUUID) {
           uuid = crypto.randomUUID();
         } else {
           // RFC4122 v4 fallback for older browsers
-          uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-            const r = (Math.random() * 16) | 0;
-            const v = c === "x" ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-          });
+          uuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+            /[xy]/g,
+            function (c) {
+              const r = (Math.random() * 16) | 0;
+              const v = c === "x" ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            },
+          );
         }
         localStorage.setItem("eventra_guest_uuid", uuid);
       }
@@ -102,7 +110,7 @@ if (typeof window.storage === "undefined" || !window.storage) {
       if (userData && userData.token) {
         this.set(keys.token, userData.token);
       }
-      // Stamp login time so auth-controller can trust local auth within 1-hour window
+      // Stamp login time so auth-controller can trust local auth within the session window
       localStorage.setItem("login_timestamp", Date.now().toString());
       return this.set(keys.user, userData);
     },

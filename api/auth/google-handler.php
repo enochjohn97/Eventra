@@ -23,7 +23,7 @@ $data = json_decode(file_get_contents("php://input"), true);
 
 
 // Verify Google JWT credential using Google tokeninfo endpoint
-require_once __DIR__ . '/../../config/env-loader.php';
+require_once __DIR__ . '/../../config/google.php';
 
 if (!isset($data['credential']) || empty($data['credential'])) {
     if (!empty($data['id_token'])) {
@@ -61,7 +61,7 @@ if ($httpCode !== 200 || !$response) {
 }
 
 $payload = json_decode($response, true);
-$webClientId = $_ENV['GOOGLE_CLIENT_ID'] ?? '';
+$webClientId = getGoogleClientId();
 $androidClientId = $_ENV['GOOGLE_ANDROID_CLIENT_ID'] ?? '76953809917-eetkrdqtda43el15vir4dpghhml53dnr.apps.googleusercontent.com';
 $iosClientId = $_ENV['GOOGLE_IOS_CLIENT_ID'] ?? '76953809917-eguefgb6sgetu8a7g5grjh966il7slq6.apps.googleusercontent.com';
 

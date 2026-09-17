@@ -118,12 +118,24 @@ try {
     }
 
     $stmt->execute();
-    $notifications = $stmt->fetchAll();
+    $notifications = [];
+    $seenNotificationIds = [];
+    $seenNotificationContent = [];
+    foreach ($stmt->fetchAll() as $notification) {
+        $notificationId = (int) ($notification['id'] ?? 0);
+        if ($notificationId && isset($seenNotificationIds[$notificationId])) {
+            continue;
+        }
+        $contentKey = ($notification['type'] ?? '') . '|' . ($notification['title'] ?? '') . '|' . ($notification['message'] ?? '');
+        if (isset($seenNotificationContent[$contentKey])) continue;
+        if ($notificationId) $seenNotificationIds[$notificationId] = true;
+        $seenNotificationContent[$contentKey] = true;
+        $notifications[] = $notification;
+    }
 
-    // Get unread count
-    $count_stmt = $pdo->prepare("SELECT COUNT(*) as unread FROM notifications WHERE recipient_auth_id IN ($idPlaceholders) AND recipient_role = ? AND is_read = 0");
-    $count_stmt->execute(array_merge($recipientIds, [$role]));
-    $unread_count = $count_stmt->fetch()['unread'];
+    $unread_count = count(array_filter($notifications, static function ($notification) {
+        return (int) ($notification['is_read'] ?? 0) === 0;
+    }));
 
     ob_clean();
     echo json_encode([

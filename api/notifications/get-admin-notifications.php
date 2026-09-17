@@ -73,13 +73,22 @@ try {
         LIMIT 20
     ");
     $stmt->execute([$admin_auth_id]);
-    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $notifications = [];
+    $seenNotificationIds = [];
+    $seenNotificationContent = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $notification) {
+        $notificationId = (int) ($notification['id'] ?? 0);
+        if ($notificationId && isset($seenNotificationIds[$notificationId])) continue;
+        $contentKey = ($notification['type'] ?? '') . '|' . ($notification['title'] ?? '') . '|' . ($notification['message'] ?? '');
+        if (isset($seenNotificationContent[$contentKey])) continue;
+        if ($notificationId) $seenNotificationIds[$notificationId] = true;
+        $seenNotificationContent[$contentKey] = true;
+        $notifications[] = $notification;
+    }
 
-    // Get unread count
-    $stmt = $pdo->prepare("SELECT COUNT(*) as unread_count FROM notifications WHERE recipient_auth_id = ? AND recipient_role = 'admin' AND is_read = 0");
-    $stmt->execute([$admin_auth_id]);
-    $unread_result = $stmt->fetch(PDO::FETCH_ASSOC);
-    $unread_count = $unread_result ? $unread_result['unread_count'] : 0;
+    $unread_count = count(array_filter($notifications, static function ($notification) {
+        return (int) ($notification['is_read'] ?? 0) === 0;
+    }));
 
     if (ob_get_length()) ob_clean();
     echo json_encode([

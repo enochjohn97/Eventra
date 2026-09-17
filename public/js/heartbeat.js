@@ -1,15 +1,16 @@
 /**
  * Heartbeat & Session Timeout Component
  *
- * 1. Tracks user interaction timestamps to detect 1-hour inactivity.
+ * 1. Tracks user interaction timestamps to detect 2-hour inactivity.
  * 2. Calls the server heartbeat API every 60 seconds to keep is_online fresh.
- * 3. On 1-hour inactivity, calls logout API and redirects to login.
+ * 3. Warns before two-hour inactivity, then calls logout API and redirects.
  */
 (function () {
   "use strict";
 
   // ── Configuration ──────────────────────────────────────────────────────────
-  const INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour
+  const INACTIVITY_LIMIT_MS = 2 * 60 * 60 * 1000;
+  const WARNING_LIMIT_MS = 110 * 60 * 1000;
   const HEARTBEAT_INTERVAL_MS = 60 * 1000; // 60 seconds
   const CHECK_INTERVAL_MS = 60 * 1000; // check every 60 s
 
@@ -72,6 +73,31 @@
     if (!isLoggedIn()) return;
 
     const idle = Date.now() - lastActivityTime;
+    if (
+      idle >= WARNING_LIMIT_MS &&
+      !window.__eventraInactivityWarningShown &&
+      typeof Swal !== "undefined"
+    ) {
+      window.__eventraInactivityWarningShown = true;
+      Swal.fire({
+        icon: "warning",
+        title: "Session Expiring Soon",
+        text: "You will be logged out automatically after two hours of inactivity.",
+        showCancelButton: true,
+        confirmButtonText: "Stay Logged In",
+        cancelButtonText: "Log Out Now",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        window.__eventraInactivityWarningShown = false;
+        if (result.isConfirmed) {
+          lastActivityTime = Date.now();
+          sendHeartbeat();
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          doLogout("inactivity");
+        }
+      });
+    }
     if (idle >= INACTIVITY_LIMIT_MS) {
       doLogout("inactivity");
     }
@@ -103,7 +129,7 @@
       await Swal.fire({
         icon: "warning",
         title: "Session Expired",
-        text: "You have been logged out due to 1 hour of inactivity.",
+        text: "You have been logged out due to two hours of inactivity.",
         confirmButtonColor: "#6366f1",
         timer: 5000,
         timerProgressBar: true,

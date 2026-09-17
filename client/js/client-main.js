@@ -75,8 +75,8 @@ document.addEventListener("click", function (e) {
 });
 
 function initInactivityMonitor() {
-  const SESSION_TIMEOUT = 60 * 60 * 1000;
-  const WARNING_TIME = 58 * 60 * 1000;
+  const SESSION_TIMEOUT = 2 * 60 * 60 * 1000;
+  const WARNING_TIME = 110 * 60 * 1000;
   let inactivityTimer;
   let warningTimer;
   let isWarningShown = false;
@@ -107,8 +107,9 @@ function initInactivityMonitor() {
   }
 
   function showWarning() {
-    if (isWarningShown) return;
+    if (isWarningShown || window.__eventraInactivityWarningShown) return;
     isWarningShown = true;
+    window.__eventraInactivityWarningShown = true;
 
     let timeLeft = 120; // 2 minutes
 
@@ -142,6 +143,7 @@ function initInactivityMonitor() {
       },
     }).then((result) => {
       isWarningShown = false;
+      window.__eventraInactivityWarningShown = false;
       if (result.isConfirmed) {
         // Heartbeat API will refresh PHP session timestamp
         if (typeof apiFetch !== "undefined") {
