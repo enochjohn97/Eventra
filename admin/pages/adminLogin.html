@@ -186,7 +186,7 @@
         }
         .input-icon {
             position: absolute;
-            left: 14px;
+            right: 14px;
             top: 50%;
             transform: translateY(-50%);
             color: rgba(255, 255, 255, 0.25);
@@ -194,9 +194,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .input-wrapper .form-input {
-            padding-left: 2.75rem;
         }
         .toggle-password {
             position: absolute;
@@ -482,10 +479,11 @@
             }
             .input-wrapper .form-input {
                 font-size: 0.85rem;
-                padding: 0.7rem 0.8rem 0.7rem 2.4rem;
+                padding: 0.7rem 2.4rem 0.7rem 0.8rem;
             }
             .input-icon {
-                left: 10px;
+                right: 10px;
+                left: auto;
             }
             .login-button {
                 font-size: 0.9rem;
@@ -583,8 +581,9 @@
                         <div id="passwordError" class="error-message"></div>
                     </div>
 
-                    <!-- Forgot Password -->
+                    <!-- Forgot Password and Home Link -->
                     <div class="form-options">
+                        <a href="/" class="forgot-password" style="margin-right: auto;">&larr; Back to Home</a>
                         <a href="#" class="forgot-password">Forgot Password?</a>
                     </div>
 

@@ -167,8 +167,10 @@ try {
     $where_clauses = [];
     $params        = [];
 
+    $is_dashboard = ($user_role === 'client' && $client_id !== null);
+
     // Client isolation
-    if ($user_role === 'client') {
+    if ($is_dashboard) {
         $forced_client_id = $_SESSION['client_id'] ?? null;
         $where_clauses[]  = $forced_client_id ? "e.client_id = ?" : "1 = 0";
         if ($forced_client_id) $params[] = $forced_client_id;
@@ -188,7 +190,7 @@ try {
     if ($status) {
         $where_clauses[] = "e.status = ?";
         $params[]        = $status;
-    } elseif ($user_role !== 'admin' && $user_role !== 'client') {
+    } elseif ($user_role !== 'admin' && !$is_dashboard) {
         $where_clauses[] = "e.status = 'published'";
     }
 

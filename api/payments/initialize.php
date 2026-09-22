@@ -387,12 +387,14 @@ try {
     $buyerEmail   = !empty($contactInfo['email'])  ? $contactInfo['email']  : $user_email;
     $buyerPhone   = !empty($contactInfo['phone'])  ? $contactInfo['phone']  : null;
 
+    // UPDATED: Added 'channels' to force all available Paystack options
     $paystackPayload = [
         'email'         => $buyerEmail,
         'amount'        => $amount_kobo,
         'currency'      => 'NGN',
         'reference'     => $reference,
         'callback_url'  => $callbackUrl,
+        'cancel_url'    => SITE_URL . '/',
         'first_name'    => $buyerFname ?: $user_name,
         'last_name'     => $buyerLname ?: '',
         'phone'         => $buyerPhone,
