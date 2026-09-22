@@ -364,7 +364,7 @@ try {
                 'ticket_data' => $ticketData,
                 'user_email' => $metadata['buyer_email'] ?? $order['user_email'],
                 'user_phone' => $order['user_phone'],
-                'user_auth_accounts_id' => $user_auth_accounts_id,
+                'user_auth_accounts_id' => $order['user_auth_id'],
                 'organizer_auth_id' => $order['organizer_auth_id'] ?? null,
                 'quantity' => $quantity
             ];
@@ -386,6 +386,12 @@ try {
             'barcode'    => $barcode,
         ]);
 
+        echo $responsePayload;
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+
         if (!empty($ticketJobReady)) {
             if (!defined('RUNNING_INLINE')) { define('RUNNING_INLINE', true); }
             global $globalJobData;
@@ -393,7 +399,6 @@ try {
             include_once $processorPath;
         }
 
-        echo $responsePayload;
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

@@ -6,6 +6,8 @@ require_once __DIR__ . '/../../config/database.php';
 require_once '../../config/payment.php';
 require_once '../../includes/middleware/auth.php';
 
+$pdo = $pdo ?? getPDO();
+
 // Must be a logged-in user
 $user_id_or_auth_id = checkAuth('user');
 
@@ -390,6 +392,7 @@ try {
         'amount'        => $amount_kobo,
         'reference'     => $reference,
         'callback_url'  => $callbackUrl,
+        'channels'      => ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer', 'eft', 'apple_pay'],
         'first_name'    => $buyerFname ?: $user_name,
         'last_name'     => $buyerLname ?: '',
         'phone'         => $buyerPhone,

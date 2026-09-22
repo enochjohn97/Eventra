@@ -911,41 +911,6 @@ function showCreateEventModal(eventToEdit = null) {
   // Initial render
   updateTicketTypeSections();
 
-  // Only validate a field after the user has interacted with that field.
-  createEventForm
-    .querySelectorAll('input:not([type="hidden"]), select, textarea')
-    .forEach((field) => {
-      if (field.disabled || field.readOnly) return;
-      const group = field.closest(".form-group") || field.parentElement;
-      if (!group) return;
-      group.style.position = "relative";
-      field.style.paddingRight = "2.5rem";
-      const icon = document.createElement("span");
-      icon.className = "field-validation-icon";
-      icon.setAttribute("aria-hidden", "true");
-      icon.style.cssText =
-        "display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#10b981;font-size:1.1rem;font-weight:700;line-height:1;pointer-events:none;z-index:1;";
-      field.insertAdjacentElement("afterend", icon);
-      const updateValidationIcon = () => {
-        const touched = field.dataset.touched === "true";
-        const valid = field.checkValidity() && field.value.trim() !== "";
-        icon.textContent = valid ? "✓" : "";
-        icon.style.display = touched && valid ? "block" : "none";
-      };
-      field.addEventListener("input", () => {
-        field.dataset.touched = "true";
-        updateValidationIcon();
-      });
-      field.addEventListener("change", () => {
-        field.dataset.touched = "true";
-        updateValidationIcon();
-      });
-      field.addEventListener("blur", () => {
-        field.dataset.touched = "true";
-        updateValidationIcon();
-      });
-    });
-
   // ── Paste suppression
   createEventForm.addEventListener(
     "paste",

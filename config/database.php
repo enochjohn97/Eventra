@@ -10,9 +10,6 @@ error_reporting(E_ALL);
 
 // Database configuration
 require_once __DIR__ . '/env-loader.php';
-if (!file_exists(__DIR__ . '/../.env') && file_exists(__DIR__ . '/../.env.example')) {
-    loadEnv(__DIR__ . '/../.env.example');
-}
 require_once __DIR__ . '/cors-config.php'; // CORS handling for API requests
 
 
@@ -69,8 +66,7 @@ function getPDO() {
     $baseRetryDelay = 500000; // 500ms
 
     while ($attempts < $maxAttempts) {
-        // Shared hosts often expose MySQL locally even when their public SQL hostname is unavailable.
-        $connectionHost = ($attempts === 1 && DB_HOST !== 'localhost') ? 'localhost' : DB_HOST;
+        $connectionHost = DB_HOST;
         try {
             $dsn = "mysql:host=" . $connectionHost . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
             $instance = new PDO($dsn, DB_USER, DB_PASS, [

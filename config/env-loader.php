@@ -15,6 +15,8 @@ function loadEnv($path = null)
 
         if (file_exists($primary)) {
             $path = $primary;
+        } elseif (file_exists(__DIR__ . '/../.env.example')) {
+            $path = __DIR__ . '/../.env.example';
         } else {
             return;
         }
@@ -62,7 +64,7 @@ function isLocalHost(): bool
     $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
     // CLI (cron, queue workers) counts as local tooling unless APP_ENV says otherwise.
     if ($host === '' && PHP_SAPI === 'cli') {
-        return ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'local') === 'local';
+        return in_array($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'local', ['local', 'auto'], true);
     }
     return (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
 }
@@ -126,7 +128,7 @@ $_ENV['APP_URL'] = resolveAppUrl();
 $_SERVER['APP_URL'] = $_ENV['APP_URL'];
 putenv('APP_URL=' . $_ENV['APP_URL']);
 
-if (!isset($_ENV['APP_ENV']) || $_ENV['APP_ENV'] === '') {
+if (!isset($_ENV['APP_ENV']) || $_ENV['APP_ENV'] === '' || $_ENV['APP_ENV'] === 'auto') {
     $_ENV['APP_ENV'] = isLocalHost() ? 'local' : 'production';
     putenv('APP_ENV=' . $_ENV['APP_ENV']);
 }
