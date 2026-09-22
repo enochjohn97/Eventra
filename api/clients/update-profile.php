@@ -131,12 +131,21 @@ try {
         }
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        if ($finfo === false) {
-            throw new RuntimeException('File upload validation is unavailable on this server.');
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime_type = $finfo ? finfo_file($finfo, $file['tmp_name']) : false;
+            if ($finfo) finfo_close($finfo);
+        } elseif (function_exists('mime_content_type')) {
+            $mime_type = mime_content_type($file['tmp_name']);
+        } else {
+            $mime_type = [
+                'pdf' => 'application/pdf',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+            ][$extension] ?? false;
         }
-        $mime_type = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
         $allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
         if (!in_array($extension, $allowedKycExtensions, true) || !in_array($mime_type, $allowedMimeTypes, true)) {
