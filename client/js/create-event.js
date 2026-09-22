@@ -919,11 +919,12 @@ function showCreateEventModal(eventToEdit = null) {
       const group = field.closest(".form-group") || field.parentElement;
       if (!group) return;
       group.style.position = "relative";
+      field.style.paddingRight = "2.5rem";
       const icon = document.createElement("span");
       icon.className = "field-validation-icon";
       icon.setAttribute("aria-hidden", "true");
       icon.style.cssText =
-        "display:none;position:absolute;right:14px;top:43px;color:#10b981;font-size:1.1rem;font-weight:700;pointer-events:none;";
+        "display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#10b981;font-size:1.1rem;font-weight:700;line-height:1;pointer-events:none;z-index:1;";
       field.insertAdjacentElement("afterend", icon);
       const updateValidationIcon = () => {
         const touched = field.dataset.touched === "true";

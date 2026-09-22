@@ -228,6 +228,15 @@ body {
   align-items: center;
 }
 
+.input-wrapper .field-validation-icon {
+  position: absolute;
+  right: 3.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
 .form-input {
   width: 100%;
   padding: 0.875rem 1rem;

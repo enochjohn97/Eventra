@@ -132,6 +132,9 @@ try {
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo === false) {
+            throw new RuntimeException('File upload validation is unavailable on this server.');
+        }
         $mime_type = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
         $allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
@@ -155,9 +158,10 @@ try {
         }
         $safe_kyc_name = $field . '_' . $client_id . '_' . time() . '.' . $extension;
         $kyc_target = $kyc_dir . $safe_kyc_name;
-        if (move_uploaded_file($file['tmp_name'], $kyc_target)) {
-            $kycUpdates[$field] = '/uploads/kyc/' . $safe_kyc_name;
+        if (!move_uploaded_file($file['tmp_name'], $kyc_target)) {
+            throw new RuntimeException('The KYC document could not be saved. Check the uploads/kyc directory permissions.');
         }
+        $kycUpdates[$field] = '/uploads/kyc/' . $safe_kyc_name;
     }
 
     // ── Custom ID ────────────────────────────────────────────────────────────
@@ -253,6 +257,9 @@ try {
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error. Please try again or contact support if it persists.']);
+    error_log('[Client profile update] ' . $e->getMessage());
+    http_response_code($e instanceof RuntimeException ? 422 : 500);
+    echo json_encode(['success' => false, 'message' => $e instanceof RuntimeException
+        ? $e->getMessage()
+        : 'Database error. Please try again or contact support if it persists.']);
 }
