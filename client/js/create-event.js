@@ -1154,6 +1154,11 @@ async function handleGoogleCalendarSchedule(e) {
         callback: async (tokenResponse) => {
           try {
             if (tokenResponse.error) {
+              if (tokenResponse.error === "access_denied") {
+                throw new Error(
+                  "Google Calendar access was denied. Add http://localhost:8000 to this OAuth client's Authorized JavaScript origins and add your Google account as a test user.",
+                );
+              }
               throw new Error(
                 tokenResponse.error_description ||
                   "Google authorization was cancelled",

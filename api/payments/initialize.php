@@ -390,9 +390,9 @@ try {
     $paystackPayload = [
         'email'         => $buyerEmail,
         'amount'        => $amount_kobo,
+        'currency'      => 'NGN',
         'reference'     => $reference,
         'callback_url'  => $callbackUrl,
-        'channels'      => ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer', 'eft', 'apple_pay'],
         'first_name'    => $buyerFname ?: $user_name,
         'last_name'     => $buyerLname ?: '',
         'phone'         => $buyerPhone,
