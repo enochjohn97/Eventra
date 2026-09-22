@@ -29,12 +29,12 @@ try {
     // ── Determine actual auth_id and user_id ──────────────────────────────────
     // checkAuth returns auth_accounts.id if token-based, or users.id if session-based
     // We need both to properly complete the order
-    
+
     $auth_id = null;
     $user_id = null;
     $user_email = null;
     $user_name = null;
-    
+
     // First, assume it's an auth_accounts.id from Bearer token
     $uStmt = $pdo->prepare("
         SELECT u.id AS user_id, u.name, a.id AS auth_id, a.email 
@@ -92,7 +92,7 @@ try {
     ");
     $eStmt->execute([$event_id]);
     $event = $eStmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($event && !empty($event['metadata'])) {
         $meta = json_decode($event['metadata'], true);
         if (is_array($meta)) {
@@ -125,7 +125,7 @@ try {
     } elseif ($ticket_type === 'regular' && !empty($event['regular_price'])) {
         $unit_price = (float)$event['regular_price'];
     }
-    
+
     $base_total = $unit_price * $quantity;
     $surcharge = $base_total * 0.10;
     $total = $base_total + $surcharge;
@@ -387,7 +387,10 @@ try {
     $buyerEmail   = !empty($contactInfo['email'])  ? $contactInfo['email']  : $user_email;
     $buyerPhone   = !empty($contactInfo['phone'])  ? $contactInfo['phone']  : null;
 
-    // UPDATED: Added 'channels' to force all available Paystack options
+    // Explicitly request every channel we want Paystack to render on the
+    // checkout modal. Without this key, Paystack falls back to your
+    // dashboard's default channel config (and will still drop any channel
+    // whose own minimum-amount threshold isn't met by this transaction).
     $paystackPayload = [
         'email'         => $buyerEmail,
         'amount'        => $amount_kobo,
@@ -398,6 +401,7 @@ try {
         'first_name'    => $buyerFname ?: $user_name,
         'last_name'     => $buyerLname ?: '',
         'phone'         => $buyerPhone,
+        'channels'      => ['card', 'bank', 'ussd', 'bank_transfer', 'qr', 'mobile_money', 'zap'],
         'metadata'      => [
             'order_id'        => $order_id,
             'event_id'        => $event_id,
