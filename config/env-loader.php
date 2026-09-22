@@ -175,4 +175,19 @@ if (!isLocalHost()) {
             putenv($fullKey . '=' . $_ENV[$fullKey]);
         }
     }
+    
+    // Dynamic Paystack swap when running in production/live host
+    $livePk = $_ENV['LIVE_PAYSTACK_PUBLIC_KEY'] ?? getenv('LIVE_PAYSTACK_PUBLIC_KEY') ?: '';
+    $liveSk = $_ENV['LIVE_PAYSTACK_SECRET_KEY'] ?? getenv('LIVE_PAYSTACK_SECRET_KEY') ?: '';
+    
+    if ($livePk !== '' && $liveSk !== '') {
+        $_ENV['PAYSTACK_PUBLIC_KEY'] = $livePk;
+        $_ENV['PAYSTACK_SECRET_KEY'] = $liveSk;
+        
+        $_SERVER['PAYSTACK_PUBLIC_KEY'] = $livePk;
+        $_SERVER['PAYSTACK_SECRET_KEY'] = $liveSk;
+        
+        putenv('PAYSTACK_PUBLIC_KEY=' . $livePk);
+        putenv('PAYSTACK_SECRET_KEY=' . $liveSk);
+    }
 }
