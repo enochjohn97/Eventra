@@ -204,7 +204,7 @@ function eventraValidateStep(stepRoot) {
 function eventraShowValidationFeedback(title, text, icon = "warning") {
   const message =
     text || "Please complete all required fields before continuing.";
-  console.log("Show validation feedback:", { title, text: message, icon });
+  // console.log("Show validation feedback:", { title, text: message, icon });
 
   if (typeof Swal !== "undefined" && typeof Swal.fire === "function") {
     return Swal.fire({
@@ -233,6 +233,29 @@ function eventraAttachLiveValidation(form) {
   if (!form || form.dataset.liveValidationAttached) return;
   form.dataset.liveValidationAttached = "1";
 
+  const applyState = (field, ok, message) => {
+    if (ok) {
+      field.style.borderColor = "#10B981";
+      field.style.boxShadow = "0 0 0 3px rgba(16,185,129,.18)";
+      field.style.backgroundColor = "rgba(16,185,129,.04)";
+    } else {
+      field.style.borderColor = "#ef4444";
+      field.style.boxShadow = "0 0 0 2px rgba(239,68,68,.15)";
+      field.style.backgroundColor = "";
+      if (message) eventraShowFieldError(field, message);
+    }
+  };
+  const clearState = (field) => {
+    field.style.borderColor = "";
+    field.style.boxShadow = "";
+    field.style.backgroundColor = "";
+    const parent = field.parentElement;
+    const err = parent
+      ? parent.querySelector(":scope > .wizard-field-error")
+      : null;
+    if (err) err.remove();
+  };
+
   form.querySelectorAll("input, select, textarea").forEach((field) => {
     if (field.type === "hidden" || field.disabled) return;
 
@@ -242,13 +265,26 @@ function eventraAttachLiveValidation(form) {
         field.name === "phone" ||
         field.name === "account_number"
       ) {
-        eventraValidateField(field);
+        const wasValid =
+          field.style.borderColor === "rgb(16, 185, 129)"; /* #10B981 */
+        const ok = eventraValidateField(field);
+        if (ok && field.value.trim()) {
+          applyState(field, true);
+        } else if (!ok) {
+          applyState(field, false);
+        } else {
+          clearState(field);
+        }
       }
     };
 
     field.addEventListener("blur", validateOnInteraction);
     field.addEventListener("change", validateOnInteraction);
     field.addEventListener("input", () => {
+      // Success highlight clears immediately on new typing.
+      if (field.style.borderColor === "rgb(16, 185, 129)") {
+        clearState(field);
+      }
       const parent = field.parentElement;
       const hasError = parent?.querySelector(":scope > .wizard-field-error");
       if (hasError) validateOnInteraction();
@@ -261,12 +297,12 @@ function eventraAttachLiveValidation(form) {
  * the correct modal/form is always used; this avoids relying on window.event.
  */
 window.switchWizardTab = function (step, trigger) {
-  console.log("switchWizardTab called:", {
-    step,
-    trigger,
-    triggerElement: trigger?.tagName,
-    triggerClass: trigger?.className,
-  });
+  // [DEBUG logging disabled] console.log("switchWizardTab called:", {
+  //   step,
+  //   trigger,
+  //   triggerElement: trigger?.tagName,
+  //   triggerClass: trigger?.className,
+  // });
 
   const targetStep = Number.parseInt(step, 10);
   if (!Number.isInteger(targetStep) || targetStep < 1) {
@@ -276,12 +312,12 @@ window.switchWizardTab = function (step, trigger) {
 
   // Find the form - try multiple strategies
   const btn = trigger?.closest?.("button") || trigger;
-  console.log(
-    "Button found:",
-    btn?.tagName,
-    btn?.className,
-    btn?.outerHTML?.substring(0, 100),
-  );
+  // [DEBUG logging disabled] console.log(
+  //   "Button found:",
+  //   btn?.tagName,
+  //   btn?.className,
+  //   btn?.outerHTML?.substring(0, 100),
+  // );
 
   const form =
     btn?.closest?.("form") ||
@@ -290,43 +326,44 @@ window.switchWizardTab = function (step, trigger) {
     document.querySelector("form#profileEditForm") ||
     document.querySelector("form#editEventForm");
 
-  console.log("Form found:", form?.id, form?.className, form?.tagName);
+  // console.log("Form found:", form?.id, form?.className, form?.tagName);
 
   if (!form) {
     console.error(
       "Eventra wizard: form not found for step change.",
       targetStep,
     );
-    console.log("Available forms:", document.querySelectorAll("form").length);
-    document
-      .querySelectorAll("form")
-      .forEach((f) => console.log("Form:", f.id, f.className));
+    // [DEBUG logging disabled]
+    // console.log("Available forms:", document.querySelectorAll("form").length);
+    // document
+    //   .querySelectorAll("form")
+    //   .forEach((f) => console.log("Form:", f.id, f.className));
     return false;
   }
 
   const currentStep = Number.parseInt(form.dataset.currentStep || "1", 10);
   const safeCurrentStep =
     Number.isInteger(currentStep) && currentStep > 0 ? currentStep : 1;
-  console.log("Current step:", safeCurrentStep, "Target step:", targetStep);
+  // console.log("Current step:", safeCurrentStep, "Target step:", targetStep);
 
   if (targetStep === safeCurrentStep) {
-    console.log("Already on target step");
+    // console.log("Already on target step");
     return true;
   }
 
   // Going back is always allowed.
   if (targetStep < safeCurrentStep) {
-    console.log("Going back to step:", targetStep);
+    // console.log("Going back to step:", targetStep);
     return eventraActivateWizardStep(form, targetStep);
   }
 
   // Validate each step being crossed. This also handles programmatic jumps.
   for (let stepNo = safeCurrentStep; stepNo < targetStep; stepNo += 1) {
     const stepRoot = form.querySelector(`#wizardStep${stepNo}`);
-    console.log("Validating step:", stepNo, "Found:", !!stepRoot);
+    // console.log("Validating step:", stepNo, "Found:", !!stepRoot);
 
     if (stepRoot && !eventraValidateStep(stepRoot)) {
-      console.log("Step validation failed for step:", stepNo);
+      // console.log("Step validation failed for step:", stepNo);
       eventraShowValidationFeedback(
         "Please complete this step",
         "Some required fields are missing or contain invalid information. The highlighted fields must be corrected before you can continue.",
@@ -335,15 +372,15 @@ window.switchWizardTab = function (step, trigger) {
     }
   }
 
-  console.log("All steps validated, activating step:", targetStep);
+  // console.log("All steps validated, activating step:", targetStep);
   return eventraActivateWizardStep(form, targetStep);
 };
 
 function eventraActivateWizardStep(form, step) {
-  console.log("Activating wizard step:", step, "for form:", form.id);
+  // console.log("Activating wizard step:", step, "for form:", form.id);
 
   const steps = form.querySelectorAll(".wizard-step");
-  console.log("Total wizard steps found:", steps.length);
+  // console.log("Total wizard steps found:", steps.length);
 
   if (!steps.length) {
     console.error("No wizard steps found in form");
@@ -355,22 +392,23 @@ function eventraActivateWizardStep(form, step) {
     const visible = el.id === `wizardStep${step}`;
     el.style.display = visible ? "block" : "none";
     if (visible) target = el;
-    console.log("Step:", el.id, "visible:", visible);
+    // console.log("Step:", el.id, "visible:", visible);
   });
 
   if (!target) {
     console.error(`Eventra wizard: wizardStep${step} does not exist.`);
-    console.log(
-      "Available steps:",
-      Array.from(steps)
-        .map((s) => s.id)
-        .join(", "),
-    );
+    // [DEBUG logging disabled]
+    // console.log(
+    //   "Available steps:",
+    //   Array.from(steps)
+    //     .map((s) => s.id)
+    //     .join(", "),
+    // );
     return false;
   }
 
   form.dataset.currentStep = String(step);
-  console.log("Step activated successfully:", step);
+  // console.log("Step activated successfully:", step);
 
   const modalBody = form.closest(".modal-body");
   if (modalBody) {
@@ -414,7 +452,7 @@ async function showProfileEditModal() {
     console.error("No user found in storage");
     return;
   }
-  console.log("Opening profile edit modal for user:", user.name);
+  // console.log("Opening profile edit modal for user:", user.name);
 
   // Always hydrate from the database before rendering. Cached storage is only
   // a fast fallback while the request is unavailable.
@@ -529,7 +567,8 @@ async function showProfileEditModal() {
                                     <input type="text" name="country" value="${escapeHTML(user.country) || ""}" placeholder="Nigeria" class="form-control" required>
                                 </div>
                             </div>
-                            <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(1, this)" style="background: #1e293b; color:#94a3b8; border:1px solid #334155;">💾 Save Section</button>
                                 <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2, this)">Next: Payment Info &rarr;</button>
                             </div>
                         </div>
@@ -556,7 +595,7 @@ async function showProfileEditModal() {
                                             }
                                         </div>
                                     </label>
-                                    <input type="text" id="accountNumberInput" name="account_number" value="${user.account_number && !/^[0]*$/.test(user.account_number) ? escapeHTML(user.account_number) : ""}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="resolveAccount()" required>
+                                    <input type="text" inputmode="numeric" id="accountNumberInput" name="account_number" value="${user.account_number && !/^[0]*$/.test(user.account_number) ? escapeHTML(user.account_number) : ""}" maxlength="10" placeholder="10-digit Account Number" class="form-control" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" onblur="resolveAccount()" required>
                                 </div>
                                 <div class="form-group modal-grid-full">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Holder Name (Auto-resolved) <span class="text-danger">*</span></label>
@@ -565,6 +604,7 @@ async function showProfileEditModal() {
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(1, this)" style="flex: 1;">&larr; Previous</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(2, this)" style="background: #1e293b; color:#94a3b8; border:1px solid #334155;">💾 Save</button>
                                 <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(3, this)" style="flex: 1;">Next: KYC &rarr;</button>
                             </div>
                         </div>
@@ -584,25 +624,6 @@ async function showProfileEditModal() {
                                         ? `
                                     <div style="margin-top: 4px;">
                                         <a href="/${user.kyc_nin_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                            📄 View Document
-                                        </a>
-                                    </div>`
-                                        : ""
-                                    }
-                                </div>
-
-                                <!-- BVN File -->
-                                <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
-                                    <label style="font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
-                                        <span>BVN Document</span>
-                                        ${user.kyc_bvn_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
-                                    </label>
-                                    <input type="file" name="kyc_bvn_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
-                                    ${
-                                      user.kyc_bvn_file
-                                        ? `
-                                    <div style="margin-top: 4px;">
-                                        <a href="/${user.kyc_bvn_file}" target="_blank" style="font-size: 0.78rem; color: #722f37; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                                             📄 View Document
                                         </a>
                                     </div>`
@@ -669,7 +690,8 @@ async function showProfileEditModal() {
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2, this)" style="flex: 1;">&larr; Previous</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1;">Submit</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(3, this)" style="background: #1e293b; color:#94a3b8; border:1px solid #334155;">💾 Save</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Submit All</button>
                             </div>
                         </div>
 
@@ -728,7 +750,7 @@ async function showProfileEditModal() {
 
   // Add modal to body
   document.body.insertAdjacentHTML("beforeend", modalHTML);
-  console.log("Profile edit modal added to DOM");
+  // console.log("Profile edit modal added to DOM");
 
   // Rich local previews are intentionally client-side only. The selected file
   // remains in the form and is uploaded when the profile is saved.
@@ -748,7 +770,7 @@ async function showProfileEditModal() {
   }
   profileEditForm.noValidate = true;
   profileEditForm.dataset.currentStep = "1";
-  console.log("Profile edit form initialized with step 1");
+  // console.log("Profile edit form initialized with step 1");
   eventraAttachLiveValidation(profileEditForm);
   profileEditForm.addEventListener("submit", handleProfileUpdate);
 
@@ -1029,9 +1051,172 @@ async function handleProfileUpdate(e) {
   }
 }
 
+/**
+ * Per-section Save (profile wizard). Persists ONLY the fields belonging to the
+ * given wizard step so clients can save progress without completing every
+ * section. The server (api/clients/update-profile.php) already merges partial
+ * updates over existing values, so omitted fields are never wiped.
+ */
+window.saveProfileSection = async function (step, trigger) {
+  const btn = trigger?.closest?.("button") || trigger;
+  const form =
+    btn?.closest?.("form") || document.getElementById("profileEditForm");
+  if (!form) return;
+
+  // Collect only the inputs inside the requested step.
+  const stepRoot = form.querySelector(`#wizardStep${step}`);
+  if (!stepRoot) return;
+
+  // Validate the section first — saving half-invalid data would be worse.
+  if (!eventraValidateStep(stepRoot)) {
+    eventraShowValidationFeedback(
+      "Please fix the highlighted fields",
+      "Some required fields in this section are empty or invalid.",
+      "error",
+    );
+    return;
+  }
+
+  const formData = new FormData();
+  stepRoot.querySelectorAll("input, select, textarea").forEach((field) => {
+    if (field.disabled || field.type === "hidden") return;
+    if (field.type === "file") {
+      if (field.files && field.files[0]) {
+        formData.append(field.name, field.files[0]);
+      }
+      return;
+    }
+    if (field.type === "checkbox") {
+      if (field.checked) formData.append(field.name, field.value);
+      return;
+    }
+    formData.append(field.name, field.value);
+  });
+
+  // Keep identity fields the backend expects on every update.
+  const currentUser =
+    (window.authController && window.authController.user) ||
+    (window.storage && window.storage.get("client_user")) ||
+    {};
+  if (currentUser.custom_id && !formData.has("custom_id")) {
+    formData.append("custom_id", currentUser.custom_id);
+  }
+  if (currentUser.profile_id && !formData.has("profile_id")) {
+    formData.append("profile_id", currentUser.profile_id);
+  }
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+  try {
+    const response = await apiFetch("/api/clients/update-profile.php", {
+      method: "POST",
+      body: formData,
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      throw new Error("Server returned an invalid response. Please try again.");
+    }
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.message || "Could not save this section.");
+    }
+
+    if (result.user) {
+      storage.set("client_user", result.user);
+      if (window.storage) window.storage.set("user", result.user);
+      if (window.authController) window.authController.user = result.user;
+      document.dispatchEvent(
+        new CustomEvent("EventraProfileUpdated", { detail: result.user }),
+      );
+    }
+
+    showNotification("Section saved successfully!", "success");
+  } catch (error) {
+    showNotification(
+      error.message || "An unexpected error occurred while saving.",
+      "error",
+    );
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
+
+/**
+ * BVN verification — calls /api/clients/verify-identity.php which validates
+ * against Dojah (central registry) when configured, or falls back to local
+ * format + Luhn checksum validation. The BVN input lives in the KYC step and
+ * replaces the old BVN document upload.
+ */
+window.verifyBvnNumber = async function () {
+  const input = document.getElementById("bvnNumberInput");
+  const badge = document.getElementById("bvnVerifiedBadge");
+  const btn = document.getElementById("bvnVerifyBtn");
+  if (!input || !badge || !btn) return;
+
+  const bvn = input.value.trim();
+  const originalText = btn.textContent;
+
+  // Client-side format guard (11 digits enforced by the input itself).
+  if (!/^\d{11}$/.test(bvn)) {
+    badge.textContent = "Enter exactly 11 digits";
+    badge.style.color = "#ef4444";
+    input.style.borderColor = "#ef4444";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Verifying...";
+  badge.textContent = "Checking registry...";
+  badge.style.color = "#64748b";
+  input.style.borderColor = "";
+
+  try {
+    const response = await apiFetch("/api/clients/verify-identity.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "bvn", number: bvn }),
+    });
+    const result = await response.json();
+
+    if (result.success) {
+      badge.textContent =
+        "✓ Verified" + (result.provider === "dojah" ? "" : " (format)");
+      badge.style.color = "#2ecc71";
+      input.style.borderColor = "#10B981";
+      input.style.boxShadow = "0 0 0 3px rgba(16,185,129,.18)";
+      input.readOnly = true;
+      btn.textContent = "✓ Done";
+      showNotification("BVN verified successfully!", "success");
+
+      // Reflect verification in the cached user object.
+      const user = storage.get("client_user") || storage.get("user");
+      if (user) {
+        user.bvn_verified = 1;
+        user.bvn = bvn;
+        storage.set("client_user", user);
+      }
+    } else {
+      badge.textContent = result.message || "Not Verified";
+      badge.style.color = "#ef4444";
+      input.style.borderColor = "#ef4444";
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  } catch (error) {
+    badge.textContent = "Connection error — try again";
+    badge.style.color = "#ef4444";
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
+
 // Real-time Account Resolution — Pure client-side (no external API calls)
 function resolveAccount() {
-  console.log("resolveAccount called");
+  // console.log("resolveAccount called");
   const bankSelect = document.getElementById("bankSelect");
   const bankCode = bankSelect ? bankSelect.value : "";
   const accountInput = document.getElementById("accountNumberInput");
@@ -1263,4 +1448,4 @@ window.closeProfileEditModal = closeProfileEditModal;
 window.previewProfilePic = previewProfilePic;
 window.handleProfileUpdate = handleProfileUpdate;
 
-console.log("Eventra wizard functions initialized");
+// console.log("Eventra wizard functions initialized");

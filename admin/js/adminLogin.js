@@ -22,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   preventAutofill([usernameInput, passwordInput]);
   const rememberMeInput = document.getElementById("rememberMe");
-  const togglePassword = document.getElementById("togglePassword");
   const loginButton = document.getElementById("loginButton");
   const successMessage = document.getElementById("successMessage");
   const forgotPasswordLink = document.querySelector(".forgot-password");
@@ -93,25 +92,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 500);
   }
 
-  // Toggle password visibility
-  if (togglePassword && passwordInput) {
-    togglePassword.addEventListener("click", () => {
-      const isPassword = passwordInput.getAttribute("type") === "password";
-      const type = isPassword ? "text" : "password";
-      passwordInput.setAttribute("type", type);
-
-      // Update Icon
-      togglePassword.innerHTML = isPassword
-        ? '<i data-lucide="eye-off" style="width: 18px; height: 18px;"></i>'
-        : '<i data-lucide="eye" style="width: 18px; height: 18px;"></i>';
-
-      // Re-create icons for the new element
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
-    });
-  }
-
   function showError(elementId, message) {
     const errorElement = document.getElementById(elementId);
     if (errorElement) {
@@ -150,7 +130,37 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      handleLogin();
+
+      // Client-side format validation before hitting the API.
+      let isValid = true;
+      const username = usernameInput?.value.trim() || "";
+      const password = passwordInput?.value || "";
+
+      resetErrors();
+
+      if (!username) {
+        showError("usernameError", "Username is required.");
+        isValid = false;
+      } else if (!/^[A-Za-z0-9_.@-]{3,50}$/.test(username)) {
+        showError(
+          "usernameError",
+          "Username may only contain letters, numbers, dots, dashes and underscores (3–50 chars).",
+        );
+        isValid = false;
+      }
+
+      if (!password) {
+        showError("passwordError", "Password is required.");
+        isValid = false;
+      }
+
+      if (isValid) {
+        if (window.eventraSetFieldState) {
+          window.eventraSetFieldState(usernameInput, "success");
+          window.eventraSetFieldState(passwordInput, "success");
+        }
+        handleLogin();
+      }
     });
   }
   const basePath = getBasePath();

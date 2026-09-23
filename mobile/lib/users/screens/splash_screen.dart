@@ -10,6 +10,11 @@ import '../../core/theme/app_theme.dart';
 import '../providers/app_config_provider.dart';
 import '../providers/auth_provider.dart';
 
+// Global key so boot-time snackbars can be shown right after navigation
+// without needing a specific BuildContext.
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -116,7 +121,19 @@ class _SplashScreenState extends State<SplashScreen> {
     } else if (auth.status == AuthStatus.profileIncomplete) {
       context.go('/profile-complete');
     } else {
+      // Distinguish a real expiry from a fresh install: the API client has
+      // already attempted silent Google re-auth before we get here.
+      final message = auth.sessionExpired
+          ? 'Your session expired. Please sign in again.'
+          : null;
       context.go('/login');
+      if (message != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          scaffoldMessengerKey.currentState?.showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        });
+      }
     }
   }
 

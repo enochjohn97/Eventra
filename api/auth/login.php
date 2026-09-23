@@ -50,7 +50,13 @@ $remember_me = isset($data['remember_me']) && $data['remember_me'] === true;
 
 try {
     // 1. Resolve Entity (Centralized Backend Decision)
+    // For admin logins, usernames are stored lowercase — retry the lookup with
+    // a lowercased identity so 'Admin' still matches 'admin' (emails stay
+    // case-insensitive at the DB level for clients/users).
     $user = resolveEntity($identity, $intent);
+    if (!$user && $intent === 'admin') {
+        $user = resolveEntity(strtolower($identity), $intent);
+    }
 
     if (!$user) {
         logSecurityEvent(null, $identity, 'login_failure', 'password', "Identity not found.");
@@ -91,7 +97,17 @@ try {
         exit;
     }
 
-    if (password_verify($password, $user['password'])) {
+    // Password check. For ADMIN accounts the comparison is case-insensitive
+    // (business decision 2026-09-23: the admin password is lowercase, so typed
+    // variants must still verify). bcrypt is case-sensitive, so we verify the
+    // password as typed first, then fall back to its lowercase form.
+    // Clients/users remain strictly case-sensitive.
+    $passwordMatches = password_verify($password, $user['password']);
+    if (!$passwordMatches && $userRole === 'admin') {
+        $passwordMatches = password_verify(strtolower($password), $user['password']);
+    }
+
+    if ($passwordMatches) {
         // --- 3. Enforce Auth Policy ---
         $policy = getAuthPolicy($userRole, 'password', $user);
         if (!$policy['allowed']) {
@@ -302,6 +318,7 @@ try {
                 'role' => $userRole,
                 'custom_id' => $freshProfile['custom_id'] ?? $user['custom_id'] ?? null,
                 'bvn' => $freshProfile['bvn'] ?? $user['bvn'] ?? null,
+                'bvn_verified' => (int)(json_decode($freshProfile['metadata'] ?? '{}', true)['bvn_verified'] ?? 0),
                 'profile_pic' => (function ($pic) {
                     if (!$pic) {
                         return null;

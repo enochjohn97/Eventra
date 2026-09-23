@@ -196,6 +196,7 @@ try {
             })($user['profile_pic'] ?? null),
             'custom_id'     => $user['custom_id'] ?? null,
             'bvn'           => $user['bvn'] ?? null,
+            'bvn_verified'  => (int)(json_decode($user['metadata'] ?? '{}', true)['bvn_verified'] ?? 0),
             'token'         => $token
         ]
     ]);

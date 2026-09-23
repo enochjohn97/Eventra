@@ -108,8 +108,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function validateEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     return re.test(String(email).toLowerCase());
+  }
+
+  // Field-level state helper (delegates to the shared engine when available)
+  function setFieldState(inputElement, state, message) {
+    if (window.eventraSetFieldState && inputElement) {
+      window.eventraSetFieldState(inputElement, state, message);
+    }
   }
 
   function showError(elementId, message) {
@@ -150,7 +157,35 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      handleLogin();
+
+      // Client-side format validation before hitting the API.
+      let isValid = true;
+      const identity = emailInput?.value.trim() || "";
+      const password = passwordInput?.value || "";
+
+      resetErrors();
+
+      if (!identity) {
+        showError("emailError", "Email is required.");
+        isValid = false;
+      } else if (!validateEmail(identity)) {
+        showError("emailError", "Enter a valid email address.");
+        isValid = false;
+      }
+
+      if (!password) {
+        showError("passwordError", "Password is required.");
+        isValid = false;
+      } else if (password.length < 6) {
+        showError("passwordError", "Password must be at least 6 characters.");
+        isValid = false;
+      }
+
+      if (isValid) {
+        setFieldState(emailInput, "success");
+        setFieldState(passwordInput, "success");
+        handleLogin();
+      }
     });
   }
 

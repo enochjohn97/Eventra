@@ -192,6 +192,7 @@ function showCreateEventModal(eventToEdit = null) {
                                 </div>
 
                                 <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                                    <!-- [DISABLED 2026-09-23] Google Calendar scheduling feature temporarily disabled (kept for restore).
                                     <div class="form-group" style="position: relative;">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Google Calendar Scheduling</label>
                                         <div style="background: linear-gradient(135deg, rgba(114, 47, 55, 0.08), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(114, 47, 55, 0.12); border-radius: 16px; padding: 1.25rem;">
@@ -203,6 +204,10 @@ function showCreateEventModal(eventToEdit = null) {
                                         <input type="hidden" name="event_start" id="eventStartInput" value="">
                                         <input type="hidden" name="event_end" id="eventEndInput" value="">
                                     </div>
+                                    [END DISABLED Google Calendar scheduling] -->
+                                    <input type="hidden" name="status" value="draft">
+                                    <input type="hidden" name="event_start" id="eventStartInput" value="">
+                                    <input type="hidden" name="event_end" id="eventEndInput" value="">
 
                                     <div class="form-group" style="position: relative;">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">State(s) <span style="color: #ef4444">*</span></label>
@@ -232,14 +237,16 @@ function showCreateEventModal(eventToEdit = null) {
                                 <!-- Primary Contact - Full width -->
                                 <div class="form-group">
                                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Primary Contact <span style="color: #ef4444">*</span></label>
-                                    <input type="tel" name="phone_contact_1" required placeholder="+234..." 
+                                    <input type="tel" name="phone_contact_1" id="phoneContact1Input" required placeholder="+234..." 
+                                           oninput="this.value = this.value.replace(/[^0-9+\s-]/g, '');"
                                            style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                                 </div>
 
                                 <!-- Secondary Contact - Full width -->
                                 <div class="form-group">
                                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Secondary Contact</label>
-                                    <input type="tel" name="phone_contact_2" placeholder="+234... (optional)" 
+                                    <input type="tel" name="phone_contact_2" id="phoneContact2Input" placeholder="+234... (optional)" 
+                                           oninput="this.value = this.value.replace(/[^0-9+\s-]/g, '');"
                                            style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                                 </div>
 
@@ -722,7 +729,45 @@ function showCreateEventModal(eventToEdit = null) {
   });
 
   // Add form submit handler
-  createEventForm.addEventListener("submit", handleGoogleCalendarSchedule);
+  // [DISABLED 2026-09-23] Google Calendar scheduling listener disabled (kept for restore).
+  // createEventForm.addEventListener("submit", handleGoogleCalendarSchedule);
+  createEventForm.addEventListener("submit", handleCreateEventSubmit);
+
+  // Live validation feedback for phone contacts (green border when valid).
+  // Reuses the shared engine; falls back to inline styles if unavailable.
+  const phoneFields = [
+    document.getElementById("phoneContact1Input"),
+    document.getElementById("phoneContact2Input"),
+  ].filter(Boolean);
+  const PHONE_OK_RE = /^\+?[0-9][0-9\s-]{6,17}$/;
+  phoneFields.forEach((pf) => {
+    if (pf._eventraPhoneFeedback) return;
+    pf._eventraPhoneFeedback = true;
+    pf.addEventListener("input", () => {
+      const v = pf.value.trim();
+      if (!v || pf.classList.contains("eventra-success")) {
+        if (window.eventraSetFieldState) window.eventraSetFieldState(pf, "clear");
+        else {
+          pf.style.borderColor = "";
+          pf.style.boxShadow = "";
+        }
+        return;
+      }
+      if (PHONE_OK_RE.test(v)) {
+        if (window.eventraSetFieldState) window.eventraSetFieldState(pf, "success");
+        else {
+          pf.style.borderColor = "#10B981";
+          pf.style.boxShadow = "0 0 0 3px rgba(16,185,129,.18)";
+        }
+      } else {
+        if (window.eventraSetFieldState) window.eventraSetFieldState(pf, "clear");
+        else {
+          pf.style.borderColor = "";
+          pf.style.boxShadow = "";
+        }
+      }
+    });
+  });
 
   // Inject the per-state address container below the main address textarea
   injectPerStateContainer();
@@ -1040,12 +1085,12 @@ function generateEventTagAndLink() {
   document.getElementById("eventLinkField").value = externalLink;
 }
 
+/* [DISABLED 2026-09-23] Google Calendar scheduling flow disabled (kept for restore).
+   The normal create/update flow now lives in handleCreateEventSubmit below.
 async function handleGoogleCalendarSchedule(e) {
   e.preventDefault();
 
-  const isGoogleCalendar =
-    e.submitter &&
-    e.submitter.textContent.includes("Schedule via Google Calendar");
+  const isGoogleCalendar = true;
   const formData = new FormData(e.target);
 
   if (isGoogleCalendar) {
@@ -1250,6 +1295,123 @@ async function handleGoogleCalendarSchedule(e) {
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
     }
+  }
+}
+[END DISABLED Google Calendar scheduling flow] */
+
+/**
+ * Normal create/update event submit flow (Google Calendar scheduling is
+ * currently disabled — see the commented handleGoogleCalendarSchedule above).
+ */
+async function handleCreateEventSubmit(e) {
+  e.preventDefault();
+
+  const formData = new FormData(e.target);
+
+  // Validate phone contacts before submitting (format enforced client-side,
+  // mirroring the server's expectation of a usable phone number).
+  const PHONE_OK_RE2 = /^\+?[0-9][0-9\s-]{6,17}$/;
+  const primaryPhone = String(formData.get("phone_contact_1") || "").trim();
+  const secondaryPhone = String(formData.get("phone_contact_2") || "").trim();
+  if (!primaryPhone) {
+    showNotification("Primary Contact is required.", "error");
+    document.getElementById("phoneContact1Input")?.focus();
+    return;
+  }
+  if (!PHONE_OK_RE2.test(primaryPhone)) {
+    showNotification("Enter a valid Primary Contact phone number (e.g. +2348012345678).", "error");
+    document.getElementById("phoneContact1Input")?.focus();
+    return;
+  }
+  if (secondaryPhone && !PHONE_OK_RE2.test(secondaryPhone)) {
+    showNotification("Enter a valid Secondary Contact phone number (e.g. +2348012345678).", "error");
+    document.getElementById("phoneContact2Input")?.focus();
+    return;
+  }
+
+  const perStateTextareas = document.querySelectorAll(
+    "#perStateAddressContainer textarea[data-state]",
+  );
+  if (perStateTextareas.length > 0) {
+    const locations = Array.from(perStateTextareas)
+      .map((ta) => ({
+        state: ta.dataset.state,
+        address: ta.value.trim(),
+      }))
+      .filter((l) => l.state);
+
+    if (locations.length > 0) {
+      const missing = locations.filter((l) => !l.address);
+      if (missing.length > 0) {
+        showNotification(
+          `Please enter the venue address for: ${missing.map((l) => l.state).join(", ")}`,
+          "error",
+        );
+        return;
+      }
+      formData.set("locations_json", JSON.stringify(locations));
+      if (locations[0] && !formData.get("address")) {
+        formData.set("address", locations[0].address);
+      }
+    }
+  } else {
+    const singleState = formData.get("state") || "";
+    const singleAddr = formData.get("address") || "";
+    if (singleState && singleAddr) {
+      formData.set(
+        "locations_json",
+        JSON.stringify([{ state: singleState, address: singleAddr }]),
+      );
+    }
+  }
+
+  const eventId = e.target.getAttribute("data-event-id");
+  if (eventId) {
+    formData.append("event_id", eventId);
+  }
+
+  const endpoint = eventId
+    ? "/api/events/update-event.php"
+    : "/api/events/create-event.php";
+  const submitBtn =
+    e.submitter || e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Saving...";
+  submitBtn.disabled = true;
+
+  try {
+    const response = await apiFetch(endpoint, {
+      method: "POST",
+      body: formData,
+    });
+    const result = await response.json();
+    if (result.success) {
+      showNotification(
+        eventId ? "Event updated successfully!" : "Event created successfully!",
+        "success",
+      );
+      clearFormState("createEventForm");
+      closeCreateEventModal();
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showNotification(
+        (eventId ? "Failed to update event: " : "Failed to create event: ") +
+          result.message,
+        "error",
+      );
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  } catch (error) {
+    showNotification(
+      error.message ||
+        (eventId
+          ? "An error occurred while updating event"
+          : "An error occurred while creating event"),
+      "error",
+    );
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
   }
 }
 

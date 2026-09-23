@@ -47,6 +47,16 @@ $address        = isset($_POST['address']) && trim($_POST['address']) !== '' ? t
 $city           = isset($_POST['city']) && trim($_POST['city']) !== '' ? trim($_POST['city']) : ($existing['city'] ?? '');
 $state          = isset($_POST['state']) && trim($_POST['state']) !== '' ? trim($_POST['state']) : ($existing['state'] ?? '');
 $country        = isset($_POST['country']) && trim($_POST['country']) !== '' ? trim($_POST['country']) : ($existing['country'] ?? '');
+
+// Location fields must be text-only (no digits/symbols beyond spacing & basic punctuation)
+$locationTextOnly = fn(string $v): bool => $v === '' || (bool)preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}' .,\-]*$/u", $v);
+foreach (['address' => $address, 'city' => $city, 'state' => $state, 'country' => $country] as $locField => $locValue) {
+    if (!$locationTextOnly($locValue)) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => ucfirst($locField) . ' must contain letters only (no numbers or symbols).']);
+        exit;
+    }
+}
 $job_title      = isset($_POST['job_title']) && trim($_POST['job_title']) !== '' ? trim($_POST['job_title']) : ($existing['job_title'] ?? '');
 $company        = isset($_POST['company']) && trim($_POST['company']) !== '' ? trim($_POST['company']) : ($existing['company'] ?? '');
 $dob            = isset($_POST['dob']) && trim($_POST['dob']) !== '' ? trim($_POST['dob']) : ($existing['dob'] ?? '');
@@ -113,11 +123,30 @@ try {
     // KYC files are stored separately from profile media. Only PDFs and common
     // image formats are accepted; the generated name prevents path traversal
     // and filename collisions. Verification is queued/handled separately.
+    // NOTE (2026-09-23): the BVN document upload was removed — BVN is now a
+    // verified 11-digit number handled by api/clients/verify-identity.php.
     $kycFiles = [
-        'kyc_nin_file', 'kyc_bvn_file', 'kyc_voter_card_file',
+        'kyc_nin_file', 'kyc_voter_card_file',
         'kyc_driver_license_file', 'kyc_cac_file'
     ];
     $kycUpdates = [];
+
+    // BVN (optional field from the KYC step). The raw number is NEVER stored
+    // here — it is only format-checked; official verification + persistence of
+    // the masked copy happens in api/clients/verify-identity.php. We only
+    // accept the boolean verification flag the client echoes back after a
+    // successful verification call.
+    $bvnNumber = isset($_POST['bvn_number']) ? preg_replace('/\D/', '', trim($_POST['bvn_number'])) : '';
+    if ($bvnNumber !== '' && strlen($bvnNumber) !== 11) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'BVN must be exactly 11 digits.']);
+        exit;
+    }
+    $bvnVerified = null;
+    if (isset($_POST['bvn_verified'])) {
+        $rawFlag = is_string($_POST['bvn_verified']) ? strtolower(trim($_POST['bvn_verified'])) : $_POST['bvn_verified'];
+        $bvnVerified = in_array($rawFlag, ['1', 'true', 'yes', 1, true], true) ? 1 : 0;
+    }
 
     // KYC file validation (extension, MIME type, size) is handled inline below.
 
@@ -180,6 +209,17 @@ try {
         $customId = generateClientId($pdo);
     }
 
+    // ── Metadata merge (bvn_verified flag only — full number never persisted) ──
+    $metaUpdate = null;
+    if ($bvnVerified !== null) {
+        $meta = json_decode($existing['metadata'] ?? '{}', true) ?: [];
+        $meta['bvn_verified'] = (bool)$bvnVerified;
+        if ($bvnVerified === 1) {
+            $meta['bvn_verified_at'] = date('Y-m-d H:i:s');
+        }
+        $metaUpdate = json_encode($meta);
+    }
+
     // ── Build UPDATE query ───────────────────────────────────────────────
     $query = "UPDATE clients SET
         custom_id = ?, name = ?, business_name = ?, email = ?, phone = ?, address = ?, city = ?,
@@ -195,6 +235,10 @@ try {
     if ($profile_pic) {
         $query   .= ', profile_pic = ?';
         $params[] = $profile_pic;
+    }
+    if ($metaUpdate !== null) {
+        $query   .= ', metadata = ?';
+        $params[] = $metaUpdate;
     }
     foreach ($kycUpdates as $column => $path) {
         $query .= ", {$column} = ?";
@@ -228,6 +272,9 @@ try {
     $updated_client = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($updated_client) {
+        // Flatten bvn_verified out of the JSON metadata for the frontend badge
+        $metaOut = json_decode($updated_client['metadata'] ?? '{}', true) ?: [];
+        $updated_client['bvn_verified'] = !empty($metaOut['bvn_verified']) ? 1 : 0;
         $profileId = (int)$updated_client['id'];
         $updated_client['profile_id'] = $profileId;
         $updated_client['client_id'] = $profileId;

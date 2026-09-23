@@ -1,0 +1,6 @@
+tree bb1fec9baa5f009924859bfa9ce469665ac92107
+parent 8ab41d745e015db0a936c54aaa5093c1595bd1d0
+author Ermac-mein <ejidoko75@gmail.com> 1775822884 +0100
+committer Ermac-mein <ejidoko75@gmail.com> 1775826986 +0100
+
+update Paystack bank list and enhance payment and email helper functionality

@@ -678,6 +678,58 @@ function initUserIcon() {
   if (profileEditForm) {
     profileEditForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // Validate required profile fields before submitting.
+      const profileFields = ["profileName", "profilePhone", "profileDob", "profileGender", "profileCountry", "profileState", "profileCity", "profileAddress"];
+      let firstInvalid = null;
+      const setState = window.eventraSetFieldState;
+      const mark = (id, ok, msg) => {
+        const el = document.getElementById(id);
+        if (!el) return true;
+        if (!ok) {
+          if (setState) setState(el, "error", msg || "This field is required.");
+          if (!firstInvalid) firstInvalid = el;
+          return false;
+        }
+        return true;
+      };
+
+      let allValid = true;
+      profileFields.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && !String(el.value || "").trim()) {
+          mark(id, false);
+          allValid = false;
+        }
+      });
+
+      const nameEl = document.getElementById("profileName");
+      if (nameEl && nameEl.value.trim() &&
+          !/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(nameEl.value.trim())) {
+        mark("profileName", false, "Enter your first and last name.");
+        allValid = false;
+      }
+
+      const phoneEl = document.getElementById("profilePhone");
+      if (phoneEl && phoneEl.value.trim() &&
+          !/^\+?[0-9][0-9\s-]{6,17}$/.test(phoneEl.value.trim())) {
+        mark("profilePhone", false, "Enter a valid phone number (e.g. 08012345678).");
+        allValid = false;
+      }
+
+      const emailEl = document.getElementById("profileEmail");
+      if (emailEl && emailEl.value.trim() &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailEl.value.trim())) {
+        mark("profileEmail", false, "Enter a valid email address.");
+        allValid = false;
+      }
+
+      if (!allValid) {
+        showNotification("Please correct the highlighted fields before saving.", "error");
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
+
       const formData = new FormData(profileEditForm);
 
       // Ensure disabled fields like Profile ID and email are included
@@ -884,8 +936,21 @@ async function performServerSearch(query) {
 }
 
 function renderSearchResults(events) {
-  // Now redirected to renderDiscovery for consistency and ghost filling
-  renderDiscovery(events);
+  // Search results must NOT carry priority tags ("📍 Nearby" etc.) — those are
+  // homepage-feed classifications, not search attributes. The search API
+  // returns the legacy `priority` column, which createEventCard would render
+  // as a badge, so we strip tag-shaped values before rendering.
+  const TAGGED_VALUES = /^(hot|trending|featured|nearby|upcoming)$/i;
+  const cleaned = (events || []).map((e) => {
+    if (e.priority_label && /nearby|hot|trending|featured/i.test(e.priority_label)) {
+      e = { ...e, priority_label: "" };
+    }
+    if (e.priority && TAGGED_VALUES.test(String(e.priority).trim())) {
+      e = { ...e, priority: "" };
+    }
+    return e;
+  });
+  renderDiscovery(cleaned);
 }
 
 function renderEventsGrid(gridId, events, emptyMessage) {
@@ -2090,7 +2155,9 @@ function showEventModal(eventId) {
 
   // Priority badge
   const priorityBadge = document.getElementById("modalPriorityBadge");
-  const modalPriorityVal = event.priority_label || event.priority || "";
+  // Badge only for admin-assigned classifications (Hot/Trending/Featured).
+  // Legacy `priority` column can contain "Nearby" from search results — never shown.
+  const modalPriorityVal = event.priority_label || "";
   if (modalPriorityVal) {
     priorityBadge.textContent = modalPriorityVal.toUpperCase();
     priorityBadge.style.display = "flex";

@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
+
 import '../../core/network/api_client.dart';
 
 Map<String, dynamic> _toMap(dynamic raw) {
@@ -36,13 +38,18 @@ class UserPaymentService {
     return data;
   }
 
+  /// Verifies a payment. Returns the raw envelope so callers can inspect
+  /// `status`:
+  ///  * `success`    — order fulfilled, tickets issued (idempotent)
+  ///  * `processing` — webhook mid-flight; poll again
+  ///  * other        — not successful (message describes why)
+  ///
+  /// NOTE: this method no longer throws on `success: false` — "Payment not
+  /// successful" is a normal state the caller must branch on, not an
+  /// exception.
   static Future<Map<String, dynamic>> verifyPayment(String reference) async {
     final response = await _dio.post('/payments/verify', data: {'reference': reference});
-    final data = _toMap(response.data);
-    if (data['success'] != true) {
-      throw Exception(data['message']?.toString() ?? 'Payment verification failed');
-    }
-    return data;
+    return _toMap(response.data);
   }
 
   static Future<String> fetchPaystackPublicKey() async {

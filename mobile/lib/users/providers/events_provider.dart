@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/event_model.dart';
+import '../services/event_cache_service.dart';
 import '../services/user_event_service.dart';
 
 class EventsProvider extends ChangeNotifier {
@@ -7,6 +8,11 @@ class EventsProvider extends ChangeNotifier {
   bool isLoading = false;
   bool isLoadingMore = false;
   bool hasMore = true;
+
+  /// True while the UI is showing the persisted cache preview and the fresh
+  /// network fetch is still in flight.
+  bool isRefreshing = false;
+
   String? error;
   String search = '';
   String sort = 'newest';
@@ -14,22 +20,38 @@ class EventsProvider extends ChangeNotifier {
   int _total = 0;
   static const int _pageSize = 12;
 
+  String get _cacheKey =>
+      EventCacheService.keyFor(sort: sort, search: search);
+
   Future<void> loadEvents({bool refresh = false}) async {
     if (isLoading || isLoadingMore) return;
     if (refresh) {
       _page = 1;
       hasMore = true;
-      events.clear();
     }
     if (!hasMore && !refresh) return;
 
+    // Offline-friendly start: paint the cached first page immediately, then
+    // let the network refresh replace it. The cache is only consulted when
+    // the grid is empty (initial load), never over fresh data.
     if (_page == 1) {
       isLoading = true;
+      error = null;
+      notifyListeners();
+      if (events.isEmpty) {
+        final cached = await EventCacheService.instance.loadPage(_cacheKey);
+        if (cached != null && cached.isNotEmpty && events.isEmpty) {
+          events
+            ..clear()
+            ..addAll(cached);
+          isRefreshing = true;
+          notifyListeners();
+        }
+      }
     } else {
       isLoadingMore = true;
+      notifyListeners();
     }
-    error = null;
-    notifyListeners();
 
     try {
       final result = await UserEventService.fetchEvents(
@@ -42,14 +64,21 @@ class EventsProvider extends ChangeNotifier {
         events
           ..clear()
           ..addAll(result.events);
+        isRefreshing = false;
+        // Persist only the first page — it's the one the next launch shows.
+        EventCacheService.instance.savePage(_cacheKey, result.events);
       } else {
         events.addAll(result.events);
       }
       _total = result.total;
       hasMore = events.length < _total;
       _page++;
+      error = null;
     } catch (e) {
       error = e.toString().replaceFirst('Exception: ', '');
+      // Keep cached events visible; only surface the error when there is
+      // nothing to show at all.
+      if (events.isNotEmpty && _page == 1) isRefreshing = false;
     } finally {
       isLoading = false;
       isLoadingMore = false;
@@ -76,6 +105,9 @@ class EventsProvider extends ChangeNotifier {
       if (index >= 0) {
         events[index] = events[index].copyWith(isFavorite: isFav);
         notifyListeners();
+        // Keep the cache's favorite flags roughly in sync; a failed write is
+        // harmless since the next successful refresh overwrites the page.
+        EventCacheService.instance.savePage(_cacheKey, events.take(_pageSize).toList());
       }
       return isFav;
     } catch (e) {

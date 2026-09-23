@@ -9,6 +9,7 @@ import 'users/providers/events_provider.dart';
 import 'users/providers/favorites_provider.dart';
 import 'users/providers/tickets_provider.dart';
 import 'users/routing/user_router.dart';
+import 'users/screens/splash_screen.dart';
 import 'users/services/google_auth_service.dart';
 
 void main() {
@@ -64,6 +65,7 @@ class _EventraUserAppState extends State<EventraUserApp> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: _router,
+        scaffoldMessengerKey: scaffoldMessengerKey,
       ),
     );
   }

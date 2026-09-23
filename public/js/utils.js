@@ -381,7 +381,7 @@ function getVerificationBadge(status) {
   if (!status || status === "unverified") {
     return `
             <div class="verification-badge badge-unverified" title="Unverified Organizer" 
-                 onclick="event.stopPropagation(); Swal.fire({title: 'Not Verified', text: 'This organizer has not completed their identity verification. Proceed with caution.', icon: 'warning', confirmButtonColor: '#6366f1'})">
+                 onclick="event.stopPropagation(); Swal.fire({title: 'Not Verified', text: 'This organizer has not completed their identity verification. Proceed with caution.', icon: 'warning', confirmButtonColor: '#2563eb'})">
                 <i data-lucide="alert-triangle" style="color: #f59e0b;"></i>
             </div>
         `;
@@ -400,12 +400,12 @@ function getVerificationBadge(status) {
     icon = "x-circle";
     badgeClass = "badge-rejected";
     title = "Verification Rejected";
-    onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Rejected', text: 'This organizer\'s verification was declined by admin. Proceed with extreme caution.', icon: 'error', confirmButtonColor: '#6366f1'})"`;
+    onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Rejected', text: 'This organizer\'s verification was declined by admin. Proceed with extreme caution.', icon: 'error', confirmButtonColor: '#2563eb'})"`;
   } else if (status === "pending") {
     icon = "alert-triangle";
     badgeClass = "badge-pending";
     title = "Verification Pending";
-    onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Pending', text: 'This organizer\'s verification is currently being reviewed by our team.', icon: 'info', confirmButtonColor: '#6366f1'})"`;
+    onclick = `onclick="event.stopPropagation(); Swal.fire({title: 'Verification Pending', text: 'This organizer\'s verification is currently being reviewed by our team.', icon: 'info', confirmButtonColor: '#2563eb'})"`;
   }
 
   return `
@@ -496,7 +496,7 @@ function showNotification(message, type = "info") {
 (function () {
   const style = document.createElement("style");
   style.textContent =
-    ".eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;transform:translateY(-50%);font-size:1.05rem;font-weight:800;line-height:1;pointer-events:none;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;z-index:2}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:3rem!important}.login-form .eventra-field-wrap{display:block}.login-form .eventra-field-wrap>input{padding-right:5rem!important}.login-form .input-icon,.login-form .toggle-password{top:50%;transform:translateY(-50%)}.login-form .eventra-state-icon{right:2.75rem}.form-input.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.form-input.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.form-input.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 2px rgba(16,185,129,.12)!important}.eventra-field-message{display:block;clear:both;width:100%;font-size:.78rem!important;margin-top:.3rem;line-height:1.35}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}";
+    ".eventra-field-wrap{position:relative}.eventra-state-icon{position:absolute;right:.8rem;transform:translateY(-50%);font-size:1.05rem;font-weight:800;line-height:1;pointer-events:none;display:inline-flex;align-items:center;justify-content:center;width:1.1rem;z-index:2}.eventra-field-wrap>input,.eventra-field-wrap>select,.eventra-field-wrap>textarea{padding-right:3rem!important}.login-form .eventra-field-wrap{display:block}.login-form .eventra-field-wrap>input{padding-right:5rem!important}.login-form .input-icon,.login-form .toggle-password{top:50%;transform:translateY(-50%)}.login-form .eventra-state-icon{right:2.75rem}    .form-input.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.form-input.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.form-input.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 3px rgba(16,185,129,.18)!important;background-color:rgba(16,185,129,.04)!important}.eventra-field-input.eventra-success{border-color:#10B981!important;box-shadow:0 0 0 3px rgba(16,185,129,.18)!important}.eventra-field-input.eventra-error{border-color:#EF4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)!important}.eventra-field-input.eventra-warning{border-color:#F59E0B!important;box-shadow:0 0 0 2px rgba(245,158,11,.12)!important}.eventra-field-message{display:block;clear:both;width:100%;font-size:.78rem!important;margin-top:.3rem;line-height:1.35}.eventra-msg-warning{color:#F59E0B!important}.eventra-msg-error{color:#EF4444!important}.eventra-msg-success{color:#10B981!important}.error-message{color:#EF4444!important}";
   document.head.appendChild(style);
 
   function fieldMessage(field, message) {
@@ -532,6 +532,14 @@ function showNotification(message, type = "info") {
       "eventra-error",
       "eventra-success",
     );
+    if (state === "clear") {
+      // Neutral state: no icon, no highlight, no message.
+      icon.className = "eventra-state-icon";
+      icon.textContent = "";
+      icon.style.color = "";
+      fieldMessage(field, "");
+      return;
+    }
     field.classList.add("eventra-" + state);
     icon.className = "eventra-state-icon eventra-" + state;
     icon.textContent =
@@ -549,6 +557,25 @@ function showNotification(message, type = "info") {
     if (messageEl)
       messageEl.className = "eventra-field-message eventra-msg-" + state;
   }
+  /* --- Field-type validators (shared by validateField) ------------------- */
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const PHONE_RE = /^\+?[0-9][0-9\s-]{6,17}$/;
+  // Matches the server-side policy in api/auth/register.php: min 8 chars,
+  // at least one uppercase letter, one number and one special character.
+  const STRONG_PASSWORD_RE =
+    /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+  const NAME_RE = /^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/;
+  const BUSINESS_NAME_RE = /^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/;
+  const USERNAME_RE = /^[A-Za-z0-9_.-]{3,50}$/;
+  const TEXT_INPUT_RE = /^[^<>]*$/; // blocks raw angle brackets (basic injection guard)
+  function fieldSupportsState(field) {
+    return !(
+      field.type === "checkbox" ||
+      field.type === "radio" ||
+      field.tagName === "SELECT" && field.size > 1 ||
+      field.readOnly
+    );
+  }
   function validateField(field, form) {
     if (
       field.disabled ||
@@ -565,39 +592,81 @@ function showNotification(message, type = "info") {
       setState(field, "warning", "This field is required.");
       return false;
     }
-    if (!value) return true;
+    if (!value) {
+      // Empty optional field is neutral — clear any stale state.
+      if (field.classList.contains("eventra-success") || field.classList.contains("eventra-warning")) {
+        setState(field, "clear");
+      }
+      return true;
+    }
     if (
-      field.id === "fullName" &&
-      !/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(value)
+      (field.id === "fullName" || field.name === "name" || field.name === "full_name") &&
+      field.type === "text" &&
+      !NAME_RE.test(value)
     ) {
       setState(field, "error", "Enter your first and last name.");
       return false;
     }
     if (
-      field.id === "businessName" &&
-      !/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/.test(value)
+      (field.id === "businessName" || field.name === "business_name") &&
+      !BUSINESS_NAME_RE.test(value)
     ) {
       setState(field, "error", "Enter a valid business name.");
       return false;
     }
-    if (field.id === "username" && !/^[A-Za-z0-9_.-]{3,50}$/.test(value)) {
+    if (
+      (field.id === "username" || field.name === "username") &&
+      field.type !== "hidden" &&
+      !USERNAME_RE.test(value)
+    ) {
       setState(field, "error", "Enter a valid username.");
       return false;
     }
-    if (field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    if (
+      (field.type === "email" || field.name === "email") &&
+      !EMAIL_RE.test(value)
+    ) {
       setState(field, "error", "Enter a valid email address.");
       return false;
     }
     if (
-      field.name &&
-      /phone|mobile/i.test(field.name) &&
-      !/^\d{7,15}$/.test(value.replace(/\s+/g, ""))
+      field.type === "tel" ||
+      (field.name && /phone|mobile/i.test(field.name))
     ) {
-      setState(field, "error", "Enter a valid phone number.");
+      if (!PHONE_RE.test(value)) {
+        setState(field, "error", "Enter a valid phone number (e.g. 08012345678).");
+        return false;
+      }
+    }
+    if (field.type === "password") {
+      const isLoginForm = form && (form.id === "loginForm" || /login/i.test(form.id || ""));
+      const isSignupish =
+        !isLoginForm &&
+        (!form ||
+        /signup|register/i.test(form.id || "") ||
+        field.id === "newPassword");
+      if (isSignupish && !STRONG_PASSWORD_RE.test(value)) {
+        setState(
+          field,
+          "warning",
+          "Use 8+ characters with an uppercase letter, a number and a special character.",
+        );
+        return false;
+      }
+    }
+    if (field.tagName === "TEXTAREA" && value && !TEXT_INPUT_RE.test(value)) {
+      setState(field, "error", "Remove the < or > characters.");
       return false;
     }
-    if (field.type === "password" && value.length < 8) {
-      setState(field, "warning", "Use at least 8 characters.");
+    // Location names (state / city / country): letters only — no digits or
+    // symbols beyond spaces, hyphens, apostrophes, periods and commas.
+    if (
+      field.type === "text" &&
+      (field.id === "profileCountry" || field.id === "profileState" || field.id === "profileCity" ||
+        /^(city|state|country)$/i.test(field.name || "")) &&
+      !/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .,\-]*$/.test(value)
+    ) {
+      setState(field, "error", "Use letters only (no numbers or symbols).");
       return false;
     }
     const confirm =
@@ -605,7 +674,7 @@ function showNotification(message, type = "info") {
     if (
       confirm &&
       field === confirm &&
-      confirm.value !== form.querySelector('input[type="password"]')?.value
+      confirm.value !== form.querySelector('input[type="password"]:not([name*="confirm"])')?.value
     ) {
       setState(field, "error", "Passwords do not match.");
       return false;
@@ -657,11 +726,19 @@ function showNotification(message, type = "info") {
     form.querySelectorAll("input,select,textarea").forEach((field) => {
       field.addEventListener("blur", () => validateField(field, form));
       field.addEventListener("input", () => {
+        // Success highlight must clear IMMEDIATELY on new typing — only
+        // re-validate fields already showing an error/warning so users are
+        // not nagged while typing a first entry.
         if (
+          field.classList.contains("eventra-success")
+        ) {
+          setState(field, "clear");
+        } else if (
           field.classList.contains("eventra-error") ||
           field.classList.contains("eventra-warning")
-        )
+        ) {
           validateField(field, form);
+        }
       });
       field.addEventListener("change", () => validateField(field, form));
     });

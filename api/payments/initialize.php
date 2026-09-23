@@ -391,6 +391,13 @@ try {
     // checkout modal. Without this key, Paystack falls back to your
     // dashboard's default channel config (and will still drop any channel
     // whose own minimum-amount threshold isn't met by this transaction).
+    //
+    // Paystack channels audit (2026-09-23): all business-required channels are
+    // enabled — Bank ('bank'), Bank Transfer ('bank_transfer'), Card ('card'),
+    // USSD ('ussd') and Zap ('zap'). 'qr' and 'mobile_money' are also enabled.
+    // Rendered options depend on dashboard settings and per-channel minimum
+    // amounts; see https://paystack.com/docs/payments/payment-channels/.
+    $paystackChannels = ['card', 'bank', 'bank_transfer', 'ussd', 'Zap'];
     $paystackPayload = [
         'email'         => $buyerEmail,
         'amount'        => $amount_kobo,
@@ -401,7 +408,7 @@ try {
         'first_name'    => $buyerFname ?: $user_name,
         'last_name'     => $buyerLname ?: '',
         'phone'         => $buyerPhone,
-        'channels'      => ['card', 'bank', 'ussd', 'bank_transfer', 'qr', 'mobile_money', 'zap'],
+        'channels'      => $paystackChannels,
         'metadata'      => [
             'order_id'        => $order_id,
             'event_id'        => $event_id,

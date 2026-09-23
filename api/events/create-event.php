@@ -390,6 +390,22 @@ try {
         exit;
     }
 
+    // Contact number format guard (server-side mirror of the client validation):
+    // optional leading +, then 7–15 digits allowing spaces/hyphens as separators.
+    $phone_format_ok = static function (string $phone): bool {
+        return (bool) preg_match('/^\+?[0-9][0-9\s\-]{6,17}$/', trim($phone));
+    };
+    if (!$phone_format_ok($phone_contact_1)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Primary Contact must be a valid phone number (e.g. +2348012345678).']);
+        exit;
+    }
+    if ($phone_contact_2 !== null && !$phone_format_ok((string) $phone_contact_2)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Secondary Contact must be a valid phone number (e.g. +2348012345678).']);
+        exit;
+    }
+
     // Auto-generate tag from event name (lowercase, hyphenated) — guaranteed unique
     $tag = strtolower(str_replace(' ', '-', preg_replace('/[^A-Za-z0-9 ]/', '', $event_name)));
     $tag = substr($tag, 0, 80);

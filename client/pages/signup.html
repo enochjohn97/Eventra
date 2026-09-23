@@ -299,7 +299,7 @@
 
       .input-icon {
         position: absolute;
-        right: 3.25rem;
+        right: 1rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -331,6 +331,15 @@
       }
       .input-wrapper .form-input:focus ~ .toggle-password {
         color: var(--primary-light);
+      }
+
+      input[type="password"]::-ms-reveal,
+      input[type="password"]::-ms-clear,
+      input[type="password"]::-webkit-credentials-auto-fill-button,
+      input[type="password"]::-webkit-textfield-decoration-container {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none;
       }
 
       /* ── Error / Success Messages ── */

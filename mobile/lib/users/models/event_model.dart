@@ -115,6 +115,42 @@ class EventModel {
     );
   }
 
+  /// Serializes for the local events cache. `absolute_image_url` is included
+  /// so cached events keep resolvable images even when restored without a
+  /// `baseOrigin` (see EventCacheService).
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'custom_id': customId,
+        'event_name': eventName,
+        'description': description,
+        'category': category,
+        'event_type': eventType,
+        'event_date': eventDate,
+        'event_time': eventTime,
+        'address': address,
+        'location': location,
+        'state': state,
+        'price': price,
+        'regular_price': regularPrice,
+        'vip_price': vipPrice,
+        'premium_price': premiumPrice,
+        'ticket_type_mode': ticketTypeMode,
+        'image_path': imagePath,
+        'absolute_image_url': absoluteImageUrl,
+        'organizer_name': organizerName,
+        'client_name': clientName,
+        'priority_label': priorityLabel,
+        'sales_count': salesCount,
+        'attendee_count': attendeeCount,
+        'view_count': viewCount,
+        'is_favorite': isFavorite ? 1 : 0,
+        'status': status,
+        'latitude': latitude,
+        'longitude': longitude,
+        'ticket_count': ticketCount,
+        'max_capacity': maxCapacity,
+      };
+
   EventModel copyWith({bool? isFavorite}) {
     return EventModel(
       id: id,

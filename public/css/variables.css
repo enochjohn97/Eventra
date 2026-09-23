@@ -1,7 +1,7 @@
 :root {
   /* SaaS Modern Color Palette */
-  --primary-color: #6366f1; /* Indigo */
-  --primary-hover: #4f46e5;
+  --primary-color: #2563eb; /* Blue — buttons default (was indigo #6366f1) */
+  --primary-hover: #15803d; /* Dark green — buttons hover (was indigo #4f46e5) */
   --accent-color: #3b82f6; /* Blue */
   --accent-soft: rgba(59, 130, 246, 0.1);
   

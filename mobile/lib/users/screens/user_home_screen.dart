@@ -108,6 +108,10 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 ),
               ),
             ),
+            if (eventsProvider.isRefreshing)
+              const SliverToBoxAdapter(
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
             if (eventsProvider.isLoading && eventsProvider.events.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(

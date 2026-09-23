@@ -66,6 +66,15 @@ $address = isset($input['address']) ? trim((string)$input['address']) : ($existi
 $city    = isset($input['city']) ? trim((string)$input['city']) : ($existing['city'] ?? '');
 $state   = isset($input['state']) ? trim((string)$input['state']) : ($existing['state'] ?? '');
 $country = isset($input['country']) ? trim((string)$input['country']) : ($existing['country'] ?? '');
+
+// Location fields must be text-only (no digits/symbols beyond spacing & basic punctuation)
+$locationTextOnly = fn(string $v): bool => $v === '' || (bool)preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}' .,\-]*$/u", $v);
+foreach (['city' => $city, 'state' => $state, 'country' => $country] as $locField => $locValue) {
+    if (!$locationTextOnly($locValue)) {
+        echo json_encode(['success' => false, 'message' => ucfirst($locField) . ' must contain letters only (no numbers or symbols).']);
+        exit;
+    }
+}
 $dob     = isset($input['dob']) ? trim((string)$input['dob']) : ($existing['dob'] ?? '');
 $gender  = isset($input['gender']) ? trim((string)$input['gender']) : ($existing['gender'] ?? '');
 

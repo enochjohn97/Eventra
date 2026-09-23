@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/event_utils.dart';
@@ -97,7 +98,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
 
       if (isFree) {
-        _showPaymentPending(reference, result);
+        // Free tickets are issued synchronously inside initialize; a verify
+        // call confirms the order row landed (and catches rare failures).
+        final outcome = await _verifyWithRetry(reference);
+        _showPaymentOutcome(reference, result, outcome);
         return;
       }
 
@@ -115,9 +119,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
 
-      if (completed == true) {
-        _showPaymentPending(reference, result);
-      }
+      if (!mounted) return;
+      if (completed != true) return; // user closed checkout — keep it open
+
+      // The webview returning only means Paystack redirected back. The order
+      // is fulfilled by the backend's Paystack webhook; verify-payment
+      // returns "processing" while that is still in flight. Poll it.
+      final outcome = await _verifyWithRetry(reference);
+      _showPaymentOutcome(reference, result, outcome);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,8 +138,52 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showPaymentPending(String reference, Map<String, dynamic> result) {
+  /// Polls the backend's verify endpoint, mirroring how the web app resolves
+  /// payments (webhook-driven, with client verify as the synchronous check).
+  ///
+  /// Server outcomes:
+  ///  * success    — order fulfilled (webhook already done, or verify claimed it)
+  ///  * processing — webhook mid-flight; poll again shortly
+  ///  * failure    — Paystack says failed, or verify couldn't run
+  Future<_PaymentOutcome> _verifyWithRetry(String reference) async {
+    if (reference.isEmpty) return _PaymentOutcome.failure;
+    // Webhook is normally near-instant; keep polling up to ~15s.
+    const attempts = 6;
+    const delay = Duration(seconds: 2);
+    for (var i = 0; i < attempts; i++) {
+      try {
+        final data = await UserPaymentService.verifyPayment(reference);
+        final status = data['status']?.toString();
+        if (status == 'success') return _PaymentOutcome.success;
+        if (status == 'processing') {
+          await Future<void>.delayed(delay);
+          continue;
+        }
+        return _PaymentOutcome.failure;
+      } catch (_) {
+        // Transient network error — poll again rather than fail the flow.
+        await Future<void>.delayed(delay);
+      }
+    }
+    return _PaymentOutcome.pending;
+  }
+
+  void _showPaymentOutcome(
+    String reference,
+    Map<String, dynamic> result,
+    _PaymentOutcome outcome,
+  ) {
     if (!mounted) return;
+    if (outcome == _PaymentOutcome.failure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "We couldn't confirm your payment. If you were charged, your tickets will appear in 'My Tickets' shortly.",
+          ),
+        ),
+      );
+      return;
+    }
     context.pushReplacement(
       '/payment-success',
       extra: {
@@ -138,7 +191,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'event_name':
             result['event_name']?.toString() ?? widget.event.eventName,
         'amount': result['amount'] ?? _total,
-        'payment_pending': true,
+        'payment_pending': outcome == _PaymentOutcome.pending,
       },
     );
   }
@@ -352,3 +405,5 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return null;
   }
 }
+
+enum _PaymentOutcome { success, pending, failure }

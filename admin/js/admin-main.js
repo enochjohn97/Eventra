@@ -1052,11 +1052,6 @@ window.initPreviews = function () {
                                                     <span style="display:flex;align-items:center;gap:5px;"><i data-lucide="folder-open" style="width:11px;height:11px;"></i> KYC Documents</span>
                                                     <button type="button" data-kyc-files='${JSON.stringify(
                                                       {
-                                                        BVN:
-                                                          client.kyc_documents
-                                                            ?.bvn?.url ||
-                                                          client.kyc_bvn_file ||
-                                                          "",
                                                         NIN:
                                                           client.kyc_documents
                                                             ?.nin?.url ||
@@ -1085,7 +1080,6 @@ window.initPreviews = function () {
                                                       "&#39;",
                                                     )}' onclick="downloadAllKYC(this, '${escapeHTML(client.business_name || client.name || "Client").replace(/'/g, "\\'")}')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><i data-lucide="download" style="width:11px;height:11px;"></i>Download All</button>
                                                 </div>
-                                                ${adminRenderKycRow("BVN", client.kyc_documents?.bvn?.url || client.kyc_bvn_file)}
                                                 ${adminRenderKycRow("NIN", client.kyc_documents?.nin?.url || client.kyc_nin_file)}
                                                 ${adminRenderKycRow("CAC", client.kyc_documents?.cac?.url || client.kyc_cac_file)}
                                                 ${adminRenderKycRow("Voter's Card", client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file)}

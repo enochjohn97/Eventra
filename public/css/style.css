@@ -484,7 +484,7 @@ body {
 
 .search-button-modern {
   padding: 0.85rem 2rem;
-  background: linear-gradient(135deg, var(--primary-color), #ff7a7e);
+  background: var(--btn-default-bg, var(--primary-color));
   color: white;
   border: none;
   border-radius: 30px;
@@ -495,13 +495,13 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 8px 20px rgba(255, 90, 95, 0.3);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
 }
 
 .search-button-modern:hover {
-  background: linear-gradient(135deg, #ff4a4f, var(--primary-color));
+  background: var(--btn-default-hover, #15803d);
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(255, 90, 95, 0.4);
+  box-shadow: 0 12px 30px rgba(21, 128, 61, 0.35);
 }
 
 .search-button-modern:active {
@@ -746,7 +746,7 @@ body {
 .event-date-time {
   font-size: 13px;
   font-weight: 600;
-  color: #4338ca; /* Darker indigo for better contrast */
+  color: var(--primary-color); /* was darker indigo #4338ca */
 }
 
 .event-title {
@@ -840,7 +840,7 @@ body {
 }
 
 .priority-upcoming {
-  background: linear-gradient(135deg, #2ecc71, #6d28d9);
+  background: linear-gradient(135deg, #2ecc71, #15803d); /* was green→purple */
 }
 
 .fav-btn svg {
@@ -883,7 +883,7 @@ body {
 .event-price {
   font-size: 1rem;
   font-weight: 700;
-  color: #4338ca; /* Darker indigo for better contrast */
+  color: var(--primary-color); /* was darker indigo #4338ca */
 }
 
 .event-price.free {
@@ -1757,7 +1757,7 @@ body {
 .buy-ticket-btn {
   flex: 1;
   padding: 1.25rem 2rem;
-  background: linear-gradient(135deg, var(--primary-color), #ff8a8e);
+  background: var(--btn-default-bg, var(--primary-color));
   color: white;
   border: none;
   border-radius: 16px;
@@ -1765,7 +1765,7 @@ body {
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 8px 20px rgba(255, 90, 95, 0.3);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
   text-transform: uppercase;
   letter-spacing: 1px;
   display: flex;
@@ -1775,9 +1775,10 @@ body {
 }
 
 .buy-ticket-btn:hover {
+  background: var(--btn-default-hover, #15803d);
   transform: translateY(-3px);
-  box-shadow: 0 12px 30px rgba(255, 90, 95, 0.4);
-  filter: brightness(1.1);
+  box-shadow: 0 12px 30px rgba(21, 128, 61, 0.35);
+  filter: none;
 }
 
 .buy-ticket-btn:active {
@@ -2169,7 +2170,7 @@ body {
 .buy-ticket-btn {
   width: 100%;
   padding: 1.25rem 2rem;
-  background: linear-gradient(135deg, var(--primary-color), #ff7a7e);
+  background: var(--btn-default-bg, var(--primary-color));
   color: white;
   border: none;
   border-radius: 16px;
@@ -2181,15 +2182,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  box-shadow: 0 10px 30px rgba(255, 90, 95, 0.3);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .buy-ticket-btn:hover {
-  background: linear-gradient(135deg, #ff4a4f, var(--primary-color));
+  background: var(--btn-default-hover, #15803d);
   transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(255, 90, 95, 0.4);
+  box-shadow: 0 15px 40px rgba(21, 128, 61, 0.35);
 }
 
 .buy-ticket-btn:active {

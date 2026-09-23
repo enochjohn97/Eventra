@@ -1,7 +1,10 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+
 import '../storage/secure_storage.dart';
+import 'api_exception.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -30,6 +33,8 @@ class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: apiBaseUrl.replaceFirst(RegExp(r'/$'), ''),
+        // Long enough for the shared host's cold start; individual requests
+        // override this downward where appropriate (see user_profile_service).
         connectTimeout: const Duration(seconds: 120),
         receiveTimeout: const Duration(seconds: 120),
         followRedirects: true,
@@ -63,8 +68,8 @@ class ApiClient {
           return handler.next(options);
         },
         onResponse: (response, handler) async {
-          final contentType = (response.headers.value('content-type') ?? '')
-              .toLowerCase();
+          final contentType =
+              (response.headers.value('content-type') ?? '').toLowerCase();
           final isColdStart = [502, 503, 504].contains(response.statusCode);
           if (contentType.contains('text/html')) {
             return handler.reject(
@@ -169,6 +174,45 @@ class ApiClient {
                 ),
               );
             }
+
+            // ── Session auto-recovery ────────────────────────────────────────
+            // The backend issues opaque 2h access tokens in auth_tokens and
+            // has no refresh-token endpoint. When a token expires mid-use the
+            // only correct recovery is a silent Google re-sign-in, which
+            // mints a fresh token. It must not run for the auth call itself
+            // (no token involved) or for auth/config endpoints, and each
+            // request retries at most once to avoid loops.
+            final code = error.response?.statusCode;
+            final path = error.requestOptions.uri.path;
+            final isAuthEndpoint =
+                path.endsWith('/auth/google') || path.contains('/config/');
+            final alreadyRetried =
+                (error.requestOptions.extra['_authRecovered'] as bool?) == true;
+            if ((code == 401 || code == 403) &&
+                !isAuthEndpoint &&
+                !alreadyRetried) {
+              final recovered = await _trySilentRecovery(error.requestOptions);
+              if (recovered != null) {
+                error.requestOptions.extra['_authRecovered'] = true;
+                try {
+                  final retry = await _recoveryDio.fetch(error.requestOptions);
+                  return handler.resolve(retry);
+                } catch (e) {
+                  return handler.next(
+                    e is DioException
+                        ? e
+                        : DioException(
+                            requestOptions: error.requestOptions,
+                            error: e,
+                          ),
+                  );
+                }
+              }
+              // Silent recovery failed (user cancelled, no network, etc.).
+              // Drop the dead token so the next bootstrap lands on the login
+              // screen instead of looping through rejected requests.
+              await SecureStorage.clearAll();
+            }
           }
           if (error.type == DioExceptionType.connectionError ||
               error.type == DioExceptionType.connectionTimeout) {
@@ -185,6 +229,30 @@ class ApiClient {
         },
       ),
     );
+  }
+
+  /// Fresh Dio instance for recovery retries. No interceptors: a retry must
+  /// never recurse back into the recovery logic.
+  late final Dio _recoveryDio = Dio(dio.options);
+
+  /// Attempts a silent Google re-authentication and returns true if a fresh
+  /// backend token was stored. Kept as a late-bound hook to avoid a static
+  /// import cycle: GoogleAuthService registers itself at startup via
+  /// [registerSilentRecovery].
+  static Future<bool?> Function()? _silentRecoveryHook;
+
+  static void registerSilentRecovery(Future<bool> Function() hook) {
+    _silentRecoveryHook = hook;
+  }
+
+  static Future<bool?> _trySilentRecovery(RequestOptions options) async {
+    final hook = _silentRecoveryHook;
+    if (hook == null) return null;
+    try {
+      return await hook();
+    } catch (_) {
+      return null;
+    }
   }
 
   void setBypassCookie(String cookie) {
@@ -204,4 +272,32 @@ class ApiClient {
     final origin = baseOrigin ?? '';
     return '$origin/${path.replaceFirst(RegExp(r'^/'), '')}';
   }
+}
+
+/// Convenience mapping of any error into the local [ApiException] type.
+///
+/// Dio surfaces API failures as [DioException] with a `response`, while the
+/// backend itself signals business failures inside a 200 envelope
+/// (`{"success": false, ...}`). Services call this after unwrapping the
+/// envelope; it converts transport-level failures into the same type so UI
+/// code handles one exception class.
+ApiException apiErrorFromDio(Object error, String fallback) {
+  if (error is ApiException) return error;
+  if (error is DioException) {
+    final data = error.response?.data;
+    if (data is Map) {
+      final message = data['message']?.toString();
+      if (message != null && message.isNotEmpty) {
+        return ApiException(
+          message,
+          statusCode: error.response?.statusCode,
+        );
+      }
+    }
+    return ApiException(
+      error.message ?? fallback,
+      statusCode: error.response?.statusCode,
+    );
+  }
+  return ApiException(error.toString());
 }

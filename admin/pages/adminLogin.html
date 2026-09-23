@@ -214,6 +214,15 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear,
+        input[type="password"]::-webkit-credentials-auto-fill-button,
+        input[type="password"]::-webkit-textfield-decoration-container {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none;
+        }
+
         .error-message {
             font-size: 0.75rem;
             color: #f87171;

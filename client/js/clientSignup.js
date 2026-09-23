@@ -122,10 +122,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const password = passwordInput.value;
-      if (password.length < 8) {
+      // Mirrors the server-side policy in api/auth/register.php so users are
+      // never surprised at submit time: min 8 chars, 1 uppercase, 1 number,
+      // 1 special character.
+      const strongPassword =
+        /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+      if (!strongPassword.test(password)) {
         showError(
           "passwordError",
-          "Password must be at least 8 characters long.",
+          "Password must be at least 8 characters with an uppercase letter, a number and a special character.",
         );
         isValid = false;
       }
@@ -137,9 +142,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function validateEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     return re.test(String(email).toLowerCase());
   }
+
+  // Live per-field feedback: clear stale success/error as the user types,
+  // show the green success border as soon as a field becomes valid.
+  function attachLiveFieldFeedback() {
+    const fields = [fullNameInput, emailInput, passwordInput, businessNameInput].filter(
+      Boolean,
+    );
+    fields.forEach((field) => {
+      if (field._eventraLiveFeedback) return;
+      field._eventraLiveFeedback = true;
+      field.addEventListener("input", () => {
+        if (window.eventraSetFieldState) {
+          window.eventraSetFieldState(field, "clear");
+        }
+      });
+      field.addEventListener("blur", () => {
+        if (!field.value.trim()) return;
+        if (field === passwordInput) {
+          const strong =
+            /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+          if (strong.test(field.value)) {
+            if (window.eventraSetFieldState)
+              window.eventraSetFieldState(field, "success");
+          }
+          return;
+        }
+        if (field === fullNameInput) {
+          if (
+            /^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(field.value.trim())
+          ) {
+            if (window.eventraSetFieldState)
+              window.eventraSetFieldState(field, "success");
+          }
+          return;
+        }
+        if (field === businessNameInput) {
+          if (
+            /^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/.test(
+              field.value.trim(),
+            )
+          ) {
+            if (window.eventraSetFieldState)
+              window.eventraSetFieldState(field, "success");
+          }
+          return;
+        }
+        if (field === emailInput && validateEmail(field.value.trim())) {
+          if (window.eventraSetFieldState)
+            window.eventraSetFieldState(field, "success");
+        }
+      });
+    });
+  }
+  attachLiveFieldFeedback();
 
   function showError(elementId, message) {
     const errorElement = document.getElementById(elementId);
