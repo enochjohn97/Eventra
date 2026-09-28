@@ -156,6 +156,7 @@ async function showPaymentSuccess(reference, barcode) {
     } catch (e) {}
 
     const cleanedName = (order?.event_name || '').replace(/\s*#\d+$/, '');
+    const paidTo = (order?.organizer_business_name || '').trim() || 'the event organizer';
     const finalBarcode = barcode || (order?.barcode) || (order?.tickets?.[0]?.barcode) || (order?.ticket_id) || reference || 'N/A';
     // Short QR target — environment-agnostic (works local + live)
     const qrPayload = `${window.location.origin}/t/${encodeURIComponent(finalBarcode)}`;
@@ -164,7 +165,7 @@ async function showPaymentSuccess(reference, barcode) {
 
 
     title.textContent = order?.amount <= 0 ? 'Ticket Confirmed! 🎉' : 'Payment Successful! 🎉';
-    msg.innerHTML = `Your ticket${(order?.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? 'have been issued' : 'are ready'}.<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
+    msg.innerHTML = `Your ticket${(order?.quantity||1) > 1 ? 's' : ''} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? 'have been issued' : 'are ready'}.${order?.amount > 0 ? `<br><span style="font-size:0.85rem;color:var(--text-main);">Paid to <strong>${escapeHTML(paidTo)}</strong></span>` : ''}<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
 
     if (actions) actions.style.display = 'flex';
     sessionStorage.removeItem('pending_order');
@@ -376,12 +377,18 @@ function renderSummary(event, qty, ticketType = 'regular') {
         } catch(e) {}
     }
 
-    let priceNum = parseFloat(event.price || 0);
-
-    // Dynamic price lookup (tiered pricing)
-    if (ticketType === 'vip' && event.vip_price) priceNum = parseFloat(event.vip_price);
-    else if (ticketType === 'premium' && event.premium_price) priceNum = parseFloat(event.premium_price);
-    else if (ticketType === 'regular' && event.regular_price) priceNum = parseFloat(event.regular_price);
+    // Tier pricing — MUST mirror api/payments/initialize.php exactly:
+    // use the selected tier's price when it exists (> 0), falling back to the
+    // flat event price. Events created via the dashboard keep price=0.00 in
+    // the column and store the real price in metadata (regular_price etc.),
+    // so using only event.price wrongly labelled paid events as FREE.
+    const tierPrice = (v) => { const n = parseFloat(v); return !isNaN(n) && n > 0 ? n : null; };
+    let priceNum = null;
+    if (ticketType === 'vip') priceNum = tierPrice(event.vip_price);
+    else if (ticketType === 'premium') priceNum = tierPrice(event.premium_price);
+    if (priceNum === null) priceNum = tierPrice(event.regular_price);
+    if (priceNum === null) priceNum = tierPrice(event.price);
+    if (priceNum === null) priceNum = 0;
 
     const baseTotal = priceNum * qty;
     // Include 10% Eventra platform fee to match what was actually charged
@@ -391,7 +398,13 @@ function renderSummary(event, qty, ticketType = 'regular') {
     const container = document.getElementById('summaryContent');
     if (!container) return;
     
-    const imgUrl = event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
+    const imgUrl = event.absolute_image_url || (event.image_path ? '/' + String(event.image_path).replace(/^\/+/, '') : '');
+    // Never render the login splash placeholder as an event image — hide the
+    // img entirely if we have no real event image.
+    const isPlaceholder = imgUrl.includes('/public/assets/imgs/login.png');
+    const imgHtml = (!imgUrl || isPlaceholder)
+        ? ''
+        : `<img src="${imgUrl}" onerror="this.style.display='none'" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">`;
     const cleanEventName = (event.event_name || '').replace(/\s*#\d+$/, '');
     
     // Normalize address/location
@@ -412,7 +425,7 @@ function renderSummary(event, qty, ticketType = 'regular') {
 
     container.innerHTML = `
         <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-            <img src="${imgUrl}" onerror="this.src='${fallback}'" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
+            ${imgHtml}
             <div style="flex:1;min-width:0;">
                 <h4 style="font-weight: 700; color: var(--text-main);">${escapeHTML(cleanEventName)}</h4>
                 ${locationHtml}
@@ -425,9 +438,10 @@ function renderSummary(event, qty, ticketType = 'regular') {
             <span>Quantity</span>
             <span>× ${qty}</span>
         </div>
+        ${(() => { const biz = (event.organizer_business_name || event.business_name || '').trim(); return biz ? `<div class="summary-item"><span>Paid to</span><span>${escapeHTML(biz)}</span></div>` : ''; })()}
         <div class="summary-total">
             <span>Amount Paid</span>
-            <span>${(event.amount !== undefined ? parseFloat(event.amount) : total) === 0 ? 'FREE' : '\u20a6' + (event.amount !== undefined ? parseFloat(event.amount) : total).toLocaleString()}</span>
+            <span>${(() => { const a = event.amount !== undefined && event.amount !== null ? parseFloat(event.amount) : total; return a === 0 ? 'FREE' : '\u20a6' + a.toLocaleString(); })()}</span>
         </div>
     `;
 }

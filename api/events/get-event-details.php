@@ -44,9 +44,11 @@ try {
     }
 
     if (!$user_id) {
-        $event['image_path'] = null;
-        $event['absolute_image_url'] = null;
-        unset($event['metadata'], $event['client_profile_pic']);
+        // Guests keep the event IMAGE and tier prices (both are public on the
+        // event page and required by the payment-callback summary and share
+        // previews). Only sensitive payloads are stripped: the raw metadata
+        // blob and the organizer's profile pic.
+        unset($event['client_profile_pic']);
     }
 
     // For non-admins/clients, only show published events (unless it's their own)

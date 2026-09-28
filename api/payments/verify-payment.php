@@ -28,7 +28,50 @@ require_once __DIR__ . '/../../api/utils/notification-helper.php';
 // Load shared webhook helper (processSuccessfulPayment is defined there)
 // We replicate it inline here to keep the file self-contained.
 
-$auth_id = checkAuth('user');
+// Authentication is normally required, BUT the Paystack callback can land
+// here after the PHP session/Bearer token has expired or been rotated (e.g.
+// a fresh Google login invalidated the token used at checkout). The payment
+// reference itself is a 128-bit random secret bound to exactly one order, so
+// possession of it is sufficient authorization to VERIFY (and only ever
+// marks the order it belongs to — no PII beyond the buyer's own ticket).
+$auth_id = null;
+if (session_status() === PHP_SESSION_NONE) {
+    require_once __DIR__ . '/../../server/config.php';
+}
+try {
+    $authCheck = checkAuthOptional();
+} catch (Throwable $authEx) {
+    $authCheck = null;
+}
+if (!empty($authCheck)) {
+    // Resolve the users.id for the authenticated caller (session may carry
+    // users.id or auth_accounts.id)
+    $tmpStmt = $pdo->prepare("SELECT id FROM users WHERE id = ? OR user_auth_id = ? LIMIT 1");
+    $tmpStmt->execute([(int) $authCheck, (int) $authCheck]);
+    $auth_id = (int) $tmpStmt->fetchColumn();
+}
+
+$body = json_decode(file_get_contents('php://input'), true) ?? [];
+$reference = trim($body['reference'] ?? $_GET['reference'] ?? '');
+
+if (!$reference) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Payment reference is required.']);
+    exit;
+}
+
+// Anonymous callback: authorize via the reference's owning user
+if (empty($auth_id)) {
+    $refStmt = $pdo->prepare("SELECT user_id FROM orders WHERE transaction_reference = ? LIMIT 1");
+    $refStmt->execute([$reference]);
+    $refUserId = $refStmt->fetchColumn();
+    if (!$refUserId) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Order not found. Please contact support with your reference.']);
+        exit;
+    }
+    $auth_id = (int) $refUserId;
+}
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 $reference = trim($body['reference'] ?? $_GET['reference'] ?? '');

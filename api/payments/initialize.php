@@ -409,16 +409,7 @@ try {
     $buyerEmail   = !empty($contactInfo['email'])  ? $contactInfo['email']  : $user_email;
     $buyerPhone   = !empty($contactInfo['phone'])  ? $contactInfo['phone']  : null;
 
-    // Explicitly request every channel we want Paystack to render on the
-    // checkout modal. Without this key, Paystack falls back to your
-    // dashboard's default channel config (and will still drop any channel
-    // whose own minimum-amount threshold isn't met by this transaction).
-    //
-    // Paystack channels audit (2026-09-23): all business-required channels are
-    // enabled — Bank ('bank'), Bank Transfer ('bank_transfer'), Card ('card'),
-    // USSD ('ussd') and Zap ('zap'). 'qr' and 'mobile_money' are also enabled.
-    // Rendered options depend on dashboard settings and per-channel minimum
-    // amounts; see https://paystack.com/docs/payments/payment-channels/.
+   
     $paystackChannels = ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer', 'eft'];
     $paystackPayload = [
         'email'         => $buyerEmail,

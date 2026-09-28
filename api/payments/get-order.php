@@ -24,16 +24,17 @@ try {
         exit;
     }
 
-    // 2. Authentication IS required. The reference alone must never expose
-    //    order/PII data. Bearer-token (mobile) and session (web) both work.
-    $authId = checkAuth(); // exits with 403 JSON when unauthenticated
-    if (!$authId) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Authentication required.']);
-        exit;
+    // 2. Authentication: session/Bearer when available. On the Paystack
+    //    callback the session/token can be expired or rotated — in that case
+    //    the reference itself (a 128-bit random secret bound to one order)
+    //    authorizes read access, and buyer PII is still stripped below.
+    $authId = checkAuthOptional();
+    if (empty($authId)) {
+        $authId = null;
+        $role = 'reference';
+    } else {
+        $role = $_SESSION['role'] ?? 'user';
     }
-
-    $role = $_SESSION['role'] ?? 'user';
 
     // 3. Fetch order with an ownership scope baked into the query
     $sql = "
@@ -42,12 +43,14 @@ try {
             o.transaction_reference, o.created_at,
             e.event_name, e.event_date, e.event_time, e.location, e.address, e.image_path, e.price,
             e.metadata, e.client_id,
+            c.business_name AS organizer_business_name,
             u.name as user_name,
             p.quantity, p.ticket_type,
             (SELECT t.barcode FROM tickets t WHERE t.order_id = o.id ORDER BY t.id DESC LIMIT 1) AS barcode
         FROM orders o
         JOIN events e ON o.event_id = e.id
         JOIN users u ON o.user_id = u.id
+        LEFT JOIN clients c ON o.organizer_id = c.id
         LEFT JOIN payments p ON p.reference COLLATE utf8mb4_unicode_ci = o.transaction_reference COLLATE utf8mb4_unicode_ci
         WHERE o.transaction_reference = ?
         LIMIT 1
@@ -62,9 +65,14 @@ try {
         exit;
     }
 
-    // 4. Authorization: buyer, platform admin, or the organizer client only
+    // 4. Authorization: buyer, platform admin, organizer client, or the
+    //    reference holder (expired-session callback path).
     $isAuthorized = false;
-    if ($role === 'admin') {
+    if ($role === 'reference') {
+        // Caller presented the correct reference — no session. Allowed, but
+        // the PII strip below still applies (already unconditional).
+        $isAuthorized = true;
+    } elseif ($role === 'admin') {
         $isAuthorized = true;
     } elseif ($role === 'user') {
         // The polling session may carry either users.id or auth_accounts.id — accept both.
@@ -87,6 +95,10 @@ try {
 
     // 5. Strip buyer PII from the payload — the polling UI doesn't need it
     unset($order['user_id'], $order['organizer_id'], $order['user_name'], $order['client_id']);
+    // Normalize organizer business name for display ("Paid to X")
+    if (empty($order['organizer_business_name'])) {
+        $order['organizer_business_name'] = 'the event organizer';
+    }
 
     // Decode event metadata for tiered pricing fields
     if (!empty($order['metadata'])) {
