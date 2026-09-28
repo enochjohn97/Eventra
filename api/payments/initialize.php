@@ -383,12 +383,19 @@ try {
 
     // ── Initialize Paystack transaction ──────────────────────────────────────
     // Opaque short callback link (see free-ticket branch above for rationale).
-    $callbackUrl = buildShortUrl(
-        SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference),
-        'payment',
-        'pay:' . $reference,
-        is_numeric($auth_id) ? (int) $auth_id : null
-    ) ?? (SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference));
+    // Built with its own exception guard: a shortener failure must never
+    // abort the payment — we silently fall back to the long callback URL.
+    $callbackUrl = SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference);
+    try {
+        $callbackUrl = buildShortUrl(
+            $callbackUrl,
+            'payment',
+            'pay:' . $reference,
+            is_numeric($auth_id) ? (int) $auth_id : null
+        ) ?? $callbackUrl;
+    } catch (Throwable $shortUrlEx) {
+        error_log('[initialize.php] Short URL fallback used: ' . $shortUrlEx->getMessage());
+    }
 
     // Client is the primary Paystack account; Eventra receives the split via
     // its subaccount created under that client account.

@@ -1,22 +1,5 @@
 <?php
 
-/**
- * Short URL Helper — opaque, database-backed short links.
- *
- * Replaces long /public/pages/... URLs in emails, share links and payment
- * callbacks with short codes (/s/{code}) so recipients can never see (or
- * guess) the real file locations behind the app. Works identically locally
- * and on live hosting because the code table lives in the database and the
- * base URL is resolved at runtime.
- *
- * Routing lives in two mirrored places (keep both in sync):
- *   • server/index.php   — PHP built-in server (`php -S ... server/index.php`)
- *   • .htaccess          — Apache rewrites /s/* to server/index.php
- *
- * The table is created on demand, so a fresh laptop only needs the DB
- * credentials — no manual migration step.
- */
-
 require_once __DIR__ . '/../../config/database.php';
 
 if (!function_exists('shortUrlBase62Encode')) {
@@ -183,7 +166,17 @@ if (!function_exists('getOrCreateShortUrl')) {
                 }
             }
 
-            $pdo->beginTransaction();
+            // ── Transaction safety ────────────────────────────────────────
+            // This helper may be called from inside a CALLER's transaction
+            // (e.g. api/payments/initialize.php wraps its whole flow in one).
+            // PDO has a single transaction per connection, so only open our
+            // own when none is active — and only ever roll back the one we
+            // started. Touching the caller's transaction here caused a
+            // production 500 (rollback of the payment transaction).
+            $ownsTransaction = !$pdo->inTransaction();
+            if ($ownsTransaction) {
+                $pdo->beginTransaction();
+            }
             // Strict MySQL modes reject NULL/missing values for NOT NULL columns,
             // so insert with a temporary unique code, then rewrite it as the
             // final base62 encoding of the row id.
@@ -193,11 +186,16 @@ if (!function_exists('getOrCreateShortUrl')) {
             $id = (int) $pdo->lastInsertId();
             $code = shortUrlEncodeId($id);
             $pdo->prepare("UPDATE short_urls SET code = ? WHERE id = ?")->execute([$code, $id]);
-            $pdo->commit();
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
 
             return $code;
         } catch (PDOException $e) {
-            if ($pdo->inTransaction()) {
+            // Roll back ONLY the transaction this helper opened — never the
+            // caller's (rolling back an active outer transaction made the
+            // payment flow fail with "There is no active transaction").
+            if ($ownsTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             // Concurrent insert race — another request created the same URL.

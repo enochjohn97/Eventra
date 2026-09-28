@@ -632,10 +632,12 @@ function initUserIcon() {
       setVal("profileEmail", user.email);
       setVal("profilePhone", user.phone);
       setVal("profileDob", user.dob);
-      setVal("profileGender", user.gender);
-      setVal("profileCountry", user.country);
-      setVal("profileState", user.state);
-      setVal("profileCity", user.city);
+      // Gender / Country / State / City always start EMPTY — the user fills
+      // them in consciously (they are optional, not pre-seeded from the DB).
+      setVal("profileGender", "");
+      setVal("profileCountry", "");
+      setVal("profileState", "");
+      setVal("profileCity", "");
       setVal("profileAddress", user.address);
 
       // Enforce digits-only and 11-char max on phone field
@@ -700,7 +702,9 @@ function initUserIcon() {
       e.preventDefault();
 
       // Validate required profile fields before submitting.
-      const profileFields = ["profileName", "profilePhone", "profileDob", "profileGender", "profileCountry", "profileState", "profileCity", "profileAddress"];
+      // Gender / Country / State / City are intentionally OPTIONAL (they start
+      // empty by design) — only identity + contact fields are enforced here.
+      const profileFields = ["profileName", "profilePhone", "profileDob", "profileAddress"];
       let firstInvalid = null;
       const setState = window.eventraSetFieldState;
       const mark = (id, ok, msg) => {

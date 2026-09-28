@@ -116,27 +116,61 @@ try {
 
     $profile_pic = null;
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+        // Store the image ON DISK and save its URL path in the DB.
+        // The previous base64-into-DB approach overflowed the varchar(255)
+        // column for any real photo ("Data too long" → HTTP 500 → the UI's
+        // generic "System error occurred"). Same approach as the client
+        // portal (api/clients/update-profile.php).
+        if ($_FILES['profile_pic']['size'] > 2 * 1024 * 1024) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Profile picture must be under 2 MB. Please choose a smaller image.']);
+            exit;
+        }
         $file_ext = strtolower(pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
-
-        if (in_array($file_ext, $allowed_exts)) {
-            // mime_content_type() may be undefined (no fileinfo extension) —
-            // use finfo, then fall back to the extension map.
-            if (function_exists('mime_content_type')) {
-                $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
-            } elseif (function_exists('finfo_open')) {
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mime = $finfo ? finfo_file($finfo, $_FILES['profile_pic']['tmp_name']) : null;
-                if ($finfo) finfo_close($finfo);
-            } else {
-                $mime = null;
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (!in_array($file_ext, $allowed_exts, true)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Unsupported image type. Use JPG, PNG, GIF or WebP.']);
+            exit;
+        }
+        // mime_content_type() may be undefined (no fileinfo extension) —
+        // use finfo, then fall back to the extension map.
+        if (function_exists('mime_content_type')) {
+            $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
+        } elseif (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = $finfo ? finfo_file($finfo, $_FILES['profile_pic']['tmp_name']) : null;
+            if ($finfo) finfo_close($finfo);
+        } else {
+            $mime = null;
+        }
+        if ($mime && !preg_match('#^image/(jpeg|png|gif|webp)$#', $mime)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'That file is not a valid image.']);
+            exit;
+        }
+        $upload_dir = __DIR__ . '/../../uploads/profiles/';
+        if (!is_dir($upload_dir) && !@mkdir($upload_dir, 0775, true) && !is_dir($upload_dir)) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Could not store the image. Please try again.']);
+            exit;
+        }
+        // Delete the user's previous on-disk picture (legacy data-URI and
+        // remote URLs are left untouched).
+        if (!empty($existing['profile_pic']) && preg_match('#^/uploads/profiles/#', (string) $existing['profile_pic'])) {
+            $old_file = __DIR__ . '/../../' . ltrim((string) $existing['profile_pic'], '/');
+            if (file_exists($old_file)) {
+                @unlink($old_file);
             }
-            if (!$mime) {
-                $mime_map = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'];
-                $mime = $mime_map[$file_ext] ?? 'image/png';
-            }
-            $base64 = base64_encode(file_get_contents($_FILES['profile_pic']['tmp_name']));
-            $profile_pic = 'data:' . $mime . ';base64,' . $base64;
+        }
+        $safe_name = 'user_' . $targetProfileId . '_' . time() . '.' . $file_ext;
+        $target_path = $upload_dir . $safe_name;
+        if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $target_path)) {
+            $profile_pic = '/uploads/profiles/' . $safe_name;
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Could not save the image. Please try again.']);
+            exit;
         }
     }
 

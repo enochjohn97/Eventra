@@ -60,7 +60,7 @@ body {
 }
 
 .logo img {
-  height: 48px;
+  height: 56px;
   width: auto;
   max-width: 220px;
   object-fit: contain;
@@ -2937,7 +2937,7 @@ body {
 
   /* Navigation */
   .logo img {
-    height: 38px;
+    height: 46px;
   }
   .logo {
     font-size: 20px;

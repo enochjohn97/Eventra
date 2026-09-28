@@ -183,6 +183,50 @@ class EmailHelper
     }
 
     /**
+     * Eventra brand mark (coral E-monogram) as an inline data-URI so it
+     * renders in email clients and PDF engines without external requests.
+     * Reads the SVG asset and encodes it; falls back to a pure-HTML/CSS
+     * E-monogram if the asset is missing (never breaks ticket delivery).
+     */
+    private static function brandMarkDataUri(): string
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+        $svgPath = self::normalisePath(__DIR__ . '/../../public/assets/brand/logo-mark-only.svg');
+        if (file_exists($svgPath) && filesize($svgPath) > 0) {
+            $svg = (string) file_get_contents($svgPath);
+            // Strip the XML prolog if present; data-URIs take raw markup.
+            $svg = preg_replace('/<\?xml[^>]*\?>/', '', $svg);
+            $cached = 'data:image/svg+xml;base64,' . base64_encode(trim($svg));
+        } else {
+            $cached = '';
+        }
+        return $cached;
+    }
+
+    /**
+     * Brand header row for ticket emails/PDFs: E-mark + "Eventra" wordmark
+     * text on one line. $fontSize in px (email) or pt (PDF context).
+     */
+    private static function brandHeaderHtml(string $fontSize = '15px'): string
+    {
+        $mark = self::brandMarkDataUri();
+        $imgHtml = $mark !== ''
+            ? '<img src="' . $mark . '" width="30" height="30" alt="Eventra" style="width:30px;height:30px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
+            : '';
+        return '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin-bottom:14px;">'
+            . '<tr>'
+            . '<td style="vertical-align:middle;padding-right:9px;">' . $imgHtml . '</td>'
+            . '<td style="vertical-align:middle;">'
+            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#ffffff;line-height:1;">Eventra</span>'
+            . '</td>'
+            . '</tr>'
+            . '</table>';
+    }
+
+    /**
      * Resolve an image path/URL to an inline base64 data-URI.
      * Returns empty string if the image cannot be read.
      * Cap the image at 500 KB after encoding to keep email under size limits.
@@ -825,6 +869,8 @@ class EmailHelper
             'ticket:' . $barcode
         ) ?? ($appBaseUrl . '/api/tickets/download-ticket.php?code=' . $barcode);
 
+        $brandHeader = self::brandHeaderHtml('17px');
+
         $html = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -875,6 +921,7 @@ class EmailHelper
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
         <tr>
           <td valign="top">
+            {$brandHeader}
             {$badgeHtml}
             <div style="font-family:Arial,sans-serif;font-size:26px;line-height:1.2;color:#ffffff;font-weight:800;text-transform:uppercase;margin-top:6px;margin-bottom:6px;letter-spacing:-0.5px;">{$eventTitle}</div>
           </td>
@@ -992,6 +1039,8 @@ HTML;
         $bodyBg    = '#0b1324'; // ~rgba(11,19,36,1)  — main body section
         $stubBg    = '#1e2b3e'; // ~rgba(30,41,59,1)  — stub / QR section
 
+        $brandHeader = self::brandHeaderHtml('14pt');
+
         return <<<PDF
 <!DOCTYPE html>
 <html lang="en">
@@ -1033,9 +1082,10 @@ HTML;
       <table width="544" cellpadding="0" cellspacing="0" border="0"
              style="width:544px;border-collapse:collapse;">
 
-        <!-- Badge + Event title -->
+        <!-- Brand mark + Event title -->
         <tr>
           <td valign="top" style="padding-bottom:9px;">
+            {$brandHeader}
             {$badgeHtml}
             <div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:900;
                         text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;

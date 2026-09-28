@@ -1,0 +1,34 @@
+/* ============================================================================
+   Eventra SweetAlert2 brand overrides
+   Swal2 v11.26+ ships a purple default (#7066e0). Every action button must
+   be Eventra blue (#2563eb) app-wide. Loaded on every page that uses Swal.
+   ========================================================================== */
+
+.swal2-confirm,
+.swal2-deny,
+.swal2-cancel {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+}
+
+.swal2-confirm:hover,
+.swal2-deny:hover,
+.swal2-cancel:hover {
+  background-color: #1d4ed8 !important;
+}
+
+/* Focus ring matches the button color (Swal injects its own purple ring) */
+.swal2-confirm:focus,
+.swal2-deny:focus,
+.swal2-cancel:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4) !important;
+  outline: none !important;
+}
+
+/* Keep client-portal dark-theme text overrides intact */
+.swal2-title {
+  color: inherit;
+}
