@@ -133,9 +133,18 @@ try {
         $notifications[] = $notification;
     }
 
-    $unread_count = count(array_filter($notifications, static function ($notification) {
-        return (int) ($notification['is_read'] ?? 0) === 0;
-    }));
+    // TRUE unread total across ALL matching rows — counting only the fetched
+    // page capped the badge at LIMIT (20), so it could never go higher even
+    // with dozens more unread notifications in the table.
+    $unread_stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM notifications n
+        WHERE $where_sql AND n.is_read = 0
+    ");
+    $unread_params = $params;
+    array_pop($unread_params); // drop LIMIT
+    array_pop($unread_params); // drop OFFSET
+    $unread_stmt->execute($unread_params);
+    $unread_count = (int) $unread_stmt->fetchColumn();
 
     ob_clean();
     echo json_encode([

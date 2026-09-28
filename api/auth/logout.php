@@ -63,13 +63,22 @@ try {
         $stmt = $pdo->prepare("UPDATE auth_accounts SET is_online = 0, last_seen = NOW() WHERE id = ?");
         $stmt->execute([$auth_id]);
 
-        // Update role-specific status to 'offline'
-        if ($role === 'client') {
-            $pdo->prepare("UPDATE clients SET status = 'offline' WHERE client_auth_id = ?")->execute([$auth_id]);
-        } elseif ($role === 'admin') {
-            $pdo->prepare("UPDATE admins SET status = 'offline' WHERE admin_auth_id = ?")->execute([$auth_id]);
-        } elseif ($role === 'user') {
-            $pdo->prepare("UPDATE users SET status = 'offline' WHERE user_auth_id = ?")->execute([$auth_id]);
+        // Update role-specific status to 'offline'.
+        // NOTE (2026-09-25): admins.status is enum('active','suspended','deleted')
+        // — it tracks the ACCOUNT state, not presence. Writing 'offline' there
+        // threw a PDOException that aborted this script BEFORE the session was
+        // destroyed, leaving admins permanently logged in. Admin presence is
+        // already tracked via auth_accounts.is_online above, so admins are now
+        // skipped here. Each update is also guarded so a status-sync failure can
+        // never again block logout.
+        try {
+            if ($role === 'client') {
+                $pdo->prepare("UPDATE clients SET status = 'offline' WHERE client_auth_id = ?")->execute([$auth_id]);
+            } elseif ($role === 'user') {
+                $pdo->prepare("UPDATE users SET status = 'offline' WHERE user_auth_id = ?")->execute([$auth_id]);
+            }
+        } catch (PDOException $statusErr) {
+            error_log('[logout.php] Non-fatal status sync failure: ' . $statusErr->getMessage());
         }
 
         // Delete auth tokens

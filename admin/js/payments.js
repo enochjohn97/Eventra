@@ -145,7 +145,7 @@ async function loadRefundRequests() {
         tbody.innerHTML = requests.map(r => {
             const statusClass = r.status === 'approved' ? 'status-paid' : r.status === 'declined' ? 'status-failed' : 'status-pending';
             const statusLabel = r.status === 'approved' ? '✓ Approved' : r.status === 'declined' ? '✗ Declined' : '⏳ Pending';
-            return `<tr>
+            return `<tr class="table-row-clickable" onclick="openDetailModal(${JSON.stringify(r).replace(/"/g, '&quot;')})">
                 <td><input type="checkbox" class="payment-checkbox" data-id="${r.id}"></td>
                 <td>
                     <div style="font-weight:600;font-size:.88rem;">${formatDate(r.created_at)}</div>

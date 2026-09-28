@@ -94,7 +94,19 @@ $name = trim($data['name'] ?? $data['fullName'] ?? '');
 $email = trim($data['email'] ?? '');
 $password = $data['password'] ?? '';
 $business_name = trim($data['business_name'] ?? '');
+
+// Name must be text-only: letters (incl. accents), spaces, apostrophes,
+// periods and hyphens — no digits/symbols.
+$accountTextOnly = fn(string $v): bool => (bool)preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}'. -]*$/u", $v);
+if (!$accountTextOnly($name)) {
+    sendJsonResponse(false, 'Name must contain letters only (no digits or symbols).', 422);
+}
 $role = $data['role'] ?? 'client';
+
+// Business name (clients) must be text-only — same rule as the personal name.
+if ($role === 'client' && !empty($business_name) && !$accountTextOnly($business_name)) {
+    sendJsonResponse(false, 'Business name must contain letters only (no digits or symbols).', 422);
+}
 
 if (empty($name) || empty($email) || empty($password)) {
     sendJsonResponse(false, 'Name, email, and password are required.', 400);

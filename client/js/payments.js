@@ -264,7 +264,7 @@ function renderRefundsTable(requests) {
     tbody.innerHTML = requests.map(r => {
         const statusClass = `status-${r.status}`;
         return `
-        <tr>
+        <tr class="table-row-clickable" onclick="openDetailModal(${JSON.stringify(r).replace(/"/g, '&quot;')})">
             <td><input type="checkbox" class="payment-checkbox" data-id="${r.id}"></td>
             <td>
                 <div style="font-weight:600;">${new Date(r.created_at).toLocaleDateString()}</div>

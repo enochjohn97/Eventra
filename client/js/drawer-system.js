@@ -120,9 +120,11 @@ function addDrawerStyles() {
         .side-drawer {
             position: fixed;
             top: 0;
-            right: -450px;
-            width: 450px;
-            height: 100vh;
+            right: -360px;
+            width: 360px;
+            height: 78vh;
+            top: 11vh;
+            border-radius: 14px 0 0 14px;
             background: white;
             box-shadow: -10px 0 30px rgba(0,0,0,0.1);
             z-index: 10000;
@@ -154,7 +156,7 @@ function addDrawerStyles() {
         }
 
         .drawer-header {
-            padding: 1.5rem 2rem;
+            padding: 1rem 1.35rem;
             border-bottom: 1px solid #f1f5f9;
             display: flex;
             justify-content: space-between;
@@ -167,8 +169,8 @@ function addDrawerStyles() {
 
         .drawer-header h3 {
             margin: 0;
-            font-size: 1.5rem;
-            font-weight: 800;
+            font-size: 1.05rem;
+            font-weight: 700;
             color: #1e293b;
             letter-spacing: -0.02em;
         }
@@ -200,7 +202,7 @@ function addDrawerStyles() {
         }
 
         .notification-item {
-            padding: 1.25rem 2rem;
+            padding: 0.85rem 1.35rem;
             border-bottom: 1px solid #f1f5f9;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -217,17 +219,18 @@ function addDrawerStyles() {
 
         .notification-title {
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+            margin-bottom: 0.2rem;
         }
 
         .notification-message {
-            font-size: 0.875rem;
+            font-size: 0.78rem;
             color: var(--client-text-muted);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.35rem;
         }
 
         .notification-time {
-            font-size: 0.75rem;
+            font-size: 0.68rem;
             color: var(--client-text-muted);
         }
 

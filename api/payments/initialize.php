@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once '../../config/payment.php';
 require_once '../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../includes/helpers/short-url-helper.php';
 
 $pdo = $pdo ?? getPDO();
 
@@ -291,7 +292,15 @@ try {
                 createNewSaleNotification($organizer_auth_id, $user_name, $event['event_name'], 0, $auth_id);
             }
 
-            $callbackUrl = SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference);
+            // Opaque short link so the Paystack callback / receipt page never
+            // exposes the real file path. Falls back to the long URL if the
+            // shortener is unavailable so payments can never be blocked by it.
+            $callbackUrl = buildShortUrl(
+                SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference),
+                'payment',
+                'pay:' . $reference,
+                is_numeric($auth_id) ? (int) $auth_id : null
+            ) ?? (SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference));
 
             echo json_encode([
                 'success'           => true,
@@ -373,7 +382,13 @@ try {
 
 
     // ── Initialize Paystack transaction ──────────────────────────────────────
-    $callbackUrl = SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference);
+    // Opaque short callback link (see free-ticket branch above for rationale).
+    $callbackUrl = buildShortUrl(
+        SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference),
+        'payment',
+        'pay:' . $reference,
+        is_numeric($auth_id) ? (int) $auth_id : null
+    ) ?? (SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference));
 
     // Client is the primary Paystack account; Eventra receives the split via
     // its subaccount created under that client account.
@@ -397,7 +412,7 @@ try {
     // USSD ('ussd') and Zap ('zap'). 'qr' and 'mobile_money' are also enabled.
     // Rendered options depend on dashboard settings and per-channel minimum
     // amounts; see https://paystack.com/docs/payments/payment-channels/.
-    $paystackChannels = ['card', 'bank', 'bank_transfer', 'ussd', 'Zap'];
+    $paystackChannels = ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer', 'eft'];
     $paystackPayload = [
         'email'         => $buyerEmail,
         'amount'        => $amount_kobo,

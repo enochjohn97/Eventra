@@ -94,6 +94,9 @@ try {
         foreach ($user['settlement_account'] as $key => $value) {
             if ($key !== 'status') $user[$key] = $value;
         }
+        // BVN state (masked only — the raw number is never persisted server-side).
+        $user['bvn_verified'] = !empty($metadata['bvn_verified']);
+        $user['bvn_masked'] = $metadata['bvn_number_masked'] ?? '';
         unset($user['metadata']);
     }
 

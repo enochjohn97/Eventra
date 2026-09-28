@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         usersTableBody.innerHTML = users.map(user => `
-            <tr data-id="${user.id}">
-                <td style="padding-left: 1.5rem;">
+            <tr data-id="${user.id}" style="cursor:pointer;" onclick="window.previewUser(${JSON.stringify(user).replace(/"/g, '&quot;')})">
+                <td style="padding-left: 1.5rem;" onclick="event.stopPropagation()">
                     <input type="checkbox" class="user-checkbox" data-id="${user.id}" ${selectedUserIds.has(user.id.toString()) ? 'checked' : ''}>
                 </td>
                 <td>
@@ -192,3 +192,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (document.visibilityState === 'visible') loadUsers();
     }, 60000);
 });
+
+window.previewUser = function(user) {
+    let backdrop = document.querySelector(".preview-modal-backdrop");
+    if (!backdrop) {
+        backdrop = document.createElement("div");
+        backdrop.className = "preview-modal-backdrop flex-mode";
+        backdrop.style.display = "flex";
+        backdrop.innerHTML = `
+            <div class="preview-modal" style="max-height: 90vh; overflow-y: auto; overflow-x: hidden; background: white; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative; border: 1px solid var(--admin-border); display: flex; flex-direction: column;">
+                <span class="preview-close" style="position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; background: rgba(0,0,0,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 1.2rem;">&times;</span>
+                <div id="previewContent" style="flex: 1; overflow-y: auto;"></div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+
+        const closeBtn = backdrop.querySelector(".preview-close");
+        closeBtn.onclick = () => {
+            backdrop.classList.remove("active");
+            setTimeout(() => { backdrop.style.display = "none"; backdrop.classList.remove("flex-mode"); }, 300);
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) {
+                backdrop.classList.remove("active");
+                setTimeout(() => { backdrop.style.display = "none"; backdrop.classList.remove("flex-mode"); }, 300);
+            }
+        };
+    }
+
+    const content = backdrop.querySelector("#previewContent");
+    backdrop.style.display = "flex";
+    setTimeout(() => backdrop.classList.add("active"), 10);
+
+    const profilePic = typeof getProfileImg === 'function' ? getProfileImg(user.profile_pic, user.name) : user.profile_pic;
+    const cleanName = (user.name || "").replace(/\s*#\d+$/, "");
+    const badge = typeof getVerificationBadge === 'function' && user.email_verified_at ? getVerificationBadge('verified') : '';
+    
+    content.innerHTML = `
+        <div class="profile-preview">
+            <div class="profile-preview-header">User Profile</div>
+            <div style="position: relative; margin-bottom: 60px;">
+                <div class="profile-preview-cover-box" style="margin-bottom: 0;">
+                    <img src="${profilePic}" alt="Cover" style="filter: blur(5px); opacity: 0.5;">
+                </div>
+                <div class="profile-preview-avatar-wrapper">
+                    <div class="avatar-wrapper">
+                        <img src="${profilePic}" class="profile-preview-avatar" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid white;">
+                        ${badge}
+                    </div>
+                </div>
+            </div>
+            <div class="profile-preview-info">
+                <h2 style="font-weight: 800;">${escapeHTML(cleanName)}</h2>
+                <p style="color: #6366f1; font-weight: 600; font-family: monospace; letter-spacing: 1px;">${escapeHTML(user.custom_id || user.id)}</p>
+                <p>${escapeHTML(user.email)}</p>
+            </div>
+            <div class="profile-preview-details">
+                <div class="profile-preview-detail-item"><span class="profile-detail-label">Phone</span><span class="profile-detail-val">${escapeHTML(user.phone) || "N/A"}</span></div>
+                <div class="profile-preview-detail-item"><span class="profile-detail-label">Gender</span><span class="profile-detail-val" style="text-transform: capitalize;">${escapeHTML(user.gender) || "N/A"}</span></div>
+                <div class="profile-preview-detail-item"><span class="profile-detail-label">DOB</span><span class="profile-detail-val">${escapeHTML(user.dob) || "N/A"}</span></div>
+                <div class="profile-preview-detail-item"><span class="profile-detail-label">Last Login</span><span class="profile-detail-val">${user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "Never"}</span></div>
+                <div class="profile-preview-detail-item" style="grid-column: span 2;"><span class="profile-detail-label">Address</span><span class="profile-detail-val">${escapeHTML(user.address) || "N/A"}, ${escapeHTML(user.city) || ""}, ${escapeHTML(user.state) || ""}, ${escapeHTML(user.country) || ""}</span></div>
+                <div class="profile-preview-detail-item"><span class="profile-detail-label">Status</span><span class="profile-detail-val" style="text-transform: capitalize;">${escapeHTML(user.status || 'Active')}</span></div>
+            </div>
+        </div>
+    `;
+};

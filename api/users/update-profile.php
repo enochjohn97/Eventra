@@ -78,6 +78,16 @@ foreach (['city' => $city, 'state' => $state, 'country' => $country] as $locFiel
 $dob     = isset($input['dob']) ? trim((string)$input['dob']) : ($existing['dob'] ?? '');
 $gender  = isset($input['gender']) ? trim((string)$input['gender']) : ($existing['gender'] ?? '');
 
+// Full name + gender must be text-only (no digits, no symbols beyond
+// letters, spaces, apostrophes, periods and hyphens).
+$nameGenderTextOnly = fn(string $v): bool => $v === '' || (bool)preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}'. -]*$/u", $v);
+foreach (['name' => $name, 'gender' => $gender] as $textField => $textValue) {
+    if (!$nameGenderTextOnly($textValue)) {
+        echo json_encode(['success' => false, 'message' => ucfirst($textField) . ' must contain letters only (no digits or symbols).']);
+        exit;
+    }
+}
+
 if (isset($input['email']) && trim((string)$input['email']) !== '') {
     $email = trim((string)$input['email']);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -110,7 +120,21 @@ try {
         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
 
         if (in_array($file_ext, $allowed_exts)) {
-            $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
+            // mime_content_type() may be undefined (no fileinfo extension) —
+            // use finfo, then fall back to the extension map.
+            if (function_exists('mime_content_type')) {
+                $mime = mime_content_type($_FILES['profile_pic']['tmp_name']);
+            } elseif (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = $finfo ? finfo_file($finfo, $_FILES['profile_pic']['tmp_name']) : null;
+                if ($finfo) finfo_close($finfo);
+            } else {
+                $mime = null;
+            }
+            if (!$mime) {
+                $mime_map = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'];
+                $mime = $mime_map[$file_ext] ?? 'image/png';
+            }
             $base64 = base64_encode(file_get_contents($_FILES['profile_pic']['tmp_name']));
             $profile_pic = 'data:' . $mime . ';base64,' . $base64;
         }

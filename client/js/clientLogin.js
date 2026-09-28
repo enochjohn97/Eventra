@@ -447,9 +447,9 @@ document.addEventListener("DOMContentLoaded", () => {
       inputPlaceholder: "New Password",
       showCancelButton: true,
       confirmButtonText: "Change Password",
-      background: "#1e293b",
-      color: "#fff",
-      confirmButtonColor: "#2ecc71",
+      background: "#eee",
+      color: "#111",
+      confirmButtonColor: "#722f37",
       inputValidator: (value) => {
         if (!value) return "You need to write something!";
         if (value.length < 8)
@@ -482,8 +482,8 @@ document.addEventListener("DOMContentLoaded", () => {
           icon: "success",
           title: "Success!",
           text: "Password changed successfully. Please log in again with your new password.",
-          background: "#1e293b",
-          color: "#fff",
+          background: "#eee",
+          color: "#111",
         });
         // Clear any state and let them log in again
         if (window.authController) window.authController.clearLocalState();
@@ -596,8 +596,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (events.length === 0) return;
 
-      // Shuffle events for random display
-      events = events.sort(() => 0.5 - Math.random());
+      // Display events sequentially in their natural order (newest first) —
+      // no shuffling so slides advance one after the other predictably.
 
       // Inject images
       sliderContainer.innerHTML = events
@@ -684,9 +684,9 @@ async function handleForgotPassword() {
     inputPlaceholder: "Email Address",
     showCancelButton: true,
     confirmButtonText: "Send OTP",
-    background: "#1e293b",
-    color: "#fff",
-    confirmButtonColor: "#2ecc71",
+    background: "#eee",
+    color: "#111",
+    confirmButtonColor: "#722f37",
   });
 
   if (!identity) return;
@@ -709,9 +709,9 @@ async function handleForgotPassword() {
         inputPlaceholder: "Enter 6-digit OTP",
         showCancelButton: true,
         confirmButtonText: "Verify",
-        background: "#1e293b",
-        color: "#fff",
-        confirmButtonColor: "#2ecc71",
+        background: "#eee",
+        color: "#111",
+        confirmButtonColor: "#722f37",
         inputAttributes: {
           maxlength: 6,
           autocapitalize: "off",
@@ -737,9 +737,9 @@ async function handleForgotPassword() {
           inputPlaceholder: "New Password",
           showCancelButton: true,
           confirmButtonText: "Reset Password",
-          background: "#1e293b",
-          color: "#fff",
-          confirmButtonColor: "#2ecc71",
+          background: "#eee",
+          color: "#111",
+          confirmButtonColor: "#722f37",
           didOpen: () => {
             const input = Swal.getInput();
             const eyeIcon = document.createElement("i");
@@ -794,8 +794,8 @@ async function handleForgotPassword() {
             icon: "success",
             title: "Success!",
             text: resetResult.message,
-            background: "#1e293b",
-            color: "#fff",
+            background: "#eee",
+            color: "#111",
           });
         } else {
           Swal.fire("Error", resetResult.message, "error");

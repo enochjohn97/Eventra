@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Dashboard | Eventra</title>
     <link rel="stylesheet" href="../css/client-style.css">
+    <link rel="stylesheet" href="/public/assets/brand/sidebar-logo.css">
     <link rel="stylesheet" href="../../public/css/modals.css">
     <link rel="stylesheet" href="../css/modal-styles.css">
 
@@ -21,12 +22,17 @@
     <script src="../../public/js/auth-guard.js"></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 </head>
 <body>
     <!-- Sidebar -->
     <aside class="sidebar">
-        <div class="sidebar-logo">EVENTRA</div>
+        <div class="sidebar-logo" aria-label="Eventra">
+            <img src="/public/assets/brand/logo-wordmark-white.svg" alt="Eventra" class="logo-wordmark" />
+            <img src="/public/assets/brand/logo-mark-only.svg" alt="Eventra" class="logo-mark-only" />
+        </div>
         <ul class="sidebar-menu">
             <li class="menu-item active">
                 <a href="clientDashboard.html">
@@ -75,10 +81,7 @@
                 <input type="text" placeholder="Search events, sales...">
             </div>
             <div class="header-actions">
-                <button id="globalExportBtn" class="btn btn-primary">
-                    <i data-lucide="download"></i>
-                    <span>Export</span>
-                </button>
+                <!-- Export button removed on dashboard per design update (2026-09-25) -->
                 <div class="action-icon" data-drawer="notifications">
                     <i data-lucide="bell"></i>
                 </div>

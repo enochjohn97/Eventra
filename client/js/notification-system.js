@@ -38,6 +38,11 @@ class NotificationManager {
 
   // Fetch notifications from API
   async fetchNotifications() {
+    // Opportunistic reminder trigger: nudges the pre-event reminder cron
+    // (email/SMS/in-app). The endpoint self-throttles to one run per 2 min
+    // and is fire-and-forget — failures here must never affect this poll.
+    fetch("/api/cron/run-reminders.php", { method: "POST", credentials: "include" }).catch(() => {});
+
     if (this.currentAbortController) {
       this.currentAbortController.abort();
     }
@@ -214,10 +219,10 @@ class NotificationManager {
 
     if (!notifications || notifications.length === 0) {
       notificationList.innerHTML = `
-                <div class="empty-notif-state" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
-                    <div style="font-size: 4rem; margin-bottom: 1.5rem; filter: grayscale(0.5);">🎉</div>
-                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">All caught up!</h3>
-                    <p style="font-size: 0.9rem;">You have no new notifications at the moment.</p>
+                <div class="empty-notif-state" style="text-align: center; padding: 2.5rem 1.5rem; color: #94a3b8;">
+                    <div style="font-size: 2.75rem; margin-bottom: 1rem; filter: grayscale(0.5);">🎉</div>
+                    <h3 style="font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: 0.4rem;">All caught up!</h3>
+                    <p style="font-size: 0.8rem;">You have no new notifications at the moment.</p>
                 </div>
             `;
       return;
@@ -226,11 +231,11 @@ class NotificationManager {
     // Header with Clear All
     const header = document.createElement("div");
     header.style.cssText =
-      "padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff;";
+      "padding: 0.75rem 1.25rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff;";
     header.innerHTML = `
-            <span style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">Notifications</span>
+            <span style="font-weight: 700; color: #1e293b; font-size: 0.82rem;">Notifications</span>
             <button onclick="window.notificationManager.clearAll()" 
-                    style="color: #ef4444; background: #fef2f2; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 700; transition: all 0.2s;">
+                    style="color: #ef4444; background: #fef2f2; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.7rem; font-weight: 700; transition: all 0.2s;">
                 Clear All
             </button>
         `;
@@ -262,26 +267,26 @@ class NotificationManager {
       const notifItem = document.createElement("div");
       notifItem.className = `notif-item ${isRead ? "" : "unread"}`;
       notifItem.style.cssText = `
-                padding: 1.25rem 1.5rem;
+                padding: 0.85rem 1.25rem;
                 border-bottom: 1px solid #f1f5f9;
                 cursor: pointer;
                 transition: all 0.2s;
                 display: flex;
-                gap: 1rem;
+                gap: 0.75rem;
                 background: ${isRead ? "#fff" : "#f8fafc"};
             `;
 
       notifItem.innerHTML = `
-                <div class="notif-icon" style="width: 40px; height: 40px; border-radius: 10px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                <div class="notif-icon" style="width: 32px; height: 32px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">
                     ${getNotificationIcon(notif.type)}
                 </div>
                 <div style="flex: 1; min-width: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem;">
-                        <h4 style="font-weight: 700; color: #1e293b; font-size: 0.9rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${window.escapeHtml(title)}</h4>
-                        ${!isRead ? '<span style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-top: 4px;"></span>' : ""}
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.2rem;">
+                        <h4 style="font-weight: 700; color: #1e293b; font-size: 0.8rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${window.escapeHtml(title)}</h4>
+                        ${!isRead ? '<span style="width: 7px; height: 7px; background: #3b82f6; border-radius: 50%; margin-top: 4px;"></span>' : ""}
                     </div>
-                    <p style="font-size: 0.85rem; color: #64748b; margin: 0 0 0.5rem 0; line-height: 1.4;">${window.escapeHtml(notif.message)}</p>
-                    <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">${window.timeAgo(notif.created_at)}</div>
+                    <p style="font-size: 0.75rem; color: #64748b; margin: 0 0 0.35rem 0; line-height: 1.4;">${window.escapeHtml(notif.message)}</p>
+                    <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 500;">${window.timeAgo(notif.created_at)}</div>
                 </div>
             `;
 

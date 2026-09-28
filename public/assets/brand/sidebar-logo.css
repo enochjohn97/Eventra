@@ -1,0 +1,81 @@
+/* ============================================================================
+   Eventra sidebar logo (shared by admin + client dashboards)
+   Expanded:  full wordmark (coral E-mark + "eventra" text, white variant)
+   Collapsed: mark-only, centered — text disappears with the nav labels
+   No borders or rings around the logo image.
+   ========================================================================== */
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem 1.25rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.3s ease, padding 0.3s ease;
+    /* Neutralize legacy gradient-text styling */
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: initial !important;
+}
+
+.sidebar-logo img {
+    height: 42px;
+    width: auto;
+    display: block;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    border-radius: 0;
+    background: none;
+}
+
+/* ── Collapsed state (both class conventions) ─────────────────────────────
+   .sidebar.sidebar-collapsed → admin, .sidebar.collapsed → client       */
+.sidebar.sidebar-collapsed .sidebar-logo,
+.sidebar.collapsed .sidebar-logo {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Expanded wordmark fades out; mark-only fades in */
+.sidebar-logo .logo-wordmark {
+    display: block;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-logo .logo-mark-only {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar.sidebar-collapsed .sidebar-logo .logo-wordmark,
+.sidebar.collapsed .sidebar-logo .logo-wordmark {
+    display: none;
+    opacity: 0;
+}
+
+.sidebar.sidebar-collapsed .sidebar-logo .logo-mark-only,
+.sidebar.collapsed .sidebar-logo .logo-mark-only {
+    display: block;
+    opacity: 1;
+    height: 38px;
+}
+
+/* Legacy inline-style JS sets fontSize:0/padding:0 — neutralize any residue
+   gracefully; the CSS above governs purely through the collapsed classes. */
+.sidebar.sidebar-collapsed .sidebar-logo,
+.sidebar.collapsed .sidebar-logo {
+    font-size: 0; /* kills any residual text nodes without hiding the imgs */
+}
+
+.sidebar.sidebar-collapsed .sidebar-logo img,
+.sidebar.collapsed .sidebar-logo img {
+    font-size: 0; /* imgs are unaffected by font-size anyway */
+}

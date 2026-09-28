@@ -95,6 +95,10 @@ $email = $payload['email'];
 $name = $payload['name'] ?? 'Google User';
 $profile_pic = $payload['picture'] ?? null;
 
+if (empty($profile_pic) && !empty($email)) {
+    $profile_pic = 'https://www.gravatar.com/avatar/' . md5(strtolower(trim($email))) . '?d=identicon';
+}
+
 // Portal Intent Resolution (consistent with check-session.php)
 $headers = function_exists('getallheaders') ? getallheaders() : [];
 $portal = $_SERVER['HTTP_X_EVENTRA_PORTAL'] ?? $headers['X-Eventra-Portal'] ?? $headers['x-eventra-portal'] ?? 'user';
@@ -149,8 +153,8 @@ try {
         $pdo->beginTransaction();
         if ($userRole === 'client') {
             $stmt = $pdo->prepare("
-                INSERT INTO clients (client_auth_id, custom_id, business_name, email, name, profile_pic, password) 
-                VALUES (?, ?, ?, ?, ?, ?, 'GOOGLE_AUTH')
+                INSERT INTO clients (client_auth_id, custom_id, business_name, email, name, profile_pic) 
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE client_auth_id = VALUES(client_auth_id), name = VALUES(name), profile_pic = VALUES(profile_pic)
             ");
             // Check if custom_id already exists for this client (UPSERT case)
@@ -209,7 +213,7 @@ try {
 
         if ($intent === 'client') {
             $customId = generateClientId($pdo);
-            $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, custom_id, business_name, email, name, profile_pic, password) VALUES (?, ?, ?, ?, ?, ?, 'GOOGLE_AUTH')");
+            $stmt = $pdo->prepare("INSERT INTO clients (client_auth_id, custom_id, business_name, email, name, profile_pic) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([$auth_id, $customId, $name, $email, $name, $profile_pic]);
         } else {
             // Default to 'user' role

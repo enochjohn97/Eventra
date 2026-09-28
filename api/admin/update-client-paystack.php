@@ -33,15 +33,22 @@ if (!$paystack_key && !$statusOnly) {
 }
 
 if ($paystack_key) {
-    // Basic format validation: accept only secret keys starting with sk_test_ or sk_live_
-    if (!preg_match('/^sk_(test|live)_[A-Za-z0-9]{8,}$/', $paystack_key)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid Paystack Key format. Use a secret key starting with sk_test_ or sk_live_.']);
+    // Basic format validation: secret keys only.
+    // LIVE-ONLY policy (2026-09-25): test keys (sk_test_...) are rejected.
+    // Paystack issues test keys until business verification completes in the
+    // Paystack dashboard — once verified, switch the dashboard to Live mode
+    // (Settings → API Keys & Webhooks) and paste the sk_live_... key here.
+    // A stored test key would never be used for real transactions anyway:
+    // selectPaystackSecretKey() falls back to the platform live key on mode
+    // mismatch, so accepting them only creates a misleading "connected" state.
+    if (!preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $paystack_key)) {
+        echo json_encode(['success' => false, 'message' => 'Live secret key required. Keys starting with sk_test_ are not accepted — in the Paystack dashboard, complete business verification and switch to Live mode, then copy the sk_live_... secret key here.']);
         exit;
     }
 }
 
-// Determine environment from prefix
-$env = $paystack_key ? (strpos($paystack_key, 'sk_test_') === 0 ? 'test' : 'live') : null;
+// Determine environment from prefix (only 'live' passes validation now)
+$env = $paystack_key ? (strpos($paystack_key, 'sk_live_') === 0 ? 'live' : null) : null;
 
 try {
     if ($paystack_key) {

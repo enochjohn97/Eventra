@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Eventra Admin</title>
     <link rel="stylesheet" href="../css/admin-style.css">
+    <link rel="stylesheet" href="/public/assets/brand/sidebar-logo.css">
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -21,13 +22,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 </head>
 
 <body>
     <!-- Sidebar -->
     <aside class="sidebar">
-        <div class="sidebar-logo">EVENTRA</div>
+        <div class="sidebar-logo" aria-label="Eventra">
+            <img src="/public/assets/brand/logo-wordmark-white.svg" alt="Eventra" class="logo-wordmark" />
+            <img src="/public/assets/brand/logo-mark-only.svg" alt="Eventra" class="logo-mark-only" />
+        </div>
         <ul class="sidebar-menu">
             <li class="menu-item active">
                 <a href="adminDashboard.html">
@@ -77,8 +83,9 @@
                 <div id="searchResultsDropdown" class="search-results-dropdown"></div>
             </div>
             <div class="header-actions">
+                <!-- Export hidden on dashboard per design update -->
                 <button class="btn btn-secondary btn-export"
-                    style="background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); height: 40px; padding: 0 1rem; border-radius: 10px; margin-right: 1rem; display: flex; align-items: center; gap: 8px;">
+                    style="background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); height: 40px; padding: 0 1rem; border-radius: 10px; margin-right: 1rem; display: none; align-items: center; gap: 8px;">
                     <i data-lucide="download" style="width: 18px;"></i>
                     <span>Export</span>
                 </button>
@@ -105,42 +112,42 @@
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Total Events</span>
-                        <i data-lucide="calendar" class="stat-icon" style="color: #3b82f6;"></i>
+                        <div class="stat-icon icon-blue"><i data-lucide="calendar"></i></div>
                     </div>
                     <span class="stat-value" id="totalEventsCount">0</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Active Users</span>
-                        <i data-lucide="users" class="stat-icon" style="color: #10b981;"></i>
+                        <div class="stat-icon icon-purple"><i data-lucide="users"></i></div>
                     </div>
                     <span class="stat-value" id="activeUsersCount">0</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Active Clients</span>
-                        <i data-lucide="check-circle" class="stat-icon" style="color: #10b981;"></i>
+                        <div class="stat-icon icon-green"><i data-lucide="check-circle"></i></div>
                     </div>
                     <span class="stat-value" id="clientsVerifiedCount">0</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Unverified</span>
-                        <i data-lucide="alert-circle" class="stat-icon" style="color: #f97316;"></i>
+                        <div class="stat-icon icon-orange"><i data-lucide="alert-circle"></i></div>
                     </div>
                     <span class="stat-value" id="clientsUnverifiedCount">0</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Revenue</span>
-                        <i data-lucide="trending-up" class="stat-icon" style="color: #059669;"></i>
+                        <div class="stat-icon icon-green"><i data-lucide="trending-up"></i></div>
                     </div>
                     <span class="stat-value" id="totalRevenue">₦0</span>
                 </div>
                 <!-- <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Earnings (30%)</span>
-                        <i data-lucide="trending-up" class="stat-icon" style="color: #10b981;"></i>
+                        <div class="stat-icon icon-green"><i data-lucide="trending-up"></i></div>
                     </div>
                     <span class="stat-value" id="platformEarnings">₦0</span>
                 </div> -->

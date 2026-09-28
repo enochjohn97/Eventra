@@ -262,11 +262,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const authInput = document.getElementById('paystackAuthToken');
         if (pubInput) {
             pubInput.value = '';
-            pubInput.placeholder = publicKey ? 'Saved (hidden) — enter new to replace' : 'pk_test_...';
+            pubInput.placeholder = publicKey ? 'Saved (hidden) — enter new to replace' : 'pk_live_...';
         }
         if (authInput) {
             authInput.value = '';
-            authInput.placeholder = authToken ? 'Saved (hidden) — enter new to replace' : 'sk_test_...';
+            authInput.placeholder = authToken ? 'Saved (hidden) — enter new to replace' : 'sk_live_...';
         }
         document.getElementById('paystackMerchantId').value = merchantId;
         paystackModal.classList.add('active');

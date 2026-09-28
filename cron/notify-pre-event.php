@@ -2,7 +2,7 @@
 
 /**
  * Cron Job: Pre-event Notifications
- * Runs every 5-10 minutes to send reminders to attendees 20 minutes before their location starts.
+ * Runs every 5-10 minutes to send reminders to attendees 30 minutes before their location starts.
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -101,15 +101,15 @@ try {
             ]];
         }
 
-        // 2. Check and send Admin + Client starting notification (20 minutes before)
+        // 2. Check and send Admin + Client starting notification (30 minutes before)
         $earliestTime = strtotime($event['event_date'] . ' ' . ($event['event_time'] ?? '00:00:00'));
         $earliestDiff = ($earliestTime - $now) / 60.0;
         $adminClientNotified = isset($metadata['admin_client_starting_notified']);
 
-        if (!$adminClientNotified && $earliestDiff <= 60 && $earliestDiff >= -30) {
+        if (!$adminClientNotified && $earliestDiff <= 60 && $earliestDiff >= -40) {
             $clientAuthId = $event['client_auth_id'] ?? null;
             $adminAuthId = getAdminUserId();
-            $startingMessage = "Event '{$eventName}' is starting in 20 minutes!";
+            $startingMessage = "Event '{$eventName}' is starting in 30 minutes!";
 
             if ($clientAuthId) {
                 createNotification($clientAuthId, $startingMessage, 'event_reminder', null, 'client', 'system', ['event_id' => $eventId]);
@@ -124,7 +124,36 @@ try {
             echo "Sent starting notifications to Admin and Client for '{$eventName}'\n";
         }
 
-        // 3. Fetch attendees for 20m reminder — per-ticket dedupe prevents
+        // 2b. Check and send Admin + Client "5 minutes before" notification.
+        //     A second, independent pass with its own metadata flag so the 30-minute
+        //     flow above is untouched. Uses the EARLIEST start time (all locations
+        //     share the same start; earliest = safest). Window: fires while start is
+        //     ≤ 6 min away (and ≤ 2 min past start as a missed-run catch-up).
+        $fiveMinNotified = isset($metadata['admin_client_5min_notified']);
+        if (!$fiveMinNotified && $earliestDiff <= 6 && $earliestDiff >= -2) {
+            $clientAuthId5 = $event['client_auth_id'] ?? null;
+            $adminAuthId5 = getAdminUserId();
+            $fiveMinMessage = "Event '{$eventName}' is starting in 5 minutes!";
+
+            try {
+                if ($clientAuthId5) {
+                    createNotification($clientAuthId5, $fiveMinMessage, 'event_starting_soon', null, 'client', 'system', ['event_id' => $eventId, 'window' => '5min']);
+                }
+                if ($adminAuthId5) {
+                    createNotification($adminAuthId5, $fiveMinMessage, 'event_starting_soon', null, 'admin', 'system', ['event_id' => $eventId, 'window' => '5min']);
+                }
+                $metadata['admin_client_5min_notified'] = true;
+                $pdo->prepare("UPDATE events SET metadata = ? WHERE id = ?")
+                    ->execute([json_encode($metadata), $eventId]);
+                echo "Sent 5-minute notifications to Admin and Client for '{$eventName}'\n";
+            } catch (Throwable $fiveMinEx) {
+                // Never abort the run (attendee reminders below still need to fire);
+                // flag is only set on success so the next run retries.
+                error_log("[Cron Reminder] 5-min admin/client notification failed for event {$eventId}: " . $fiveMinEx->getMessage());
+            }
+        }
+
+        // 3. Fetch attendees for 30m reminder — per-ticket dedupe prevents
         //    double-sends across cron runs and multi-location events.
         if (empty($event['user_reminder_sent'])) {
             $ticketStmt = $pdo->prepare("
@@ -181,13 +210,13 @@ try {
                 // Calculate diff
                 $locDiffMinutes = ($locStartTimestamp - $now) / 60.0;
 
-                if ($locDiffMinutes <= 60 && $locDiffMinutes >= -30) {
-                    $subject = "Reminder: {$eventName} starts in 20 minutes!";
+                if ($locDiffMinutes <= 60 && $locDiffMinutes >= -40) {
+                    $subject = "Reminder: {$eventName} starts in 30 minutes!";
                     $body = "
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
                             <h2 style='color: #ff5a5f;'>Event Reminder</h2>
                             <p>Hi <strong>{$attendee['name']}</strong>,</p>
-                            <p>This is a friendly reminder that <strong>{$eventName}</strong> is starting in just 20 minutes!</p>
+                            <p>This is a friendly reminder that <strong>{$eventName}</strong> is starting in just 30 minutes!</p>
                             <div style='background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;'>
                                 <p style='margin: 5px 0;'><strong>Time:</strong> " . date('g:i A', $locStartTimestamp) . "</p>
                                 <p style='margin: 5px 0;'><strong>Location:</strong> {$matchingLoc['address']}, {$matchingLoc['state']}</p>
@@ -199,32 +228,56 @@ try {
                         </div>
                     ";
 
-                    // Send Email
-                    $emailResult = EmailHelper::sendEmail($attendee['email'], $subject, $body);
-
-                    // Send SMS if phone available
-                    if (!empty($attendee['phone'])) {
-                        $smsMessage = "Reminder: {$eventName} starts in 20 minutes! Time: "
-                            . date('g:i A', $locStartTimestamp)
-                            . " at {$matchingLoc['address']}, {$matchingLoc['state']}. Please have your ticket ready.";
-                        sendSMS(
-                            $attendee['phone'],
-                            $smsMessage,
-                            'event_reminder',
-                            ['auth_id' => (int) $attendee['auth_id']]
-                        );
+                    // Send Email — the PRIMARY channel. It must go out even if
+                    // SMS fails below, so it is attempted first and its result
+                    // is logged. Email failure never aborts the run.
+                    $emailResult = ['success' => false, 'message' => 'not attempted'];
+                    try {
+                        $emailResult = EmailHelper::sendEmail($attendee['email'], $subject, $body);
+                        if (empty($emailResult['success'])) {
+                            error_log("[Cron Reminder] Email FAILED for ticket {$attendee['ticket_id']} ({$attendee['email']}): " . ($emailResult['message'] ?? 'unknown reason'));
+                        }
+                    } catch (Throwable $emailEx) {
+                        error_log("[Cron Reminder] Email EXCEPTION for ticket {$attendee['ticket_id']}: " . $emailEx->getMessage());
                     }
 
-                    // Create In-app Notification
-                    createNotification(
-                        $attendee['auth_id'],
-                        "Reminder: '$eventName' starts in 20 minutes!",
-                        'event_reminder',
-                        null,
-                        'user',
-                        'system',
-                        ['event_id' => $eventId]
-                    );
+                    // Send SMS — best effort. A transport/Brevo failure here must
+                    // NOT stop the email, the in-app notification, or the dedupe
+                    // marking (it would otherwise re-send on every cron run).
+                    if (!empty($attendee['phone'])) {
+                        try {
+                            $smsMessage = "Reminder: {$eventName} starts in 30 minutes! Time: "
+                                . date('g:i A', $locStartTimestamp)
+                                . " at {$matchingLoc['address']}, {$matchingLoc['state']}. Please have your ticket ready.";
+                            $smsResult = sendSMS(
+                                $attendee['phone'],
+                                $smsMessage,
+                                'event_reminder',
+                                ['auth_id' => (int) $attendee['auth_id']]
+                            );
+                            if (empty($smsResult['success'])) {
+                                error_log("[Cron Reminder] SMS failed (email still sent) for ticket {$attendee['ticket_id']}: " . ($smsResult['message'] ?? 'unknown reason'));
+                            }
+                        } catch (Throwable $smsEx) {
+                            error_log("[Cron Reminder] SMS EXCEPTION for ticket {$attendee['ticket_id']}: " . $smsEx->getMessage());
+                        }
+                    }
+
+                    // Create In-app Notification — wrapped so notification-table
+                    // issues can never skip the ticket marking either.
+                    try {
+                        createNotification(
+                            $attendee['auth_id'],
+                            "Reminder: '$eventName' starts in 30 minutes!",
+                            'event_reminder',
+                            null,
+                            'user',
+                            'system',
+                            ['event_id' => $eventId]
+                        );
+                    } catch (Throwable $notifEx) {
+                        error_log("[Cron Reminder] In-app notification failed for ticket {$attendee['ticket_id']}: " . $notifEx->getMessage());
+                    }
 
                     // Mark THIS ticket as reminded immediately — a per-ticket dedupe
                     // flag that survives cron restarts and multi-location events.

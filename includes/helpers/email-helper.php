@@ -2,6 +2,7 @@
 
 // ─── Email Configuration ────────────────────────────────────────────────────
 require_once __DIR__ . '/../../config/email.php';
+require_once __DIR__ . '/short-url-helper.php';
 
 // ─── PHPMailer fallback loader (graceful — no fatal if absent) ────────────────
 $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = null;
@@ -369,7 +370,9 @@ class EmailHelper
     private static function buildVerificationUrl(array $ticketData): string
     {
         $barcode = trim((string) ($ticketData['barcode'] ?? $ticketData['ticket_id'] ?? $ticketData['custom_id'] ?? ''));
-        $appUrl  = 'https://eventra-website.liveblog365.com';
+        // Base URL is resolved at runtime (works on any laptop / any domain);
+        // no hardcoded production host.
+        $appUrl = function_exists('getAppBaseUrl') ? getAppBaseUrl() : rtrim(($_ENV['APP_URL'] ?? getenv('APP_URL') ?: ''), '/');
 
         return $appUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($barcode);
     }
@@ -812,9 +815,15 @@ class EmailHelper
             $bgAttr = " background=\"{$safeImgSrc}\"";
         }
 
-        // Build download URL dynamically so it works across environments
-        $appBaseUrl = rtrim($_ENV['APP_URL'] ?? getenv('APP_URL') ?: 'https://eventra-website.liveblog365.com', '/');
-        $downloadUrl = $appBaseUrl . '/api/tickets/download-ticket.php?code=' . $barcode;
+        // Build download URL dynamically so it works across environments.
+        // Short opaque link: hides the real handler path from recipients.
+        // Falls back to the long URL whenever the shortener is unavailable.
+        $appBaseUrl = rtrim($_ENV['APP_URL'] ?? getenv('APP_URL') ?: '', '/');
+        $downloadUrl = buildShortUrl(
+            $appBaseUrl . '/api/tickets/download-ticket.php?code=' . $barcode,
+            'ticket',
+            'ticket:' . $barcode
+        ) ?? ($appBaseUrl . '/api/tickets/download-ticket.php?code=' . $barcode);
 
         $html = <<<HTML
 <!DOCTYPE html>

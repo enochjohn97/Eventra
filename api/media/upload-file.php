@@ -134,7 +134,32 @@ if ($folder_id) {
 // Get file info
 $file_name = basename($file['name']);
 $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-$mime_type = mime_content_type($file['tmp_name']);
+// mime_content_type() is undefined when the fileinfo extension is missing
+// (PHP 8.4 CLI dev server) — use finfo first, then fall back to the
+// extension map so uploads never fatal.
+if (function_exists('finfo_open')) {
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_type = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
+    if ($finfo) finfo_close($finfo);
+} else {
+    $mime_type = null;
+}
+if (!$mime_type) {
+    $mime_map = [
+        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+        'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
+        'pdf' => 'application/pdf', 'mp4' => 'video/mp4', 'mov' => 'video/quicktime',
+        'avi' => 'video/x-msvideo', 'mkv' => 'video/x-matroska', 'webm' => 'video/webm',
+        'doc' => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls' => 'application/vnd.ms-excel',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt' => 'application/vnd.ms-powerpoint',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'zip' => 'application/zip', 'rar' => 'application/vnd.rar', '7z' => 'application/x-7z-compressed',
+    ];
+    $mime_type = $mime_map[$file_extension] ?? 'application/octet-stream';
+}
 $file_size = $file['size'];
 
 // Determine file type

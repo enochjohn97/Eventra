@@ -10,11 +10,13 @@
     <meta property="og:description" content="Find and book amazing events happening near you. Concerts, festivals, conferences and more." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://eventra-website.liveblog365.com/" />
-    <meta property="og:image" content="https://eventra-website.liveblog365.com/public/assets/logo1.png" />
+    <meta property="og:image" content="/public/assets/brand/logo-mark.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Eventra — Discover &amp; Book Events in Nigeria</title>
     <link rel="canonical" href="https://eventra-website.liveblog365.com/" />
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 
     <link rel="dns-prefetch" href="https://accounts.google.com" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -41,10 +43,10 @@
       /* Header */
       .header{background-color:#fff;box-shadow:var(--shadow-subtle);position:sticky;top:0;z-index:1000;transition:var(--transition-base);height:var(--header-height);display:flex;align-items:center;border-bottom:1px solid var(--border-light)}
       .nav-container{width:100%;max-width:var(--container-max-width);margin:0 auto;padding:0 var(--container-padding);display:flex;justify-content:space-between;align-items:center}
-      .logo{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:800;color:var(--text-main);text-decoration:none}
+      .logo{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:800;color:var(--text-main);text-decoration:none}
       .logo img{height:40px;width:40px;aspect-ratio:1/1;object-fit:contain}
       .nav-menu{display:flex;gap:2rem;list-style:none;align-items:center}
-      .nav-menu a{text-decoration:none;color:var(--text-muted);font-weight:600;font-size:.95rem;transition:var(--transition-base);position:relative;padding:8px 0}
+      .nav-menu a{text-decoration:none;color:var(--text-muted);font-weight:600;font-size:.88rem;transition:var(--transition-base);position:relative;padding:8px 0}
       .nav-menu a:hover,.nav-menu li.active a{color:var(--danger-color)}
       .nav-menu a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background-color:var(--danger-color);transition:var(--transition-base)}
       .nav-menu a:hover::after,.nav-menu li.active a::after{width:100%}
@@ -65,8 +67,8 @@
       /* CSS-only dark gradient hero background (no external image on first paint) */
       .hero-slide-static.hero-gradient-bg{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 40%,#4c0519 100%)}
       .hero-content{position:relative;z-index:10;text-align:center;color:#fff;max-width:900px;padding:0 var(--container-padding);display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:2rem}
-      .hero-title{font-size:clamp(2.5rem,6vw,4rem);font-weight:800;margin-bottom:1rem;line-height:1.2;text-shadow:0 4px 20px rgba(0,0,0,.5);background:linear-gradient(135deg,#fff,#ff8a8e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-      .hero-subtitle{font-size:1.25rem;margin-bottom:0;opacity:.95;text-shadow:0 2px 10px rgba(0,0,0,.3);color:#fff}
+      .hero-title{font-size:clamp(2rem,4.5vw,3rem);font-weight:800;margin-bottom:1rem;line-height:1.2;text-shadow:0 4px 20px rgba(0,0,0,.5);background:linear-gradient(135deg,#fff,#ff8a8e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+      .hero-subtitle{font-size:1.05rem;margin-bottom:0;opacity:.95;text-shadow:0 2px 10px rgba(0,0,0,.3);color:#fff}
 
       /* Search */
       .hero-search-overlay{position:relative;z-index:20;width:100%;max-width:800px;padding:0 var(--container-padding);display:flex;justify-content:center}
@@ -116,7 +118,7 @@
       "@type": "Organization",
       "name": "Eventra",
       "url": "https://eventra-website.liveblog365.com",
-      "logo": "https://eventra-website.liveblog365.com/public/assets/logo1.png",
+      "logo": "/public/assets/brand/logo-mark.png",
       "description": "Nigeria's premier event discovery and ticketing platform.",
       "sameAs": []
     }
@@ -128,7 +130,7 @@
     <header class="header">
       <nav class="nav-container">
         <a href="/public/pages/index.html" class="logo" aria-label="Eventra home">
-          <img src="../assets/logo1.png" alt="" width="40" height="40" /><span class="text">Eventra</span>
+          <img src="/public/assets/brand/logo-wordmark.svg" alt="Eventra" height="48" />
         </a>
 
         <ul class="nav-menu">
@@ -142,28 +144,6 @@
           class="nav-actions"
           style="display: flex; align-items: center; gap: 1rem"
         >
-          <div id="cartDropdownContainer">
-            <!-- Cart Dropdown moved next to profile dropdown -->
-            <div id="cartDropdown" class="cart-dropdown">
-              <div class="cart-dropdown-header">
-                <h3>My Favorites</h3>
-                <button class="clear-cart-btn" onclick="clearFavorites(event)">
-                  Clear All
-                </button>
-              </div>
-              <div id="cartItemsContainer" class="cart-items-container">
-                <div class="empty-cart-message">
-                  <p>Your favorites list is empty</p>
-                </div>
-              </div>
-              <div class="cart-dropdown-footer" id="cartFooter" style="display: none">
-                <div class="cart-total">
-                  <span>Total Events:</span>
-                  <span id="cartTotalCount">0</span>
-                </div>
-              </div>
-            </div>
-          </div>
           <div class="mobile-menu-toggle" id="mobileMenuToggle">
             <span></span>
             <span></span>
@@ -206,7 +186,7 @@
                 <div class="user-online-status" style="display: none"></div>
               </div>
             </button>
-            <div class="profile-dropdown" id="profileDropdown">
+            <div class="profile-dropdown" id="profileDropdown" style="max-height: 80vh; overflow-y: auto;">
               <div class="user-info-header">
                 <h4 id="dropdownUserName">User Name</h4>
                 <p id="dropdownUserEmail">user@example.com</p>
@@ -217,6 +197,26 @@
                 My Favorites
                 <span id="cartBadge" style="background: #ff5a5f; color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none;">0</span>
               </a>
+              <!-- Inline Cart Dropdown for favorites -->
+              <div id="cartDropdown" class="cart-dropdown" style="position: static; width: 100%; box-shadow: none; border: none; border-radius: 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+                <div class="cart-dropdown-header" style="padding: 0.5rem 1.25rem;">
+                  <h3 style="font-size: 0.85rem;">Favorites List</h3>
+                  <button class="clear-cart-btn" onclick="clearFavorites(event)" style="font-size: 0.75rem;">
+                    Clear
+                  </button>
+                </div>
+                <div id="cartItemsContainer" class="cart-items-container" style="max-height: 200px;">
+                  <div class="empty-cart-message">
+                    <p>Your favorites list is empty</p>
+                  </div>
+                </div>
+                <div class="cart-dropdown-footer" id="cartFooter" style="display: none; padding: 0.5rem 1.25rem;">
+                  <div class="cart-total" style="font-size: 0.85rem;">
+                    <span>Total Events:</span>
+                    <span id="cartTotalCount">0</span>
+                  </div>
+                </div>
+              </div>
               <!-- <a href="#" onclick="if(typeof window.showSupportCenter==='function')window.showSupportCenter();else window.location.assign('/public/pages/tickets.html?support=1');return false;">❓ Support</a> -->
               <hr />
               <a href="#" id="logoutBtn">Logout</a>
@@ -254,7 +254,7 @@
             </div>
             <div class="form-group">
               <label for="profileName">Full Name</label>
-              <input type="text" id="profileName" name="name" class="form-input" required />
+              <input type="text" id="profileName" name="name" class="form-input" required pattern="[A-Za-zÀ-ÖØ-öø-ÿ' .\-]+" title="Letters only (no numbers)" />
             </div>
             <div class="form-group">
               <label for="profileEmail">Email</label>
@@ -270,19 +270,19 @@
             </div>
             <div class="form-group">
               <label for="profileGender">Gender</label>
-              <input type="text" id="profileGender" name="gender" class="form-input" required />
+              <input type="text" id="profileGender" name="gender" class="form-input" required pattern="[A-Za-zÀ-ÖØ-öø-ÿ' .\-]+" title="Letters only (no numbers)" />
             </div>
             <div class="form-group">
               <label for="profileCountry">Country</label>
-              <input type="text" id="profileCountry" name="country" class="form-input" required />
+              <input type="text" id="profileCountry" name="country" class="form-input" required pattern="[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'. -]*" title="Letters only (no digits or symbols)" />
             </div>
             <div class="form-group">
               <label for="profileState">State</label>
-              <input type="text" id="profileState" name="state" class="form-input" required />
+              <input type="text" id="profileState" name="state" class="form-input" required pattern="[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'. -]*" title="Letters only (no digits or symbols)" />
             </div>
             <div class="form-group">
               <label for="profileCity">City</label>
-              <input type="text" id="profileCity" name="city" class="form-input" required />
+              <input type="text" id="profileCity" name="city" class="form-input" required pattern="[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'. -]*" title="Letters only (no digits or symbols)" />
             </div>
             <div class="form-group">
               <label for="profileAddress">Address</label>
@@ -313,19 +313,6 @@
         <div class="search-container">
           <div class="search-wrapper-enhanced">
             <div class="search-input-group">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="search-icon"
-              >
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
               <input
                 type="text"
                 id="globalSearch"
@@ -354,7 +341,6 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
-              Search
             </button>
           </div>
         </div>
@@ -468,12 +454,12 @@
 
         <!-- Recently Viewed (returning browsers only — fresh browsers see nothing) -->
         <section id="recentlyViewedSection" style="display: none; margin-bottom: 2.5rem;">
-          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">👀 Recently Viewed</h2>
+          <h2 style="font-size: 1.25rem; margin-bottom: 1rem; font-weight: 700;">👀 Recently Viewed</h2>
           <div id="recentlyViewedGrid" style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: .75rem; scroll-snap-type: x mandatory;"></div>
         </section>
 
         <section id="upcomingSection" style="display: none; margin-bottom: 2.5rem;">
-          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">📅 Upcoming Events</h2>
+          <h2 style="font-size: 1.25rem; margin-bottom: 1rem; font-weight: 700;">📅 Upcoming Events</h2>
           <div class="swiper upcoming-swiper" style="position: relative; padding-bottom: 30px;">
             <div class="swiper-wrapper" id="upcoming-events-grid"></div>
             <div class="swiper-pagination"></div>
@@ -483,7 +469,7 @@
         </section>
 
         <section id="nearbySection" style="display: none; margin-bottom: 2.5rem;">
-          <h2 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 700;">📍 Near You</h2>
+          <h2 style="font-size: 1.25rem; margin-bottom: 1rem; font-weight: 700;">📍 Near You</h2>
           <div class="swiper nearby-swiper" style="position: relative; padding-bottom: 30px;">
             <div class="swiper-wrapper" id="nearby-events-grid"></div>
             <div class="swiper-pagination"></div>
@@ -541,7 +527,7 @@
                 <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700">
                   Complete Your Profile
                 </h3>
-                <p style="margin: 4px 0 0; font-size: 0.95rem; color: #fff;">
+                <p style="margin: 4px 0 0; font-size: 0.85rem; color: #fff;">
                   Please log in and update your profile to be able to receive
                   events reminder through your email and sms
                 </p>

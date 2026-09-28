@@ -16,7 +16,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
     <link rel="stylesheet" href="../../public/css/pagination.css">
 </head>
 <body>
@@ -71,9 +73,8 @@
                 <div id="searchResultsDropdown" class="search-results-dropdown"></div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary btn-export" style="background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); height: 40px; padding: 0 1rem; border-radius: 10px; margin-right: 1rem; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="download" style="width: 18px;"></i>
-                    <span>Export</span>
+                <button class="btn btn-secondary btn-export action-icon" title="Export data" aria-label="Export data" style="background: transparent; border: none; color: var(--admin-text-main); height: 40px; width: 40px; padding: 0; border-radius: 10px; margin-right: 1rem; display: flex; align-items: center; justify-content: center; gap: 0;">
+                    <i data-lucide="download" style="width: 20px;"></i>
                 </button>
                 <div class="action-icon notification-bell-icon" id="notificationBellIcon" title="Notifications" style="position: relative; cursor: pointer;">
                     <i data-lucide="bell"></i>
@@ -144,7 +145,7 @@
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Total Issued</span>
-                        <i data-lucide="ticket" class="stat-icon" style="color: #6366f1;"></i>
+                        <div class="stat-icon icon-purple"><i data-lucide="ticket"></i></div>
                     </div>
                     <span class="stat-value" id="ticketsIssued">0</span>
                 </div>
@@ -152,7 +153,7 @@
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Total Revenue</span>
-                        <i data-lucide="banknote" class="stat-icon" style="color: #10b981;"></i>
+                        <div class="stat-icon icon-green"><i data-lucide="banknote"></i></div>
                     </div>
                     <span class="stat-value" id="totalRevenue">₦0</span>
                 </div>
@@ -160,7 +161,7 @@
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Pending</span>
-                        <i data-lucide="clock" class="stat-icon" style="color: #f59e0b;"></i>
+                        <div class="stat-icon icon-orange"><i data-lucide="clock"></i></div>
                     </div>
                     <span class="stat-value" id="ticketsPending">0</span>
                 </div>
@@ -168,7 +169,7 @@
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Scanned</span>
-                        <i data-lucide="scan" class="stat-icon" style="color: #3b82f6;"></i>
+                        <div class="stat-icon icon-blue"><i data-lucide="scan"></i></div>
                     </div>
                     <span class="stat-value" id="ticketsScanned">0</span>
                 </div>
@@ -176,7 +177,7 @@
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Cancelled</span>
-                        <i data-lucide="ban" class="stat-icon" style="color: #ef4444;"></i>
+                        <div class="stat-icon icon-red"><i data-lucide="ban"></i></div>
                     </div>
                     <span class="stat-value" id="ticketsCancelled">0</span>
                 </div>

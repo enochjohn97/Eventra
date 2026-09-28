@@ -12,7 +12,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 
     <style>
         /* ── reset & base ── */
@@ -42,14 +44,11 @@
             max-width: 1280px;
             min-height: 92vh;
             max-height: 96vh;
-            background: radial-gradient(circle at 15% 25%, rgba(124, 58, 237, 0.10) 0%, transparent 45%),
-                radial-gradient(circle at 85% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 45%),
-                #11111a;
+            background: #ffffff;
             border-radius: 32px;
-            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(2px);
         }
 
         /* ── brand mark (top-left) ── */
@@ -61,7 +60,7 @@
             align-items: center;
             gap: 12px;
             z-index: 20;
-            color: #fff;
+            color: #111;
             font-size: 1.35rem;
             font-weight: 800;
             letter-spacing: -0.02em;
@@ -70,18 +69,17 @@
             user-select: none;
         }
         .brand-mark img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: #7c3aed;
-            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
+            width: auto;
+            height: 56px;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            border-radius: 0;
+            background: none;
+            object-fit: contain;
         }
         .brand-mark span {
-            background: linear-gradient(135deg, #f0f0ff 0%, #c4b5fd 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            display: none;
         }
 
         /* ── left: login form ── */
@@ -97,17 +95,9 @@
         .login-form-container {
             width: 100%;
             max-width: 440px;
-            background: rgba(255, 255, 255, 0.04);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 28px;
+            background: transparent;
+            border: none;
             padding: 2.8rem 2.8rem 3.2rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-            transition: box-shadow 0.4s ease;
-        }
-        .login-form-container:hover {
-            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6);
         }
 
         .login-header {
@@ -116,25 +106,26 @@
         .login-title {
             font-size: 2rem;
             font-weight: 800;
-            color: #f0f0ff;
+            color: #111;
             letter-spacing: -0.02em;
             line-height: 1.2;
             text-align: center;
         }
         .login-subtitle {
-            color: rgba(255, 255, 255, 0.55);
+            color: #555;
             font-size: 0.95rem;
             margin-top: 0.4rem;
             font-weight: 500;
+            text-align: center;
         }
         .login-subtitle a {
-            color: #a78bfa;
+            color: #1d4ed8;
             text-decoration: none;
             font-weight: 600;
             transition: color 0.2s;
         }
         .login-subtitle a:hover {
-            color: #c4b5fd;
+            color: #2563eb;
         }
 
         /* ── form elements ── */
@@ -147,22 +138,28 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            color: rgba(255, 255, 255, 0.4);
+            color: #555;
             margin-bottom: 0.4rem;
         }
         .input-wrapper {
             position: relative;
             display: flex;
             align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #fff;
+            border: 1px solid #e5e7eb;
             border-radius: 14px;
-            transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+            overflow: hidden;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
+
         .input-wrapper:focus-within {
-            border-color: rgba(124, 58, 237, 0.5);
-            background: rgba(255, 255, 255, 0.07);
-            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+            border-color: #1d4ed8;
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+        }
+
+        .input-wrapper:has(.form-input.error) {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
         }
         .input-wrapper .form-input {
             width: 100%;
@@ -172,12 +169,12 @@
             outline: none;
             font-size: 0.95rem;
             font-weight: 500;
-            color: #f0f0ff;
+            color: #111;
             font-family: 'Plus Jakarta Sans', sans-serif;
             letter-spacing: 0.01em;
         }
         .input-wrapper .form-input::placeholder {
-            color: rgba(255, 255, 255, 0.25);
+            color: #aaa;
             font-weight: 400;
             letter-spacing: 0.02em;
         }
@@ -189,7 +186,7 @@
             right: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.25);
+            color: #888;
             pointer-events: none;
             display: flex;
             align-items: center;
@@ -200,7 +197,7 @@
             right: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.25);
+            color: #888;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -211,7 +208,7 @@
             padding: 4px;
         }
         .toggle-password:hover {
-            color: rgba(255, 255, 255, 0.6);
+            color: #333;
         }
 
         input[type="password"]::-ms-reveal,
@@ -232,6 +229,18 @@
             letter-spacing: 0.01em;
         }
 
+        /* Shared validator state colors (warning ⚠ / success ✓) — the base
+           .error-message rule forces red, so state classes must override it. */
+        .error-message.eventra-msg-warning {
+            color: #f59e0b !important;
+        }
+        .error-message.eventra-msg-error {
+            color: #ef4444 !important;
+        }
+        .error-message.eventra-msg-success {
+            color: #10b981 !important;
+        }
+
         /* ── options row ── */
         .form-options {
             display: flex;
@@ -240,21 +249,21 @@
         }
         .forgot-password {
             font-size: 0.82rem;
-            color: rgba(255, 255, 255, 0.4);
+            color: #555;
             text-decoration: none;
             font-weight: 600;
             transition: color 0.2s;
             letter-spacing: 0.01em;
         }
         .forgot-password:hover {
-            color: #a78bfa;
+            color: #1d4ed8;
         }
 
         /* ── login button ── */
         .login-button {
             width: 100%;
             padding: 0.9rem 1.5rem;
-            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            background: #1d4ed8;
             border: none;
             border-radius: 14px;
             font-size: 1rem;
@@ -264,14 +273,14 @@
             letter-spacing: 0.04em;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.3s, background 0.3s;
-            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.30);
+            box-shadow: 0 8px 24px rgba(29, 78, 216, 0.30);
             position: relative;
             overflow: hidden;
         }
         .login-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(124, 58, 237, 0.45);
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            box-shadow: 0 12px 32px rgba(29, 78, 216, 0.45);
+            background: #2563eb;
         }
         .login-button:active {
             transform: translateY(0px) scale(0.98);
@@ -303,12 +312,12 @@
             font-weight: 600;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.15);
-            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            color: #888;
+            border-top: 1px solid #eee;
             padding-top: 1.2rem;
         }
         .footer-note span {
-            color: rgba(255, 255, 255, 0.25);
+            color: #555;
         }
         .footer-note .flag {
             display: inline-block;
@@ -332,8 +341,8 @@
             aspect-ratio: 4 / 5;
             border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.55);
-            background: #0b0b12;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+            background: #f3f4f6;
         }
 
         .slider-images .slide {
@@ -365,7 +374,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(11, 11, 18, 0.20) 0%, transparent 50%, rgba(11, 11, 18, 0.10) 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, transparent 50%, rgba(255, 255, 255, 0.10) 100%);
             z-index: 3;
             pointer-events: none;
             border-radius: 24px;
@@ -380,29 +389,29 @@
             display: flex;
             gap: 8px;
             z-index: 10;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(8px);
             padding: 6px 14px;
             border-radius: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
         .slider-dots .dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.2);
             transition: background 0.4s, transform 0.3s;
             cursor: pointer;
             border: none;
             padding: 0;
         }
         .slider-dots .dot.active {
-            background: #a78bfa;
+            background: #1d4ed8;
             transform: scale(1.25);
-            box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+            box-shadow: 0 0 12px rgba(29, 78, 216, 0.4);
         }
         .slider-dots .dot:hover {
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.5);
         }
 
         /* ── responsive ── */
@@ -441,8 +450,16 @@
                 font-size: 1.1rem;
             }
             .brand-mark img {
-                width: 32px;
-                height: 32px;
+                height: 46px;
+                width: auto;
+            }
+            /* Mobile: logo sits over the slider photo — give the wordmark a
+               white chip so it stays readable (not a border on the image) */
+            .brand-mark {
+                background: #ffffff;
+                padding: 6px 12px;
+                border-radius: 14px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             }
             .login-title {
                 font-size: 1.6rem;
@@ -470,8 +487,8 @@
                 font-size: 0.95rem;
             }
             .brand-mark img {
-                width: 28px;
-                height: 28px;
+                height: 40px;
+                width: auto;
             }
             .slider-images {
                 max-height: 180px;
@@ -528,14 +545,23 @@
             }
         }
         .brand-mark img {
-            animation: brandPulse 4s ease-in-out infinite;
+            /* logo renders as-is; the legacy pulse is disabled for the wordmark */
+            animation: none;
         }
 
         /* ── form input autofill override ── */
         .input-wrapper .form-input:-webkit-autofill {
-            -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset !important;
-            -webkit-text-fill-color: #f0f0ff !important;
+            -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+            -webkit-text-fill-color: #111 !important;
             border-radius: 14px;
+        }
+
+        /* Keep textfields rounded even when legacy styles fight back */
+        .login-form .input-wrapper {
+            border-radius: 14px !important;
+        }
+        .login-form .input-wrapper .form-input {
+            border-radius: 0;
         }
     </style>
 </head>
@@ -546,8 +572,7 @@
 
         <!-- ── Brand ── -->
         <div class="brand-mark">
-            <img src="../../public/assets/logo1.png" alt="Eventra logo" />
-            <span>Eventra</span>
+            <img src="/public/assets/brand/logo-wordmark.svg" alt="Eventra logo" height="56" />
         </div>
 
         <!-- ── LEFT: Login Form ── -->
@@ -592,8 +617,7 @@
 
                     <!-- Login Button -->
                     <button type="submit" id="loginButton" class="login-button">
-                        <span class="btn-shimmer"></span>
-                        Login
+                        Login &rarr;
                     </button>
 
                 </form>
@@ -785,8 +809,6 @@
         })();
     </script>
 
-</body>
-</html>
 
     <!-- Scripts -->
     <script src="../../public/js/storage.js"></script>

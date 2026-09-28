@@ -37,20 +37,27 @@ $name           = isset($_POST['name']) && trim($_POST['name']) !== '' ? trim($_
 $business_name  = isset($_POST['business_name']) && trim($_POST['business_name']) !== '' ? trim($_POST['business_name']) : ($existing['business_name'] ?? '');
 $phone          = isset($_POST['phone']) && trim($_POST['phone']) !== '' ? trim($_POST['phone']) : ($existing['phone'] ?? '');
 
-// Validate phone: max 11 digits, digits only
-if ($phone !== '' && (!ctype_digit($phone) || strlen($phone) > 11)) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Phone number must be numeric and at most 11 digits.']);
-    exit;
+// Validate phone: 11 digits local (0801...) or 13 digits international (+234801...)
+if ($phone !== '') {
+    $hasPlus = str_starts_with($phone, '+');
+    $digits  = preg_replace('/\D/', '', $phone);
+    $isLocal = (bool)preg_match('/^0[789][01]\d{8}$/', $digits);
+    $isIntl  = (bool)preg_match('/^234[789][01]\d{8}$/', $digits);
+    $valid   = $hasPlus ? $isIntl : ($isLocal || $isIntl);
+    if (!$valid) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Phone must be 11 digits (08012345678) or international format (+2348012345678).']);
+        exit;
+    }
 }
 $address        = isset($_POST['address']) && trim($_POST['address']) !== '' ? trim($_POST['address']) : ($existing['address'] ?? '');
 $city           = isset($_POST['city']) && trim($_POST['city']) !== '' ? trim($_POST['city']) : ($existing['city'] ?? '');
 $state          = isset($_POST['state']) && trim($_POST['state']) !== '' ? trim($_POST['state']) : ($existing['state'] ?? '');
 $country        = isset($_POST['country']) && trim($_POST['country']) !== '' ? trim($_POST['country']) : ($existing['country'] ?? '');
 
-// Location fields must be text-only (no digits/symbols beyond spacing & basic punctuation)
+// Location text check: ADDRESS accepts any format (numbers/symbols allowed); other location fields stay letters-only
 $locationTextOnly = fn(string $v): bool => $v === '' || (bool)preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}' .,\-]*$/u", $v);
-foreach (['address' => $address, 'city' => $city, 'state' => $state, 'country' => $country] as $locField => $locValue) {
+foreach (['city' => $city, 'state' => $state, 'country' => $country] as $locField => $locValue) {
     if (!$locationTextOnly($locValue)) {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => ucfirst($locField) . ' must contain letters only (no numbers or symbols).']);
@@ -59,6 +66,17 @@ foreach (['address' => $address, 'city' => $city, 'state' => $state, 'country' =
 }
 $job_title      = isset($_POST['job_title']) && trim($_POST['job_title']) !== '' ? trim($_POST['job_title']) : ($existing['job_title'] ?? '');
 $company        = isset($_POST['company']) && trim($_POST['company']) !== '' ? trim($_POST['company']) : ($existing['company'] ?? '');
+
+// Job title / company / location fields must be text-only (no digits, no symbols
+// beyond letters, spaces, apostrophes, periods and hyphens).
+$textOnly = fn(string $v): bool => $v === '' || (bool)preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}'. -]*$/u", $v);
+foreach (['job_title' => $job_title, 'company' => $company, 'city' => $city, 'country' => $country] as $textField => $textValue) {
+    if (!$textOnly($textValue)) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => ucfirst(str_replace('_', ' ', $textField)) . ' must contain letters only (no digits or symbols).']);
+        exit;
+    }
+}
 $dob            = isset($_POST['dob']) && trim($_POST['dob']) !== '' ? trim($_POST['dob']) : ($existing['dob'] ?? '');
 $gender         = isset($_POST['gender']) && trim($_POST['gender']) !== '' ? trim($_POST['gender']) : ($existing['gender'] ?? '');
 $settlementFields = [];

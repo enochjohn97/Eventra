@@ -647,6 +647,26 @@ function initUserIcon() {
         });
       }
 
+      // Enforce letters-only (no digits) on text fields: fullname, gender, country, state, city
+      const lettersOnlyFields = [
+        "profileName",
+        "profileGender",
+        "profileCountry",
+        "profileState",
+        "profileCity",
+      ];
+      lettersOnlyFields.forEach((fid) => {
+        const el = document.getElementById(fid);
+        if (el && !el._lettersOnly) {
+          el._lettersOnly = true;
+          el.addEventListener("input", () => {
+            // Strip digits AND symbols — keep letters (incl. accents), spaces,
+            // apostrophes, periods and hyphens only.
+            el.value = el.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, "");
+          });
+        }
+      });
+
       if (profileSideModal) profileSideModal.classList.add("open");
     });
   }
@@ -927,7 +947,7 @@ async function performServerSearch(query) {
 
     if (result.success) {
       eventsData.all = result.events;
-      renderDiscovery(result.events); // Use centralized rendering with ghost filling
+      renderSearchResults(result.events); // Use centralized rendering with ghost filling
     }
   } catch (error) {
     if (loader) loader.style.display = "none";
@@ -1647,16 +1667,19 @@ function shareEvent(
 
   let eventName = "event";
   let organizerName = "organizer";
+  let eventTag = null;
   if (typeof allEvents !== "undefined") {
     const ev = allEvents.find((event) => event.id == eventId);
     if (ev) {
       eventName = ev.event_name || "event";
       organizerName = ev.organizer_name || ev.client_name || "organizer";
+      eventTag = ev.tag || null;
     }
   }
 
-  const domain =
-    "https://eventra-website.liveblog365.com/public/pages/index.html";
+  // Short, path-hiding share link: /e/{tag} never exposes the real page
+  // location and works on any domain. Fallback keeps the old deep link.
+  const baseUrl = window.location.origin;
   const nameSlug = encodeURIComponent(
     eventName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
@@ -1664,7 +1687,9 @@ function shareEvent(
     organizerName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
 
-  const shareUrl = `${domain}?event=${eventId}&organizer=${orgSlug}&name=${nameSlug}`;
+  const shareUrl = eventTag
+    ? `${baseUrl}/e/${encodeURIComponent(eventTag)}`
+    : `${baseUrl}/public/pages/event-details.html?event=${eventId}&organizer=${orgSlug}&name=${nameSlug}`;
 
   if (navigator.share) {
     navigator.share({
@@ -1692,8 +1717,16 @@ async function toggleFavorite(e, eventId) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_id: eventId || window.currentModalEventId }),
     });
-    const result = await response.json();
-    if (result.success) {
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      showNotification(
+        (result && result.message) ||
+          `Failed to update favorite (${response.status}). Please try again.`,
+        "error",
+      );
+      return;
+    }
+    if (result && result.success) {
       // Update local eventsData reactively
       if (typeof eventsData !== "undefined") {
         // Update in all categories
@@ -1717,7 +1750,7 @@ async function toggleFavorite(e, eventId) {
         );
         cards.forEach((cardItem) => {
           const favBtn = cardItem.querySelector(".fav-btn");
-          const favIcon = cardItem.querySelector(".fav-btn i");
+          const favIcon = cardItem.querySelector(".fav-btn svg");
           if (favBtn) {
             if (result.is_favorite) {
               favBtn.classList.add("active");
@@ -1746,9 +1779,20 @@ async function toggleFavorite(e, eventId) {
       }
 
       showNotification(result.message, "success");
+    } else {
+      showNotification(
+        (result && result.message) || "Failed to update favorite.",
+        "error",
+      );
     }
   } catch (error) {
-    showNotification("Failed to update favorite", "error");
+    console.error("[toggleFavorite] Error:", error);
+    showNotification(
+      error && error.message
+        ? `Failed to update favorite: ${error.message}`
+        : "Failed to update favorite. Please check your connection and try again.",
+      "error",
+    );
   }
 }
 
@@ -1881,6 +1925,10 @@ async function init() {
   // Real-time synchronization (60s polling for events)
   // Preserves active filter/search state — does not re-init filters
   setInterval(() => {
+    // Opportunistic reminder trigger (see client/js/notification-system.js):
+    // keeps pre-event email/SMS/in-app reminders flowing without a crontab.
+    fetch("/api/cron/run-reminders.php", { method: "POST", credentials: "include" }).catch(() => {});
+
     const globalSearch = document.getElementById("globalSearch");
     if (globalSearch && globalSearch.value.trim()) return; // skip during active search
     loadEvents(); // loadEvents -> applyFilters preserves checked state since filters init only once
@@ -2376,6 +2424,12 @@ function updateCartUI() {
   const cartTotalCount = document.getElementById("cartTotalCount");
 
   if (!cartItemsContainer) return;
+
+  // Local splash fallback for favorite card thumbnails
+  const fallback =
+    typeof getImageUrl === "function"
+      ? getImageUrl("/public/assets/imgs/login.png")
+      : "/public/assets/imgs/login.png";
 
   // Favorites are our "cart items"
   const favorites = eventsData.favorites || [];

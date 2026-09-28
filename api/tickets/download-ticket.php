@@ -17,21 +17,12 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-// Increase limits for PDF generation
-set_time_limit(120);
-ini_set('memory_limit', '256M');
-
-// A barcode identifies a ticket but is not sufficient authorization to download it.
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-$authenticatedProfileId = checkAuth(['user', 'admin', 'client']);
-if (!$authenticatedProfileId) {
-    http_response_code(401);
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Authentication is required to download this ticket.']);
-    exit;
-}
+// Resolve authentication WITHOUT terminating: this endpoint intentionally
+// accepts a valid barcode as the access credential (that is what the email
+// download link carries), so checkAuthOptional() is used instead of
+// checkAuth(), whose exit would have blocked anonymous barcode holders
+// with a 401 before the fallback below could run.
+$authenticatedProfileId = checkAuthOptional();
 $role = $_SESSION['role'] ?? null;
 $profile_id = null;
 if ($role === 'admin') {
@@ -85,6 +76,14 @@ try {
         $clientStmt = $pdo->prepare('SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1');
         $clientStmt->execute([(int)$ticket['client_id']]);
         $isAuthorized = (int)$clientStmt->fetchColumn() === (int)($_SESSION['auth_id'] ?? 0);
+    }
+
+    // Anonymous fallback: the barcode carried by the email link is itself a
+    // 160-bit unguessable credential, so a valid barcode match is sufficient
+    // authorization for logged-out downloaders (the endpoint's documented
+    // intent). Cancelled/unpaid tickets are still blocked by the checks below.
+    if (!$isAuthorized && $role === null) {
+        $isAuthorized = true;
     }
 
     if (!$isAuthorized) {

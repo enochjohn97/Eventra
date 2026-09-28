@@ -557,6 +557,28 @@ body {
     background: #f1f5f9;
     color: #94a3b8;
     flex-shrink: 0;
+    transition: transform 0.3s;
+}
+
+.stat-icon.icon-purple {
+    color: var(--card-wine, #8a2be2);
+    background: rgba(138, 43, 226, 0.1);
+}
+.stat-icon.icon-blue {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+.stat-icon.icon-orange {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+}
+.stat-icon.icon-red {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+.stat-icon.icon-green {
+    color: var(--client-emerald, #10b981);
+    background: rgba(16, 185, 129, 0.1);
 }
 
 .stat-icon svg,

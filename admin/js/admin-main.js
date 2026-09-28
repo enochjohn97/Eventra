@@ -616,15 +616,8 @@ function initSidebar() {
     mainLayout.classList.add("collapsed");
     // adjust icon to point right when collapsed
     toggleBtn.innerHTML = '<i data-lucide="chevron-right"></i>';
-
-    // Set correct initial logo state (Parity with client)
-    const logoEl = sidebar.querySelector(".sidebar-logo");
-    if (logoEl) {
-      logoEl.style.fontSize = "0";
-      logoEl.style.padding = "0";
-      logoEl.style.height = "0";
-      logoEl.style.overflow = "hidden";
-    }
+    // Logo state (wordmark vs mark-only) is handled purely by CSS via the
+    // sidebar-collapsed class — see public/assets/brand/sidebar-logo.css
   }
 
   // 3. Toggle Event
@@ -639,14 +632,8 @@ function initSidebar() {
       : '<i data-lucide="chevron-left"></i>';
     if (window.lucide) window.lucide.createIcons();
 
-    // Toggle logo text visibility (Parity with client)
-    const logoEl = sidebar.querySelector(".sidebar-logo");
-    if (logoEl) {
-      logoEl.style.fontSize = nowCollapsed ? "0" : "";
-      logoEl.style.padding = nowCollapsed ? "0" : "";
-      logoEl.style.height = nowCollapsed ? "0" : "";
-      logoEl.style.overflow = nowCollapsed ? "hidden" : "";
-    }
+    // Logo swaps between wordmark and mark-only via CSS (sidebar-collapsed
+    // class) — no inline style manipulation needed here.
   });
 
   // 5. Active State Highlighting
@@ -798,66 +785,7 @@ window.initPreviews = function () {
       let html = "";
 
       if (path.includes("users.html")) {
-        const cells = row.querySelectorAll("td");
-        if (cells.length < 6) return;
-        const name = cells[1].innerText;
-        const location = cells[2].innerText;
-        const email = cells[3].innerText;
-        const status = cells[4].innerText;
-        const contact = cells[5].innerText;
-
-        // Fetch details for user to get full metadata
-        html = `
-                    <div class="profile-preview">
-                        <div class="profile-preview-header">User Profile</div>
-                        <div class="profile-preview-info" style="padding: 2rem; text-align: center;">
-                            <p>Loading user details...</p>
-                        </div>
-                    </div>
-                `;
-        content.innerHTML = html;
-        backdrop.style.display = "flex";
-        setTimeout(() => backdrop.classList.add("active"), 10);
-
-        apiFetch(`/api/admin/get-users.php`) // We search in the cached allUsers or just refetch? Let's use the data we already have in the row if possible or fetch.
-          .then((res) => res.json())
-          .then((data) => {
-            const user = data.users.find((u) => u.id == row.dataset.id);
-            if (user) {
-              const profilePic = getProfileImg(user.profile_pic, user.name);
-              const cleanName = (user.name || "").replace(/\s*#\d+$/, "");
-              content.innerHTML = `
-                                <div class="profile-preview">
-                                    <div class="profile-preview-header">User Profile</div>
-                                    <div style="position: relative; margin-bottom: 60px;">
-                                        <div class="profile-preview-cover-box" style="margin-bottom: 0;">
-                                            <img src="${profilePic}" alt="Cover" style="filter: blur(5px); opacity: 0.5;">
-                                        </div>
-                                        <div class="profile-preview-avatar-wrapper">
-                                            <div class="avatar-wrapper">
-                                                <img src="${profilePic}" class="profile-preview-avatar" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid white;">
-                                                ${getVerificationBadge(user.email_verified_at ? "verified" : "")}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="profile-preview-info">
-                                        <h2 style="font-weight: 800;">${escapeHTML(cleanName)}</h2>
-                                        <p style="color: #6366f1; font-weight: 600; font-family: monospace; letter-spacing: 1px;">${escapeHTML(user.custom_id || user.id)}</p>
-                                        <p>${escapeHTML(user.email)}</p>
-                                    </div>
-                                    <div class="profile-preview-details">
-                                        <div class="profile-preview-detail-item"><span class="profile-detail-label">Phone</span><span class="profile-detail-val">${escapeHTML(user.phone) || "N/A"}</span></div>
-                                        <div class="profile-preview-detail-item"><span class="profile-detail-label">Gender</span><span class="profile-detail-val" style="text-transform: capitalize;">${escapeHTML(user.gender) || "N/A"}</span></div>
-                                        <div class="profile-preview-detail-item"><span class="profile-detail-label">DOB</span><span class="profile-detail-val">${escapeHTML(user.dob) || "N/A"}</span></div>
-                                        <div class="profile-preview-detail-item"><span class="profile-detail-label">Last Login</span><span class="profile-detail-val">${user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "Never"}</span></div>
-                                        <div class="profile-preview-detail-item" style="grid-column: span 2;"><span class="profile-detail-label">Address</span><span class="profile-detail-val">${escapeHTML(user.address) || "N/A"}, ${escapeHTML(user.city) || ""}, ${escapeHTML(user.state) || ""}, ${escapeHTML(user.country) || ""}</span></div>
-                                        <div class="profile-preview-detail-item"><span class="profile-detail-label">Status</span><span class="profile-detail-val" style="text-transform: capitalize;">${escapeHTML(user.status)}</span></div>
-                                    </div>
-                                </div>
-                            `;
-            }
-          });
-        return;
+        return; // Handled safely in users.js
       } else if (path.includes("clients.html")) {
         const clientId = row.dataset.id;
         const name = row.cells[1].innerText;
@@ -1186,80 +1114,7 @@ window.initPreviews = function () {
           });
         return; // Prevent default row click behavior which shows old static modal
       } else if (path.includes("tickets.html")) {
-        const cells = row.querySelectorAll("td");
-        if (cells.length < 6) return;
-        const serial = cells[0].innerText;
-        const event = cells[1].innerText;
-        const price = cells[2].innerText;
-        const attendees = cells[3].innerText;
-        const category = cells[4].innerText;
-
-        const rawImage =
-          row.dataset.image ||
-          (typeof getImageUrl === "function"
-            ? getImageUrl("/public/assets/imgs/login.png")
-            : "/public/assets/imgs/login.png");
-
-        // Proper image path resolution
-        let eventImage = "";
-        if (rawImage.startsWith("http") || rawImage.startsWith("data:")) {
-          eventImage = rawImage;
-        } else if (rawImage) {
-          // Handle both /uploads/... and uploads/... formats
-          eventImage =
-            "../../" +
-            (rawImage.startsWith("/") ? rawImage.substring(1) : rawImage);
-        } else {
-          eventImage =
-            typeof getImageUrl === "function"
-              ? getImageUrl("/public/assets/imgs/login.png")
-              : "/public/assets/imgs/login.png";
-        }
-
-        html = `
-                    <div class="ticket-preview">
-                        <div class="ticket-card-preview" style="background: linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.7) 100%), url('${eventImage}') no-repeat center center; background-size: cover;">
-                            <div class="ticket-main">
-                                <div>
-                                    <div class="ticket-top">EVENTRA</div>
-                                    <div class="ticket-info">
-                                        <div class="ticket-event-name">${escapeHTML(event)}</div>
-                                        <div class="ticket-meta-info">
-                                            <div class="ticket-meta-line">📍 Venue: Nigeria</div>
-                                            <div class="ticket-meta-line">👥 Attendees: ${escapeHTML(attendees)}</div>
-                                            <div class="ticket-meta-line">🔖 Serial: ${escapeHTML(serial)}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="ticket-bottom-info">
-                                    <div class="ticket-type">${escapeHTML(category)}</div>
-                                    <div class="ticket-price-box">
-                                        <div class="ticket-price-label">Price</div>
-                                        <div class="ticket-price-val">${escapeHTML(price)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ticket-barcode-section">
-                                <svg width="50" height="100" viewBox="0 0 50 100" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="3" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="6" y="0" width="3" height="80" fill="white"/>
-                                    <rect x="10" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="13" y="0" width="3" height="80" fill="white"/>
-                                    <rect x="17" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="20" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="23" y="0" width="3" height="80" fill="white"/>
-                                    <rect x="27" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="30" y="0" width="3" height="80" fill="white"/>
-                                    <rect x="34" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="37" y="0" width="2" height="80" fill="white"/>
-                                    <rect x="40" y="0" width="3" height="80" fill="white"/>
-                                    <rect x="44" y="0" width="2" height="80" fill="white"/>
-                                    <text x="25" y="95" text-anchor="middle" font-size="8" fill="white">${escapeHTML(serial).substring(0, 6)}</text>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                `;
+        return; // Handled safely in tickets.js via createTicketRow
       } else if (path.includes("events.html")) {
         // Use the specialized previewEvent function if available
         if (typeof window.previewEvent === "function") {

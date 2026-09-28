@@ -1,9 +1,4 @@
 -- =============================================================================
--- EVENTRA DATABASE SCHEMA v2.0 (CORRECTED)
--- Restructured for clarity, performance, and maintainability
--- =============================================================================
-
--- =============================================================================
 -- SECTION 1: DATABASE & USER SETUP
 -- =============================================================================
 
@@ -742,3 +737,19 @@ INSERT IGNORE INTO admins (
 -- FINAL: RE-ENABLE FOREIGN KEY CHECKS
 -- =============================================================================
 SET FOREIGN_KEY_CHECKS = 1;
+-- =============================================================================
+-- SHORT URLS (opaque /s/{code} links — hides real page locations)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS short_urls (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(20) NOT NULL UNIQUE,
+    long_url VARCHAR(2048) NOT NULL,
+    kind VARCHAR(30) NOT NULL DEFAULT 'custom',
+    ref_key VARCHAR(190) DEFAULT NULL,
+    clicks INT UNSIGNED NOT NULL DEFAULT 0,
+    last_click_at DATETIME DEFAULT NULL,
+    created_by INT UNSIGNED DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_long (long_url(255)),
+    INDEX idx_kind_key (kind, ref_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

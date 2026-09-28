@@ -78,7 +78,7 @@ function showCreateEventModal(eventToEdit = null) {
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Event Name <span style="color: #ef4444">*</span></label>
-                                        <input type="text" name="event_name" id="eventNameInput" required placeholder="Enter event name" oninput="generateEventTagAndLink()" 
+                                        <input type="text" name="event_name" id="eventNameInput" required placeholder="Enter event name" oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, ''); generateEventTagAndLink()" 
                                                style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                                     </div>
 
@@ -115,6 +115,8 @@ function showCreateEventModal(eventToEdit = null) {
                                             <option value="Finance">Finance</option>
                                             <option value="Gaming">Gaming</option>
                                             <option value="Political">Political</option>
+                                            <option value="Creative">Creative</option>
+                                            <option value="Entrepreneurship & Innovation">Entrepreneurship & Innovation</option>
                                             <option value="Other">Other</option>
                                         </select>
                                     </div>
@@ -291,7 +293,7 @@ function showCreateEventModal(eventToEdit = null) {
                                     <!-- Conditional Price/Quantity Inputs -->
                                     <div id="regularConfig" class="ticket-price-section" style="display: none;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Regular Ticket Price (₦)</label>
-                                        <input type="text" inputmode="decimal" name="regular_price" id="regularPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <input type="text" inputmode="numeric" name="regular_price" id="regularPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
                                         <div id="regularPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:-0.75rem;margin-bottom:0.5rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Quantity</label>
                                         <input type="number" name="regular_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
@@ -299,7 +301,7 @@ function showCreateEventModal(eventToEdit = null) {
 
                                     <div id="vipConfig" class="ticket-price-section" style="display: none;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">VIP Ticket Price (₦)</label>
-                                        <input type="text" inputmode="decimal" name="vip_price" id="vipPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <input type="text" inputmode="numeric" name="vip_price" id="vipPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
                                         <div id="vipPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:-0.75rem;margin-bottom:0.5rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Quantity</label>
                                         <input type="number" name="vip_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
@@ -307,7 +309,7 @@ function showCreateEventModal(eventToEdit = null) {
 
                                     <div id="premiumConfig" class="ticket-price-section" style="display: none;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Premium Ticket Price (₦)</label>
-                                        <input type="text" inputmode="decimal" name="premium_price" id="premiumPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
+                                        <input type="text" inputmode="numeric" name="premium_price" id="premiumPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px; margin-bottom: 1rem;">
                                         <div id="premiumPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:-0.75rem;margin-bottom:0.5rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">Quantity</label>
                                         <input type="number" name="premium_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
@@ -315,7 +317,7 @@ function showCreateEventModal(eventToEdit = null) {
 
                                     <div id="allConfig" class="ticket-price-section" style="display: block;">
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">All Ticket Price (₦)</label>
-                                        <input type="text" inputmode="decimal" name="price" id="allPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #2563eb; border-radius: 10px; background: #f8fafc;">
+                                        <input type="text" inputmode="numeric" name="price" id="allPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #2563eb; border-radius: 10px; background: #f8fafc;">
                                         <div id="allPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:0.25rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
                                         <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">One price for all ticket tiers (Regular, VIP, Premium).</p>
                                     </div>
@@ -588,7 +590,8 @@ function showCreateEventModal(eventToEdit = null) {
           : eventToEdit.image_path.startsWith("/")
             ? eventToEdit.image_path
             : "/" + eventToEdit.image_path;
-      document.getElementById("eventImageInput").removeAttribute("required");
+      // Existing banner counts as "image present" for the required check
+      document.getElementById("eventImagePreview").dataset.hasImage = "1";
     }
 
     // Parse metadata to extract ticket data
@@ -832,20 +835,38 @@ function showCreateEventModal(eventToEdit = null) {
     }
   }
 
+  // FREE option becomes inaccessible (disabled + dimmed) the moment ANY paid
+  // ticket type (regular/vip/premium/all) is checked.
+  function _setFreeAccessibility() {
+    const anyPaidChecked =
+      document.querySelectorAll(".ticket-type-checkbox:checked").length > 0;
+    const freeLabel = freeCheckbox.closest("label");
+    freeCheckbox.disabled = anyPaidChecked;
+    if (freeLabel) {
+      freeLabel.style.opacity = anyPaidChecked ? "0.45" : "1";
+      freeLabel.style.cursor = anyPaidChecked ? "not-allowed" : "pointer";
+      freeLabel.title = anyPaidChecked
+        ? "Uncheck the selected ticket types to make this event free"
+        : "";
+    }
+  }
+
   freeCheckbox.addEventListener("change", function () {
     _setFreeMode(this.checked);
     if (!this.checked) updateTicketTypeSections();
   });
 
-  // When any paid ticket type is selected, uncheck Free
+  // When any paid ticket type is selected, uncheck Free and lock the option
   document.querySelectorAll(".ticket-type-checkbox").forEach((cb) => {
     cb.addEventListener("change", function () {
       if (this.checked && freeCheckbox.checked) {
         freeCheckbox.checked = false;
         _setFreeMode(false);
       }
+      _setFreeAccessibility();
     });
   });
+  _setFreeAccessibility();
 
   const statusInput = document.querySelector('input[name="status"]');
   if (statusInput) statusInput.value = "draft";
@@ -974,38 +995,19 @@ function showCreateEventModal(eventToEdit = null) {
     const inp = document.getElementById(inputId);
     const err = document.getElementById(errorId);
     if (!inp) return;
-    inp.addEventListener("keydown", (e) => {
-      const allowed = [
-        "Backspace",
-        "Delete",
-        "Tab",
-        "Escape",
-        "Enter",
-        "ArrowLeft",
-        "ArrowRight",
-        "ArrowUp",
-        "ArrowDown",
-        "Home",
-        "End",
-        ".",
-        " ",
-      ];
-      if (allowed.includes(e.key)) return;
-      if (e.key === "." && inp.value.includes(".")) {
-        e.preventDefault();
-        return;
-      }
-      if (!/^\d$/.test(e.key)) {
-        e.preventDefault();
-        return;
-      }
-    });
+    // Hard digits-only filter — strips letters, symbols and extra dots on paste/typing
     inp.addEventListener("input", () => {
-      const digits = inp.value
-        .replace(".", "")
-        .replace("-", "")
-        .replace(/\D/g, "");
-      const valid = priceRegex.test(inp.value) && digits.length <= 10;
+      let cleaned = inp.value.replace(/[^0-9.]/g, "");
+      const parts = cleaned.split(".");
+      if (parts.length > 2) cleaned = parts[0] + "." + parts.slice(1).join("");
+      const [intPart, decPart] = cleaned.split(".");
+      let fixed = intPart.slice(0, 10);
+      if (cleaned.includes(".")) {
+        fixed += "." + (decPart || "").slice(0, 2);
+      }
+      if (fixed !== inp.value) inp.value = fixed;
+      const digits = inp.value.replace(".", "").length;
+      const valid = priceRegex.test(inp.value) && digits <= 10;
       if (err) err.style.display = valid ? "none" : "block";
       inp.style.borderColor = valid ? "" : "#ef4444";
     });
@@ -1041,13 +1043,31 @@ function closeCreateEventModal() {
 }
 
 function previewEventImage(event) {
-  const file = event.target.files[0];
+  const input = event.target;
+  const file = input.files[0];
   if (file) {
+    // 10MB upload limit — reject early with a clear message (matches server config)
+    const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_IMAGE_BYTES) {
+      showNotification(
+        `Image size passes the 10MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose a smaller image.`,
+        "error",
+      );
+      input.value = ""; // clear the selection so the form can't submit it
+      const preview = document.getElementById("eventImagePreview");
+      if (preview && !preview.dataset.hasImage) preview.src = "";
+      return;
+    }
+    const preview = document.getElementById("eventImagePreview");
+    if (preview) preview.dataset.hasImage = "1";
     const reader = new FileReader();
     reader.onload = function (e) {
       document.getElementById("eventImagePreview").src = e.target.result;
     };
     reader.readAsDataURL(file);
+  } else {
+    const preview = document.getElementById("eventImagePreview");
+    if (preview) delete preview.dataset.hasImage;
   }
 }
 
@@ -1076,9 +1096,10 @@ function generateEventTagAndLink() {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 
-  // Generate external link
+  // Generate external link — short /e/{tag} form: hides the real page path,
+  // works on any domain (matches the server-side shortener target).
   const baseUrl = window.location.origin;
-  const externalLink = `${baseUrl}/public/pages/event-details.html?event=${tag}&client=${clientName}`;
+  const externalLink = `${baseUrl}/e/${tag}`;
 
   // Update fields
   document.getElementById("eventTagField").value = tag;
@@ -1307,6 +1328,27 @@ async function handleCreateEventSubmit(e) {
   e.preventDefault();
 
   const formData = new FormData(e.target);
+
+  // Event image is REQUIRED for both create and update — an event cannot be
+  // saved without a banner.
+  const imageInput = document.getElementById("eventImageInput");
+  const imageFile = imageInput?.files?.[0];
+  const hasExistingImage =
+    document.getElementById("eventImagePreview")?.dataset.hasImage === "1";
+  if (!imageFile && !hasExistingImage) {
+    showNotification("Event Image (Banner) is required.", "error");
+    imageInput
+      ?.closest("div")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  if (imageFile && imageFile.size > 10 * 1024 * 1024) {
+    showNotification(
+      `Image size passes the 10MB limit (${(imageFile.size / (1024 * 1024)).toFixed(1)}MB). Please choose a smaller image.`,
+      "error",
+    );
+    return;
+  }
 
   // Validate phone contacts before submitting (format enforced client-side,
   // mirroring the server's expectation of a usable phone number).

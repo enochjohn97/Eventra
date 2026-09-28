@@ -79,6 +79,8 @@ window.EVENT_CATEGORIES = [
   "Finance",
   "Gaming",
   "Political",
+  "Creative",
+  "Entrepreneurship & Innovation",
   "Other",
 ];
 
@@ -177,10 +179,10 @@ function formatLocalDateTime(utcString, options = {}) {
   // Ensure the string is treated as UTC if it doesn't have a Z or offset
   const dateStr =
     utcString.endsWith("Z") ||
-    utcString.includes("+") ||
-    (utcString.includes("-") &&
-      utcString.includes(":") &&
-      utcString.split("-").length > 3)
+      utcString.includes("+") ||
+      (utcString.includes("-") &&
+        utcString.includes(":") &&
+        utcString.split("-").length > 3)
       ? utcString
       : utcString.replace(" ", "T") + "Z";
 
@@ -310,7 +312,14 @@ function getProfileImg(path, name = "") {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
   }
 
-  let finalPath = path;
+  let finalPath = String(path).replace(/\\/g, "/");
+
+  // Extract web path from absolute filesystem paths (Windows or Unix),
+  // e.g. "C:\\xampp\\htdocs\\eventra\\public\\uploads\\pic.jpg" -> "/public/uploads/pic.jpg"
+  const publicIdx = finalPath.toLowerCase().indexOf("/public/");
+  if (publicIdx >= 0) {
+    finalPath = finalPath.substring(publicIdx);
+  }
 
   // Normalize path
   if (!finalPath.startsWith("/")) {
@@ -415,6 +424,28 @@ function getVerificationBadge(status) {
     `;
 }
 
+// Global broken-image fallback: any avatar/profile image that fails to load
+// renders a generated avatar instead of the browser's broken-image icon.
+document.addEventListener(
+  "error",
+  (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement)) return;
+    const isAvatar =
+      img.id === "userProfileImg" ||
+      img.id === "modalProfilePic" ||
+      (img.classList &&
+        (img.classList.contains("user-icon") ||
+          img.classList.contains("profile-pic-large") ||
+          img.classList.contains("avatar")));
+    if (!isAvatar || img.dataset.fallbackApplied) return;
+    img.dataset.fallbackApplied = "1";
+    const fallbackName = img.alt || "User";
+    img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=6366f1&color=fff&size=128&bold=true`;
+  },
+  true,
+); // capture phase: error events on images don't bubble
+
 // Global listener for profile updates to refresh all avatars on the page
 document.addEventListener("EventraProfileUpdated", (e) => {
   const { profile_pic, name } = e.detail;
@@ -500,18 +531,21 @@ function showNotification(message, type = "info") {
   document.head.appendChild(style);
 
   function fieldMessage(field, message) {
-    const parent =
+    const group =
       field.closest(".form-group,.form-field") || field.parentElement;
     const isAuthField = !!field.closest(".login-form");
-    let msg = isAuthField
-      ? parent
-          .closest(".form-group,.form-field")
-          ?.querySelector(".error-message")
-      : parent.querySelector(".eventra-field-message");
+    // Both branches resolve the message slot within the FIELD GROUP so the
+    // text always lands below the input — even when the field is wrapped in
+    // a .input-wrapper / .eventra-field-wrap (login + signup modals).
+    let msg = group.querySelector(
+      isAuthField
+        ? ".error-message, .eventra-field-message"
+        : ".eventra-field-message, .error-message",
+    );
     if (!msg) {
       msg = document.createElement("div");
       msg.className = "eventra-field-message";
-      parent.appendChild(msg);
+      group.appendChild(msg);
     }
     msg.textContent = message || "";
     msg.style.display = message ? "block" : "none";
@@ -538,6 +572,16 @@ function showNotification(message, type = "info") {
       icon.textContent = "";
       icon.style.color = "";
       fieldMessage(field, "");
+      const staleMsg = (
+        field.closest(".form-group,.form-field") || field.parentElement
+      ).querySelector(".eventra-field-message, .error-message");
+      if (staleMsg) {
+        staleMsg.classList.remove(
+          "eventra-msg-warning",
+          "eventra-msg-error",
+          "eventra-msg-success",
+        );
+      }
       return;
     }
     field.classList.add("eventra-" + state);
@@ -551,11 +595,20 @@ function showNotification(message, type = "info") {
           ? "#EF4444"
           : "#F59E0B";
     fieldMessage(field, message);
+    // Color the message slot for the current state — including legacy
+    // .error-message divs, whose base rule would otherwise force red even
+    // for warnings/successes.
     const messageEl = (
       field.closest(".form-group,.form-field") || field.parentElement
-    ).querySelector(".eventra-field-message");
-    if (messageEl)
-      messageEl.className = "eventra-field-message eventra-msg-" + state;
+    ).querySelector(".eventra-field-message, .error-message");
+    if (messageEl) {
+      messageEl.classList.remove(
+        "eventra-msg-warning",
+        "eventra-msg-error",
+        "eventra-msg-success",
+      );
+      messageEl.classList.add("eventra-msg-" + state);
+    }
   }
   /* --- Field-type validators (shared by validateField) ------------------- */
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -568,19 +621,19 @@ function showNotification(message, type = "info") {
   const BUSINESS_NAME_RE = /^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 .,&'’()_-]{1,99}$/;
   const USERNAME_RE = /^[A-Za-z0-9_.-]{3,50}$/;
   const TEXT_INPUT_RE = /^[^<>]*$/; // blocks raw angle brackets (basic injection guard)
-  function fieldSupportsState(field) {
-    return !(
-      field.type === "checkbox" ||
-      field.type === "radio" ||
-      field.tagName === "SELECT" && field.size > 1 ||
-      field.readOnly
-    );
-  }
   function validateField(field, form) {
     if (
       field.disabled ||
       field.type === "hidden" ||
       field.type === "file" ||
+      // Checkboxes/radios show their own checked state — no ✓/⚠ icons.
+      // (Unchecked checkboxes still report value="1", so validating them
+      // produced bogus green marks on untouched fields.)
+      field.type === "checkbox" ||
+      field.type === "radio" ||
+      // Read-only fields (auto-generated tag/link, locked business name, …)
+      // are never user-inputted — never mark them.
+      field.readOnly ||
       field.dataset.skipValidation === "true"
     )
       return true;
@@ -589,6 +642,8 @@ function showNotification(message, type = "info") {
       !value &&
       (field.required || field.getAttribute("aria-required") === "true")
     ) {
+      // A visible message must accompany the ⚠ icon — an icon alone leaves
+      // the user guessing why the field is flagged.
       setState(field, "warning", "This field is required.");
       return false;
     }
@@ -643,8 +698,8 @@ function showNotification(message, type = "info") {
       const isSignupish =
         !isLoginForm &&
         (!form ||
-        /signup|register/i.test(form.id || "") ||
-        field.id === "newPassword");
+          /signup|register/i.test(form.id || "") ||
+          field.id === "newPassword");
       if (isSignupish && !STRONG_PASSWORD_RE.test(value)) {
         setState(
           field,
@@ -724,11 +779,19 @@ function showNotification(message, type = "info") {
     form.dataset.eventraValidation = "1";
     form.noValidate = true;
     form.querySelectorAll("input,select,textarea").forEach((field) => {
-      field.addEventListener("blur", () => validateField(field, form));
-      field.addEventListener("input", () => {
+      // Marks must reflect REAL user interaction only. Programmatic events
+      // (draft restore, prefill) dispatch synthetic events (isTrusted=false)
+      // — those must never light up a green ✓ on a field the user never
+      // touched in this session.
+      field.addEventListener("blur", (e) => {
+        if (!e.isTrusted) return;
+        validateField(field, form);
+      });
+      field.addEventListener("input", (e) => {
         // Success highlight must clear IMMEDIATELY on new typing — only
         // re-validate fields already showing an error/warning so users are
         // not nagged while typing a first entry.
+        if (!e.isTrusted) return;
         if (
           field.classList.contains("eventra-success")
         ) {
@@ -740,7 +803,10 @@ function showNotification(message, type = "info") {
           validateField(field, form);
         }
       });
-      field.addEventListener("change", () => validateField(field, form));
+      field.addEventListener("change", (e) => {
+        if (!e.isTrusted) return;
+        validateField(field, form);
+      });
     });
     form.addEventListener(
       "submit",
@@ -840,7 +906,7 @@ async function apiFetch(url, options = {}) {
       ) {
         headers["Content-Type"] = "application/json";
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Add Authorization header if token exists
@@ -892,8 +958,8 @@ async function apiFetch(url, options = {}) {
           const errorData = text ? JSON.parse(text) : {};
           const err = new Error(
             errorData.message ||
-              errorData.error ||
-              `Server error: ${response.status}`,
+            errorData.error ||
+            `Server error: ${response.status}`,
           );
           err.data = errorData;
           err.response = response;
@@ -907,7 +973,7 @@ async function apiFetch(url, options = {}) {
         // Consume body to prevent resource leaks
         try {
           await response.text();
-        } catch (_) {}
+        } catch (_) { }
         throw new Error(
           `Server returned ${response.status}. This usually means a routing error or a crash.`,
         );
@@ -946,7 +1012,7 @@ async function apiFetch(url, options = {}) {
           cache: "no-store",
         });
         lastPing = Date.now();
-      } catch (e) {}
+      } catch (e) { }
     }
   }, 2000);
 
@@ -984,7 +1050,11 @@ function saveFormState(storageKey, formId = storageKey) {
       el.type === "password" ||
       el.type === "file" ||
       (el.type === "hidden" && !isHiddenToPersist) ||
-      el.name === "event_id"
+      el.name === "event_id" ||
+      // Government identifiers are never drafted to localStorage — the server
+      // stores only a masked copy (see api/clients/verify-identity.php).
+      el.name === "bvn_number" ||
+      el.name === "nin_number"
     ) {
       return;
     }
@@ -1028,7 +1098,7 @@ function restoreFormState(storageKey, formId = storageKey) {
         el.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 /**

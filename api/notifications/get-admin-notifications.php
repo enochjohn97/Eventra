@@ -86,9 +86,14 @@ try {
         $notifications[] = $notification;
     }
 
-    $unread_count = count(array_filter($notifications, static function ($notification) {
-        return (int) ($notification['is_read'] ?? 0) === 0;
-    }));
+    // TRUE unread total (same fix as get-notifications.php) — the previous
+    // page-count approach capped the admin badge at the LIMIT of 20.
+    $unread_stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM notifications n
+        WHERE n.recipient_auth_id = ? AND n.recipient_role = 'admin' AND n.is_read = 0
+    ");
+    $unread_stmt->execute([$admin_auth_id]);
+    $unread_count = (int) $unread_stmt->fetchColumn();
 
     if (ob_get_length()) ob_clean();
     echo json_encode([

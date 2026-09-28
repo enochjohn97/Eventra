@@ -21,6 +21,41 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 });
 
 /**
+ * Max event image size (bytes) — mirrors the client-side 10MB limit.
+ */
+define('EVENT_IMAGE_MAX_BYTES', 10 * 1024 * 1024);
+
+/**
+ * Detect a file's MIME type without relying on mime_content_type() —
+ * that function is missing when the fileinfo extension is not enabled
+ * (e.g. the PHP 8.4 CLI dev server here), which logged
+ * "Call to undefined function mime_content_type()" on every event image
+ * upload. finfo is tried first, then the extension map as a fallback.
+ */
+function detectUploadMimeType(string $path, string $extension): string
+{
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $mime = finfo_file($finfo, $path);
+            finfo_close($finfo);
+            if ($mime) return $mime;
+        }
+    }
+    $map = [
+        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+        'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
+        'pdf' => 'application/pdf', 'mp4' => 'video/mp4', 'mov' => 'video/quicktime',
+        'txt' => 'text/plain', 'doc' => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls' => 'application/vnd.ms-excel',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'zip' => 'application/zip',
+    ];
+    return $map[strtolower($extension)] ?? 'application/octet-stream';
+}
+
+/**
  * Compress event image for storage
  */
 function compressEventImage($filePath, $extension) {
@@ -113,9 +148,21 @@ try {
     $client_name = strtolower(str_replace(' ', '-', preg_replace('/[^A-Za-z0-9 ]/', '', $raw_client_name)));
     // ─────────────────────────────────────────────────────────────────────────
 
-    // 2. Handle file upload if present using standardized path
+    // 2. Handle file upload. The image is REQUIRED — an event cannot be
+    // created without a banner (design update 2026-09-26).
     $image_path = null;
-    if (isset($_FILES['event_image']) && $_FILES['event_image']['error'] === UPLOAD_ERR_OK) {
+    if (!isset($_FILES['event_image']) || $_FILES['event_image']['error'] === UPLOAD_ERR_NO_FILE) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Event Image (Banner) is required.']);
+        exit;
+    }
+    if ($_FILES['event_image']['error'] === UPLOAD_ERR_OK) {
+        if ($_FILES['event_image']['size'] > EVENT_IMAGE_MAX_BYTES) {
+            $mb = number_format($_FILES['event_image']['size'] / (1024 * 1024), 1);
+            http_response_code(413);
+            echo json_encode(['success' => false, 'message' => "Image size passes the 10MB limit ({$mb}MB). Please choose a smaller image."]);
+            exit;
+        }
         $upload_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR;
 
         if (!is_dir($upload_dir)) {
@@ -134,7 +181,7 @@ try {
             // Register in media table under the Event Assets folder
             try {
                 $file_size = filesize($upload_path);
-                $mime_type = mime_content_type($upload_path);
+                $mime_type = detectUploadMimeType($upload_path, $file_extension);
 
                 // Resolve (or create) the Event Assets folder for this client
                 $ea_stmt = $pdo->prepare("SELECT id FROM media_folders WHERE client_id = ? AND name = 'Event Assets' AND is_deleted = 0 LIMIT 1");
@@ -365,11 +412,12 @@ try {
         }
     }
 
-    // Validate required fields (image optional for drafts)
+    // Validate required fields — image is required for ALL events (drafts
+    // included) per design update 2026-09-26.
     if (
         empty($event_name) || empty($description) || empty($event_type) ||
         empty($event_date) || empty($event_time) || empty($phone_contact_1) ||
-        empty($state) || empty($address) || ($status !== 'draft' && empty($image_path))
+        empty($state) || empty($address) || empty($image_path)
     ) {
         http_response_code(400);
         $missing = [];
@@ -381,12 +429,20 @@ try {
         if (empty($phone_contact_1))  $missing[] = 'Primary Contact';
         if (empty($state))            $missing[] = 'State';
         if (empty($address))          $missing[] = 'Address';
-        if ($status !== 'draft' && empty($image_path)) $missing[] = 'Event Image (Banner)';
+        if (empty($image_path))       $missing[] = 'Event Image (Banner)';
 
         echo json_encode([
             'success' => false,
             'message' => 'All required fields must be filled: ' . implode(', ', $missing)
         ]);
+        exit;
+    }
+
+    // Event name must be text-only: letters (incl. accents), spaces,
+    // apostrophes, periods and hyphens — no digits or symbols.
+    if (!preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}'. -]*$/u", $event_name)) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Event name must contain letters only (no digits or symbols).']);
         exit;
     }
 

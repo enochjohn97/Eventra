@@ -1,909 +1,1262 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Login to your Eventra account to manage and discover experiences"
-    />
-    <title>Client Login - Eventra</title>
 
-    <!-- Stylesheets -->
-    <link rel="stylesheet" href="../../public/css/login-style.css" />
-    <link rel="stylesheet" href="../../public/css/login.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
-    />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Login to your Eventra account to manage and discover experiences" />
+  <title>Client Login - Eventra</title>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
 
-    <!-- Favicon -->
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 
-    <style>
-      /* ── reset & base ── */
-      *,
-      *::before,
-      *::after {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+  <style>
+    /* ── reset & base ── */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-      body {
-        font-family: "Plus Jakarta Sans", sans-serif;
-        background: #eee;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        padding: 1rem;
-      }
+    body {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      background: #eee;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 1rem;
+    }
 
-      /* ── main container ── */
-      .login-container {
-        display: flex;
-        width: 100%;
-        max-width: 1280px;
-        min-height: 92vh;
-        max-height: 96vh;
-        background:
-          radial-gradient(
-            circle at 15% 25%,
-            rgba(114, 47, 55, 0.1) 0%,
-            transparent 45%
-          ),
-          radial-gradient(
-            circle at 85% 75%,
-            rgba(212, 122, 131, 0.1) 0%,
-            transparent 45%
-          ),
-          #11111a;
-        border-radius: 32px;
-        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(2px);
-      }
+    /* ── main container ── */
+    .login-container {
+      display: flex;
+      width: 100%;
+      max-width: 1280px;
+      min-height: 92vh;
+      max-height: 96vh;
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
 
-      /* ── brand mark (top-left) ── */
-      .brand-mark {
-        position: absolute;
-        top: 28px;
-        left: 32px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        z-index: 20;
-        color: #fff;
-        font-size: 1.35rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        text-decoration: none;
-        pointer-events: none;
-        user-select: none;
-      }
-      .brand-mark img {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        background: #722f37;
-        box-shadow: 0 0 0 2px rgba(114, 47, 55, 0.3);
-      }
-      .brand-mark span {
-        background: linear-gradient(135deg, #f0f0ff 0%, #e8b0b5 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
+    /* ── brand mark (top-left) ── */
+    .brand-mark {
+      position: absolute;
+      top: 28px;
+      left: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+      color: #111;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+      pointer-events: none;
+      user-select: none;
+    }
 
-      /* ── left: login form ── */
-      .login-left {
-        flex: 0 0 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2.5rem 2.5rem 2.5rem 3.5rem;
-        z-index: 10;
-      }
+    .brand-mark img {
+      width: auto;
+      height: 56px;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      border-radius: 0;
+      background: none;
+      object-fit: contain;
+    }
 
-      .login-form-container {
-        width: 100%;
-        max-width: 440px;
-        background: rgba(255, 255, 255, 0.04);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 28px;
-        padding: 2.8rem 2.8rem 3.2rem;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        transition: box-shadow 0.4s ease;
-      }
-      .login-form-container:hover {
-        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6);
-      }
+    .brand-mark span {
+      display: none;
+    }
 
-      .login-header {
-        margin-bottom: 2.2rem;
-      }
-      .login-title {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #f0f0ff;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
-        text-align: center;
-      }
-      .login-subtitle {
-        color: rgba(255, 255, 255, 0.55);
-        font-size: 0.95rem;
-        margin-top: 0.4rem;
-        font-weight: 500;
-      }
-      .login-subtitle a {
-        color: #d47a83;
-        text-decoration: none;
-        font-weight: 600;
-        transition: color 0.2s;
-      }
-      .login-subtitle a:hover {
-        color: #e8b0b5;
-      }
+    /* ── left: login form ── */
+    .login-left {
+      flex: 0 0 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 2.5rem 2.5rem 3.5rem;
+      z-index: 10;
+    }
 
-      /* ── form elements ── */
-      .form-group {
-        margin-bottom: 1.4rem;
-      }
-      .form-label {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: rgba(255, 255, 255, 0.4);
-        margin-bottom: 0.4rem;
-      }
-      .input-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        transition:
-          border-color 0.3s,
-          box-shadow 0.3s,
-          background 0.3s;
-      }
-      .input-wrapper:focus-within {
-        border-color: rgba(114, 47, 55, 0.5);
-        background: rgba(255, 255, 255, 0.07);
-        box-shadow: 0 0 0 4px rgba(114, 47, 55, 0.12);
-      }
-      .input-wrapper .form-input {
-        width: 100%;
-        padding: 0.9rem 2.8rem 0.9rem 1rem;
-        background: transparent;
-        border: none;
-        outline: none;
-        font-size: 0.95rem;
-        font-weight: 500;
-        color: #f0f0ff;
-        font-family: "Plus Jakarta Sans", sans-serif;
-        letter-spacing: 0.01em;
-      }
-      .input-wrapper .form-input.has-icon-right {
-        padding-right: 2.8rem;
-        padding-left: 1rem;
-      }
-      .input-wrapper .form-input::placeholder {
-        color: rgba(255, 255, 255, 0.25);
-        font-weight: 400;
-        letter-spacing: 0.02em;
-      }
-      .input-wrapper .form-input:read-only {
-        cursor: default;
-      }
-      .input-icon {
-        position: absolute;
-        left: auto;
-        right: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: rgba(255, 255, 255, 0.25);
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .toggle-password {
-        position: absolute;
-        right: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: rgba(255, 255, 255, 0.25);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: color 0.2s;
-        background: none;
-        border: none;
-        padding: 4px;
-      }
-      .toggle-password:hover {
-        color: rgba(255, 255, 255, 0.6);
-      }
+    .login-form-container {
+      width: 100%;
+      max-width: 440px;
+      background: transparent;
+      border: none;
+      padding: 2.8rem 2.8rem 3.2rem;
+    }
 
-      .error-message {
-        font-size: 0.75rem;
-        color: #f87171;
-        margin-top: 0.3rem;
-        min-height: 1.2rem;
-        font-weight: 500;
-        letter-spacing: 0.01em;
-      }
+    .login-header {
+      margin-bottom: 2.2rem;
+    }
 
-      /* ── options row ── */
-      .form-options {
-        display: flex;
-        justify-content: flex-end;
-        margin: 0.2rem 0 1.8rem;
-      }
-      .forgot-password {
-        font-size: 0.82rem;
-        color: rgba(255, 255, 255, 0.4);
-        text-decoration: none;
-        font-weight: 600;
-        transition: color 0.2s;
-        letter-spacing: 0.01em;
-      }
-      .forgot-password:hover {
-        color: #d47a83;
-      }
+    .login-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #111;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      text-align: center;
+    }
 
-      /* ── login button ── */
-      .login-button {
-        width: 100%;
-        padding: 0.9rem 1.5rem;
-        background: linear-gradient(135deg, #722f37, #5a1f26);
-        border: none;
-        border-radius: 14px;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #fff;
-        font-family: "Plus Jakarta Sans", sans-serif;
-        letter-spacing: 0.04em;
-        cursor: pointer;
-        transition:
-          transform 0.2s,
-          box-shadow 0.3s,
-          background 0.3s;
-        box-shadow: 0 8px 24px rgba(114, 47, 55, 0.3);
-        position: relative;
-        overflow: hidden;
-      }
-      .login-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 32px rgba(114, 47, 55, 0.45);
-        background: linear-gradient(135deg, #8c3b44, #722f37);
-      }
-      .login-button:active {
-        transform: translateY(0px) scale(0.98);
-      }
-      .login-button .btn-shimmer {
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 200%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
+    .login-subtitle {
+      color: #555;
+      font-size: 0.95rem;
+      margin-top: 0.4rem;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .login-subtitle a {
+      color: #722f37;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+
+    .login-subtitle a:hover {
+      color: #8c3b44;
+    }
+
+    /* ── form elements ── */
+    .form-group {
+      margin-bottom: 1.4rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #555;
+      margin-bottom: 0.4rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: #722f37;
+      box-shadow: 0 0 0 3px rgba(114, 47, 55, 0.12);
+    }
+
+    .input-wrapper:has(.form-input.error) {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+    }
+
+    .input-wrapper:has(.form-input.success) {
+      border-color: #10b981;
+    }
+
+    .input-wrapper .form-input {
+      width: 100%;
+      padding: 0.9rem 2.8rem 0.9rem 1rem;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #111;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      letter-spacing: 0.01em;
+    }
+
+    .input-wrapper .form-input.has-icon-right {
+      padding-right: 2.8rem;
+      padding-left: 1rem;
+    }
+
+    .input-wrapper .form-input::placeholder {
+      color: #aaa;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+
+    .input-wrapper .form-input:read-only {
+      cursor: default;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: auto;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+
+    .toggle-password:hover {
+      color: #333;
+    }
+
+    .error-message {
+      font-size: 0.75rem;
+      color: #f87171;
+      margin-top: 0.3rem;
+      min-height: 1.2rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    /* Shared validator state colors (warning ⚠ / success ✓) — the base
+       .error-message rule forces red, so state classes must override it. */
+    .error-message.eventra-msg-warning {
+      color: #f59e0b !important;
+    }
+    .error-message.eventra-msg-error {
+      color: #ef4444 !important;
+    }
+    .error-message.eventra-msg-success {
+      color: #10b981 !important;
+    }
+
+    /* ── options row ── */
+    .form-options {
+      display: flex;
+      justify-content: flex-end;
+      margin: 0.2rem 0 1.8rem;
+    }
+
+    .forgot-password {
+      font-size: 0.82rem;
+      color: #555;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .forgot-password:hover {
+      color: #722f37;
+    }
+
+    /* ── login button ── */
+    .login-button {
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      background: linear-gradient(135deg, #722f37, #5a1f26);
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition:
+        transform 0.2s,
+        box-shadow 0.3s,
+        background 0.3s;
+      box-shadow: 0 8px 24px rgba(114, 47, 55, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(114, 47, 55, 0.45);
+      background: linear-gradient(135deg, #8c3b44, #722f37);
+    }
+
+    .login-button:active {
+      transform: translateY(0px) scale(0.98);
+    }
+
+    .login-button .btn-shimmer {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 200%;
+      height: 100%;
+      background: linear-gradient(90deg,
           transparent,
           rgba(255, 255, 255, 0.1),
-          transparent
-        );
-        transform: skewX(-20deg);
-        animation: shimmer 3s infinite;
-      }
-      @keyframes shimmer {
-        0% {
-          left: -100%;
-        }
-        100% {
-          left: 100%;
-        }
+          transparent);
+      transform: skewX(-20deg);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        left: -100%;
       }
 
-      /* ── proudly nigerian ── */
-      .footer-note {
-        margin-top: 2rem;
-        text-align: center;
-        font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.15);
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
-        padding-top: 1.2rem;
+      100% {
+        left: 100%;
       }
-      .footer-note span {
-        color: rgba(255, 255, 255, 0.25);
-      }
-      .footer-note .flag {
-        display: inline-block;
-        margin: 0 4px;
+    }
+
+    /* ── proudly nigerian ── */
+    .footer-note {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #888;
+      border-top: 1px solid #eee;
+      padding-top: 1.2rem;
+    }
+
+    .footer-note span {
+      color: #555;
+    }
+
+    .footer-note .flag {
+      display: inline-block;
+      margin: 0 4px;
+    }
+
+    /* ── right: slider ── */
+    .login-right {
+      flex: 0 0 50%;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 2.5rem 2rem 1.5rem;
+      z-index: 5;
+    }
+
+    .slider-images {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      aspect-ratio: 4 / 5;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+      background: #f3f4f6;
+    }
+
+    .slider-images .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transform: scale(1.04);
+      transition:
+        opacity 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: transform, opacity;
+      border-radius: 24px;
+    }
+
+    .slider-images .slide.active {
+      opacity: 1;
+      transform: scale(1);
+      z-index: 2;
+    }
+
+    .slider-images .slide.exit {
+      opacity: 0;
+      transform: scale(1.04);
+      z-index: 1;
+    }
+
+    /* ── JS-injected event slides (.slider-img from clientLogin.js) ──
+       Absolutely stacked + opacity crossfade so exactly ONE image shows
+       at a time (prevents images rendering stacked/mixed together). */
+    .slider-images .slider-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transform: scale(1.04);
+      transition:
+        opacity 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: transform, opacity;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .slider-images .slider-img.active {
+      opacity: 1;
+      transform: scale(1);
+      z-index: 2;
+    }
+
+    /* slider overlay gradient for readability */
+    .slider-images::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg,
+          rgba(255, 255, 255, 0.2) 0%,
+          transparent 50%,
+          rgba(255, 255, 255, 0.1) 100%);
+      z-index: 3;
+      pointer-events: none;
+      border-radius: 24px;
+    }
+
+    /* slider dots indicator */
+    .slider-dots {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 40px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .slider-dots .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.2);
+      transition:
+        background 0.4s,
+        transform 0.3s;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    .slider-dots .dot.active {
+      background: #722f37;
+      transform: scale(1.25);
+      box-shadow: 0 0 12px rgba(114, 47, 55, 0.4);
+    }
+
+    .slider-dots .dot:hover {
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    /* ── responsive ── */
+    @media (max-width: 1024px) {
+      .login-container {
+        flex-direction: column;
+        max-height: none;
+        min-height: auto;
+        border-radius: 24px;
+        padding: 1.5rem;
       }
 
-      /* ── right: slider ── */
+      .login-left {
+        flex: 1 1 auto;
+        padding: 2rem 1.5rem;
+        width: 100%;
+        order: 1;
+      }
+
       .login-right {
-        flex: 0 0 50%;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 2.5rem 2rem 1.5rem;
-        z-index: 5;
+        flex: 1 1 auto;
+        padding: 0.5rem 0 1rem;
+        width: 100%;
+        order: 0;
       }
 
       .slider-images {
-        position: relative;
-        width: 100%;
-        max-width: 560px;
-        aspect-ratio: 4 / 5;
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: 0 32px 64px rgba(0, 0, 0, 0.55);
-        background: #0b0b12;
+        max-width: 100%;
+        aspect-ratio: 16 / 9;
+        max-height: 260px;
       }
 
-      .slider-images .slide {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        opacity: 0;
-        transform: scale(1.04);
-        transition:
-          opacity 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-          transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        will-change: transform, opacity;
-        border-radius: 24px;
-      }
-      .slider-images .slide.active {
-        opacity: 1;
-        transform: scale(1);
-        z-index: 2;
-      }
-      .slider-images .slide.exit {
-        opacity: 0;
-        transform: scale(1.04);
-        z-index: 1;
+      .login-form-container {
+        max-width: 100%;
+        padding: 2rem 1.5rem;
       }
 
-      /* slider overlay gradient for readability */
-      .slider-images::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-          135deg,
-          rgba(11, 11, 18, 0.2) 0%,
-          transparent 50%,
-          rgba(11, 11, 18, 0.1) 100%
-        );
-        z-index: 3;
-        pointer-events: none;
-        border-radius: 24px;
+      .brand-mark {
+        top: 18px;
+        left: 22px;
+        font-size: 1.1rem;
       }
 
-      /* slider dots indicator */
-      .slider-dots {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 8px;
-        z-index: 10;
-        background: rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(8px);
-        padding: 6px 14px;
-        border-radius: 40px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-      .slider-dots .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-        transition:
-          background 0.4s,
-          transform 0.3s;
-        cursor: pointer;
-        border: none;
-        padding: 0;
-      }
-      .slider-dots .dot.active {
-        background: #d47a83;
-        transform: scale(1.25);
-        box-shadow: 0 0 12px rgba(114, 47, 55, 0.4);
-      }
-      .slider-dots .dot:hover {
-        background: rgba(255, 255, 255, 0.5);
-      }
-
-      /* ── responsive ── */
-      @media (max-width: 1024px) {
-        .login-container {
-          flex-direction: column;
-          max-height: none;
-          min-height: auto;
-          border-radius: 24px;
-          padding: 1.5rem;
-        }
-        .login-left {
-          flex: 1 1 auto;
-          padding: 2rem 1.5rem;
-          width: 100%;
-          order: 1;
-        }
-        .login-right {
-          flex: 1 1 auto;
-          padding: 0.5rem 0 1rem;
-          width: 100%;
-          order: 0;
-        }
-        .slider-images {
-          max-width: 100%;
-          aspect-ratio: 16 / 9;
-          max-height: 260px;
-        }
-        .login-form-container {
-          max-width: 100%;
-          padding: 2rem 1.5rem;
-        }
-        .brand-mark {
-          top: 18px;
-          left: 22px;
-          font-size: 1.1rem;
-        }
-        .brand-mark img {
-          width: 32px;
-          height: 32px;
-        }
-        .login-title {
-          font-size: 1.6rem;
-        }
-      }
-
-      @media (max-width: 480px) {
-        .login-container {
-          padding: 0.75rem;
-          border-radius: 18px;
-        }
-        .login-left {
-          padding: 1.2rem 0.8rem;
-        }
-        .login-form-container {
-          padding: 1.5rem 1rem;
-          border-radius: 20px;
-        }
-        .login-title {
-          font-size: 1.35rem;
-        }
-        .brand-mark {
-          top: 12px;
-          left: 14px;
-          font-size: 0.95rem;
-        }
-        .brand-mark img {
-          width: 28px;
-          height: 28px;
-        }
-        .slider-images {
-          max-height: 180px;
-          border-radius: 16px;
-        }
-        .slider-dots {
-          bottom: 10px;
-          padding: 4px 12px;
-          gap: 6px;
-        }
-        .slider-dots .dot {
-          width: 6px;
-          height: 6px;
-        }
-        .input-wrapper .form-input {
-          font-size: 0.85rem;
-          padding: 0.7rem 0.8rem 0.7rem 2.4rem;
-        }
-        .input-icon {
-          left: auto;
-          right: 14px;
-        }
-        .login-button {
-          font-size: 0.9rem;
-          padding: 0.75rem;
-        }
-        .footer-note {
-          font-size: 0.6rem;
-          margin-top: 1.2rem;
-          padding-top: 0.8rem;
-        }
-      }
-
-      /* ── utilities ── */
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        border: 0;
-      }
-
-      /* ── subtle pulse on brand mark ── */
-      @keyframes brandPulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.8;
-        }
-      }
       .brand-mark img {
-        animation: brandPulse 4s ease-in-out infinite;
+        height: 46px;
+        width: auto;
       }
-
-      /* ── form input autofill override ── */
-      .input-wrapper .form-input:-webkit-autofill {
-        -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset !important;
-        -webkit-text-fill-color: #f0f0ff !important;
+      /* Mobile: logo sits over the slider photo — give the wordmark a
+         white chip so it stays readable (not a border on the image) */
+      .brand-mark {
+        background: #ffffff;
+        padding: 6px 12px;
         border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
       }
-    </style>
-  </head>
 
-  <body>
-    <div class="login-container">
-      <div class="brand-mark">
-        <img src="../../public/assets/logo1.png" alt="Eventra logo" /><span
-          >Eventra</span
-        >
-      </div>
+      .login-title {
+        font-size: 1.6rem;
+      }
+    }
 
-      <!-- ── LEFT: Login Form ── -->
-      <div class="login-left">
-        <div class="login-form-container">
-          <div
-            id="successMessage"
-            class="success-message"
-            style="
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 0.75rem;
+        border-radius: 18px;
+      }
+
+      .login-left {
+        padding: 1.2rem 0.8rem;
+      }
+
+      .login-form-container {
+        padding: 1.5rem 1rem;
+        border-radius: 20px;
+      }
+
+      .login-title {
+        font-size: 1.35rem;
+      }
+
+      .brand-mark {
+        top: 12px;
+        left: 14px;
+        font-size: 0.95rem;
+      }
+
+      .brand-mark img {
+        height: 40px;
+        width: auto;
+      }
+
+      .slider-images {
+        max-height: 180px;
+        border-radius: 16px;
+      }
+
+      .slider-dots {
+        bottom: 10px;
+        padding: 4px 12px;
+        gap: 6px;
+      }
+
+      .slider-dots .dot {
+        width: 6px;
+        height: 6px;
+      }
+
+      .input-wrapper .form-input {
+        font-size: 0.85rem;
+        padding: 0.7rem 0.8rem 0.7rem 2.4rem;
+      }
+
+      .input-icon {
+        left: auto;
+        right: 14px;
+      }
+
+      .login-button {
+        font-size: 0.9rem;
+        padding: 0.75rem;
+      }
+
+      .footer-note {
+        font-size: 0.6rem;
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+      }
+    }
+
+    /* ── utilities ── */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    /* ── subtle pulse on brand mark ── */
+    @keyframes brandPulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.8;
+      }
+    }
+
+    .brand-mark img {
+      /* logo renders as-is; the legacy pulse is disabled for the wordmark */
+      animation: none;
+    }
+
+    /* ── form input autofill override ── */
+    .input-wrapper .form-input:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+      -webkit-text-fill-color: #111 !important;
+      border-radius: 14px;
+    }
+
+    /* Square-input legacy override (modals + forms) — keep fields rounded */
+    .modal-content .input-wrapper,
+    .login-form .input-wrapper {
+      border-radius: 14px;
+    }
+    .modal-content .input-wrapper .form-input {
+      border-radius: 0;
+    }
+
+    /* ── Modal Additions ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      background: #fff;
+      padding: 2.5rem;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .modal-title {
+      color: #111 !important;
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-subtitle {
+      color: #555 !important;
+      font-size: 0.95rem;
+    }
+
+    .google-btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-weight: 600;
+      color: #333;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 1.5rem;
+    }
+
+    .google-btn:hover {
+      background: #f9fafb;
+    }
+
+    .google-btn img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #888;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid #eee;
+    }
+
+    .divider:not(:empty)::before {
+      margin-right: 1em;
+    }
+
+    .divider:not(:empty)::after {
+      margin-left: 1em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="brand-mark">
+      <img src="/public/assets/brand/logo-wordmark.svg" alt="Eventra logo" height="56" />
+    </div>
+
+    <!-- ── LEFT: Login Form ── -->
+    <div class="login-left">
+      <div class="login-form-container">
+        <div id="successMessage" class="success-message" style="
               display: none;
               padding: 10px;
               background: rgba(52, 211, 153, 0.1);
               color: #34d399;
               border-radius: 8px;
               margin-bottom: 1rem;
-            "
-          ></div>
-          <div
-            id="databaseErrorBanner"
-            class="error-message"
-            style="
+            "></div>
+        <div id="databaseErrorBanner" class="error-message" style="
               display: none;
               padding: 10px;
               background: rgba(248, 113, 113, 0.1);
               color: #f87171;
               border-radius: 8px;
               margin-bottom: 1rem;
-            "
-          ></div>
+            "></div>
 
-          <header class="login-header">
-            <h1 class="login-title">Welcome Back!</h1>
-            <p class="login-subtitle">
-              Don't have an account? <a href="signup.html">Sign Up</a>
-            </p>
-          </header>
-
-          <form id="loginForm" class="login-form" autocomplete="off" novalidate>
-            <!-- Email -->
-            <div class="form-group">
-              <label for="email" class="form-label">Email</label>
-              <div class="input-wrapper">
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  class="form-input has-icon-right"
-                  placeholder="m@example.com"
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  required
-                />
-                <span class="input-icon">
-                  <i data-lucide="mail" style="width: 18px; height: 18px"></i>
-                </span>
-              </div>
-              <div id="emailError" class="error-message"></div>
-            </div>
-
-            <!-- Password -->
-            <div class="form-group">
-              <label for="password" class="form-label">Password</label>
-              <div class="input-wrapper">
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  class="form-input"
-                  placeholder="••••••••"
-                  autocomplete="new-password"
-                  required
-                />
-                <button
-                  type="button"
-                  id="togglePassword"
-                  class="toggle-password"
-                  aria-label="Toggle password visibility"
-                >
-                  <i
-                    data-lucide="eye"
-                    style="width: 18px; height: 18px; color: #fff"
-                  ></i>
-                </button>
-              </div>
-              <div id="passwordError" class="error-message"></div>
-            </div>
-
-            <!-- Forgot Password -->
-            <div class="form-options">
-              <a
-                href="../../public/pages/forgot-password.html"
-                class="forgot-password"
-                >Forgot Password?</a
-              >
-            </div>
-
-            <!-- Login Button -->
-            <button type="submit" id="loginButton" class="login-button">
-              <span class="btn-shimmer"></span>
-              Login
-            </button>
-          </form>
-
-          <!-- Proudly Nigerian -->
-          <div class="footer-note">
-            <span class="flag">🇳🇬</span>
-            <span>PROUDLY</span>
-            <span>NIGERIAN</span>
-            <span class="flag">🇳🇬</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── RIGHT: Image Slider ── -->
-      <div class="login-right">
-        <div
-          class="slider-images"
-          id="eventSlider"
-          role="img"
-          aria-label="Eventra experiences slideshow"
-        >
-          <!-- slides injected by JS -->
-          <div id="clientSlideContainer"></div>
-          <!-- dots -->
-          <div class="slider-dots" id="sliderDots"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- OTP Modal -->
-    <div id="otpModal" class="modal-overlay" style="display: none">
-      <div class="modal-content glass-effect">
-        <header class="modal-header">
-          <h2 class="modal-title" style="color: #fff !important">
-            Secure Verification
-          </h2>
-          <p class="modal-subtitle" style="color: #fff !important">
-            A 6-digit code has been sent to your email.
+        <header class="login-header">
+          <h1 class="login-title">Welcome Back!</h1>
+          <p class="login-subtitle">
+            Don't have an account? <a id="openSignupModal">Sign Up</a>
           </p>
         </header>
 
-        <form id="otpForm" class="otp-form" novalidate>
-          <div class="otp-input-wrapper">
-            <input
-              type="text"
-              id="otpCode"
-              class="otp-input"
-              placeholder="000000"
-              maxlength="6"
-              pattern="[0-9]{6}"
-              inputmode="numeric"
-              required
-              data-skip-validation="true"
-              autocomplete="one-time-code"
-            />
+        <form id="loginForm" class="login-form" autocomplete="off" novalidate>
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email" class="form-label">Email</label>
+            <div class="input-wrapper">
+              <input type="email" id="email" name="email" class="form-input has-icon-right" placeholder="m@example.com"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required />
+              <span class="input-icon">
+                <i data-lucide="mail" style="width: 18px; height: 18px"></i>
+              </span>
+            </div>
+            <div id="emailError" class="error-message"></div>
           </div>
-          <div id="otpError" class="error-message"></div>
 
-          <div class="modal-actions">
-            <button type="submit" id="verifyOtpButton" class="login-button">
-              Verify & Sign In
-            </button>
-            <button type="button" id="cancelOtpButton" class="cancel-link">
-              Cancel
-            </button>
+          <!-- Password -->
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <div class="input-wrapper">
+              <input type="password" id="password" name="password" class="form-input has-icon-right" placeholder="••••••••"
+                autocomplete="new-password" required />
+              <button type="button" id="togglePassword" class="toggle-password" aria-label="Toggle password visibility">
+                <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+              </button>
+            </div>
+            <div id="passwordError" class="error-message"></div>
           </div>
+
+          <!-- Forgot Password -->
+          <div class="form-options">
+            <a href="../../public/pages/forgot-password.html" class="forgot-password">Forgot Password?</a>
+          </div>
+
+          <!-- Login Button -->
+          <button type="submit" id="loginButton" class="login-button">
+            <span class="btn-shimmer"></span>
+            Login &rarr;
+          </button>
         </form>
 
-        <p class="resend-prompt">
-          Didn't receive a code? <a href="#" id="resendOtpLink">Resend Code</a>
-        </p>
+        <!-- Proudly Nigerian -->
+        <div class="footer-note">
+          <span class="flag">🇳🇬</span>
+          <span>PROUDLY</span>
+          <span>NIGERIAN</span>
+          <span class="flag">🇳🇬</span>
+        </div>
       </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="../../public/js/storage.js"></script>
-    <script src="../../public/js/utils.js"></script>
-    <script src="../../public/js/auth-controller.js"></script>
-    <script src="../js/clientLogin.js?v=2"></script>
-    <!-- Slider Script -->
-    <script>
-      (function () {
-        "use strict";
+    <!-- ── RIGHT: Image Slider ── -->
+    <div class="login-right">
+      <div class="slider-images" id="eventSlider" role="img" aria-label="Eventra experiences slideshow">
+        <!-- slides injected by JS -->
+        <div id="clientSlideContainer"></div>
+        <!-- dots -->
+        <div class="slider-dots" id="sliderDots"></div>
+      </div>
+    </div>
+  </div>
 
-        // ─── Image pool (high-quality event/venue photos) ───
-        const IMAGES = [];
+  <!-- OTP Modal -->
+  <div id="otpModal" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 class="modal-title">Secure Verification</h2>
+        <p class="modal-subtitle">A 6-digit code has been sent to your email.</p>
+      </header>
 
-        // ─── state ───
-        let currentIndex = 0;
-        let intervalId = null;
-        const slideContainer = document.getElementById("clientSlideContainer");
-        const dotsContainer = document.getElementById("sliderDots");
+      <form id="otpForm" class="otp-form" novalidate>
+        <div class="form-group">
+          <div class="input-wrapper" style="justify-content: center;">
+            <input type="text" id="otpCode" class="form-input"
+              style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; padding: 1rem;" placeholder="000000"
+              maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required data-skip-validation="true"
+              autocomplete="one-time-code" />
+          </div>
+          <div id="otpError" class="error-message" style="text-align: center;"></div>
+        </div>
 
-        // ─── build slides & dots ───
-        function buildSlider() {
-          slideContainer.innerHTML = "";
-          dotsContainer.innerHTML = "";
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+          <button type="submit" id="verifyOtpButton" class="login-button">
+            Verify & Sign In
+          </button>
+          <button type="button" id="cancelOtpButton" class="login-button"
+            style="background: #eee; color: #333; box-shadow: none;">
+            Cancel
+          </button>
+        </div>
+      </form>
 
-          IMAGES.forEach((src, i) => {
-            const img = document.createElement("img");
-            img.src = src;
-            img.alt = `Eventra experience ${i + 1}`;
-            img.className = "slide" + (i === 0 ? " active" : "");
-            img.dataset.index = i;
-            img.loading = "lazy";
-            slideContainer.appendChild(img);
+      <p style="text-align: center; margin-top: 1.5rem; color: #555; font-size: 0.9rem;">
+        Didn't receive a code? <a href="#" id="resendOtpLink"
+          style="color: #722f37; font-weight: 600; text-decoration: none;">Resend Code</a>
+      </p>
+    </div>
+  </div>
 
-            const dot = document.createElement("button");
-            dot.className = "dot" + (i === 0 ? " active" : "");
-            dot.dataset.index = i;
-            dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
-            dot.addEventListener("click", function () {
-              goTo(parseInt(this.dataset.index));
-              resetAutoPlay();
-            });
-            dotsContainer.appendChild(dot);
+  <!-- Signup Modal -->
+  <div id="signupModal" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 class="modal-title">Create Account</h2>
+        <p class="modal-subtitle">Join Eventra today</p>
+      </header>
+
+      <!-- <div id="googleSignInContainer" style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+        <a href="/api/auth/google-signin.php" class="google-btn" id="googleSignInBtn" style="text-decoration:none; font-family: inherit;">
+          <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          Continue with Google
+        </a>
+      </div>
+
+      <div class="divider">or</div> -->
+
+      <form id="signupForm" class="login-form" novalidate>
+        <div class="form-group">
+          <label for="signupName" class="form-label" style="color: #111;">Full Name</label>
+          <div class="input-wrapper">
+            <input type="text" id="signupName" class="form-input has-icon-right" placeholder="John Doe" required
+                   oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, '').replace(/  +/g, ' ');" />
+            <span class="input-icon">
+              <i data-lucide="user" style="width: 18px; height: 18px; color: #888;"></i>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupBusiness" class="form-label" style="color: #111;">Business Name</label>
+          <div class="input-wrapper">
+            <input type="text" id="signupBusiness" class="form-input has-icon-right" placeholder="Acme Corp" required
+                   oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, '').replace(/  +/g, ' ');" />
+            <span class="input-icon">
+              <i data-lucide="briefcase" style="width: 18px; height: 18px; color: #888;"></i>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupEmail" class="form-label" style="color: #111;">Email Address</label>
+          <div class="input-wrapper">
+            <input type="email" id="signupEmail" class="form-input has-icon-right" placeholder="m@example.com"
+              required />
+            <span class="input-icon">
+              <i data-lucide="mail" style="width: 18px; height: 18px; color: #888;"></i>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupPassword" class="form-label" style="color: #111;">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="signupPassword" class="form-input" placeholder="••••••••"
+              required />
+            <button type="button" id="toggleSignupPassword" class="toggle-password" aria-label="Toggle password visibility">
+              <i data-lucide="eye" style="width: 18px; height: 18px; color: #888;"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <button type="submit" class="login-button">Create Account</button>
+          <button type="button" id="closeSignupModal" class="login-button"
+            style="background: #eee; color: #333; box-shadow: none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../public/js/storage.js"></script>
+  <script src="../../public/js/utils.js"></script>
+  <script src="../../public/js/auth-controller.js"></script>
+  <script src="../js/clientLogin.js?v=2"></script>
+  <!-- Slider Script -->
+  <script>
+    (function () {
+      "use strict";
+
+      // ─── Image pool (high-quality event/venue photos) ───
+      const IMAGES = [];
+
+      // ─── state ───
+      let currentIndex = 0;
+      let intervalId = null;
+      const slideContainer = document.getElementById("clientSlideContainer");
+      const dotsContainer = document.getElementById("sliderDots");
+
+      // ─── build slides & dots ───
+      function buildSlider() {
+        slideContainer.innerHTML = "";
+        dotsContainer.innerHTML = "";
+
+        IMAGES.forEach((src, i) => {
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = `Eventra experience ${i + 1}`;
+          img.className = "slide" + (i === 0 ? " active" : "");
+          img.dataset.index = i;
+          img.loading = "lazy";
+          slideContainer.appendChild(img);
+
+          const dot = document.createElement("button");
+          dot.className = "dot" + (i === 0 ? " active" : "");
+          dot.dataset.index = i;
+          dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
+          dot.addEventListener("click", function () {
+            goTo(parseInt(this.dataset.index));
+            resetAutoPlay();
           });
-        }
+          dotsContainer.appendChild(dot);
+        });
+      }
 
-        function goTo(index) {
-          if (index === currentIndex) return;
-          const slides = slideContainer.querySelectorAll(".slide");
-          const dots = dotsContainer.querySelectorAll(".dot");
-          const total = slides.length;
-          const clamped = ((index % total) + total) % total;
-          slides[currentIndex].classList.remove("active");
-          dots[currentIndex].classList.remove("active");
-          slides[clamped].classList.add("active");
-          dots[clamped].classList.add("active");
-          currentIndex = clamped;
-        }
+      function goTo(index) {
+        if (index === currentIndex) return;
+        const slides = slideContainer.querySelectorAll(".slide");
+        const dots = dotsContainer.querySelectorAll(".dot");
+        const total = slides.length;
+        const clamped = ((index % total) + total) % total;
+        slides[currentIndex].classList.remove("active");
+        dots[currentIndex].classList.remove("active");
+        slides[clamped].classList.add("active");
+        dots[clamped].classList.add("active");
+        currentIndex = clamped;
+      }
 
-        function nextRandom() {
-          const total = IMAGES.length;
-          let next;
-          do {
-            next = Math.floor(Math.random() * total);
-          } while (next === currentIndex && total > 1);
-          goTo(next);
-        }
+      function nextRandom() {
+        const total = IMAGES.length;
+        let next;
+        do {
+          next = Math.floor(Math.random() * total);
+        } while (next === currentIndex && total > 1);
+        goTo(next);
+      }
 
-        function startAutoPlay() {
-          if (intervalId) clearInterval(intervalId);
-          const delay = 4000 + Math.floor(Math.random() * 2500);
-          intervalId = setInterval(() => {
-            nextRandom();
-          }, delay);
-        }
+      function startAutoPlay() {
+        if (intervalId) clearInterval(intervalId);
+        const delay = 4000 + Math.floor(Math.random() * 2500);
+        intervalId = setInterval(() => {
+          nextRandom();
+        }, delay);
+      }
 
-        function stopAutoPlay() {
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
+      function stopAutoPlay() {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
+      function resetAutoPlay() {
+        stopAutoPlay();
+        startAutoPlay();
+      }
+
+      function init() {
+        if (!IMAGES.length) return;
+        buildSlider();
+        dotsContainer.addEventListener("click", (e) => {
+          if (e.target.closest(".dot")) resetAutoPlay();
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            goTo(currentIndex - 1);
+            resetAutoPlay();
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            goTo(currentIndex + 1);
+            resetAutoPlay();
           }
-        }
-        function resetAutoPlay() {
-          stopAutoPlay();
-          startAutoPlay();
-        }
-
-        function init() {
-          if (!IMAGES.length) return;
-          buildSlider();
-          dotsContainer.addEventListener("click", (e) => {
-            if (e.target.closest(".dot")) resetAutoPlay();
-          });
-          document.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowLeft") {
-              e.preventDefault();
-              goTo(currentIndex - 1);
-              resetAutoPlay();
-            } else if (e.key === "ArrowRight") {
-              e.preventDefault();
-              goTo(currentIndex + 1);
+        });
+        let touchStartX = 0;
+        const sliderEl = document.getElementById("eventSlider");
+        sliderEl.addEventListener(
+          "touchstart",
+          (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+          },
+          { passive: true },
+        );
+        sliderEl.addEventListener(
+          "touchend",
+          (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > 40) {
+              goTo(diff > 0 ? currentIndex + 1 : currentIndex - 1);
               resetAutoPlay();
             }
-          });
-          let touchStartX = 0;
-          const sliderEl = document.getElementById("eventSlider");
-          sliderEl.addEventListener(
-            "touchstart",
-            (e) => {
-              touchStartX = e.changedTouches[0].screenX;
-            },
-            { passive: true },
-          );
-          sliderEl.addEventListener(
-            "touchend",
-            (e) => {
-              const diff = touchStartX - e.changedTouches[0].screenX;
-              if (Math.abs(diff) > 40) {
-                goTo(diff > 0 ? currentIndex + 1 : currentIndex - 1);
-                resetAutoPlay();
-              }
-            },
-            { passive: true },
-          );
-          if (IMAGES.length > 1) startAutoPlay();
-          sliderEl.addEventListener("mouseenter", stopAutoPlay);
-          sliderEl.addEventListener("mouseleave", startAutoPlay);
-          const form = document.getElementById("loginForm");
-          if (form) {
-            form.addEventListener("focusin", stopAutoPlay);
-            form.addEventListener("focusout", startAutoPlay);
-          }
+          },
+          { passive: true },
+        );
+        if (IMAGES.length > 1) startAutoPlay();
+        sliderEl.addEventListener("mouseenter", stopAutoPlay);
+        sliderEl.addEventListener("mouseleave", startAutoPlay);
+        const form = document.getElementById("loginForm");
+        if (form) {
+          form.addEventListener("focusin", stopAutoPlay);
+          form.addEventListener("focusout", startAutoPlay);
         }
+      }
 
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", function () {
-            init();
-            if (window.lucide) window.lucide.createIcons();
-          });
-        } else {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
           init();
           if (window.lucide) window.lucide.createIcons();
+        });
+      } else {
+        init();
+        if (window.lucide) window.lucide.createIcons();
+      }
+    })();
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (window.lucide) lucide.createIcons();
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const openSignupModal = document.getElementById('openSignupModal');
+      const closeSignupModal = document.getElementById('closeSignupModal');
+      const signupModal = document.getElementById('signupModal');
+
+      if (openSignupModal && signupModal) {
+        openSignupModal.addEventListener('click', (e) => {
+          e.preventDefault();
+          signupModal.style.display = 'flex';
+          if (window.lucide) window.lucide.createIcons();
+        });
+      }
+
+      if (closeSignupModal && signupModal) {
+        closeSignupModal.addEventListener('click', () => {
+          signupModal.style.display = 'none';
+        });
+      }
+
+      // Toggle password in signup modal
+      const toggleSignupPwd = document.getElementById('toggleSignupPassword');
+      const signupPwdInput = document.getElementById('signupPassword');
+      if (toggleSignupPwd && signupPwdInput) {
+        toggleSignupPwd.addEventListener('click', () => {
+          const isPassword = signupPwdInput.type === 'password';
+          signupPwdInput.type = isPassword ? 'text' : 'password';
+          const icon = toggleSignupPwd.querySelector('i');
+          if (icon) {
+            icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+            if (window.lucide) window.lucide.createIcons();
+          }
+        });
+      }
+
+      // ── Signup modal: create account (posts to /api/auth/register.php) ──
+      const signupForm = document.getElementById('signupForm');
+      if (signupForm) {
+        const sName = document.getElementById('signupName');
+        const sBusiness = document.getElementById('signupBusiness');
+        const sEmail = document.getElementById('signupEmail');
+        const sPassword = document.getElementById('signupPassword');
+        const createBtn = signupForm.querySelector('button[type="submit"]');
+
+        const markField = (field, ok, message) => {
+          if (!field || !window.eventraSetFieldState) return;
+          window.eventraSetFieldState(field, ok ? 'success' : 'error', ok ? undefined : message);
+        };
+
+        signupForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const name = (sName?.value || '').trim();
+          const business = (sBusiness?.value || '').trim();
+          const email = (sEmail?.value || '').trim();
+          const password = sPassword?.value || '';
+
+          let firstInvalid = null;
+          const fail = (field, msg) => {
+            markField(field, false, msg);
+            if (field && !firstInvalid) firstInvalid = field;
+          };
+
+          // Mirrors server-side rules in api/auth/register.php and clientSignup.js
+          const nameValid = /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{1,79}$/.test(name);
+          const businessValid = /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{1,99}$/.test(business);
+          const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.toLowerCase());
+          const passwordValid = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(password);
+
+          if (!name) fail(sName, 'Full name is required.');
+          else if (!nameValid) fail(sName, 'Name must contain letters only (no digits or special characters).');
+
+          if (!business) fail(sBusiness, 'Business name is required.');
+          else if (!businessValid) fail(sBusiness, 'Business name must contain letters only (no digits or symbols).');
+
+          if (!email) fail(sEmail, 'Email address is required.');
+          else if (!emailValid) fail(sEmail, 'Please enter a valid email address.');
+
+          if (!password) fail(sPassword, 'Password is required.');
+          else if (!passwordValid) fail(sPassword, 'Password must be at least 8 characters with an uppercase letter, a number and a special character.');
+
+          if (firstInvalid) {
+            firstInvalid.focus();
+            return;
+          }
+
+          const originalBtnText = createBtn.innerHTML;
+          createBtn.disabled = true;
+          createBtn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+          try {
+            const response = await apiFetch('/api/auth/register.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: name,
+                email: email,
+                password: password,
+                business_name: business,
+                role: 'client'
+              })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // Success toast alert
+              if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Account Created!',
+                  text: 'Your account was created successfully. You can now log in.',
+                  toast: true,
+                  position: 'top-end',
+                  showConfirmButton: false,
+                  timer: 4000,
+                  timerProgressBar: true,
+                  background: '#1e293b',
+                  color: '#fff'
+                });
+              } else if (window.showNotification) {
+                showNotification('Account created successfully! You can now log in.', 'success');
+              }
+
+              signupForm.reset();
+              [sName, sBusiness, sEmail, sPassword].forEach((f) => {
+                if (f && window.eventraSetFieldState) window.eventraSetFieldState(f, 'clear');
+              });
+              signupModal.style.display = 'none';
+
+              // Hand-off: prefill the login email with the newly registered address
+              const loginEmail = document.getElementById('email');
+              if (loginEmail && email) loginEmail.value = email;
+            } else {
+              const msg = data.message || 'Registration failed. Please try again.';
+              if (window.showNotification) showNotification(msg, 'error');
+              else if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'Sign Up Failed', text: msg });
+              }
+            }
+          } catch (err) {
+            const msg = 'Network error. Please check your connection and try again.';
+            if (window.showNotification) showNotification(msg, 'error');
+            else if (typeof Swal !== 'undefined') {
+              Swal.fire({ icon: 'error', title: 'Error', text: msg });
+            }
+          } finally {
+            createBtn.disabled = false;
+            createBtn.innerHTML = originalBtnText;
+          }
+        });
+      }
+
+      // Close modal on outside click
+      window.addEventListener('click', (e) => {
+        if (e.target === signupModal) {
+          signupModal.style.display = 'none';
         }
-      })();
-    </script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        if (window.lucide) lucide.createIcons();
       });
-    </script>
-  </body>
+    });
+  </script>
+</body>
+
 </html>

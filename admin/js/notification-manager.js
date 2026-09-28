@@ -8,6 +8,9 @@ class NotificationManager {
   }
 
   async fetchNotifications() {
+    // Opportunistic reminder trigger (see client/js/notification-system.js)
+    fetch("/api/cron/run-reminders.php", { method: "POST", credentials: "include" }).catch(() => {});
+
     try {
       const response = await apiFetch(
         "/api/notifications/get-admin-notifications.php",

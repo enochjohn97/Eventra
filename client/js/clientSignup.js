@@ -92,10 +92,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const fullName = fullNameInput.value.trim();
       const businessName = businessNameInput?.value.trim() || "";
-      if (!/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(fullName)) {
+      if (!fullName) {
+        showError("fullNameError", "Full name is required.");
+        isValid = false;
+      } else if (!/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{1,79}$/.test(fullName)) {
         showError(
           "fullNameError",
-          "Enter your first and last name using letters only.",
+          "Name must contain letters only (no digits or special characters).",
         );
         isValid = false;
       }
@@ -173,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (field === fullNameInput) {
           if (
-            /^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(field.value.trim())
+            /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{1,79}$/.test(field.value.trim())
           ) {
             if (window.eventraSetFieldState)
               window.eventraSetFieldState(field, "success");
@@ -274,22 +277,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("✅ Registration response:", data);
 
       if (data.success) {
-        // Success – show message and redirect to login
-        if (typeof Swal !== "undefined") {
-          Swal.fire({
-            icon: "success",
-            title: "Registration Successful!",
-            text:
-              data.message ||
-              "Your account has been created. You may now log in.",
-            timer: 2000,
-            showConfirmButton: false,
-            background: "rgba(30, 41, 59, 0.95)",
-            color: "#fff",
-          });
-        }
-
-        // Clear form data
+        // Clear form and redirect silently
         if (typeof clearFormState === "function") {
           clearFormState("signupForm");
         }
@@ -301,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
               ? "clientLogin.html?role=admin"
               : `clientLogin.html?role=${intent}`;
           window.location.href = `${loginUrl}?registered=${encodeURIComponent(data.email || emailInput.value)}`;
-        }, 2100);
+        }, 500);
       } else {
         // Backend returned success: false – show the exact error
         const errorMsg =

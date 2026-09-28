@@ -34,7 +34,7 @@
 }
 
 .sidebar-header h3 {
-    font-size: 1rem;
+    font-size: 0.92rem;
     font-weight: 700;
     color: var(--text-main);
 }
@@ -188,14 +188,14 @@
 
 #resultsTitle {
     margin: 0;
-    font-size: 1.75rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: var(--text-dark);
     letter-spacing: -0.02em;
 }
 
 #resultsCount {
-    font-size: 0.95rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
     font-weight: 500;
     display: block;
@@ -208,7 +208,7 @@
 }
 
 .sorting-controls label {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-muted);
 }
@@ -219,7 +219,7 @@
     border: 1px solid var(--border-light);
     background-color: white;
     color: var(--text-main);
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
     min-width: 170px;
@@ -263,7 +263,7 @@
 }
 
 .checkbox-item {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
 }
 

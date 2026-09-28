@@ -14,7 +14,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
     <link rel="stylesheet" href="../../public/css/pagination.css">
 </head>
 <body>
@@ -68,9 +70,8 @@
                 <div id="searchResultsDropdown" class="search-results-dropdown"></div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary btn-export" style="background: transparent; border: 1px solid var(--admin-border); color: var(--admin-text-main); height: 40px; padding: 0 1rem; border-radius: 10px; margin-right: 1rem; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="download" style="width: 18px;"></i>
-                    <span>Export</span>
+                <button class="btn btn-secondary btn-export action-icon" title="Export data" aria-label="Export data" style="background: transparent; border: none; color: var(--admin-text-main); height: 40px; width: 40px; padding: 0; border-radius: 10px; margin-right: 1rem; display: flex; align-items: center; justify-content: center; gap: 0;">
+                    <i data-lucide="download" style="width: 20px;"></i>
                 </button>
                 <div class="action-icon notification-bell-icon" id="notificationBellIcon" title="Notifications" style="position: relative; cursor: pointer;">
                     <i data-lucide="bell"></i>
@@ -92,21 +93,21 @@
                 <!-- <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">User Checked-In</span>
-                        <i data-lucide="user-check" class="stat-icon"></i>
+                        <div class="stat-icon icon-purple"><i data-lucide="user-check"></i></div>
                     </div>
                     <span class="stat-value" id="usersCheckedIn">0</span>
                 </div> -->
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">User Active</span>
-                        <i data-lucide="activity" class="stat-icon"></i>
+                        <div class="stat-icon icon-green"><i data-lucide="activity"></i></div>
                     </div>
                     <span class="stat-value" id="usersActive">0</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">User Registered</span>
-                        <i data-lucide="user-plus" class="stat-icon"></i>
+                        <div class="stat-icon icon-blue"><i data-lucide="user-plus"></i></div>
                     </div>
                     <span class="stat-value" id="usersRegistered">0</span>
                 </div>

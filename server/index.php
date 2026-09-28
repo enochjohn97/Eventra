@@ -16,6 +16,7 @@
  *   /e/{tag}/pay                 → checkout page for the event
  *   /t/{code}                    → ticket proof-of-purchase (QR target)
  *   /r/{ref}                     → payment receipt / callback resolver
+ *   /s/{code}                    → DB-backed opaque short link (hides real paths)
  *   /go/{admin|client|user}      → portal shortcuts (login or dashboard)
  */
 
@@ -104,6 +105,25 @@ if (preg_match('#^/t/([A-Za-z0-9\-_]{1,120})$#', $uri, $m)) {
 }
 if (preg_match('#^/r/([A-Za-z0-9\-_]{1,190})$#', $uri, $m)) {
     header('Location: /public/pages/payment.html?reference=' . rawurlencode($m[1]), true, 302);
+    exit;
+}
+// Database-backed opaque short links (hide real file locations).
+// Creation endpoint: POST /api/s (auth required). Resolution: GET /s/{code}.
+if (preg_match('#^/s/([A-Za-z0-9]{1,20})$#', $uri, $m)) {
+    $_GET['code'] = $m[1];
+    $prevCwd = getcwd();
+    require_once $rootDir . '/api/short-url.php';
+    if ($prevCwd !== false) {
+        chdir($prevCwd);
+    }
+    exit;
+}
+if (preg_match('#^/(api/s|s)$#', $uri) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $prevCwd = getcwd();
+    require_once $rootDir . '/api/short-url.php';
+    if ($prevCwd !== false) {
+        chdir($prevCwd);
+    }
     exit;
 }
 if (preg_match('#^/go/(admin|client|user)$#', $uri, $m)) {

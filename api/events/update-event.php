@@ -156,6 +156,15 @@ try {
     // Handle image upload if provided using standardized path
     $image_path = $event['image_path']; // Keep existing image by default
     if (isset($_FILES['event_image']) && $_FILES['event_image']['error'] === UPLOAD_ERR_OK) {
+        if (!defined('EVENT_IMAGE_MAX_BYTES')) {
+            define('EVENT_IMAGE_MAX_BYTES', 10 * 1024 * 1024);
+        }
+        if ($_FILES['event_image']['size'] > EVENT_IMAGE_MAX_BYTES) {
+            $mb = number_format($_FILES['event_image']['size'] / (1024 * 1024), 1);
+            http_response_code(413);
+            echo json_encode(['success' => false, 'message' => "Image size passes the 10MB limit ({$mb}MB). Please choose a smaller image."]);
+            exit;
+        }
         $upload_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_assets' . DIRECTORY_SEPARATOR;
 
         if (!is_dir($upload_dir)) {
@@ -182,7 +191,9 @@ try {
             // Register the image in the media table
             try {
                 $file_size = filesize($upload_path);
-                $mime_type = mime_content_type($upload_path);
+                $mime_type = function_exists('detectUploadMimeType')
+                    ? detectUploadMimeType($upload_path, $file_extension)
+                    : (function_exists('mime_content_type') ? mime_content_type($upload_path) : 'image/' . strtolower($file_extension));
 
                 // Resolve (or create) the Event Assets folder for this client
                 $ea_stmt = $pdo->prepare("SELECT id FROM media_folders WHERE client_id = ? AND name = 'Event Assets' AND is_deleted = 0 LIMIT 1");
@@ -285,6 +296,13 @@ try {
 
     // Validation
     $required_fields = ['event_name', 'event_type', 'event_date', 'event_time', 'status', 'phone_contact_1', 'state'];
+
+    // Event name must be text-only (same rule as create-event.php)
+    if (!empty($_POST['event_name']) && !preg_match("/^[A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}][A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}'. -]*$/u", trim((string)$_POST['event_name']))) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Event name must contain letters only (no digits or symbols).']);
+        exit;
+    }
     
     // Address is required unless locations_json is provided
     $has_locations = !empty($_POST['locations_json']);

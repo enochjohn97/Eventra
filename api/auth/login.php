@@ -153,7 +153,7 @@ try {
 
         // Update role-specific status when user logs in
         if ($userRole === 'admin' || $userRole === 'client') {
-            $expires_in = '+1 hour';
+            $expires_in = '+2 hours';
         } else {
             $expires_in = $remember_me ? '+30 days' : '+7 days'; 
         }

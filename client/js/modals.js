@@ -72,11 +72,17 @@ function eventraValidateField(field) {
   }
 
   if (field.name === "phone" && value) {
-    const digits = value.replace(/\D/g, "");
-    if (digits.length !== 11) {
+    const raw = value.trim();
+    const digits = raw.replace(/\D/g, "");
+    // Accept local 11-digit (0801...) or international 13-digit (+234801...)
+    const isLocal = /^0[789][01]\d{8}$/.test(digits);
+    const isIntl = /^234[789][01]\d{8}$/.test(digits);
+    const hasPlus = raw.startsWith("+");
+    const valid = hasPlus ? isIntl : isLocal || isIntl;
+    if (!valid) {
       eventraShowFieldError(
         field,
-        `Phone number must be exactly 11 digits (currently ${digits.length}).`,
+        "Phone must be 11 digits (08012345678) or international format (+2348012345678).",
       );
       return false;
     }
@@ -88,6 +94,17 @@ function eventraValidateField(field) {
       eventraShowFieldError(
         field,
         `Account number must be exactly 10 digits (currently ${digits.length}).`,
+      );
+      return false;
+    }
+  }
+
+  if (field.name === "bvn_number" && value) {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 11 || digits.length !== value.length) {
+      eventraShowFieldError(
+        field,
+        "BVN must be exactly 11 digits (numbers only, no letters or symbols).",
       );
       return false;
     }
@@ -146,7 +163,8 @@ function eventraValidateStep(stepRoot) {
     const shouldValidate =
       field.hasAttribute("required") ||
       field.name === "phone" ||
-      field.name === "account_number";
+      field.name === "account_number" ||
+      field.name === "bvn_number";
 
     if (!shouldValidate) return;
 
@@ -518,8 +536,8 @@ async function showProfileEditModal() {
                                     <input type="email" value="${escapeHTML(user.email)}" readonly class="form-control disabled">
                                 </div>
                                 <div class="form-group">
-                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Phone (11 Digits) <span class="text-danger">*</span></label>
-                                    <input type="tel" name="phone" value="${escapeHTML(user.phone) || ""}" placeholder="08012345678" maxlength="11" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);" class="form-control" required>
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" name="phone" value="${escapeHTML(user.phone) || ""}" placeholder="Phone Number" maxlength="14" inputmode="tel" oninput="let v = this.value; const hadPlus = v.startsWith('+'); v = v.replace(/[^0-9]/g, ''); if (hadPlus) v = '+' + v; this.value = v.slice(0, 14);" class="form-control" required>
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Date of Birth <span class="text-danger">*</span></label>
@@ -540,15 +558,15 @@ async function showProfileEditModal() {
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Job Title <span class="text-danger">*</span></label>
-                                    <input type="text" name="job_title" value="${escapeHTML(user.job_title) || ""}" placeholder="Event Organizer" class="form-control" required>
+                                    <input type="text" name="job_title" value="${escapeHTML(user.job_title) || ""}" placeholder="Event Organizer" class="form-control" required oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, '');">
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Company <span class="text-danger">*</span></label>
-                                    <input type="text" name="company" value="${escapeHTML(user.company) || ""}" placeholder="Company Name" class="form-control" required>
+                                    <input type="text" name="company" value="${escapeHTML(user.company) || ""}" placeholder="Company Name" class="form-control" required oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, '');">
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">City <span class="text-danger">*</span></label>
-                                    <input type="text" name="city" value="${escapeHTML(user.city) || ""}" placeholder="Lagos" class="form-control" required>
+                                    <input type="text" name="city" value="${escapeHTML(user.city) || ""}" placeholder="Lagos" class="form-control" required oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, '');">
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">State <span class="text-danger">*</span></label>
@@ -564,11 +582,11 @@ async function showProfileEditModal() {
                                 </div>
                                 <div class="form-group modal-grid-full">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Country <span class="text-danger">*</span></label>
-                                    <input type="text" name="country" value="${escapeHTML(user.country) || ""}" placeholder="Nigeria" class="form-control" required>
+                                    <input type="text" name="country" value="${escapeHTML(user.country) || ""}" placeholder="Nigeria" class="form-control" required oninput="this.value = this.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, '');">
                                 </div>
                             </div>
                             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(1, this)" style="background: #1e293b; color:#94a3b8; border:1px solid #334155;">💾 Save Section</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(1, this)" style="background: #166534; color:#fff; border:1px solid #14532d;">💾 Save Section</button>
                                 <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(2, this)">Next: Payment Info &rarr;</button>
                             </div>
                         </div>
@@ -604,13 +622,30 @@ async function showProfileEditModal() {
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(1, this)" style="flex: 1;">&larr; Previous</button>
-                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(2, this)" style="background: #1e293b; color:#94a3b8; border:1px solid #334155;">💾 Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(2, this)" style="background: #166534; color:#fff; border:1px solid #14532d;">💾 Save</button>
                                 <button type="button" class="btn btn-primary" onclick="window.switchWizardTab(3, this)" style="flex: 1;">Next: KYC &rarr;</button>
                             </div>
                         </div>
 
                         <!-- STEP 3: KYC Verification Documents -->
                         <div id="wizardStep3" class="wizard-step" style="display: none;">
+                            <!-- BVN (Bank Verification Number) -->
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="bvnNumberInput" style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                    <span>BVN — Bank Verification Number <span style="color:#64748b; font-size:0.8rem;">(11 digits)</span></span>
+                                    <span id="bvnVerifiedBadge" class="verification-status-indicator" style="font-size: 0.78rem; font-weight: 700;">${user.bvn_verified ? '<span style="color:#2ecc71;">✓ Verified</span>' : ''}</span>
+                                </label>
+                                <div style="display: flex; gap: 0.6rem; align-items: stretch;">
+                                    <input type="text" id="bvnNumberInput" name="bvn_number" value="${escapeHTML(user.bvn || "")}"
+                                           placeholder="${user.bvn_verified && user.bvn_masked ? "Verified: " + escapeHTML(user.bvn_masked) : "Enter 11-digit BVN"}"
+                                           inputmode="numeric" autocomplete="off" maxlength="11"
+                                           ${user.bvn_verified ? "readonly title=\"Already verified\"" : ""}
+                                           style="flex: 1; padding: 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 0.95rem; letter-spacing: 1px;"
+                                           oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
+                                    <button type="button" id="bvnVerifyBtn" class="btn btn-secondary" onclick="window.verifyBvnNumber()"
+                                            style="white-space: nowrap; padding: 0.75rem 1.1rem;">Verify</button>
+                                </div>
+                            </div>
                             <div class="kyc-upload-grid" style="margin-bottom: 1.5rem;">
                                 <!-- NIN File -->
                                 <div class="form-group kyc-upload-card" style="border: 1px dashed #cbd5e1; padding: 12px; border-radius: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
@@ -690,7 +725,7 @@ async function showProfileEditModal() {
                             </div>
                             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                                 <button type="button" class="btn btn-secondary" onclick="window.switchWizardTab(2, this)" style="flex: 1;">&larr; Previous</button>
-                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(3, this)" style="background: #1e293b; color:#94a3b8; border:1px solid #334155;">💾 Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.saveProfileSection(3, this)" style="background: #166534; color:#fff; border:1px solid #14532d;">💾 Save</button>
                                 <button type="submit" class="btn btn-primary" style="flex: 1;">Submit All</button>
                             </div>
                         </div>

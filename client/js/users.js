@@ -256,3 +256,36 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+window.showUserPreviewModal = function(user) {
+    const existing = document.getElementById('clientUserModal');
+    if (existing) existing.remove();
+    
+    const profilePic = user.profile_pic && user.profile_pic.startsWith('http') ? user.profile_pic : (user.profile_pic ? `../../${user.profile_pic}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`);
+    
+    const html = `
+    <div id="clientUserModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9100;backdrop-filter:blur(6px);padding:1rem;" onclick="if(event.target===this)this.remove()">
+        <div style="background:white;border-radius:20px;overflow:hidden;max-width:480px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,.25);animation:slideUp .3s ease-out;position:relative;">
+            <button onclick="document.getElementById('clientUserModal').remove()" style="position:absolute;top:1rem;right:1rem;background:rgba(0,0,0,.1);border:none;color:#1e293b;width:32px;height:32px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;">&times;</button>
+            <div style="padding:2rem;text-align:center;border-bottom:1px solid #f1f5f9;">
+                <img src="${profilePic}" alt="" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #f8fafc;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);margin-bottom:1rem;">
+                <h3 style="margin:0 0 .25rem;font-size:1.25rem;font-weight:800;color:#1e293b;">${escapeHtml(user.name || 'N/A')}</h3>
+                <p style="margin:0;font-family:monospace;color:#722f37;font-weight:700;font-size:.85rem;">${escapeHtml(user.custom_id || user.id)}</p>
+                <div style="margin-top:1rem;display:inline-block;padding:4px 12px;background:#f8fafc;border-radius:20px;font-size:.75rem;font-weight:600;color:#64748b;">
+                    ${user.email || 'No email provided'}
+                </div>
+            </div>
+            <div style="padding:1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+                <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Phone</div><div style="font-weight:600;font-size:.9rem;">${escapeHtml(user.phone || 'N/A')}</div></div>
+                <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Gender</div><div style="font-weight:600;font-size:.9rem;text-transform:capitalize;">${escapeHtml(user.gender || 'N/A')}</div></div>
+                <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Joined</div><div style="font-weight:600;font-size:.9rem;">${formatDate(user.created_at)}</div></div>
+                <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">DOB</div><div style="font-weight:600;font-size:.9rem;">${formatDate(user.dob)}</div></div>
+                <div style="grid-column:span 2;"><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Location</div><div style="font-weight:600;font-size:.9rem;">${escapeHtml([user.city, user.state, user.country].filter(Boolean).join(', ') || 'N/A')}</div></div>
+            </div>
+        </div>
+    </div>`;
+    
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    document.body.appendChild(template.content.firstElementChild);
+};

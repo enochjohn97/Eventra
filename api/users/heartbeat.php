@@ -15,14 +15,20 @@ try {
     // Update auth_accounts for real-time status tracking
     $pdo->prepare("UPDATE auth_accounts SET last_seen = NOW(), is_online = 1 WHERE id = ?")->execute([$auth_id]);
 
-    // Role-specific status sync - maintain online status
+    // Role-specific status sync - maintain online status.
+    // NOTE (2026-09-25): admins.status is enum('active','suspended','deleted') —
+    // writing 'online' threw a PDOException here (caught, but it meant the
+    // heartbeat always failed for admins). Admin presence is already tracked
+    // via auth_accounts.is_online above.
     $role = $_SESSION['role'] ?? $_SESSION['user_role'] ?? 'user';
-    if ($role === 'admin') {
-        $pdo->prepare("UPDATE admins SET status = 'online' WHERE admin_auth_id = ?")->execute([$auth_id]);
-    } elseif ($role === 'client') {
-        $pdo->prepare("UPDATE clients SET status = 'online' WHERE client_auth_id = ?")->execute([$auth_id]);
-    } elseif ($role === 'user') {
-        $pdo->prepare("UPDATE users SET status = 'online' WHERE user_auth_id = ?")->execute([$auth_id]);
+    try {
+        if ($role === 'client') {
+            $pdo->prepare("UPDATE clients SET status = 'online' WHERE client_auth_id = ?")->execute([$auth_id]);
+        } elseif ($role === 'user') {
+            $pdo->prepare("UPDATE users SET status = 'online' WHERE user_auth_id = ?")->execute([$auth_id]);
+        }
+    } catch (PDOException $statusErr) {
+        error_log('[heartbeat.php] Non-fatal status sync failure: ' . $statusErr->getMessage());
     }
 
     echo json_encode(['success' => true, 'ts' => time()]);

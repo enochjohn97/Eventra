@@ -20,7 +20,9 @@
     <script src="../../public/js/auth-guard.js"></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
     <link rel="stylesheet" href="../../public/css/pagination.css">
 </head>
 <body>
@@ -75,9 +77,8 @@
                 <input type="text" placeholder="Search users...">
             </div>
             <div class="header-actions">
-                <button id="globalExportBtn" class="btn btn-primary">
+                <button id="globalExportBtn" class="action-icon" title="Export data" aria-label="Export data">
                     <i data-lucide="download"></i>
-                    <span>Export</span>
                 </button>
                 <div class="action-icon" data-drawer="notifications">
                     <i data-lucide="bell"></i>
