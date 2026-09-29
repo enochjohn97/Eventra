@@ -407,7 +407,7 @@ try {
                 'ticket_data' => $ticketData,
                 'user_email' => $metadata['buyer_email'] ?? $order['user_email'],
                 'user_phone' => $order['user_phone'],
-                'user_auth_accounts_id' => $order['user_auth_id'],
+                'user_auth_accounts_id' => $order['user_auth_accounts_id'],
                 'organizer_auth_id' => $order['organizer_auth_id'] ?? null,
                 'quantity' => $quantity
             ];

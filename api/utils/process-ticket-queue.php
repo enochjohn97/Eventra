@@ -11,6 +11,12 @@
 set_time_limit(300); // 5-minute max execution time
 
 require_once __DIR__ . '/../../config/database.php';
+// The webhook/verify include this file inside function scope — bind the global
+// PDO handle explicitly so $pdo->prepare(...) calls below always resolve.
+global $pdo;
+if (!isset($pdo) || !$pdo instanceof PDO) {
+    $pdo = getPDO();
+}
 $autoload = __DIR__ . '/../../vendor/autoload.php';
 if (file_exists($autoload)) {
     require_once $autoload;

@@ -17,7 +17,7 @@ try {
     $user_id   = checkAuthOptional();
     $client_id = $_GET['client_id'] ?? null;
     $status    = $_GET['status']    ?? null;
-    $limit     = $_GET['limit'] === 'all' ? 10000 : (int)($_GET['limit'] ?? 10);
+    $limit     = ($_GET['limit'] ?? '') === 'all' ? 10000 : (int)($_GET['limit'] ?? 10);
     $offset    = (int)($_GET['offset'] ?? 0);
     $user_role = $_SESSION['user_role'] ?? 'guest';
 
@@ -32,18 +32,21 @@ try {
     // - Hot       : top 20% by sales_count (high ticket demand)
     // - Trending  : next tier by combined merit
     // - Nearby    : event date = TODAY and event state matches user's state (any in list)
+    // NOTE: literal emoji characters, NOT \uXXXX escapes — MySQL strips the
+    // escape sequences from SQL string literals (utf8mb4 has no unicode-escape
+    // syntax), which previously produced mangled labels like "ud83dudccd Nearby".
     $userStateSql = $pdo->quote($user_state);
     $priorityLabel = "CASE
-        WHEN e.is_boosted = 1 THEN '\u2b50 Featured'
-        WHEN IFNULL(e.sales_count,0) >= 50 THEN '\ud83d\udd25 Hot'
-        WHEN $meritScore > 60 THEN '\ud83d\udcc8 Trending'
+        WHEN e.is_boosted = 1 THEN '⭐ Featured'
+        WHEN IFNULL(e.sales_count,0) >= 50 THEN '🔥 Hot'
+        WHEN $meritScore > 60 THEN '📈 Trending'
         WHEN e.event_date = CURDATE()
              AND $userStateSql != ''
              AND (
                  FIND_IN_SET($userStateSql, e.state) > 0
                  OR e.state = 'All States'
                  OR e.state = 'all'
-             ) THEN '\ud83d\udccd Nearby'
+             ) THEN '📍 Nearby'
         WHEN e.event_date > CURDATE() THEN ''
         ELSE ''
     END";

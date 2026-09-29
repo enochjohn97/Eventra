@@ -31,17 +31,19 @@ if (stripos($contentType, 'application/json') !== false) {
 
 $input = array_merge($_POST, $jsonBody);
 
-$profile_id = $input['profile_id'] ?? $input['id'] ?? $user_id;
+// SECURITY: ignore any client-supplied profile_id/custom_id. A user may only
+// ever update their OWN profile — the previous lookup ("WHERE id = ?input OR
+// user_auth_id = ?auth") let any logged-in user overwrite another user's row
+// (IDOR). The session/auth token is the single source of identity here.
 $custom_id = trim((string)($input['custom_id'] ?? ''));
 
 $stmt_existing = $pdo->prepare("
     SELECT * FROM users 
     WHERE id = ? 
-       OR (custom_id IS NOT NULL AND custom_id != '' AND custom_id = ?) 
        OR user_auth_id = ?
     LIMIT 1
 ");
-$stmt_existing->execute([$profile_id, $custom_id, $user_auth_id]);
+$stmt_existing->execute([$user_id, $user_auth_id]);
 $existing = $stmt_existing->fetch() ?: [];
 
 if (!$existing) {

@@ -77,6 +77,16 @@ function createNotification($recipient_id, $message, $type = 'info', $sender_id 
     global $pdo;
 
     try {
+        // Legacy rows were written with the sender's role in recipient_role.
+        // Verify against the ACTUAL account role so the feed filter
+        // (recipient_role = session role) always matches what was stored.
+        $roleCheck = $pdo->prepare("SELECT role FROM auth_accounts WHERE id = ? LIMIT 1");
+        $roleCheck->execute([(int) $recipient_id]);
+        $actualRole = $roleCheck->fetchColumn();
+        if ($actualRole && $recipient_role !== $actualRole) {
+            $recipient_role = $actualRole;
+        }
+
         // Ensure IDs are numeric and stored as auth_accounts.id
         $recipient_id = normalizeAuthAccountId((int) $recipient_id, $recipient_role);
         if (!$recipient_id) {
@@ -286,7 +296,8 @@ function createUserLoginNotification($admin_id, $user_id, $user_name, $user_emai
 {
     $role_label = ucfirst($user_role);
     $message = "{$role_label} login: {$user_name} ({$user_email}) has logged in";
-    return createNotification($admin_id, $message, 'user_login', $user_id);
+    // recipient_role MUST be 'admin' so the row shows up in the admin dashboard feed
+    return createNotification($admin_id, $message, 'user_login', $user_id, 'admin', 'user');
 }
 
 /**
@@ -304,7 +315,7 @@ function createClientLoginNotification($admin_id, $client_id, $client_name, $cli
 function createAdminLoginNotification($admin_id)
 {
     $message = "System Admin logged in";
-    return createNotification($admin_id, $message, 'admin_login', $admin_id);
+    return createNotification($admin_id, $message, 'admin_login', $admin_id, 'admin', 'admin');
 }
 
 /**
@@ -313,7 +324,7 @@ function createAdminLoginNotification($admin_id)
 function createAdminLogoutNotification($admin_id)
 {
     $message = "System Admin logged out";
-    return createNotification($admin_id, $message, 'admin_logout', $admin_id);
+    return createNotification($admin_id, $message, 'admin_logout', $admin_id, 'admin', 'admin');
 }
 
 /**

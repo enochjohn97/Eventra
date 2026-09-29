@@ -102,6 +102,9 @@ if (!$accountTextOnly($name)) {
     sendJsonResponse(false, 'Name must contain letters only (no digits or symbols).', 422);
 }
 $role = $data['role'] ?? 'client';
+if (!in_array($role, ['client', 'user'], true)) {
+    sendJsonResponse(false, 'Invalid account type. Choose either Client or User.', 422);
+}
 
 // Business name (clients) must be text-only — same rule as the personal name.
 if ($role === 'client' && !empty($business_name) && !$accountTextOnly($business_name)) {
@@ -183,7 +186,10 @@ try {
             $stmt->execute([$authId, $customId, $name]);
             break;
         default:
-            throw new Exception("Invalid role specified.");
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            sendJsonResponse(false, 'Invalid account type. Choose either Client or User.', 422);
     }
 
     $pdo->commit();

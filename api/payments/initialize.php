@@ -258,9 +258,14 @@ try {
 
             $pdo->commit();
 
-            // 5. Notifications & Email
+            // 5. Generate PDFs (fast, local) — the SLOW email send happens AFTER
+            //    the buyer's response below. Previously the SMTP call blocked the
+            //    request and a >30s mail server froze checkout until PHP's
+            //    max_execution_time killed it, leaving the buyer with an empty
+            //    response even though the order succeeded.
             $freeEmailData = null;
             $freePdfAttachments = [];
+            $freeEmailRecipient = null;
             foreach ($allFreeTicketData as $ftd) {
                 $sendTo = $ftd['buyer_email'] ?? $user_email;
                 // Generate PDF attachment before sending email
@@ -279,18 +284,10 @@ try {
                 }
                 $freePdfAttachments = array_merge($freePdfAttachments, $pdfAttachment);
             }
-            if ($freeEmailData !== null) {
-                EmailHelper::sendTicketEmailFull($freeEmailRecipient, $freeEmailData, $freePdfAttachments);
-            }
-            createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
-            createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);
 
             $orgStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
             $orgStmt->execute([$event['organizer_id']]);
             $organizer_auth_id = $orgStmt->fetchColumn();
-            if ($organizer_auth_id) {
-                createNewSaleNotification($organizer_auth_id, $user_name, $event['event_name'], 0, $auth_id);
-            }
 
             // Opaque short link so the Paystack callback / receipt page never
             // exposes the real file path. Falls back to the long URL if the
@@ -302,7 +299,7 @@ try {
                 is_numeric($auth_id) ? (int) $auth_id : null
             ) ?? (SITE_URL . '/public/pages/payment.html?reference=' . rawurlencode($reference));
 
-            echo json_encode([
+            $freePayload = json_encode([
                 'success'           => true,
                 'message'           => 'Free ticket initiated successfully!',
                 'reference'         => $reference,
@@ -311,6 +308,26 @@ try {
                 'authorization_url' => $callbackUrl,
                 'is_free'           => true
             ]);
+
+            // Respond to the buyer NOW; deliver email + notifications afterwards.
+            require_once '../../includes/helpers/response-helper.php';
+            finishResponseThen($freePayload, function () use (
+                $freeEmailData, $freeEmailRecipient, $freePdfAttachments,
+                $auth_id, $event, $tickets, $organizer_auth_id, $user_name
+            ) {
+                if ($freeEmailData !== null) {
+                    try {
+                        EmailHelper::sendTicketEmailFull($freeEmailRecipient, $freeEmailData, $freePdfAttachments);
+                    } catch (\Throwable $mailEx) {
+                        error_log('[initialize.php] Free ticket email failed (post-response): ' . $mailEx->getMessage());
+                    }
+                }
+                createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
+                createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);
+                if ($organizer_auth_id) {
+                    createNewSaleNotification($organizer_auth_id, $user_name, $event['event_name'], 0, $auth_id);
+                }
+            });
             exit;
         } catch (Exception $e) {
             if ($pdo->inTransaction()) {

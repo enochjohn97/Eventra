@@ -21,14 +21,19 @@ if (!in_array($intent, ['admin', 'client', 'user'])) {
 }
 
 // Pre-initialize session with correct name to prevent auto-detection issues
+
+// Set session name BEFORE database.php which might access sessions.
+// Only when no session is active yet — renaming an active session is a no-op
+// that previously logged a PHP warning on every login attempt.
 $sessionName = 'EVENTRA_USER_SESS';
 if ($intent === 'admin') {
     $sessionName = 'EVENTRA_ADMIN_SESS';
 } elseif ($intent === 'client') {
     $sessionName = 'EVENTRA_CLIENT_SESS';
 }
-
-session_name($sessionName);
+if (session_status() !== PHP_SESSION_ACTIVE && session_name() !== $sessionName) {
+    session_name($sessionName);
+}
 
 // NOW send the JSON header
 header('Content-Type: application/json');
@@ -36,6 +41,22 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../server/config.php';
 require_once __DIR__ . '/../../includes/helpers/entity-resolver.php';
+
+// ── Rate limiting (brute-force protection) ─────────────────────────────────
+// Keyed by client IP + identity so one IP cannot hammer many accounts and one
+// account cannot be hammered from many IPs unnoticed. Fail-open on DB issues.
+try {
+    require_once __DIR__ . '/../../includes/middleware/rate-limit.php';
+    $identityKey = strtolower((string) ($data['email'] ?? $data['username'] ?? 'anon'));
+    $rl = RateLimiter::check(RateLimiter::getClientIP() . '|' . substr(md5($identityKey), 0, 16), 'login:' . $intent, 10, 900);
+    if (!$rl['allowed']) {
+        header('Retry-After: ' . (int) max(1, $rl['retry_after']));
+        echo json_encode(['success' => false, 'message' => 'Too many login attempts. Please try again in ' . (int) ceil(max(1, $rl['retry_after']) / 60) . ' minute(s).']);
+        exit;
+    }
+} catch (Throwable $rlEx) {
+    error_log('[login.php] Rate limiter skipped: ' . $rlEx->getMessage());
+}
 
 $identity = $data['email'] ?? $data['username'] ?? null;
 $password = $data['password'] ?? null;

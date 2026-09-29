@@ -12,6 +12,18 @@ require_once __DIR__ . '/../../includes/helpers/validation.php';
 require_once __DIR__ . '/../../includes/helpers/email-helper.php';
 require_once __DIR__ . '/../../includes/helpers/response-helper.php';
 
+// ── Rate limiting: max 5 reset-code requests per 15 min per IP (email-bombing guard) ──
+try {
+    require_once __DIR__ . '/../../includes/middleware/rate-limit.php';
+    $rl = RateLimiter::check(RateLimiter::getClientIP(), 'forgot-password', 5, 900);
+    if (!$rl['allowed']) {
+        echo json_encode(['success' => false, 'message' => 'Too many reset requests. Please try again later.']);
+        exit;
+    }
+} catch (Throwable $rlEx) {
+    error_log('[forgot-password.php] Rate limiter skipped: ' . $rlEx->getMessage());
+}
+
 $data = json_decode(file_get_contents("php://input"), true);
 $email = $data['email'] ?? $data['identity'] ?? null;
 

@@ -175,12 +175,21 @@ if (strpos($uri, '/api/') === 0) {
     // =========================================================================
     // REST API routes (mobile + web clients)
     // =========================================================================
-    $dispatchApi = static function (string $relativePath) use ($rootDir): void {
+        $dispatchApi = static function (string $relativePath) use ($rootDir): void {
         $fullPath = $rootDir . '/api/' . $relativePath;
         if (!file_exists($fullPath)) {
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'API handler not found: ' . $relativePath]);
             exit;
+        }
+        // CRITICAL: API handlers use the global $pdo created by config/database.php.
+        // Inside this closure require_once would otherwise hide the global, so
+        // every handler that does $pdo->prepare(...) without calling getPDO()
+        // fatals ("Call to a member function prepare() on null"). Bind it here —
+        // this mirrors Apache, where handlers execute in true global scope.
+        global $pdo, $db_connected;
+        if (!isset($pdo) || !$pdo instanceof PDO) {
+            $pdo = getPDO();
         }
         $prevCwd = getcwd();
         chdir(dirname($fullPath));
@@ -290,6 +299,10 @@ if (strpos($uri, '/api/') === 0) {
 
     if (file_exists($fullPath) && is_file($fullPath)) {
         // API scripts use paths relative to their own directory (e.g. ../../config/).
+        // NOTE: brute-force protection lives INSIDE the auth handlers (rate
+        // limiter + per-account lockout), so it applies no matter how the file
+        // is addressed (pretty route or direct .php call) and on Apache too,
+        // where files are served directly without this front controller.
         $prevCwd = getcwd();
         chdir(dirname($fullPath));
         require_once $fullPath;
@@ -302,27 +315,6 @@ if (strpos($uri, '/api/') === 0) {
     // =========================================================================
     // Virtual Endpoints (No new files constraint)
     // =========================================================================
-
-    // Smile ID KYC Verification
-    if ($cleanPath === 'verify_kyc') {
-        header('Content-Type: application/json');
-        require_once $rootDir . '/includes/middleware/auth.php';
-        $pdo = getPDO();
-        $data = json_decode(file_get_contents("php://input"), true);
-        
-        $user_id = $data['user_id'] ?? 0;
-        $doc_name = $data['document_name'] ?? 'Unknown';
-        
-        $success = !empty($data['image']);
-        $status = $success ? 'verified' : 'failed';
-        $resultText = $success ? 'Smile ID: Face matched document successfully.' : 'Smile ID: Verification failed.';
-        
-        $stmt = $pdo->prepare("UPDATE users SET kyc_status = ?, kyc_document_name = ?, smile_id_result_text = ? WHERE id = ?");
-        $stmt->execute([$status, $doc_name, $resultText, $user_id]);
-        
-        echo json_encode(['success' => $success, 'message' => $resultText, 'status' => $status]);
-        exit;
-    }
 
     // fallback
     http_response_code(404);

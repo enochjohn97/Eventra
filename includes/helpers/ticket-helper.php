@@ -104,9 +104,16 @@ function base64_encode_image($path) {
         return '';
     }
     
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $resolvedPath);
-    finfo_close($finfo);
+    // finfo/fileinfo may not be enabled on every host (e.g. PHP CLI dev server)
+    // — fall back to an extension map instead of fataling mid-checkout.
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $resolvedPath);
+        finfo_close($finfo);
+    } else {
+        $extMap = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml'];
+        $mimeType = $extMap[strtolower(pathinfo($resolvedPath, PATHINFO_EXTENSION))] ?? 'image/png';
+    }
     
     $data = @file_get_contents($resolvedPath);
     if ($data === false || empty($data)) return '';

@@ -227,6 +227,27 @@ class EmailHelper
     }
 
     /**
+     * Brand header for light-background emails (OTP, password reset, reminders,
+     * receipts): the coral E-monogram logo mark + a dark "Eventra" wordmark.
+     * Kept table-based so it renders in Outlook/Gmail.
+     */
+    private static function brandHeaderLightHtml(string $fontSize = '22px'): string
+    {
+        $mark = self::brandMarkDataUri();
+        $imgHtml = $mark !== ''
+            ? '<img src="' . $mark . '" width="34" height="34" alt="Eventra" style="width:34px;height:34px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
+            : '';
+        return '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin:0 auto 24px auto;">'
+            . '<tr>'
+            . '<td style="vertical-align:middle;padding-right:10px;">' . $imgHtml . '</td>'
+            . '<td style="vertical-align:middle;">'
+            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#1e293b;line-height:1;">Eventra</span>'
+            . '</td>'
+            . '</tr>'
+            . '</table>';
+    }
+
+    /**
      * Resolve an image path/URL to an inline base64 data-URI.
      * Returns empty string if the image cannot be read.
      * Cap the image at 500 KB after encoding to keep email under size limits.
@@ -1187,13 +1208,14 @@ PDF;
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $safeAction = htmlspecialchars($actionText, ENT_QUOTES, 'UTF-8');
         $year = date('Y');
+        $brandLogo = self::brandHeaderLightHtml('22px');
 
         $body = <<<HTML
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:40px;
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:40px 36px;
                     background:#ffffff;border-radius:16px;border:1px solid #f1f5f9;">
             <div style="text-align:center;margin-bottom:32px;">
-                <h1 style="color:#2ecc71;margin:0;font-size:28px;font-weight:800;">Eventra</h1>
-                <p style="color:#64748b;margin-top:8px;font-size:14px;">Bringing your events to life</p>
+                {$brandLogo}
+                <p style="color:#64748b;margin-top:4px;font-size:14px;">Bringing your events to life</p>
             </div>
             <h2 style="color:#1e293b;font-size:20px;font-weight:700;margin-bottom:16px;">Secure Verification</h2>
             <p style="color:#475569;font-size:16px;line-height:1.6;margin-bottom:24px;">Hi <strong>{$safeName}</strong>,</p>
