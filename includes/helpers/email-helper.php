@@ -185,8 +185,10 @@ class EmailHelper
     /**
      * Eventra brand mark (coral E-monogram) as an inline data-URI so it
      * renders in email clients and PDF engines without external requests.
-     * Reads the SVG asset and encodes it; falls back to a pure-HTML/CSS
-     * E-monogram if the asset is missing (never breaks ticket delivery).
+     * Prefers the PNG asset — Gmail, Outlook and most PDF engines do NOT
+     * render SVG images, which made the logo invisible in emails/tickets.
+     * Falls back to the SVG, then to a pure-HTML/CSS E-monogram if no asset
+     * is readable (never breaks ticket delivery).
      */
     private static function brandMarkDataUri(): string
     {
@@ -194,15 +196,18 @@ class EmailHelper
         if ($cached !== null) {
             return $cached;
         }
-        $svgPath = self::normalisePath(__DIR__ . '/../../public/assets/brand/logo-mark-only.svg');
-        if (file_exists($svgPath) && filesize($svgPath) > 0) {
-            $svg = (string) file_get_contents($svgPath);
-            // Strip the XML prolog if present; data-URIs take raw markup.
-            $svg = preg_replace('/<\?xml[^>]*\?>/', '', $svg);
-            $cached = 'data:image/svg+xml;base64,' . base64_encode(trim($svg));
-        } else {
-            $cached = '';
+        $brandDir = self::normalisePath(__DIR__ . '/../../public/assets/brand/');
+        // PNG first (universally supported), SVG as fallback.
+        foreach ([
+            [$brandDir . 'logo-mark.png', 'image/png'],
+            [$brandDir . 'logo-mark-only.svg', 'image/svg+xml'],
+        ] as [$assetPath, $mime]) {
+            if (file_exists($assetPath) && filesize($assetPath) > 0) {
+                $cached = 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($assetPath));
+                return $cached;
+            }
         }
+        $cached = '';
         return $cached;
     }
 

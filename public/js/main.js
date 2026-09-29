@@ -632,12 +632,14 @@ function initUserIcon() {
       setVal("profileEmail", user.email);
       setVal("profilePhone", user.phone);
       setVal("profileDob", user.dob);
-      // Gender / Country / State / City always start EMPTY — the user fills
-      // them in consciously (they are optional, not pre-seeded from the DB).
-      setVal("profileGender", "");
-      setVal("profileCountry", "");
-      setVal("profileState", "");
-      setVal("profileCity", "");
+      // Gender / Country / State / City: pre-fill from the saved profile.
+      // (They were previously blanked here, which meant every save submitted
+      // empty strings and the backend nulled the stored values — "my gender,
+      // state, country and city keep disappearing" bug.)
+      setVal("profileGender", user.gender);
+      setVal("profileCountry", user.country);
+      setVal("profileState", user.state);
+      setVal("profileCity", user.city);
       setVal("profileAddress", user.address);
 
       // Enforce digits-only and 11-char max on phone field

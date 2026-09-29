@@ -86,7 +86,7 @@ try {
                c.subaccount_code, c.verification_status, c.business_name AS organizer_business_name, c.name AS organizer_name,
                c.paystack_connection_status, c.paystack_auth_token, c.paystack_public_key,
                c.paystack_merchant_id, c.platform_commission_percent, c.admin_status AS organizer_admin_status,
-               c.settlement_bank_name, c.settlement_account_name, c.settlement_account_number
+               c.settlement_bank_name, c.settlement_bank_code, c.settlement_account_name, c.settlement_account_number
         FROM events e
         JOIN clients c ON e.client_id = c.id
         WHERE e.id = ? AND e.deleted_at IS NULL
@@ -111,11 +111,6 @@ try {
         echo json_encode(['success' => false, 'message' => 'This event is not available for booking.']);
         exit;
     }
-
-    // ── Feature Gate: Organizer must be Paystack-connected (v2) ────────────────
-    // Only enforce gate for paid events; free events are always allowed
-    $isOrganizerConnected = ($event['paystack_connection_status'] ?? 'disconnected') === 'connected'
-        && !empty($event['paystack_auth_token']);
 
     // ── Calculate amount based on ticket type ──────────────────────────────────
     $unit_price = (float)$event['price'];
@@ -342,6 +337,102 @@ try {
 
 
 
+    // ── Feature Gate: Organizer must be Paystack-connected (v2) ──
+    // Only enforce gate for paid events; free events are always allowed
+    $isOrganizerConnected = ($event['paystack_connection_status'] ?? 'disconnected') === 'connected'
+        && !empty($event['paystack_auth_token']);
+
+    // Which secret key will actually run this transaction? If the organizer
+    // has their OWN live key (mode-matched with the platform), the charge
+    // runs on the organizer's own Paystack account and their business name
+    // already appears on the receipt. No subaccount is needed or valid in
+    // that case; this also avoids a needless Paystack API call.
+    $activePaystackKey = selectPaystackSecretKey(
+        $isOrganizerConnected ? $event['paystack_auth_token'] : null
+    );
+    $chargingOnPlatformAccount = ($activePaystackKey === PAYSTACK_SECRET_KEY);
+
+    // When the charge runs on the CLIENT's own Paystack account, automatically
+    // ensure an "Attoneex Tech-Solutions Nig. Ltd" subaccount exists under
+    // that account and attach it, so the platform's commission settles
+    // directly to the platform without anyone creating it by hand. Cached in
+    // the client's metadata (created once per client). Failure is non-fatal:
+    // the transaction proceeds without the platform split.
+    $platformSubaccountCode = null;
+    $platformSplitPercent = null;
+    if ($isOrganizerConnected && !$chargingOnPlatformAccount) {
+        try {
+            $clientCommission = $event['platform_commission_percent'] !== null
+                ? (float)$event['platform_commission_percent']
+                : null;
+            $platform = ensurePlatformSubaccount($pdo, (int)$event['organizer_id'], $activePaystackKey, $clientCommission);
+            if (!empty($platform['success']) && !empty($platform['subaccount_code'])) {
+                $platformSubaccountCode = $platform['subaccount_code'];
+                $platformSplitPercent = (float)$platform['percentage_charge'];
+            } else {
+                error_log('[initialize.php] Platform subaccount unavailable for client '
+                    . $event['organizer_id'] . ': ' . ($platform['message'] ?? 'unknown')
+                    . ' — charging without platform split.');
+            }
+        } catch (Throwable $platEx) {
+            error_log('[initialize.php] Platform subaccount ensure failed for client '
+                . $event['organizer_id'] . ': ' . $platEx->getMessage());
+        }
+    }
+
+    // ── Ensure the organizer has a real Paystack subaccount ──
+    // Without a subaccount the transaction runs on the PLATFORM's Paystack
+    // account, so Paystack's receipt/checkout shows the platform business
+    // name instead of the client's, and the organizer receives no automatic
+    // split. If the client is connected and has settlement bank details but
+    // no subaccount_code yet (or only a local-dev SETTLE_MOCK_ placeholder),
+    // create/refresh it lazily here, named with the client's business_name
+    // so Paystack receipts and the checkout header show the organizer.
+    // Failure is non-fatal: log it and continue on the platform account.
+    $useSubaccount = false;
+    if ($isOrganizerConnected && $chargingOnPlatformAccount
+        && !empty($event['settlement_bank_code'])
+        && !empty($event['settlement_account_number'])
+        && !empty($event['settlement_account_name'])) {
+        $subaccountCode = (string)($event['subaccount_code'] ?? '');
+        if ($subaccountCode === '' || str_starts_with($subaccountCode, 'SETTLE_MOCK_')) {
+            try {
+                $subName = trim((string)($event['organizer_business_name'] ?: $event['organizer_name'] ?: ''));
+                if ($subName === '') {
+                    $subName = 'Eventra Organizer ' . $event['organizer_id'];
+                }
+                // Cap at 128 chars. Paystack rejects longer business names.
+                if (mb_strlen($subName) > 128) {
+                    $subName = mb_substr($subName, 0, 128);
+                }
+                $orgAuthStmt = $pdo->prepare('SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1');
+                $orgAuthStmt->execute([$event['organizer_id']]);
+                $orgAuthId = (int)$orgAuthStmt->fetchColumn();
+                $subEmail = 'organizer' . $event['organizer_id'] . '@eventra-sub.eventra.local';
+                $ensure = ensureSubaccount(
+                    $pdo,
+                    $orgAuthId,
+                    (string)$event['settlement_bank_code'],
+                    (string)$event['settlement_account_number'],
+                    $subName,
+                    $subEmail,
+                    $subaccountCode !== '' ? $subaccountCode : null
+                );
+                if (!empty($ensure['success']) && !empty($ensure['subaccount_code'])
+                    && !str_starts_with((string)$ensure['subaccount_code'], 'SETTLE_MOCK_')) {
+                    $event['subaccount_code'] = $ensure['subaccount_code'];
+                } else {
+                    error_log('[initialize.php] Subaccount ensure did not yield a usable code for client '
+                        . $event['organizer_id'] . ': ' . ($ensure['message'] ?? 'unknown'));
+                }
+            } catch (Throwable $subEx) {
+                error_log('[initialize.php] Subaccount ensure failed for client '
+                    . $event['organizer_id'] . ': ' . $subEx->getMessage());
+            }
+        }
+        $useSubaccount = !empty($event['subaccount_code'])
+            && !str_starts_with((string)$event['subaccount_code'], 'SETTLE_MOCK_');
+    }
     $pdo->beginTransaction();
 
     // Define metadata for the order
@@ -416,9 +507,7 @@ try {
 
     // Client is the primary Paystack account; Eventra receives the split via
     // its subaccount created under that client account.
-    $activePaystackKey = selectPaystackSecretKey(
-        $isOrganizerConnected ? $event['paystack_auth_token'] : null
-    );
+    // ($activePaystackKey was resolved before the subaccount step above.)
 
     $contactInfo  = $body['contact_info'] ?? [];
     $buyerFname   = trim($contactInfo['fname'] ?? '');
@@ -457,11 +546,27 @@ try {
     ];
 
     $commissionKobo = (int) round($surcharge * 100);
-    if ($isOrganizerConnected && !empty($event['subaccount_code'])
-        && !str_starts_with($event['subaccount_code'], 'SETTLE_MOCK_')) {
+    if ($useSubaccount) {
+        // Split: the organizer's subaccount receives the sale while the
+        // platform keeps the 10% checkout surcharge as a flat fee via
+        // transaction_charge. bearer=subaccount means the ORGANIZER bears
+        // Paystack's processing fee on their share (standard marketplace
+        // configuration), which is why transaction_charge must be passed
+        // whenever bearer is set to subaccount.
         $paystackPayload['subaccount'] = $event['subaccount_code'];
         $paystackPayload['bearer']     = 'subaccount';
         $paystackPayload['transaction_charge'] = $commissionKobo;
+    } elseif ($platformSubaccountCode !== null
+        && $platformSplitPercent !== null
+        && $platformSplitPercent > 0
+        && $platformSplitPercent < 100) {
+        // Charging on the CLIENT's own Paystack account: the "Attoneex
+        // Tech-Solutions Nig. Ltd" subaccount receives the platform
+        // commission (percentage_charge on the subaccount), the client keeps
+        // the remainder. NOTE: transaction_charge is intentionally NOT set —
+        // on this integration a flat charge would go to the CLIENT's main
+        // account, not to the platform.
+        $paystackPayload['subaccount'] = $platformSubaccountCode;
     }
 
     $ch = curl_init('https://api.paystack.co/transaction/initialize');
