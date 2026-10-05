@@ -211,7 +211,7 @@ function initDrawers() {
 async function logout() {
   const result = await Swal.fire({
     title: "Logout Request",
-    text: "Are you sure you want to logout from Eventra Admin?",
+    text: "Are you sure you want to logout from EventOut Admin?",
     icon: "question",
     showCancelButton: true,
     confirmButtonColor: "#e74c3c",
@@ -352,7 +352,7 @@ function exportCurrentTableToPDF() {
 
     // Get page title
     const pageTitle =
-      document.querySelector(".page-title h1")?.innerText || "Eventra Export";
+      document.querySelector(".page-title h1")?.innerText || "EventOut Export";
 
     // Add title
     doc.setFontSize(18);
@@ -428,7 +428,7 @@ function exportCurrentTableToPDF() {
     });
 
     // Save the PDF
-    const filename = `eventra-export-${new Date().toISOString().split("T")[0]}.pdf`;
+    const filename = `eventout-export-${new Date().toISOString().split("T")[0]}.pdf`;
     doc.save(filename);
 
     Swal.fire("Success", "Data exported successfully as PDF", "success");
@@ -500,7 +500,7 @@ function exportCurrentTableToExcel() {
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     // Generate Excel file
-    const filename = `eventra-export-${new Date().toISOString().split("T")[0]}.xlsx`;
+    const filename = `eventout-export-${new Date().toISOString().split("T")[0]}.xlsx`;
     XLSX.writeFile(workbook, filename);
 
     Swal.fire("Success", "Data exported successfully as Excel", "success");
@@ -551,7 +551,7 @@ function exportCurrentTableToCSV() {
     .filter((row) => row.length > 0)
     .join("\n");
 
-  const filename = `eventra-export-${new Date().toISOString().split("T")[0]}.csv`;
+  const filename = `eventout-export-${new Date().toISOString().split("T")[0]}.csv`;
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
 
@@ -1002,12 +1002,18 @@ window.initPreviews = function () {
                                                             ?.url ||
                                                           client.kyc_driver_license_file ||
                                                           "",
+                                                        BVN:
+                                                          client.kyc_documents
+                                                            ?.bvn?.url ||
+                                                          client.kyc_bvn_file ||
+                                                          "",
                                                       },
                                                     ).replace(
                                                       /'/g,
                                                       "&#39;",
                                                     )}' onclick="downloadAllKYC(this, '${escapeHTML(client.business_name || client.name || "Client").replace(/'/g, "\\'")}')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><i data-lucide="download" style="width:11px;height:11px;"></i>Download All</button>
                                                 </div>
+                                                ${adminRenderKycRow("BVN", client.kyc_documents?.bvn?.url || client.kyc_bvn_file)}
                                                 ${adminRenderKycRow("NIN", client.kyc_documents?.nin?.url || client.kyc_nin_file)}
                                                 ${adminRenderKycRow("CAC", client.kyc_documents?.cac?.url || client.kyc_cac_file)}
                                                 ${adminRenderKycRow("Voter's Card", client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file)}
@@ -1168,7 +1174,7 @@ window.initPreviews = function () {
                         <div class="event-preview-content">
                             <div class="event-preview-main-info" style="margin-bottom: 1rem;">
                                 <h1 class="event-preview-title" style="font-size: 1.5rem; margin-bottom: 0.25rem;">${escapeHTML(eventName)}</h1>
-                                <p style="color: #6b7280; font-size: 0.85rem;">Organized by: ${escapeHTML(row.dataset.clientName || "Eventra")}</p>
+                                <p style="color: #6b7280; font-size: 0.85rem;">Organized by: ${escapeHTML(row.dataset.clientName || "EventOut")}</p>
                             </div>
                             
                             <div style="margin-bottom: 1.5rem;">

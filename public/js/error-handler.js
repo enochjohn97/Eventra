@@ -59,5 +59,5 @@
         });
     });
 
-    console.log('Eventra Global Error Handler initialized.');
+    console.log('EventOut Global Error Handler initialized.');
 })();

@@ -188,7 +188,7 @@ try {
     }
 
     header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="eventra_ticket_' . $barcode . '.pdf"');
+    header('Content-Disposition: attachment; filename="EventOut_ticket_' . $barcode . '.pdf"');
     header('Content-Length: ' . filesize($pdfPath));
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');

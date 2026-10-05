@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "admin";
   // Role-Specific UI Adjustments
   if (intent === "admin") {
-    document.title = "Admin Login - Eventra";
+    document.title = "Admin Login - EventOut";
   }
 
   // Check for session timeout error
@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const showFallback = () => {
       sliderContainer.innerHTML = `
                 <img src="../../public/assets/imgs/admin.png"
-                     alt="Eventra experience"
+                     alt="EventOut experience"
                      class="slide active">
             `;
     };
@@ -404,7 +404,7 @@ async function handleForgotPassword() {
     title: "Forgot Password?",
     text: "Enter your registered email to receive an OTP.",
     input: "email",
-    inputPlaceholder: "admin@eventra.com",
+    inputPlaceholder: "admin@eventout.com",
     showCancelButton: true,
     confirmButtonText: "Send OTP",
     background: "#1e293b",

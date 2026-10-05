@@ -306,7 +306,7 @@ function loadEventsToSlider(containerId, events) {
                 <div class="event-mini-info">
                     <div class="event-mini-title">${escapeHTML(event.event_name)}</div>
                     <div class="event-mini-meta">
-                        <span>${escapeHTML(event.client_name || 'Eventra')}</span>
+                        <span>${escapeHTML(event.client_name || 'EventOut')}</span>
                         <span>${formatDate(event.event_date)}</span>
                     </div>
                 </div>

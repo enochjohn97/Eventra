@@ -26,8 +26,25 @@ let currentPage = 1;
 
 function getItemsPerPage() {
   const width = window.innerWidth;
+  const container = document.getElementById("all-events-grid");
 
-  // Rows per page: 5 full rows on desktop, 4 on tablet/mobile
+  // Determine actual CSS columns to sync pagination
+  let columns = 3;
+  if (container) {
+    const style = window.getComputedStyle(container);
+    const cols = style.getPropertyValue("grid-template-columns").split(" ").length;
+    if (cols > 0) columns = cols;
+  } else {
+    // Fallback: match CSS auto-fill minmax(260px/280px) exactly
+    const gapSize = 32; 
+    const cardMinWidth = width < 768 ? 260 : 280;
+    const containerPadding = width >= 1024 ? 64 : width >= 768 ? 40 : 32;
+    const availableWidth = width - containerPadding * 2;
+    columns = Math.floor((availableWidth + gapSize) / (cardMinWidth + gapSize));
+    columns = Math.max(1, columns);
+  }
+
+  // Show 4-5 complete rows to fill reasonable viewport space without excessive scrolling
   let rows = 5;
   if (width < 768) {
     rows = 4; // Fewer rows on mobile
@@ -35,32 +52,10 @@ function getItemsPerPage() {
     rows = 4; // Fewer rows on tablet
   }
 
-  // Preferred: measure the REAL rendered grid. It sits beside the 320px
-  // filter sidebar, so its usable width is much smaller than the window's —
-  // computing columns from window width caused half-empty last rows.
-  const grid = document.getElementById("all-events-grid");
-  if (grid && grid.clientWidth > 0) {
-    const tracks = window.getComputedStyle(grid).gridTemplateColumns;
-    if (tracks && tracks !== "none") {
-      const cols = tracks.split(" ").filter(Boolean).length;
-      if (cols > 0) return cols * rows;
-    }
-  }
+  // Calculate total items to display to exactly fill slots
+  let itemsPerPage = columns * rows;
 
-  // Fallback: estimate from window width (grid not measurable yet).
-  // Mirrors style.css: minmax(260px,1fr) desktop, minmax(280px,1fr) <=1024px.
-  const gapSize = width < 1024 ? 24 : 32; // 1.5rem / 2rem in px
-  const cardMinWidth = width < 1024 ? 280 : 260;
-  const containerPadding = width >= 1024 ? 64 : width >= 768 ? 40 : 32;
-  const sidebarAllowance = width >= 1024 ? 320 : 0; // filter sidebar only on desktop
-  const availableWidth = width - containerPadding * 2 - sidebarAllowance;
-
-  let columns = Math.floor(
-    (availableWidth + gapSize) / (cardMinWidth + gapSize),
-  );
-  columns = Math.max(1, Math.min(columns, 5)); // Between 1 and 5 columns
-
-  return columns * rows;
+  return itemsPerPage;
 }
 
 let itemsPerPage = getItemsPerPage();
@@ -198,9 +193,6 @@ async function loadEvents() {
       // Categorized Rendering with Cross-Category Deduplication
       renderAllCategories();
 
-      // Recently-viewed strip (only for returning browsers; fresh → hidden)
-      renderRecentlyViewedStrip();
-
       // Update cart with favorites
       if (typeof updateCartUI === "function") {
         updateCartUI();
@@ -219,43 +211,6 @@ async function loadEvents() {
   }
 }
 
-/**
- * Recently-Viewed Images Strip
- * Shows event images THIS browser previously opened. Fresh browsers have no
- * stored UUID/cookie, so the strip stays hidden (nothing displayed).
- */
-function renderRecentlyViewedStrip() {
-  const section = document.getElementById("recentlyViewedSection");
-  const grid = document.getElementById("recentlyViewedGrid");
-  if (!section || !grid) return;
-
-  const viewed =
-    typeof window.getRecentlyViewedEvents === "function"
-      ? window.getRecentlyViewedEvents()
-      : [];
-
-  // Fresh browser (or nothing viewed yet) → keep hidden, show nothing
-  if (!viewed.length) {
-    section.style.display = "none";
-    grid.innerHTML = "";
-    return;
-  }
-
-  grid.innerHTML = viewed
-    .map(
-      (v) => `
-      <a href="/public/pages/event-details.html?event_id=${encodeURIComponent(
-        v.id,
-      )}" style="flex:0 0 auto;scroll-snap-align:start;display:block;width:190px;height:110px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-card);background:#e5e7eb;">
-        <img src="${getImageUrl(v.image)}" alt="Event you viewed" loading="lazy"
-             style="width:100%;height:100%;object-fit:cover;display:block;"
-             onerror="this.parentElement.style.display='none'">
-      </a>`,
-    )
-    .join("");
-  section.style.display = "block";
-}
-
 function initHeroBackground() {
   const heroSection = document.getElementById("home");
   const wrapper = document.getElementById("heroCarouselWrapper");
@@ -268,11 +223,8 @@ function initHeroBackground() {
       ? eligibleEvents[Math.floor(Math.random() * eligibleEvents.length)]
       : null;
 
-  // Local splash fallback (allowed per requirements) — no external dummy images
   const fallback =
-    typeof getImageUrl === "function"
-      ? getImageUrl("/public/assets/imgs/login.png")
-      : "/public/assets/imgs/login.png";
+    "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&h=1080&fit=crop";
   let eventImage = fallback;
 
   if (randomEvent) {
@@ -284,7 +236,7 @@ function initHeroBackground() {
 
   wrapper.innerHTML = `
         <div class="hero-slide-static">
-            <img src="${eventImage}" alt="Event Background" class="hero-background" fetchpriority="high" onerror="this.onerror=null;this.src='${fallback}'">
+            <img src="${eventImage}" alt="Event Background" class="hero-background" fetchpriority="high" onerror="this.src='${fallback}'">
             <div class="hero-overlay"></div>
             <div class="hero-gradient"></div>
             <div class="hero-content">
@@ -528,75 +480,30 @@ function initUserIcon() {
     }
   });
 
-  // Unified click handler for the profile button.
-  // 2026-10-02 freeze fix: the handler used to be bound ONCE inside init(),
-  // which awaits the auth/network handshake first — if that stalled, the
-  // icon had NO listener and every click was dead until a page refresh.
-  // Bind via capture-phase delegation instead: the icon ALWAYS responds,
-  // even if the handshake is still in flight, and any stuck overlay state
-  // is cleared before toggling.
-  const handleProfileTrigger = (e) => {
-    const btn = e.target && e.target.closest ? e.target.closest("#userProfileBtn") : null;
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Clear stuck overlay states that otherwise block every click until refresh:
-    const loginModalEl = document.getElementById("loginModal");
-    if (loginModalEl && loginModalEl.style.display === "flex" && !loginModalEl.classList.contains("show")) {
-      loginModalEl.style.display = "none"; // half-open from an interrupted close
-    }
-    const cartDd = document.getElementById("cartDropdown");
-    if (cartDd && !cartDd.contains(e.target)) cartDd.classList.remove("show");
-
-    const dd = document.getElementById("profileDropdown");
-    if (authController.state === authController.states.AUTHENTICATED) {
-      // Toggle dropdown if logged in
-      if (dd) {
-        dd.classList.toggle("show");
-        btn.setAttribute("aria-expanded", dd.classList.contains("show") ? "true" : "false");
-      }
-    } else {
-      // Show login modal if guest - Ensure clean state
-      authController.clearSession();
-      if (loginModalEl) {
-        loginModalEl.style.display = "flex";
-        setTimeout(() => loginModalEl.classList.add("show"), 10);
-        // Render the Google button whenever GIS is ready, regardless of the
-        // controller-level `googleInitialized` flag (it can be false even
-        // though GIS already initialized and is idle — that mismatch caused
-        // an endless render/abort loop of hidden sign-in iframes, which
-        // starved the main thread and froze the page).
-        if (
-          window.google &&
-          window.google.accounts &&
-          window.google.accounts.id &&
-          window.authController
-        ) {
-          window.authController.renderGoogleButton("googleSignInContainer");
-        } else if (
-          window.authController &&
-          window.authController.googleInitialized
-        ) {
-          window.authController.renderGoogleButton("googleSignInContainer");
+  // Unified click handler for the profile button
+  if (userProfileBtn) {
+    userProfileBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (authController.state === authController.states.AUTHENTICATED) {
+        // Toggle dropdown if logged in
+        if (profileDropdown) profileDropdown.classList.toggle("show");
+      } else {
+        // Show login modal if guest - Ensure clean state
+        authController.clearSession();
+        if (loginModal) {
+          loginModal.style.display = "flex";
+          setTimeout(() => loginModal.classList.add("show"), 10);
+          if (
+            window.authController &&
+            window.authController.googleInitialized
+          ) {
+            window.authController.renderGoogleButton("googleSignInContainer");
+          }
+          // Manual button is already in HTML, logical handler added in initUserIcon
         }
       }
-    }
-  };
-  document.addEventListener("click", handleProfileTrigger, true);
+    });
 
-  // Escape closes the profile dropdown
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const dd = document.getElementById("profileDropdown");
-    if (dd && dd.classList.contains("show")) {
-      dd.classList.remove("show");
-      const btn = document.getElementById("userProfileBtn");
-      if (btn) btn.setAttribute("aria-expanded", "false");
-    }
-  });
-
-  if (userProfileBtn) {
     // Handle Manual Google Click (Added for restored button)
     const googleBtn = document.getElementById("googleSignIn");
     if (googleBtn) {
@@ -610,16 +517,9 @@ function initUserIcon() {
     }
   }
 
-  // Close dropdown on click outside (clicks inside the profile container
-  // never close it — menu actions close it explicitly themselves).
-  document.addEventListener("click", (e) => {
-    const dd = document.getElementById("profileDropdown");
-    if (!dd || !dd.classList.contains("show")) return;
-    const container = document.querySelector(".user-profile-container");
-    if (container && container.contains(e.target)) return;
-    dd.classList.remove("show");
-    const btn = document.getElementById("userProfileBtn");
-    if (btn) btn.setAttribute("aria-expanded", "false");
+  // Close dropdown on click outside
+  document.addEventListener("click", () => {
+    if (profileDropdown) profileDropdown.classList.remove("show");
   });
 
   // Logout logic
@@ -693,10 +593,6 @@ function initUserIcon() {
       setVal("profileEmail", user.email);
       setVal("profilePhone", user.phone);
       setVal("profileDob", user.dob);
-      // Gender / Country / State / City: pre-fill from the saved profile.
-      // (They were previously blanked here, which meant every save submitted
-      // empty strings and the backend nulled the stored values — "my gender,
-      // state, country and city keep disappearing" bug.)
       setVal("profileGender", user.gender);
       setVal("profileCountry", user.country);
       setVal("profileState", user.state);
@@ -711,26 +607,6 @@ function initUserIcon() {
           phoneEl.value = phoneEl.value.replace(/\D/g, "").slice(0, 11);
         });
       }
-
-      // Enforce letters-only (no digits) on text fields: fullname, gender, country, state, city
-      const lettersOnlyFields = [
-        "profileName",
-        "profileGender",
-        "profileCountry",
-        "profileState",
-        "profileCity",
-      ];
-      lettersOnlyFields.forEach((fid) => {
-        const el = document.getElementById(fid);
-        if (el && !el._lettersOnly) {
-          el._lettersOnly = true;
-          el.addEventListener("input", () => {
-            // Strip digits AND symbols — keep letters (incl. accents), spaces,
-            // apostrophes, periods and hyphens only.
-            el.value = el.value.replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'. -]+/g, "");
-          });
-        }
-      });
 
       if (profileSideModal) profileSideModal.classList.add("open");
     });
@@ -763,60 +639,6 @@ function initUserIcon() {
   if (profileEditForm) {
     profileEditForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      // Validate required profile fields before submitting.
-      // Gender / Country / State / City are intentionally OPTIONAL (they start
-      // empty by design) — only identity + contact fields are enforced here.
-      const profileFields = ["profileName", "profilePhone", "profileDob", "profileAddress"];
-      let firstInvalid = null;
-      const setState = window.eventraSetFieldState;
-      const mark = (id, ok, msg) => {
-        const el = document.getElementById(id);
-        if (!el) return true;
-        if (!ok) {
-          if (setState) setState(el, "error", msg || "This field is required.");
-          if (!firstInvalid) firstInvalid = el;
-          return false;
-        }
-        return true;
-      };
-
-      let allValid = true;
-      profileFields.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el && !String(el.value || "").trim()) {
-          mark(id, false);
-          allValid = false;
-        }
-      });
-
-      const nameEl = document.getElementById("profileName");
-      if (nameEl && nameEl.value.trim() &&
-          !/^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(nameEl.value.trim())) {
-        mark("profileName", false, "Enter your first and last name.");
-        allValid = false;
-      }
-
-      const phoneEl = document.getElementById("profilePhone");
-      if (phoneEl && phoneEl.value.trim() &&
-          !/^\+?[0-9][0-9\s-]{6,17}$/.test(phoneEl.value.trim())) {
-        mark("profilePhone", false, "Enter a valid phone number (e.g. 08012345678).");
-        allValid = false;
-      }
-
-      const emailEl = document.getElementById("profileEmail");
-      if (emailEl && emailEl.value.trim() &&
-          !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailEl.value.trim())) {
-        mark("profileEmail", false, "Enter a valid email address.");
-        allValid = false;
-      }
-
-      if (!allValid) {
-        showNotification("Please correct the highlighted fields before saving.", "error");
-        if (firstInvalid) firstInvalid.focus();
-        return;
-      }
-
       const formData = new FormData(profileEditForm);
 
       // Ensure disabled fields like Profile ID and email are included
@@ -1014,7 +836,7 @@ async function performServerSearch(query) {
 
     if (result.success) {
       eventsData.all = result.events;
-      renderSearchResults(result.events); // Use centralized rendering with ghost filling
+      renderDiscovery(result.events); // Use centralized rendering with ghost filling
     }
   } catch (error) {
     if (loader) loader.style.display = "none";
@@ -1023,21 +845,8 @@ async function performServerSearch(query) {
 }
 
 function renderSearchResults(events) {
-  // Search results must NOT carry priority tags ("📍 Nearby" etc.) — those are
-  // homepage-feed classifications, not search attributes. The search API
-  // returns the legacy `priority` column, which createEventCard would render
-  // as a badge, so we strip tag-shaped values before rendering.
-  const TAGGED_VALUES = /^(hot|trending|featured|nearby|upcoming)$/i;
-  const cleaned = (events || []).map((e) => {
-    if (e.priority_label && /nearby|hot|trending|featured/i.test(e.priority_label)) {
-      e = { ...e, priority_label: "" };
-    }
-    if (e.priority && TAGGED_VALUES.test(String(e.priority).trim())) {
-      e = { ...e, priority: "" };
-    }
-    return e;
-  });
-  renderDiscovery(cleaned);
+  // Now redirected to renderDiscovery for consistency and ghost filling
+  renderDiscovery(events);
 }
 
 function renderEventsGrid(gridId, events, emptyMessage) {
@@ -1162,7 +971,7 @@ function createEventCard(event, index) {
     rawDesc.length > 150 ? rawDesc.substring(0, 150).trim() + "....." : rawDesc;
   const desc = escapeHTML(descPreview);
   const organizer = escapeHTML(
-    event.organizer_name || event.client_name || "Eventra",
+    event.organizer_name || event.client_name || "EventOut",
   );
   const full_address =
     `${event.address || ""}, ${event.city || ""}, ${event.state || ""}`
@@ -1170,8 +979,8 @@ function createEventCard(event, index) {
       .replace(/, , /g, ", ")
       .replace(/, $/, "");
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full_address || "Nigeria")}`;
-  const shareTitle = `Eventra: ${eventName}`;
-  const shareText = `Check out ${eventName} organized by ${organizer} on Eventra!`;
+  const shareTitle = `EventOut: ${eventName}`;
+  const shareText = `Check out ${eventName} organized by ${organizer} on EventOut!`;
 
   // Ticket types are now integrated directly into the price string above
 
@@ -1415,7 +1224,6 @@ window.addEventListener(
     const newLimit = getItemsPerPage();
     if (newLimit !== itemsPerPage) {
       itemsPerPage = newLimit;
-      currentPage = 1; // avoid landing on a page that no longer exists
       renderDiscovery();
     }
   }, 250),
@@ -1729,25 +1537,22 @@ function shareEvent(
   e,
   eventId,
   title = "Check out this event!",
-  text = "I found this amazing event on Eventra",
+  text = "I found this amazing event on EventOut",
 ) {
   if (e) e.stopPropagation();
 
   let eventName = "event";
   let organizerName = "organizer";
-  let eventTag = null;
   if (typeof allEvents !== "undefined") {
     const ev = allEvents.find((event) => event.id == eventId);
     if (ev) {
       eventName = ev.event_name || "event";
       organizerName = ev.organizer_name || ev.client_name || "organizer";
-      eventTag = ev.tag || null;
     }
   }
 
-  // Short, path-hiding share link: /e/{tag} never exposes the real page
-  // location and works on any domain. Fallback keeps the old deep link.
-  const baseUrl = window.location.origin;
+  const domain =
+    "https://eventra-website.liveblog365.com/public/pages/index.html";
   const nameSlug = encodeURIComponent(
     eventName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
@@ -1755,9 +1560,7 @@ function shareEvent(
     organizerName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
 
-  const shareUrl = eventTag
-    ? `${baseUrl}/e/${encodeURIComponent(eventTag)}`
-    : `${baseUrl}/public/pages/event-details.html?event=${eventId}&organizer=${orgSlug}&name=${nameSlug}`;
+  const shareUrl = `${domain}?event=${eventId}&organizer=${orgSlug}&name=${nameSlug}`;
 
   if (navigator.share) {
     navigator.share({
@@ -1785,16 +1588,8 @@ async function toggleFavorite(e, eventId) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_id: eventId || window.currentModalEventId }),
     });
-    const result = await response.json().catch(() => null);
-    if (!response.ok) {
-      showNotification(
-        (result && result.message) ||
-          `Failed to update favorite (${response.status}). Please try again.`,
-        "error",
-      );
-      return;
-    }
-    if (result && result.success) {
+    const result = await response.json();
+    if (result.success) {
       // Update local eventsData reactively
       if (typeof eventsData !== "undefined") {
         // Update in all categories
@@ -1818,7 +1613,7 @@ async function toggleFavorite(e, eventId) {
         );
         cards.forEach((cardItem) => {
           const favBtn = cardItem.querySelector(".fav-btn");
-          const favIcon = cardItem.querySelector(".fav-btn svg");
+          const favIcon = cardItem.querySelector(".fav-btn i");
           if (favBtn) {
             if (result.is_favorite) {
               favBtn.classList.add("active");
@@ -1847,20 +1642,9 @@ async function toggleFavorite(e, eventId) {
       }
 
       showNotification(result.message, "success");
-    } else {
-      showNotification(
-        (result && result.message) || "Failed to update favorite.",
-        "error",
-      );
     }
   } catch (error) {
-    console.error("[toggleFavorite] Error:", error);
-    showNotification(
-      error && error.message
-        ? `Failed to update favorite: ${error.message}`
-        : "Failed to update favorite. Please check your connection and try again.",
-      "error",
-    );
+    showNotification("Failed to update favorite", "error");
   }
 }
 
@@ -1972,94 +1756,6 @@ function initSmoothScroll() {
   });
 }
 
-// Homepage celebration layer — rising balloons + rotating exciting event popups.
-// Purely visual: fixed overlay, pointer-events none, skipped for reduced-motion users.
-function initHomeCelebration() {
-  if (document.getElementById("homeCelebrationLayer")) return;
-  if (!document.body || !document.body.animate) return;
-
-  const layer = document.createElement("div");
-  layer.id = "homeCelebrationLayer";
-  layer.setAttribute("aria-hidden", "true");
-  document.body.appendChild(layer);
-
-  // Brand-flavored palette pairs [base, shade]
-  const palette = [
-    ["#ff5a5f", "#c93a3e"],
-    ["#f59e0b", "#d97706"],
-    ["#2563eb", "#1e40af"],
-    ["#7c3aed", "#5b21b6"],
-    ["#10b981", "#047857"],
-  ];
-
-  const spawnBalloon = (delayMs) => {
-    const balloon = document.createElement("div");
-    balloon.className = "balloon";
-    const [b1, b2] = palette[Math.floor(Math.random() * palette.length)];
-    const duration = 9000 + Math.random() * 7000;
-    balloon.style.setProperty("--b1", b1);
-    balloon.style.setProperty("--b2", b2);
-    balloon.style.left = `${Math.random() * 92 + 2}%`;
-    layer.appendChild(balloon);
-    // Motion is driven by the Web Animations API so it cannot be silently
-    // disabled by CSS-level reduced-motion overrides.
-    const rise = balloon.animate(
-      [
-        { transform: "translate3d(0, 0, 0) rotate(-4deg) scale(0.9)", opacity: 0 },
-        { transform: "translate3d(0, -8vh, 0) rotate(-2deg) scale(0.98)", opacity: 0.95, offset: 0.08 },
-        { transform: "translate3d(26px, -28vh, 0) rotate(5deg) scale(1)", offset: 0.25 },
-        { transform: "translate3d(-22px, -56vh, 0) rotate(-5deg) scale(1.02)", offset: 0.5 },
-        { transform: "translate3d(18px, -82vh, 0) rotate(4deg) scale(1)", opacity: 0.92, offset: 0.75 },
-        { transform: "translate3d(-10px, -118vh, 0) rotate(-3deg) scale(0.98)", opacity: 0 },
-      ],
-      { duration, delay: delayMs, easing: "linear", fill: "both" }
-    );
-    rise.onfinish = () => balloon.remove();
-    rise.oncancel = () => balloon.remove();
-  };
-
-  // Warm up the sky with a staggered burst, then release one every few seconds.
-  for (let i = 0; i < 12; i++) spawnBalloon(i * 550);
-  setInterval(() => spawnBalloon(0), 3200);
-
-  // Exciting popup messages that rotate above the hero.
-  const pop = document.createElement("div");
-  pop.className = "home-pop";
-  layer.appendChild(pop);
-  const messages = [
-    "🎉 New events drop every week — don't miss out!",
-    "🔥 <b>Trending now:</b> top shows are selling fast!",
-    "🎟️ Grab your tickets in <b>under a minute</b>",
-    "⭐ Tap the ♥ on any event to save it for later",
-    "🎈 Big moments live here — explore what's on!",
-    "🎵 Concerts, comedy, tech & more — all in one place",
-    "⚡ Instant e-tickets straight to your inbox",
-  ];
-  let msgIndex = 0;
-  const showPop = () => {
-    pop.innerHTML = messages[msgIndex % messages.length];
-    msgIndex++;
-    pop.animate(
-      [
-        { opacity: 0, transform: "translate(-50%, -16px)" },
-        { opacity: 1, transform: "translate(-50%, 0)" },
-      ],
-      { duration: 450, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" }
-    );
-    setTimeout(() => {
-      pop.animate(
-        [
-          { opacity: 1, transform: "translate(-50%, 0)" },
-          { opacity: 0, transform: "translate(-50%, -16px)" },
-        ],
-        { duration: 450, easing: "ease", fill: "forwards" }
-      );
-    }, 4600);
-  };
-  setTimeout(showPop, 1400);
-  setInterval(showPop, 9000);
-}
-
 // Initialize all functions
 async function init() {
   // Events are public content and must not wait for the session handshake.
@@ -2075,17 +1771,12 @@ async function init() {
   initPaginationListeners();
   initSmoothScroll();
   initHeaderScroll();
-  initHomeCelebration();
   if (typeof initGoogleAuth === "function") initGoogleAuth();
   if (typeof initUserLogin === "function") initUserLogin();
 
   // Real-time synchronization (60s polling for events)
   // Preserves active filter/search state — does not re-init filters
   setInterval(() => {
-    // Opportunistic reminder trigger (see client/js/notification-system.js):
-    // keeps pre-event email/SMS/in-app reminders flowing without a crontab.
-    fetch("/api/cron/run-reminders.php", { method: "POST", credentials: "include" }).catch(() => {});
-
     const globalSearch = document.getElementById("globalSearch");
     if (globalSearch && globalSearch.value.trim()) return; // skip during active search
     loadEvents(); // loadEvents -> applyFilters preserves checked state since filters init only once
@@ -2188,7 +1879,7 @@ function showEventModal(eventId) {
     orgContainer.style.display = "flex";
     orgContainer.style.alignItems = "center";
     orgContainer.style.gap = "8px";
-    orgContainer.innerHTML = `Organized by <span style="font-weight: 600;">${escapeHTML(event.organizer_name || event.client_name || "Eventra")}</span> 
+    orgContainer.innerHTML = `Organized by <span style="font-weight: 600;">${escapeHTML(event.organizer_name || event.client_name || "EventOut")}</span> 
       ${typeof getVerificationBadge === "function" ? getVerificationBadge(event.verification_status) : event.is_verified == 1 ? '<span class="verified-check" style="color: #722f37; margin-left: 5px;" title="Verified">✓</span>' : ""}`;
   }
   if (window.lucide) window.lucide.createIcons();
@@ -2360,9 +2051,7 @@ function showEventModal(eventId) {
 
   // Priority badge
   const priorityBadge = document.getElementById("modalPriorityBadge");
-  // Badge only for admin-assigned classifications (Hot/Trending/Featured).
-  // Legacy `priority` column can contain "Nearby" from search results — never shown.
-  const modalPriorityVal = event.priority_label || "";
+  const modalPriorityVal = event.priority_label || event.priority || "";
   if (modalPriorityVal) {
     priorityBadge.textContent = modalPriorityVal.toUpperCase();
     priorityBadge.style.display = "flex";
@@ -2581,12 +2270,6 @@ function updateCartUI() {
   const cartTotalCount = document.getElementById("cartTotalCount");
 
   if (!cartItemsContainer) return;
-
-  // Local splash fallback for favorite card thumbnails
-  const fallback =
-    typeof getImageUrl === "function"
-      ? getImageUrl("/public/assets/imgs/login.png")
-      : "/public/assets/imgs/login.png";
 
   // Favorites are our "cart items"
   const favorites = eventsData.favorites || [];

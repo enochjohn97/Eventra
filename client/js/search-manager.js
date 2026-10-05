@@ -73,7 +73,7 @@ function displaySearchResults(results, query) {
         }
     }
 
-    const hasResults = results.events.length > 0 || results.tickets.length > 0 || results.users.length > 0 || (results.media && results.media.length > 0);
+    const hasResults = results.events.length > 0 || results.tickets.length > 0 || results.users.length > 0 || (results.payments && results.payments.length > 0) || (results.media && results.media.length > 0);
 
     if (!hasResults) {
         resultsContainer.innerHTML = `
@@ -123,6 +123,20 @@ function displaySearchResults(results, query) {
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 0.9rem; color: #111827;">${highlightText(ticket.title, query)}</div>
                     <div style="font-size: 0.75rem; color: #6b7280;">Event: ${ticket.subtitle} • Bought by: ${ticket.extra}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Payments Section (payment ids, amounts, ticket type, dates)
+    if (results.payments && results.payments.length > 0) {
+        html += `<div style="padding: 0.75rem 1rem; background: #f9fafb; font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f1f4f8;">Payments</div>`;
+        html += results.payments.map(payment => `
+            <div class="search-result-item" onclick="goToPayments(${payment.id})" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f4f8; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 6px; background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 1rem;">💳</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: #111827;">${highlightText(payment.title || payment.subtitle, query)}</div>
+                    <div style="font-size: 0.75rem; color: #6b7280;">${escapeHTML(payment.subtitle || '')} • ₦${parseFloat(payment.amount || 0).toLocaleString()} ${payment.ticket_type ? '• ' + escapeHTML(payment.ticket_type) : ''} ${payment.status ? '• ' + escapeHTML(payment.status) : ''}</div>
                 </div>
             </div>
         `).join('');
@@ -197,6 +211,11 @@ function goToEvent(eventId) {
 
 function goToTickets(ticketId) {
     window.location.href = `tickets.html?highlight=${ticketId}`;
+    hideSearchResults();
+}
+
+function goToPayments(paymentId) {
+    window.location.href = `payments.html?highlight=${paymentId}`;
     hideSearchResults();
 }
 

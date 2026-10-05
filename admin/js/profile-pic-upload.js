@@ -229,7 +229,7 @@ class ProfilePicUpload {
         }
 
         // Dispatch global sync event
-        document.dispatchEvent(new CustomEvent('EventraProfileUpdated', {
+        document.dispatchEvent(new CustomEvent('EventOutProfileUpdated', {
             detail: { 
                 profile_pic: newProfilePicPath,
                 name: window.adminAuth?.adminData?.name || ''
@@ -253,7 +253,7 @@ class ProfilePicUpload {
     }
 
     updateProfilePictures(newPath) {
-        // Redundant - now handled by EventraProfileUpdated listener in utils.js
+        // Redundant - now handled by EventOutProfileUpdated listener in utils.js
     }
 }
 

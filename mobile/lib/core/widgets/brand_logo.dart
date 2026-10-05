@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The official Eventra brand lockup: coral E-monogram badge + "eventra."
+/// The official EvenOut brand lockup: coral E-monogram badge + "venOut"
 /// wordmark. Used on every screen header so the brand is always visible.
 ///
 /// [variant] white renders the wordmark in white for dark/photo backgrounds.
@@ -32,16 +32,13 @@ class BrandLogo extends StatelessWidget {
           const SizedBox(width: 8),
           RichText(
             text: TextSpan(
-            text: 'Eventra',
+            text: 'venOut',
               style: TextStyle(
                 color: wordmarkColor,
                 fontSize: size * 0.55,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
               ),
-              children: const [
-                TextSpan(text: '.', style: TextStyle(color: Color(0xFFFF5A5F))),
-              ],
             ),
           ),
         ],

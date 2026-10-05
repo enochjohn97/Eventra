@@ -808,7 +808,7 @@ tbody tr:hover {
     gap: 15px;
 }
 
-/* Indigo Theme Overrides for EventraPagination in Admin */
+/* Indigo Theme Overrides for EventOutPagination in Admin */
 .pg-btn.active {
     background-color: var(--admin-primary) !important;
     border-color: var(--admin-primary) !important;

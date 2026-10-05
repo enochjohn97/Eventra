@@ -78,7 +78,7 @@ class GoogleAuthService {
     } catch (_) {}
   }
 
-  /// Interactive sign-in. Returns the Eventra user, or null when the user
+  /// Interactive sign-in. Returns the EvenOut user, or null when the user
   /// dismissed the Google sheet (cancellation is not an error).
   ///
   /// Throws [ApiException] with a user-presentable message on real failures.
@@ -139,7 +139,7 @@ class GoogleAuthService {
     return exchangeTokenWithBackend(idToken);
   }
 
-  /// Exchanges a Google ID token for an Eventra session (shared by
+  /// Exchanges a Google ID token for an EvenOut session (shared by
   /// interactive and silent sign-in).
   static Future<UserModel> exchangeTokenWithBackend(String idToken) async {
     final Response<dynamic> response;
@@ -149,7 +149,7 @@ class GoogleAuthService {
         data: {'credential': idToken, 'intent': 'user'},
       );
     } on DioException catch (error) {
-      throw apiErrorFromDio(error, 'Eventra could not complete Google sign-in.');
+      throw apiErrorFromDio(error, 'EvenOut could not complete Google sign-in.');
     }
 
     final data = response.data is Map
@@ -162,7 +162,7 @@ class GoogleAuthService {
     if (data['success'] != true || serverToken == null || userJson == null) {
       throw ApiException(
         data['message']?.toString() ??
-            'Eventra could not complete Google sign-in.',
+            'EvenOut could not complete Google sign-in.',
         statusCode: response.statusCode,
       );
     }

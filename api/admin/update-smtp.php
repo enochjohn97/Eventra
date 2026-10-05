@@ -87,7 +87,7 @@ $fieldsToUpdate = [
     'MAIL_PASSWORD'     => $data['MAIL_PASSWORD'],
     'MAIL_ENCRYPTION'   => strtolower($data['MAIL_ENCRYPTION']),
     'MAIL_FROM_ADDRESS' => $data['MAIL_FROM_ADDRESS'],
-    'MAIL_FROM_NAME'    => $data['MAIL_FROM_NAME'] ?? 'Eventra',
+    'MAIL_FROM_NAME'    => $data['MAIL_FROM_NAME'] ?? 'EventOut',
 ];
 
 foreach ($fieldsToUpdate as $key => $value) {

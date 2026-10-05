@@ -1,6 +1,10 @@
 /**
  * Search Manager for Admin Dashboard
  * Handles global search logic, debouncing, and UI rendering
+ *
+ * The API matches event names, payment ids, ticket ids, user ids, client ids,
+ * dates, prices, ticket types (regular/vip/premium/all) and priorities
+ * (upcoming/featured/hot/nearby/trending) — this renders every category it returns.
  */
 class SearchManager {
     constructor() {
@@ -68,6 +72,8 @@ class SearchManager {
 
         const categories = [
             { id: 'events', name: 'Events', icon: '📅' },
+            { id: 'tickets', name: 'Tickets', icon: '🎫' },
+            { id: 'payments', name: 'Payments', icon: '💳' },
             { id: 'users', name: 'Users', icon: '👤' },
             { id: 'clients', name: 'Clients', icon: '💼' }
         ];
@@ -100,35 +106,67 @@ class SearchManager {
     addResultItem(item, type, defaultIcon) {
         const resultItem = document.createElement('a');
         resultItem.className = 'search-result-item';
-        
+
         let link = '#';
         let meta = '';
+        let title = item.name || '';
 
         switch(type) {
             case 'events':
                 link = `events.html?highlight=${item.id}`;
-                meta = `${item.custom_id} • ${item.type} • ${item.state}`;
+                title = item.name || '';
+                meta = [
+                    item.custom_id,
+                    item.type,
+                    item.state,
+                    item.event_date,
+                    (item.price !== undefined && item.price !== null && item.price !== '') ? `₦${parseFloat(item.price).toLocaleString()}` : '',
+                    item.priority
+                ].filter(v => v !== undefined && v !== null && v !== '').join(' • ');
+                break;
+            case 'tickets':
+                link = `tickets.html?highlight=${item.id}`;
+                title = item.event_name || item.user_name || item.custom_id || `Ticket #${item.id}`;
+                meta = [
+                    item.custom_id || `#${item.id}`,
+                    item.ticket_type,
+                    item.event_date,
+                    item.user_name,
+                    item.status
+                ].filter(Boolean).join(' • ');
+                break;
+            case 'payments':
+                link = `payments.html?highlight=${item.id}`;
+                title = item.event_name || item.user_name || item.custom_id || `Payment #${item.id}`;
+                meta = [
+                    item.custom_id || item.reference || `#${item.id}`,
+                    `₦${parseFloat(item.amount || 0).toLocaleString()}`,
+                    item.ticket_type,
+                    item.status,
+                    (item.paid_at || item.created_at || '').slice(0, 10),
+                    item.user_name
+                ].filter(Boolean).join(' • ');
                 break;
             case 'users':
                 link = `users.html?highlight=${item.id}`;
-                meta = `${item.custom_id} • ${item.email}`;
+                meta = [item.custom_id, item.email].filter(Boolean).join(' • ');
                 break;
             case 'clients':
                 link = `clients.html?highlight=${item.id}`;
-                meta = `${item.custom_id} • ${item.company || item.email}`;
+                meta = [item.custom_id, `ID ${item.id}`, item.company || item.email].filter(Boolean).join(' • ');
                 break;
         }
 
         resultItem.href = link;
 
         // Use profile pic if available, otherwise default icon
-        const _picSrc = typeof getProfileImg === 'function' ? getProfileImg(item.profile_pic, item.name) : (item.profile_pic || null);
+        const _picSrc = typeof getProfileImg === 'function' ? getProfileImg(item.profile_pic, item.name || title) : (item.profile_pic || null);
         const iconSrc = _picSrc ? `<img src="${_picSrc}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : defaultIcon;
 
         resultItem.innerHTML = `
             <div class="search-result-icon">${iconSrc}</div>
             <div class="search-result-info">
-                <span class="search-result-name">${escapeHTML(item.name)}</span>
+                <span class="search-result-name">${escapeHTML(title)}</span>
                 <span class="search-result-meta">${escapeHTML(meta)}</span>
             </div>
         `;

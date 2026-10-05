@@ -183,7 +183,7 @@ class Ticket
     /**
      * Build the shared proof payload for the Check Ticket feature.
      * Read-only — never mutates ticket state. Price is presented with the
-     * 10% Eventra platform fee so it matches what the buyer actually paid.
+     * 10% EventOut platform fee so it matches what the buyer actually paid.
      */
     public static function buildProofPayload(PDO $pdo, string $ticketId): array
     {

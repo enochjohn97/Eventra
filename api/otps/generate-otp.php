@@ -87,7 +87,7 @@ try {
 
     // 3. Generate cryptographically secure 6-digit OTP
     $otp = sprintf("%06d", random_int(0, 999999));
-    $otp_hash = hash_hmac('sha256', $otp, 'eventra-payment-otp-' . $user_id);
+    $otp_hash = hash_hmac('sha256', $otp, 'eventout-payment-otp-' . $user_id);
     // Requirement: 5-minute maximum expiry
     $expires_at = date('Y-m-d H:i:s', strtotime('+5 minutes'));
     $expires_human = date('H:i', strtotime('+5 minutes'));

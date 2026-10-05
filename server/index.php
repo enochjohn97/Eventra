@@ -1,6 +1,6 @@
 <?php
 /**
- * Eventra Front Controller — the single router for the whole app.
+ * EventOut Front Controller — the single router for the whole app.
  *
  * Used by BOTH servers:
  *   • Apache — .htaccess rewrites all non-file requests here (short URLs,
@@ -336,8 +336,8 @@ if (strpos($uri, '/api/') === 0) {
 // If no route matches, show the branded 404 page
 http_response_code(404);
 header('Content-Type: text/html; charset=utf-8');
-echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>404 — Eventra</title>'
+echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>404 — EventOut</title>'
    . '<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0f172a;color:#f8fafc;text-align:center}a{color:#ff5a5f}</style></head>'
    . '<body><div><h1 style="font-size:4rem;margin:0 0 .5rem">404</h1><p>Page not found.</p>'
-   . '<p><a href="/public/pages/index.html">Back to Eventra</a></p></div></body></html>';
+   . '<p><a href="/public/pages/index.html">Back to EventOut</a></p></div></body></html>';
 exit;

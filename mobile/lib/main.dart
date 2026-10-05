@@ -61,7 +61,7 @@ class _EventraUserAppState extends State<EventraUserApp> {
         ChangeNotifierProvider(create: (_) => TicketsProvider()),
       ],
       child: MaterialApp.router(
-        title: 'Eventra',
+        title: 'EvenOut',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: _router,

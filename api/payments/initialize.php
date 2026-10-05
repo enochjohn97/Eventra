@@ -388,7 +388,7 @@ try {
             try {
                 $subName = trim((string)($event['organizer_business_name'] ?: $event['organizer_name'] ?: ''));
                 if ($subName === '') {
-                    $subName = 'Eventra Organizer ' . $event['organizer_id'];
+                    $subName = 'EventOut Organizer ' . $event['organizer_id'];
                 }
                 // Cap at 128 chars. Paystack rejects longer business names.
                 if (mb_strlen($subName) > 128) {
@@ -397,7 +397,7 @@ try {
                 $orgAuthStmt = $pdo->prepare('SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1');
                 $orgAuthStmt->execute([$event['organizer_id']]);
                 $orgAuthId = (int)$orgAuthStmt->fetchColumn();
-                $subEmail = 'organizer' . $event['organizer_id'] . '@eventra-sub.eventra.local';
+                $subEmail = 'organizer' . $event['organizer_id'] . '@eventout-sub.eventout.local';
                 $ensure = ensureSubaccount(
                     $pdo,
                     $orgAuthId,
@@ -494,7 +494,7 @@ try {
         error_log('[initialize.php] Short URL fallback used: ' . $shortUrlEx->getMessage());
     }
 
-    // Client is the primary Paystack account; Eventra receives the split via
+    // Client is the primary Paystack account; EventOut receives the split via
     // its subaccount created under that client account.
     // ($activePaystackKey was resolved before the subaccount step above.)
 

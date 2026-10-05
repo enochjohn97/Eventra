@@ -127,7 +127,7 @@ try {
     $updateStmt->execute($params);
 
     require_once '../../includes/helpers/entity-resolver.php';
-    logSecurityEvent($admin_id, 'admin@eventra.local', 'admin_action', 'local', "Client ID $client_id: Paystack key updated");
+    logSecurityEvent($admin_id, 'admin@EventOut.local', 'admin_action', 'local', "Client ID $client_id: Paystack key updated");
 
     echo json_encode([
         'success' => true,

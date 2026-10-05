@@ -67,7 +67,7 @@ if ($intent === 'client_login_otp') {
         }
 
         // 3. Verify OTP
-        $expected = hash_hmac('sha256', $otp, 'eventra-login-otp-' . $auth_id);
+        $expected = hash_hmac('sha256', $otp, 'eventout-login-otp-' . $auth_id);
         if (!hash_equals($expected, $record['token'])) {
             echo json_encode(['success' => false, 'message' => 'Invalid verification code.']);
             exit;

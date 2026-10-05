@@ -130,7 +130,7 @@ $brandHeaderHtml = EmailHelper::brandEmailHeaderHtml('20px');
 $ackBody = <<<HTML
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
     {$brandHeaderHtml}
-    <h2 style="color: #2563eb; margin-top: 0;">Thank you for contacting Eventra</h2>
+    <h2 style="color: #2563eb; margin-top: 0;">Thank you for contacting EventOut</h2>
     <p>Hi {$escName},</p>
     <p>
         We have received your <strong>{$escCategory}</strong> and it has been logged
@@ -161,7 +161,7 @@ $ackBody = <<<HTML
         acknowledgment. If you submitted a payment complaint, include your
         transaction reference when we respond.
     </p>
-    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">Eventra Support Team</p>
+    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">EventOut Support Team</p>
 </div>
 HTML;
 

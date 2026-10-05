@@ -5,12 +5,12 @@ require_once __DIR__ . '/../../config/email.php';
 require_once __DIR__ . '/short-url-helper.php';
 
 // ─── PHPMailer fallback loader (graceful — no fatal if absent) ────────────────
-$GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = null;
+$GLOBALS['EventOut_AUTOLOADER_ERROR'] = null;
 if (!class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
     $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
     if (file_exists($autoloadPath)) {
         try { @include_once $autoloadPath; } catch (\Throwable $e) {
-            $GLOBALS['EVENTRA_AUTOLOADER_ERROR'] = $e->getMessage();
+            $GLOBALS['EventOut_AUTOLOADER_ERROR'] = $e->getMessage();
             error_log('[EmailHelper] Composer autoloader failed: ' . $e->getMessage());
         }
     }
@@ -145,7 +145,7 @@ class EmailHelper
         string $pdfPath = ''
     ): array {
         $cleanEvent = trim($eventName);
-        $subject = "Your Ticket for {$cleanEvent} - Eventra";
+        $subject = "Your Ticket for {$cleanEvent} - EventOut";
         $safeUser = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
         $safeEvent = htmlspecialchars($cleanEvent, ENT_QUOTES, 'UTF-8');
         $safeBarcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
@@ -163,7 +163,7 @@ class EmailHelper
             </div>
             <p>Please present the QR code at the venue entrance.</p>
             <hr style="border:0;border-top:1px solid #eee;margin:20px 0;">
-            <p style="font-size:12px;color:#999;text-align:center;">&copy; {$year} Eventra. All rights reserved.</p>
+            <p style="font-size:12px;color:#999;text-align:center;">&copy; {$year} EventOut. All rights reserved.</p>
         </div>
         HTML;
 
@@ -183,7 +183,7 @@ class EmailHelper
     }
 
     /**
-     * Eventra brand mark (coral E-monogram) as an inline data-URI so it
+     * EventOut brand mark (coral E-monogram) as an inline data-URI so it
      * renders in email clients and PDF engines without external requests.
      * Prefers the PNG asset — Gmail, Outlook and most PDF engines do NOT
      * render SVG images, which made the logo invisible in emails/tickets.
@@ -212,20 +212,20 @@ class EmailHelper
     }
 
     /**
-     * Brand header row for ticket emails/PDFs: E-mark + "Eventra" wordmark
+     * Brand header row for ticket emails/PDFs: E-mark + "EventOut" wordmark
      * text on one line. $fontSize in px (email) or pt (PDF context).
      */
     private static function brandHeaderHtml(string $fontSize = '15px'): string
     {
         $mark = self::brandMarkDataUri();
         $imgHtml = $mark !== ''
-            ? '<img src="' . $mark . '" width="30" height="30" alt="Eventra" style="width:30px;height:30px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
+            ? '<img src="' . $mark . '" width="30" height="30" alt="EventOut" style="width:30px;height:30px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
             : '';
         return '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin-bottom:14px;">'
             . '<tr>'
             . '<td style="vertical-align:middle;padding-right:9px;">' . $imgHtml . '</td>'
             . '<td style="vertical-align:middle;">'
-            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#ffffff;line-height:1;">Eventra</span>'
+            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#ffffff;line-height:1;">EventOut</span>'
             . '</td>'
             . '</tr>'
             . '</table>';
@@ -233,20 +233,20 @@ class EmailHelper
 
     /**
      * Brand header for light-background emails (OTP, password reset, reminders,
-     * receipts): the coral E-monogram logo mark + a dark "Eventra" wordmark.
+     * receipts): the coral E-monogram logo mark + a dark "EventOut" wordmark.
      * Kept table-based so it renders in Outlook/Gmail.
      */
     private static function brandHeaderLightHtml(string $fontSize = '22px'): string
     {
         $mark = self::brandMarkDataUri();
         $imgHtml = $mark !== ''
-            ? '<img src="' . $mark . '" width="34" height="34" alt="Eventra" style="width:34px;height:34px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
+            ? '<img src="' . $mark . '" width="34" height="34" alt="EventOut" style="width:34px;height:34px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
             : '';
         return '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin:0 auto 24px auto;">'
             . '<tr>'
             . '<td style="vertical-align:middle;padding-right:10px;">' . $imgHtml . '</td>'
             . '<td style="vertical-align:middle;">'
-            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#1e293b;line-height:1;">Eventra</span>'
+            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#1e293b;line-height:1;">EventOut</span>'
             . '</td>'
             . '</tr>'
             . '</table>';
@@ -255,8 +255,8 @@ class EmailHelper
     /**
      * Public brand header for ad-hoc email templates (client approval/decline,
      * support acknowledgment, broadcast notifications) that build their own
-     * HTML bodies but must still carry the Eventra logo. Light-background
-     * variant: coral E-monogram PNG data-URI + dark "Eventra" wordmark.
+     * HTML bodies but must still carry the EventOut logo. Light-background
+     * variant: coral E-monogram PNG data-URI + dark "EventOut" wordmark.
      */
     public static function brandEmailHeaderHtml(string $fontSize = '20px'): string
     {
@@ -1218,7 +1218,7 @@ PDF;
         int $expiryMinutes = 10
     ): array {
         $isPasswordReset = stripos($actionText, 'reset') !== false;
-        $subjectText = $isPasswordReset ? "Reset password verification code" : "Your Eventra verification code";
+        $subjectText = $isPasswordReset ? "Reset password verification code" : "Your EventOut verification code";
         $subject = "=?UTF-8?B?" . base64_encode($subjectText) . "?=";
         $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $safeAction = htmlspecialchars($actionText, ENT_QUOTES, 'UTF-8');
@@ -1249,7 +1249,7 @@ PDF;
             </p>
             <hr style="border:0;border-top:1px solid #f1f5f9;margin:32px 0;">
             <p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;">
-                &copy; {$year} Eventra Inc. All rights reserved.
+                &copy; {$year} EventOut Inc. All rights reserved.
             </p>
         </div>
         HTML;
@@ -1358,7 +1358,7 @@ PDF;
 
         /* ── 2. Subject ──────────────────────────────────────────── */
         $eventName = trim((string) ($ticketData['event_name'] ?? 'Event'));
-        $subject = "Your Ticket for {$eventName} - Eventra";
+        $subject = "Your Ticket for {$eventName} - EventOut";
 
         $embeddedImages = [];
 
@@ -1407,7 +1407,7 @@ PDF;
     private static function writeFallbackPdf(array $ticketData, string $outputPath): bool
     {
         $lines = [
-            'EVENTRA TICKET',
+            'EventOut TICKET',
             'Event: ' . ($ticketData['event_name'] ?? 'Event'),
             'Attendee: ' . ($ticketData['buyer_name'] ?? $ticketData['user_name'] ?? 'Attendee'),
             'Date: ' . ($ticketData['event_date'] ?? 'TBC'),
@@ -1425,8 +1425,8 @@ PDF;
         }
         $stream .= "0 0 0 rg 530 82 110 110 re f\n1 1 1 rg\nBT\n/F1 9 Tf\n530 260 Td\n(SCAN QRCODE) Tj\nET\n";
 
-        // ── Brand block: coral rounded-square E-monogram + "eventra." wordmark.
-        // Matches the Eventra logo (design/logos E-monogram) so every generated
+        // ── Brand block: coral rounded-square E-monogram + "EventOut." wordmark.
+        // Matches the EventOut logo (design/logos E-monogram) so every generated
         // ticket PDF stays on-brand.
         $stream .= "q\n";
         $stream .= "1.00 0.35 0.37 rg\n"; // coral #ff5a5f
@@ -1441,7 +1441,7 @@ PDF;
         // White bold "E" monogram centred in the badge.
         $stream .= "1 1 1 rg BT /F2 19 Tf " . ($bx + 10) . " " . ($by + 9) . " Td (E) Tj ET\n";
         // White wordmark beside the badge.
-        $stream .= "BT /F2 13 Tf " . ($bx + $bw + 8) . " " . ($by + 12) . " Td (Eventra.) Tj ET\n";
+        $stream .= "BT /F2 13 Tf " . ($bx + $bw + 8) . " " . ($by + 12) . " Td (EventOut.) Tj ET\n";
         $stream .= "Q\n";
 
         $objects = [

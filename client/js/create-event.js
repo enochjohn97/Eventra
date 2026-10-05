@@ -51,7 +51,7 @@ function showCreateEventModal(eventToEdit = null) {
                 <div style="position: relative; z-index: 1;">
                     <div class="modal-header" style="padding: 2.5rem 3rem 1.5rem; border-bottom: 1px solid rgba(9, 29, 143, 0.1);">
                         <div style="text-align: center;">
-                            <div style="display: inline-block; background: linear-gradient(135deg, #09287eff, #722f37); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem;">EVENTRA</div>
+                            <div style="display: inline-block; background: linear-gradient(135deg, #09287eff, #722f37); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem;">EventOut</div>
                             <h2 style="font-size: 2rem; font-weight: 800; color: #1f2937; margin: 0;">Create Event</h2>
                         </div>
                         <button class="modal-close" onclick="closeCreateEventModal()" 
@@ -199,7 +199,7 @@ function showCreateEventModal(eventToEdit = null) {
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Google Calendar Scheduling</label>
                                         <div style="background: linear-gradient(135deg, rgba(114, 47, 55, 0.08), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(114, 47, 55, 0.12); border-radius: 16px; padding: 1.25rem;">
                                             <div style="font-weight: 700; color: #1f2937; margin-bottom: 0.4rem;">Schedule in Google Calendar and keep the event in Draft until you publish it from the app.</div>
-                                            <div style="font-size: 0.95rem; color: #4b5563; line-height: 1.6; margin-bottom: 1rem;">The calendar entry will include a clickable “View App Dashboard” link so you can return to Eventra and publish it when ready.</div>
+                                            <div style="font-size: 0.95rem; color: #4b5563; line-height: 1.6; margin-bottom: 1rem;">The calendar entry will include a clickable “View App Dashboard” link so you can return to EventOut and publish it when ready.</div>
                                             <button type="submit" form="createEventForm" style="width: 100%; padding: 0.85rem; font-size: 1rem; font-weight: 700; background: #722f37; border: none; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s;">Schedule via Google Calendar</button>
                                         </div>
                                         <input type="hidden" name="status" value="draft">

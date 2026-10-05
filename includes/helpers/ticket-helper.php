@@ -300,7 +300,7 @@ function generateTicketQRCode(array $ticketData): string
 
         return $filePath;
     } catch (\Throwable $e) {
-        error_log('[Eventra] QR code generation failed for ticket ' . ($ticketData['barcode'] ?? 'unknown') . ': ' . $e->getMessage());
+        error_log('[EventOut] QR code generation failed for ticket ' . ($ticketData['barcode'] ?? 'unknown') . ': ' . $e->getMessage());
         return '';
     }
 }

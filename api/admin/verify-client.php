@@ -65,7 +65,7 @@ try {
         }
 
         require_once '../../includes/helpers/entity-resolver.php';
-        logSecurityEvent($admin_id, 'admin@eventra.local', 'admin_action', 'local', "Client ID $client_id: $type verification set to $status");
+        logSecurityEvent($admin_id, 'admin@EventOut.local', 'admin_action', 'local', "Client ID $client_id: $type verification set to $status");
 
         echo json_encode([
             'success' => true,

@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     data-date="${escapeHTML(event.event_date)}" 
                     data-time="${escapeHTML(event.event_time)}" 
                     data-priority="${escapeHTML(event.priority || 'low')}"
-                    data-client-name="${escapeHTML(event.client_name || 'Eventra')}"
+                    data-client-name="${escapeHTML(event.client_name || 'EventOut')}"
                     data-tag="${escapeHTML(event.tag || '')}">
                     <td style="padding-left: 1.5rem;">
                         <input type="checkbox" class="event-checkbox" data-id="${event.id}" ${selectedEventIds.has(event.id.toString()) ? 'checked' : ''}>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Login to your Eventra account to manage and discover experiences" />
-    <title>Admin Login · Eventra</title>
+    <meta name="description" content="Login to your EventOut account to manage and discover experiences" />
+    <title>Admin Login · EventOut</title>
 
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -231,13 +231,13 @@
 
         /* Shared validator state colors (warning ⚠ / success ✓) — the base
            .error-message rule forces red, so state classes must override it. */
-        .error-message.eventra-msg-warning {
+        .error-message.EventOut-msg-warning {
             color: #f59e0b !important;
         }
-        .error-message.eventra-msg-error {
+        .error-message.EventOut-msg-error {
             color: #ef4444 !important;
         }
-        .error-message.eventra-msg-success {
+        .error-message.EventOut-msg-success {
             color: #10b981 !important;
         }
 
@@ -572,7 +572,7 @@
 
         <!-- ── Brand ── -->
         <div class="brand-mark">
-            <img src="/public/assets/brand/logo-wordmark.svg" alt="Eventra logo" height="56" />
+            <img src="/public/assets/brand/logo-wordmark.svg" alt="EventOut logo" height="56" />
         </div>
 
         <!-- ── LEFT: Login Form ── -->
@@ -635,7 +635,7 @@
 
         <!-- ── RIGHT: Image Slider ── -->
         <div class="login-right">
-            <div class="slider-images" id="sliderImages" role="img" aria-label="Eventra experiences slideshow">
+            <div class="slider-images" id="sliderImages" role="img" aria-label="EventOut experiences slideshow">
 
                 <!-- slides injected by JS -->
                 <div id="slideContainer"></div>
@@ -669,7 +669,7 @@
                     // slide
                     const img = document.createElement('img');
                     img.src = src;
-                    img.alt = `Eventra experience ${i + 1}`;
+                    img.alt = `EventOut experience ${i + 1}`;
                     img.className = 'slide' + (i === 0 ? ' active' : '');
                     img.dataset.index = i;
                     img.loading = 'lazy';

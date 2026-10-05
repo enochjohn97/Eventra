@@ -348,7 +348,7 @@ window.switchWizardTab = function (step, trigger) {
 
   if (!form) {
     console.error(
-      "Eventra wizard: form not found for step change.",
+      "EventOut wizard: form not found for step change.",
       targetStep,
     );
     // [DEBUG logging disabled]
@@ -414,7 +414,7 @@ function eventraActivateWizardStep(form, step) {
   });
 
   if (!target) {
-    console.error(`Eventra wizard: wizardStep${step} does not exist.`);
+    console.error(`EventOut wizard: wizardStep${step} does not exist.`);
     // [DEBUG logging disabled]
     // console.log(
     //   "Available steps:",
@@ -529,7 +529,7 @@ async function showProfileEditModal() {
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Business Name <span class="text-danger" >*</span></label>
-                                    <input type="text" name="business_name" value="${escapeHTML(user.business_name) || ""}" placeholder="Eventra Inc." class="form-control disabled" required readonly>
+                                    <input type="text" name="business_name" value="${escapeHTML(user.business_name) || ""}" placeholder="EventOut Inc." class="form-control disabled" required readonly>
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Email <span style="color:#64748b; font-size:0.8rem;">(read-only)</span></label>
@@ -642,8 +642,6 @@ async function showProfileEditModal() {
                                            ${user.bvn_verified ? "readonly title=\"Already verified\"" : ""}
                                            style="flex: 1; padding: 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 0.95rem; letter-spacing: 1px;"
                                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
-                                    <button type="button" id="bvnVerifyBtn" class="btn btn-secondary" onclick="window.verifyBvnNumber()"
-                                            style="white-space: nowrap; padding: 0.75rem 1.1rem;">Verify</button>
                                 </div>
                             </div>
                             <div class="kyc-upload-grid" style="margin-bottom: 1.5rem;">
@@ -800,7 +798,7 @@ async function showProfileEditModal() {
   // Add form submit handler
   const profileEditForm = document.getElementById("profileEditForm");
   if (!profileEditForm) {
-    console.error("Eventra: profileEditForm was not created.");
+    console.error("EventOut: profileEditForm was not created.");
     return;
   }
   profileEditForm.noValidate = true;

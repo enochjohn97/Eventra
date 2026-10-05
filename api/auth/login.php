@@ -141,7 +141,7 @@ try {
         // --- CLIENT LOGIN OTP FLOW ---
         if ($userRole === 'client') {
             $otp = sprintf("%06d", random_int(0, 999999));
-            $otp_hash = hash_hmac('sha256', $otp, 'eventra-login-otp-' . $user['id']);
+            $otp_hash = hash_hmac('sha256', $otp, 'eventout-login-otp-' . $user['id']);
             $otp_expires_at = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
             $pdo = getPDO();

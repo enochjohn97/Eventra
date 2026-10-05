@@ -98,7 +98,7 @@ class DeletedEventModal {
                 <img src="${eventImage}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px;" alt="Event">
             </div>
             <h3 style="font-size: 1.5rem; font-weight: 800; color: #111827; margin-bottom: 0.5rem;">${escapeHTML(event.event_name)}</h3>
-            <p style="color: #6b7280; margin-bottom: 1.5rem;">Organized by ${escapeHTML(event.client_name) || 'Eventra'}</p>
+            <p style="color: #6b7280; margin-bottom: 1.5rem;">Organized by ${escapeHTML(event.client_name) || 'EventOut'}</p>
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
                 <div style="background: #f3f4f6; padding: 1rem; border-radius: 10px;">

@@ -116,7 +116,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $payments = $stmt->fetchAll();
 
-$filename = 'eventra_payments_' . date('Ymd_His');
+$filename = 'eventout_payments_' . date('Ymd_His');
 
 if ($format === 'csv') {
     header('Content-Type: text/csv');
@@ -163,7 +163,7 @@ if ($format === 'csv') {
     th{background:#1e293b;color:white;padding:.5rem 1rem;text-align:left}
     td{padding:.5rem 1rem;border-bottom:1px solid #e2e8f0}
     h1{color:#1e293b}@media print{button{display:none}}</style></head>
-    <body><h1>Eventra — Payment Records</h1>
+    <body><h1>EventOut — Payment Records</h1>
     <p>Generated: " . date('F j, Y g:i A') . "</p>
     <p><button onclick='window.print()'>🖨️ Print / Save as PDF</button></p>
     <table><thead><tr>

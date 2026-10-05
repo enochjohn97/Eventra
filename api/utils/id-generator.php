@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Eventra — Entity ID Generator
+ * EventOut — Entity ID Generator
  * Provides unique, human-readable, date-prefixed random custom IDs for all entities.
  */
 

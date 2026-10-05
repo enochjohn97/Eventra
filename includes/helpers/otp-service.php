@@ -53,7 +53,7 @@ class OTPService
 
             // Generate 6-digit OTP
             $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $otpHash = hash_hmac('sha256', $otp, 'eventra-otp-' . $normalizedPhone . '-' . $purpose);
+            $otpHash = hash_hmac('sha256', $otp, 'EventOut-otp-' . $normalizedPhone . '-' . $purpose);
 
             // Clear any existing unverified OTPs for this phone/purpose
             $stmt = $pdo->prepare("
@@ -70,7 +70,7 @@ class OTPService
             $stmt->execute([$normalizedPhone, $otpHash, $purpose, $authId, $expiresAt]);
             $otpId = $pdo->lastInsertId();
 
-            $delivery = sendSMS($normalizedPhone, "Your Eventra verification code is {$otp}. It expires in 5 minutes.");
+            $delivery = sendSMS($normalizedPhone, "Your EventOut verification code is {$otp}. It expires in 5 minutes.");
             if (!$delivery['success']) {
                 $pdo->prepare('DELETE FROM otp_requests WHERE id = ?')->execute([$otpId]);
                 return ['success' => false, 'message' => 'We could not send the verification code. Please try again later.', 'otp_id' => null];
@@ -163,7 +163,7 @@ class OTPService
             }
 
             // Verify password hash
-            $expected = hash_hmac('sha256', $otpCode, 'eventra-otp-' . $normalizedPhone . '-' . $purpose);
+            $expected = hash_hmac('sha256', $otpCode, 'EventOut-otp-' . $normalizedPhone . '-' . $purpose);
             if (!hash_equals($expected, $otpRecord['otp_hash'])) {
                 // Increment attempts
                 $stmt = $pdo->prepare("UPDATE otp_requests SET attempts = attempts + 1 WHERE id = ?");

@@ -224,7 +224,7 @@ try {
                             <p>Please have your ticket QR code ready for scanning at the entrance.</p>
                             <p>See you there!</p>
                             <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
-                            <p style='font-size: 12px; color: #999; text-align: center;'>&copy; " . date('Y') . " Eventra</p>
+                            <p style='font-size: 12px; color: #999; text-align: center;'>&copy; " . date('Y') . " EventOut</p>
                         </div>
                     ";
 

@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Login to your Eventra account to manage and discover experiences" />
-  <title>Client Login - Eventra</title>
+  <meta name="description" content="Login to your EventOut account to manage and discover experiences" />
+  <title>Client Login - EventOut</title>
 
   <!-- Stylesheets -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
@@ -746,13 +746,22 @@
     .divider:not(:empty)::after {
       margin-left: 1em;
     }
+    /* ── Hide browser-native password reveal eye (Edge/IE/Chrome) ── */
+    input[type='password']::-ms-reveal,
+    input[type='password']::-ms-clear {
+      display: none;
+    }
+    input[type='password']::-webkit-credentials-auto-fill-button {
+      display: none !important;
+      visibility: hidden;
+    }
   </style>
 </head>
 
 <body>
   <div class="login-container">
     <div class="brand-mark">
-      <img src="/public/assets/brand/logo-wordmark.svg" alt="Eventra logo" height="56" />
+      <img src="/public/assets/brand/logo-wordmark.svg" alt="EventOut logo" height="56" />
     </div>
 
     <!-- ── LEFT: Login Form ── -->
@@ -833,7 +842,7 @@
 
     <!-- ── RIGHT: Image Slider ── -->
     <div class="login-right">
-      <div class="slider-images" id="eventSlider" role="img" aria-label="Eventra experiences slideshow">
+      <div class="slider-images" id="eventSlider" role="img" aria-label="EventOut experiences slideshow">
         <!-- slides injected by JS -->
         <div id="clientSlideContainer"></div>
         <!-- dots -->
@@ -884,7 +893,7 @@
     <div class="modal-content">
       <header class="modal-header">
         <h2 class="modal-title">Create Account</h2>
-        <p class="modal-subtitle">Join Eventra today</p>
+        <p class="modal-subtitle">Join EventOut today</p>
       </header>
 
       <!-- <div id="googleSignInContainer" style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
@@ -977,7 +986,7 @@
         IMAGES.forEach((src, i) => {
           const img = document.createElement("img");
           img.src = src;
-          img.alt = `Eventra experience ${i + 1}`;
+          img.alt = `EventOut experience ${i + 1}`;
           img.className = "slide" + (i === 0 ? " active" : "");
           img.dataset.index = i;
           img.loading = "lazy";
@@ -1109,6 +1118,14 @@
           signupModal.style.display = 'flex';
           if (window.lucide) window.lucide.createIcons();
         });
+      }
+
+      // "Become a Client" footer link (public/pages/index.html) lands on this
+      // page with ?mode=signup — there is no signup.html, so open the modal here.
+      const signupParams = new URLSearchParams(window.location.search);
+      if (signupModal && (signupParams.get('mode') === 'signup' || window.location.hash === '#signup')) {
+        signupModal.style.display = 'flex';
+        if (window.lucide) window.lucide.createIcons();
       }
 
       if (closeSignupModal && signupModal) {

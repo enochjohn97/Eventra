@@ -152,7 +152,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: WebViewWidget(controller: _webViewController),
               ),
             ),
-          // White splash with the real Eventra logo (matches native launch
+          // White splash with the real EventOut logo (matches native launch
           // splash: white background + centered E-monogram).
           Container(
             width: double.infinity,
@@ -169,19 +169,13 @@ class _SplashScreenState extends State<SplashScreen> {
                 const SizedBox(height: 14),
                 RichText(
                   text: const TextSpan(
-                    text: 'Eventra',
+                    text: 'venOut',
                     style: TextStyle(
                       color: Color(0xFF101A2E),
                       fontSize: 34,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1,
                     ),
-                    children: [
-                      TextSpan(
-                        text: '.',
-                        style: TextStyle(color: Color(0xFFFF5A5F)),
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(height: 28),

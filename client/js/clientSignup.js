@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Role-Specific UI Adjustments
   if (intent === "admin") {
-    document.title = "Admin Registration - Eventra";
+    document.title = "Admin Registration - EventOut";
     if (googleSignUp) {
       const googleContainer = document.getElementById("googleContainer");
       const authDivider = document.getElementById("authDivider");
@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     document.title =
-      (intent === "client" ? "Client" : "User") + " Registration - Eventra";
+      (intent === "client" ? "Client" : "User") + " Registration - EventOut";
     if (signupTitle)
       signupTitle.textContent =
         intent === "client" ? "Client Registration" : "Create Account";

@@ -22,9 +22,9 @@
   if (window.EventraHolidayAlerts) return; // guard against double-inclusion
 
   var ENDPOINT = "/api/utils/holiday-alerts.php";
-  var DATA_CACHE_KEY = "eventra_holiday_data_v1";
+  var DATA_CACHE_KEY = "eventout_holiday_data_v1";
   var DATA_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
-  var SHOWN_LOG_KEY = "eventra_holiday_shown_v1";
+  var SHOWN_LOG_KEY = "eventout_holiday_shown_v1";
   var SHOWN_LOG_TTL = 60 * 24 * 60 * 60 * 1000; // prune entries older than 60 days
   var UPCOMING_WINDOW_DAYS = 7;
   var INITIAL_DELAY_MS = 1800; // let the page settle first

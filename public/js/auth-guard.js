@@ -1,5 +1,5 @@
 /**
- * Eventra Auth Guard
+ * EventOut Auth Guard
  * Protects routes based on user role and authentication status.
  * Optimized for robustness: Calls AuthController.init() then waits for it to settle.
  */

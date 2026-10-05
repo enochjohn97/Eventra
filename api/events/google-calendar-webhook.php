@@ -44,7 +44,7 @@ if ($event['status'] === 'draft' && $now >= $oneDayBefore && $now < $oneDayBefor
     $clientStmt->execute([$event['client_id']]);
     $clientAuthId = $clientStmt->fetchColumn();
     if ($clientAuthId) {
-        createNotification($clientAuthId, "Please return to Eventra and publish '{$event['event_name']}' for the upcoming event.", 'event_publish_reminder', null, 'client', 'client');
+        createNotification($clientAuthId, "Please return to EventOut and publish '{$event['event_name']}' for the upcoming event.", 'event_publish_reminder', null, 'client', 'client');
     }
 }
 

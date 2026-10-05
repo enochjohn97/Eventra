@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Role-Specific UI Adjustments
   // Role-Specific UI Adjustments
   if (intent === "client") {
-    document.title = "Client Login - Eventra";
+    document.title = "Client Login - EventOut";
     const sliderText = document.querySelector(".slider-text");
     if (sliderText) sliderText.style.display = "none";
   } else if (intent === "user") {

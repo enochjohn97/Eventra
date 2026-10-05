@@ -326,7 +326,7 @@ class AuthController {
     // existing init.
     if (state.clientId && state.clientId !== clientId) {
       console.warn(
-        "[Eventra] initGoogle ignored: Google Identity Services is already " +
+        "[EventOut] initGoogle ignored: Google Identity Services is already " +
           "initialized with a different client_id on this page.",
       );
       return state.initPromise
@@ -389,7 +389,7 @@ class AuthController {
         return true;
       })
       .catch((err) => {
-        console.error("[Eventra] Google Identity Services init failed:", err);
+        console.error("[EventOut] Google Identity Services init failed:", err);
         state.initialized = false;
         this.setState(this.states.ERROR);
         return false;
@@ -632,7 +632,7 @@ class AuthController {
         if (window.storage) window.storage.setUser(result.user);
         this.setState(this.states.AUTHENTICATED);
 
-        showNotification("Welcome to Eventra!", "success");
+        showNotification("Welcome to EventOut!", "success");
 
         this.isRedirecting = true;
         setTimeout(() => {

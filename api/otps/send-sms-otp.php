@@ -62,9 +62,9 @@ try {
         INSERT INTO otps (phone, otp, purpose, expires_at, attempts, ip_address) 
         VALUES (?, ?, ?, ?, 0, ?)
     ");
-    $stmt->execute([$phone, hash_hmac('sha256', $otp, 'eventra-sms-otp-' . $phone), $purpose, $expires_at, $_SERVER['REMOTE_ADDR']]);
+    $stmt->execute([$phone, hash_hmac('sha256', $otp, 'eventout-sms-otp-' . $phone), $purpose, $expires_at, $_SERVER['REMOTE_ADDR']]);
 
-    $smsResult = sendSMS($phone, "Your Eventra verification code is {$otp}. It expires in 5 minutes.");
+    $smsResult = sendSMS($phone, "Your EventOut verification code is {$otp}. It expires in 5 minutes.");
 
     if ($smsResult['success']) {
         echo json_encode([

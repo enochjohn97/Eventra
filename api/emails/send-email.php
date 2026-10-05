@@ -78,7 +78,7 @@ try {
 
     $subject = "";
     $body = "";
-    // Eventra brand header (logo mark + wordmark) for every ad-hoc email body.
+    // EventOut brand header (logo mark + wordmark) for every ad-hoc email body.
     $brandHeader = EmailHelper::brandEmailHeaderHtml('20px');
     $attachments = [];
 
@@ -160,7 +160,7 @@ try {
 
             $body = $brandHeader . "
                 <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;'>
-                    <h2 style='color: #2ecc71;'>Your Eventra Tickets 🎟️</h2>
+                    <h2 style='color: #2ecc71;'>Your EventOut Tickets 🎟️</h2>
                     <p>Hi {$user['name']}, your tickets are ready!</p>
                     <p>We have attached your PDF ticket(s) to this email. Please present the QR code at the venue for entry validation.</p>
                     {$ticketContent}
@@ -171,7 +171,7 @@ try {
             break;
 
         case 'notification':
-            $subject = $data['subject'] ?? "Event Update - Eventra";
+            $subject = $data['subject'] ?? "Event Update - EventOut";
             $message = $data['message'] ?? "";
             // SECURITY: $message is attacker-controllable JSON input and used
             // to be interpolated raw — stored/reflected HTML injection into

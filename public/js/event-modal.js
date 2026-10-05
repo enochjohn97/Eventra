@@ -66,11 +66,6 @@ async function openEventDetailsModal(eventIdOrData) {
     if (result.success && result.event) {
       eventData = result.event;
       currentEventData = eventData;
-      // Track the view for this browser's "recently viewed" strip
-      // (no-op on fresh browsers — nothing is recorded or displayed)
-      if (typeof window.recordEventView === "function" && eventData.image_path) {
-        window.recordEventView(eventData.id, eventData.image_path);
-      }
     } else {
       // Fallback to passed data if API fails to find it (e.g. from search results)
       if (typeof eventIdOrData === 'object') {
@@ -134,7 +129,7 @@ function renderModalContent(container, eventData) {
 
   // Get active modes from metadata (ticket_type_mode)
   let modes = (eventData.ticket_type_mode || 'all').split(',').map(m => m.trim().toLowerCase());
-  // Apply 10% Eventra platform fee so modal price matches checkout
+  // Apply 10% EventOut platform fee so modal price matches checkout
   const applyFee = (p) => p > 0 ? Math.round(p * 1.10) : 0;
   if (modes.includes('all') || modes.length === 0) {
       const legacyWithFee = applyFee(legacyPrice);
@@ -161,7 +156,7 @@ function renderModalContent(container, eventData) {
 
   
   container.innerHTML = `
-    <button class="modal-share" onclick="shareEventFromModal('${escapeHTML(eventData.id)}', '${escapeHTML(eventData.event_name.replace(/'/g, "\\'"))}', '${escapeHTML((eventData.client_name || eventData.organizer_name || 'Eventra').replace(/'/g, "\\'"))}')" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Share Event">
+    <button class="modal-share" onclick="shareEventFromModal('${escapeHTML(eventData.id)}', '${escapeHTML(eventData.event_name.replace(/'/g, "\\'"))}', '${escapeHTML((eventData.client_name || eventData.organizer_name || 'EventOut').replace(/'/g, "\\'"))}')" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Share Event">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
     
@@ -183,7 +178,7 @@ function renderModalContent(container, eventData) {
       <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 1rem;">👤</div>
         <p style="color: #6b7280; font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-          Organized by <span style="font-weight: 600; color: #374151;">${escapeHTML(eventData.client_name || eventData.organizer_name || 'Eventra')}</span>
+          Organized by <span style="font-weight: 600; color: #374151;">${escapeHTML(eventData.client_name || eventData.organizer_name || 'EventOut')}</span>
           ${eventData.verification_status === 'verified' ? '<span style="color: #722f37; font-size: 0.9rem;" title="Verified Organizer">✓</span>' : ''}
         </p>
       </div>
@@ -299,7 +294,7 @@ function renderModalContent(container, eventData) {
         
         <h4 style="font-size: 0.95rem; color: #111827; margin-bottom: 0.5rem; font-weight: 600;">Share with friends</h4>
         <div style="display: flex; align-items: center; gap: 0.5rem; background: #f3f4f6; padding: 0.5rem; border-radius: 8px;">
-          <input type="text" readonly value="" data-share-for="${eventData.id}" style="flex: 1; background: transparent; border: none; outline: none; color: #4b5563; font-size: 0.9rem; padding: 0.25rem 0.5rem;" id="eventShareLink_${eventData.id}">
+          <input type="text" readonly value="${window.location.origin}/public/pages/index.html?event_id=${eventData.id}" style="flex: 1; background: transparent; border: none; outline: none; color: #4b5563; font-size: 0.9rem; padding: 0.25rem 0.5rem;" id="eventShareLink_${eventData.id}">
           <button onclick="copyEventLink('eventShareLink_${eventData.id}')" style="background: white; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'" title="Copy link">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           </button>
@@ -337,21 +332,9 @@ function handleBuyTicket() {
   }
 }
 
-// Short share link builder — uses the /e/{tag} short route when a tag exists,
-// so shared links and QR codes never expose the folder structure.
-function buildShortShareUrl(eventData) {
-  if (eventData && eventData.tag) {
-    return `${window.location.origin}/e/${encodeURIComponent(eventData.tag)}`;
-  }
-  return `${window.location.origin}/public/pages/index.html?event_id=${eventData ? eventData.id : ''}`;
-}
-
 function shareEventFromModal(id, title, organizer) {
-  const shareTitle = `Eventra: ${title}`;
-  const shareText = `Check out ${title} organized by ${organizer} on Eventra!`;
-  const shareUrl = currentEventData && String(currentEventData.id) === String(id)
-    ? buildShortShareUrl(currentEventData)
-    : `${window.location.origin}/public/pages/index.html?event_id=${id}`;
+  const shareTitle = `EventOut: ${title}`;
+  const shareText = `Check out ${title} organized by ${organizer} on EventOut!`;
   
   if (typeof shareEvent === 'function') {
     // Pass null for event object, use global shareEvent
@@ -360,11 +343,12 @@ function shareEventFromModal(id, title, organizer) {
     navigator.share({
       title: shareTitle,
       text: shareText,
-      url: shareUrl
+      url: window.location.origin + '/public/pages/index.html?event_id=' + id
     }).catch(console.error);
   } else {
     // Fallback to copy to clipboard
-    navigator.clipboard.writeText(shareUrl).then(() => {
+    const url = window.location.origin + '/public/pages/index.html?event_id=' + id;
+    navigator.clipboard.writeText(url).then(() => {
       if (typeof showNotification === 'function') {
         showNotification('Link copied to clipboard!', 'success');
       } else {
@@ -377,10 +361,6 @@ function shareEventFromModal(id, title, organizer) {
 function copyEventLink(inputId) {
   const linkInput = document.getElementById(inputId);
   if (linkInput) {
-    // Populate at copy time from the freshest event data (short URL when possible)
-    if (!linkInput.value && currentEventData) {
-      linkInput.value = buildShortShareUrl(currentEventData);
-    }
     linkInput.select();
     linkInput.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(linkInput.value).then(() => {
@@ -404,7 +384,7 @@ function copyModalShareLink() {
   let url = (linkInput && linkInput.value) ? linkInput.value : '';
 
   if (!url && window.currentEventData) {
-    url = buildShortShareUrl(window.currentEventData);
+    url = `${window.location.origin}/public/pages/index.html?event_id=${window.currentEventData.id}`;
   }
 
   if (!url) return;

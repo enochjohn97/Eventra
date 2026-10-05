@@ -103,7 +103,7 @@ try {
                 $type = 'account_declined';
             }
 
-            // Create HTML message for Email (with Eventra brand header/logo)
+            // Create HTML message for Email (with EventOut brand header/logo)
             $brandHeaderHtml = EmailHelper::brandEmailHeaderHtml('20px');
             $msg_html = "
             <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; border-radius: 8px; background: #ffffff;'>
@@ -116,7 +116,7 @@ try {
                     <tr>
                         <td width='50%' style='vertical-align: top; font-size: 14px; color: #555;'>
                             Kind regards,<br>
-                            <a href='#' style='color: #3b82f6; text-decoration: none;'>Eventra</a>
+                            <a href='#' style='color: #3b82f6; text-decoration: none;'>EventOut</a>
                         </td>
                         <td width='50%' style='vertical-align: top; text-align: right; font-size: 14px; color: #555;'>
                             Have any questions?<br>
@@ -125,7 +125,7 @@ try {
                     </tr>
                 </table>
                 <div style='font-size: 10px; color: #999; line-height: 1.5; text-align: justify;'>
-                    <p>Legal Information. Eventra is a company providing event management and ticketing solutions. Services are provided in accordance with our terms and conditions.</p>
+                    <p>Legal Information. EventOut is a company providing event management and ticketing solutions. Services are provided in accordance with our terms and conditions.</p>
                     <p>Notice to the recipient. This message and any attachments are confidential and intended only for the use of the addressee(s) herein. If you are not the intended recipient, please notify the sender immediately and delete the original message.</p>
                 </div>
             </div>";

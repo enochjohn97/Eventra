@@ -58,7 +58,7 @@ async function loadEventDetailsByTag(tag) {
 }
 
 function renderEvent(event) {
-    document.title = `${event.event_name} - Eventra`;
+    document.title = `${event.event_name} - EventOut`;
     
     // Update OpenGraph tags dynamically
     updateMetaTags(event);
@@ -76,7 +76,7 @@ function renderEvent(event) {
         : '';
     
     const clientNameContainer = document.getElementById('clientName');
-    clientNameContainer.textContent = event.client_name || 'Eventra Organizer';
+    clientNameContainer.textContent = event.client_name || 'EventOut Organizer';
     if (verificationBadge) {
         clientNameContainer.insertAdjacentHTML('beforeend', verificationBadge);
     }
@@ -126,24 +126,12 @@ function renderEvent(event) {
     
     hero.style.backgroundImage = `url('${heroImg}')`;
 
-    // Track the view for this browser's "recently viewed" strip
-    if (typeof window.recordEventView === 'function' && event.image_path) {
-        window.recordEventView(event.id, event.image_path);
-    }
-
     // Priority badge style
-    // Nearby is a homepage-feed classification, not a real event priority —
-    // never render it as a badge here.
-    const displayPriority =
-      event.priority && String(event.priority).toLowerCase() !== 'nearby'
-        ? event.priority
-        : '';
     const badge = document.getElementById('priorityBadge');
-    badge.style.display = displayPriority ? '' : 'none';
-    badge.textContent = displayPriority || 'Event';
-    if (displayPriority === 'hot') badge.style.background = '#ff4757';
-    if (displayPriority === 'trending') badge.style.background = '#3742fa';
-    if (displayPriority === 'featured') badge.style.background = '#2ed573';
+    badge.textContent = event.priority || 'Event';
+    if (event.priority === 'hot') badge.style.background = '#ff4757';
+    if (event.priority === 'trending') badge.style.background = '#3742fa';
+    if (event.priority === 'featured') badge.style.background = '#2ed573';
 
     // Attendee stacking logic
     const stack = document.getElementById('attendeeStack');

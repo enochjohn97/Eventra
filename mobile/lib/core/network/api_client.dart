@@ -43,7 +43,7 @@ class ApiClient {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'Connection': 'close',
-          'User-Agent': 'Dart/3.12.2 (Eventra Mobile)',
+          'User-Agent': 'Dart/3.12.2 (EvenOut Mobile)',
           'X-Requested-With': 'XMLHttpRequest',
         },
       ),
@@ -70,18 +70,10 @@ class ApiClient {
         onResponse: (response, handler) async {
           final contentType =
               (response.headers.value('content-type') ?? '').toLowerCase();
-          final isColdStart = [502, 503, 504].contains(response.statusCode);
-          if (contentType.contains('text/html')) {
-            return handler.reject(
-              DioException(
-                requestOptions: response.requestOptions,
-                response: response,
-                type: DioExceptionType.badResponse,
-                message:
-                    'Eventra API is blocked by the hosting security challenge.',
-              ),
-            );
-          }
+          final isColdStart = [502, 503, 504].contains(response.statusCode) ||
+              contentType.contains('text/html');
+          // HTML 200 = hosting WAF/security challenge — retry with backoff
+          // (same logic as 5xx cold-start below; do NOT reject immediately).
           if (isColdStart) {
             // Render cold-start: retry with backoff
             final retryCount =
@@ -128,13 +120,33 @@ class ApiClient {
               504,
             ].contains(error.response?.statusCode);
             if (contentType.contains('text/html')) {
+              // HTML error body = WAF/security challenge — treat as cold-start
+              // and fall through to the retry logic below rather than failing.
+              final retryCount =
+                  (error.requestOptions.extra['_retryCount'] as int? ?? 0);
+              if (retryCount < _retryDelays.length) {
+                await Future.delayed(
+                  Duration(seconds: _retryDelays[retryCount]),
+                );
+                error.requestOptions.extra['_retryCount'] = retryCount + 1;
+                try {
+                  final freshDio = Dio(dio.options);
+                  final retryResponse = await freshDio.fetch(error.requestOptions);
+                  return handler.resolve(retryResponse);
+                } catch (e) {
+                  return handler.next(
+                    e is DioException
+                        ? e
+                        : DioException(requestOptions: error.requestOptions, error: e),
+                  );
+                }
+              }
               return handler.next(
                 DioException(
                   requestOptions: error.requestOptions,
                   response: error.response,
                   type: DioExceptionType.badResponse,
-                  message:
-                      'Eventra API is blocked by the hosting security challenge.',
+                  message: 'Service temporarily unavailable. Please try again.',
                 ),
               );
             }

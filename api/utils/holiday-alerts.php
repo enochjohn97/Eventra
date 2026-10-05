@@ -110,7 +110,7 @@ function holiday_http_get(string $url): ?string
         CURLOPT_MAXREDIRS      => 2,
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT        => 12,
-        CURLOPT_USERAGENT      => 'Eventra-HolidayAlerts/1.0',
+        CURLOPT_USERAGENT      => 'EventOut-HolidayAlerts/1.0',
     ]);
     $caBundle = holiday_ca_bundle();
     if ($caBundle !== null) {
