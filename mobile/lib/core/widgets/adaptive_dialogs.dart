@@ -22,7 +22,16 @@ Future<void> showAdaptiveMessage(
       ),
     );
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: title != null ? Text(title) : null,
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
   }
 }
 
