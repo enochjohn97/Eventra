@@ -28,7 +28,11 @@ $requestIsHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
     || (($_SERVER['SERVER_PORT'] ?? 80) == 443);
 $host = $_SERVER['HTTP_HOST'] ?? '';
-$isLocalHost = (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+// localhost, 127.0.0.1, and private LAN IPs have no TLS certificate — never
+// force-redirect them to https or every local/LAN device breaks.
+$isLocalHost = (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host)
+    || (bool) preg_match('/^(192\.168|10)\.\d+\.\d+\.\d+(:\d+)?$/i', $host)
+    || (bool) preg_match('/^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+(:\d+)?$/i', $host);
 
 if (!$requestIsHttps && !$isLocalHost && !empty($host)) {
     header('Location: https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/'), true, 301);
@@ -39,7 +43,10 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-i
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
-header('Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), clipboard-read=(self), clipboard-write=(self)');
+// NOTE: camera is intentionally NOT disabled — the client portal scans
+// ticket QR codes with the device camera (scanner.html), so blocking camera
+// here would kill that feature on live deployments.
+header('Permissions-Policy: geolocation=(), microphone=(), payment=(), camera=(self), clipboard-read=(self), clipboard-write=(self)');
 header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
 header('Cross-Origin-Embedder-Policy: unsafe-none');
 header('Cross-Origin-Resource-Policy: same-origin');
@@ -267,6 +274,10 @@ if (strpos($uri, '/api/') === 0) {
 
     if ($method === 'POST' && $cleanPath === 'tickets/send') {
         $dispatchApi('tickets/send-ticket.php');
+    }
+
+    if ($method === 'POST' && $cleanPath === 'tickets/check') {
+        $dispatchApi('tickets/check-ticket.php');
     }
 
     if ($method === 'GET' && $cleanPath === 'tickets') {

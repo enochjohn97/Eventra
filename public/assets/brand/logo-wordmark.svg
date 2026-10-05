@@ -11,6 +11,6 @@
     <rect x="30" y="54.5" width="36" height="11" rx="5.5"/>
     <rect x="30" y="71" width="48" height="11" rx="5.5"/>
   </g>
-  <text x="118" y="79" font-family="'Plus Jakarta Sans','Inter','Segoe UI',Arial,sans-serif" font-size="56" font-weight="800" letter-spacing="-1" fill="#131b2e" textLength="186" lengthAdjust="spacingAndGlyphs">eventra</text>
+  <text x="118" y="79" font-family="'Plus Jakarta Sans','Inter','Segoe UI',Arial,sans-serif" font-size="56" font-weight="800" letter-spacing="-1" fill="#131b2e" textLength="186" lengthAdjust="spacingAndGlyphs">Eventra</text>
   <circle cx="318" cy="73" r="7" fill="#ff4d5a"/>
 </svg>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/event_card.dart';
 import '../widgets/event_detail_sheet.dart';
@@ -26,10 +27,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FavoritesProvider>();
-    final columns = MediaQuery.sizeOf(context).width >= 600 ? 2 : 1;
+    final width = MediaQuery.sizeOf(context).width;
+    final columns = Breakpoints.gridColumns(width);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Favorites')),
+      appBar: AppBar(title: const BrandLogo(size: 32)),
       body: RefreshIndicator(
         onRefresh: provider.load,
         child: provider.isLoading && provider.favorites.isEmpty
@@ -54,7 +56,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       crossAxisCount: columns,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
-                      childAspectRatio: 0.78,
+                      childAspectRatio: Breakpoints.cardAspectRatio(width),
                     ),
                     itemCount: provider.favorites.length,
                     itemBuilder: (context, index) {

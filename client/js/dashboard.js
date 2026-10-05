@@ -339,34 +339,54 @@ function renderFilteredEvents() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  const filtered = allDashboardEvents.filter((event) => {
-    const eventDate = new Date(event.event_date);
-    eventDate.setHours(0, 0, 0, 0);
-    const isPast = eventDate < now;
-    return activeEventTab === "past" ? isPast : !isPast;
-  });
+  // 2026-09-29: default tab shows ALL events (upcoming + past); "Past" filters as before.
+  const filtered =
+    activeEventTab === "past"
+      ? allDashboardEvents.filter((event) => {
+          const eventDate = new Date(event.event_date);
+          eventDate.setHours(0, 0, 0, 0);
+          return eventDate < now;
+        })
+      : allDashboardEvents;
 
   if (filtered.length === 0) {
-    eventsList.innerHTML = `<p style="text-align: center; color: var(--client-text-muted); padding: 2.5rem; font-size: 0.9rem; font-weight: 500;">No ${activeEventTab} events found.</p>`;
+    const emptyLabel = activeEventTab === "past" ? "past" : "";
+    eventsList.innerHTML = `<p style="text-align: center; color: var(--client-text-muted); padding: 2.5rem; font-size: 0.9rem; font-weight: 500;">No ${emptyLabel}events found.</p>`;
     return;
   }
 
   let html = filtered
     .map(
-      (event) => `
-        <div class="event-feed-item summarized" style="cursor: pointer; display: flex; gap: 15px; align-items: center; padding: 1rem;" onclick="window.location.href='events.html?highlight=${event.id}'">
+      (event) => {
+        // XSS hardening: event names/statuses come from the organizer-facing
+        // create-event form — never interpolate them into innerHTML raw.
+        const safeName = typeof escapeHTML === "function"
+          ? escapeHTML(event.event_name || "")
+          : String(event.event_name || "").replace(/[&<>"']/g, (c) => ({
+              "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+            })[c]);
+        const safeStatus = typeof escapeHTML === "function"
+          ? escapeHTML(String(event.status || ""))
+          : String(event.status || "").replace(/[^a-z_]/gi, "");
+        const safeId = parseInt(event.id, 10);
+        const safeDate = typeof escapeHTML === "function"
+          ? escapeHTML(formatDate(event.event_date))
+          : formatDate(event.event_date);
+
+        return `
+        <div class="event-feed-item summarized" style="cursor: pointer; display: flex; gap: 15px; align-items: center; padding: 1rem;" onclick="window.location.href='events.html?highlight=${safeId}'">
             <div style="width: 50px; height: 50px; border-radius: 8px; flex-shrink: 0; background: #f3f4f6; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #9ca3af;">
                 ${event.image_path ? `<img src="${event.image_path.startsWith("/") ? "../.." + event.image_path : "../../" + event.image_path}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.innerHTML='📷'">` : "📷"}
             </div>
             <div class="event-feed-info" style="flex: 1;">
-                <div class="event-feed-title" style="font-size: 0.95rem; margin-bottom: 2px;">${event.event_name}</div>
+                <div class="event-feed-title" style="font-size: 0.95rem; margin-bottom: 2px;">${safeName}</div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-weight: 500; font-size: 0.8rem; color: var(--client-text-muted);">
-                        ${formatDate(event.event_date)}
+                        ${safeDate}
                     </div>
                     <div style="display: flex; gap: 8px; font-size: 0.7rem; align-items: center;">
-                        <span class="status-badge status-${event.status.toLowerCase()}" style="padding: 2px 6px; font-size: 0.65rem;">
-                            ${event.status}
+                        <span class="status-badge status-${safeStatus.toLowerCase()}" style="padding: 2px 6px; font-size: 0.65rem;">
+                            ${safeStatus}
                         </span>
                         <span style="color: var(--client-text-muted); font-weight: 600;">${event.tickets_sold || 0} Sold</span>
                         ${event.tickets_sold > 0 ? '<span title="Event Locked" style="cursor:help;">🔒</span>' : ""}
@@ -374,7 +394,8 @@ function renderFilteredEvents() {
                 </div>
             </div>
         </div>
-    `,
+    `;
+      },
     )
     .join("");
 

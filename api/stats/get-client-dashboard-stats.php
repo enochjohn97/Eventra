@@ -75,13 +75,15 @@ try {
     $stmt->execute([$real_client_id]);
     $total_users = $stmt->fetch()['total'];
 
-    // 4. Total Events  
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM events WHERE client_id = ? AND deleted_at IS NULL AND status = 'published'");
+    // 4. Total Events — ALL of the client's events (drafts + scheduled +
+    //    published), matching the Events page. Previously only 'published'
+    //    were counted, so the dashboard showed fewer events than existed.
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM events WHERE client_id = ? AND deleted_at IS NULL");
     $stmt->execute([$real_client_id]);
     $total_events = $stmt->fetch()['total'];
 
     // 5. Upcoming Events (same as total events - show all created events)
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM events WHERE client_id = ? AND deleted_at IS NULL AND status = 'published'");
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM events WHERE client_id = ? AND deleted_at IS NULL");
     $stmt->execute([$real_client_id]);
     $upcoming_events_count = $stmt->fetch()['total'];
 
@@ -111,7 +113,7 @@ try {
         FROM events e
         LEFT JOIN payments p ON e.id = p.event_id AND p.status = 'paid'
         LEFT JOIN tickets t ON p.id = t.payment_id
-        WHERE e.client_id = ? AND e.deleted_at IS NULL AND e.status = 'published'
+        WHERE e.client_id = ? AND e.deleted_at IS NULL
         GROUP BY e.id
         ORDER BY e.event_date ASC
     ");

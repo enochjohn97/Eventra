@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/api_client.dart';
-import '../../core/theme/app_theme.dart';
 import '../providers/app_config_provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -153,30 +152,40 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: WebViewWidget(controller: _webViewController),
               ),
             ),
+          // White splash with the real Eventra logo (matches native launch
+          // splash: white background + centered E-monogram).
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primary, AppTheme.primaryDark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: const Column(
+            color: Colors.white,
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.celebration_rounded, size: 72, color: Colors.white),
-                SizedBox(height: 16),
-                Text(
-                  AppConfig.appName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
+                Image.asset(
+                  'assets/images/logo.png',
+                  width: 112,
+                  height: 112,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 14),
+                RichText(
+                  text: const TextSpan(
+                    text: 'Eventra',
+                    style: TextStyle(
+                      color: Color(0xFF101A2E),
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '.',
+                        style: TextStyle(color: Color(0xFFFF5A5F)),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 24),
-                CircularProgressIndicator(color: Colors.white),
+                const SizedBox(height: 28),
+                const CircularProgressIndicator(color: Color(0xFFFF5A5F)),
               ],
             ),
           ),

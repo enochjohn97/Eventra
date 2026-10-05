@@ -101,8 +101,10 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width >= Breakpoints.tablet;
     return DraggableScrollableSheet(
-      initialChildSize: 0.88,
+      initialChildSize: isWide ? 0.82 : 0.88,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (_, controller) {
@@ -111,19 +113,40 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: ListView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: Breakpoints.sheetMaxWidth(width)),
+              child: ListView(
             controller: controller,
             padding: EdgeInsets.zero,
             children: [
               Stack(
                 children: [
                   SizedBox(
-                    height: 240,
+                    height: isWide ? 300 : 240,
                     width: double.infinity,
                     child: _imageUrl.isNotEmpty
                         ? CachedNetworkImage(imageUrl: _imageUrl, fit: BoxFit.cover)
                         : Container(color: const Color(0xFFEDE9FE)),
                   ),
+                  // Priority tag — same as web (server label).
+                  if (EventUtils.priorityBadge(_event) != null)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                        ),
+                        child: Text(
+                          EventUtils.priorityBadge(_event)!,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 12,
                     right: 12,
@@ -158,6 +181,29 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       const SizedBox(height: 8),
                       Text('Organized by ${_event.organizerName}', style: const TextStyle(color: AppTheme.textMuted)),
                     ],
+                    const SizedBox(height: 10),
+                    // Status badge — Upcoming / Sold Out / Passed, web-identical.
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Color(EventUtils.statusBadge(_event).colorValue),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          EventUtils.statusBadge(_event).label,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(EventUtils.statusBadge(_event).colorValue),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 20),
                     _infoTile(Icons.calendar_today, 'Date', EventUtils.formatDate(_event.eventDate)),
                     _infoTile(Icons.access_time, 'Time', EventUtils.formatTime(_event.eventTime)),
@@ -166,7 +212,8 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       borderRadius: BorderRadius.circular(12),
                       child: _infoTile(Icons.location_on_outlined, 'Venue', EventUtils.venueLine(_event), linkStyle: true),
                     ),
-                    _infoTile(Icons.confirmation_number_outlined, 'Price', EventUtils.formatPrice(_event)),
+                    _infoTile(Icons.confirmation_number_outlined, 'Price',
+                        '${EventUtils.formatPrice(_event)}  (${EventUtils.tierLabel(_event)})'),
                     if (_event.category != null)
                       _infoTile(Icons.category_outlined, 'Category', _event.category!),
                     const SizedBox(height: 16),
@@ -190,6 +237,8 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                 ),
               ),
             ],
+          ),
+            ),
           ),
         );
       },

@@ -93,6 +93,8 @@
                     style="position: relative; cursor: pointer;">
                     <i data-lucide="bell"></i>
                 </div>
+                <div class="action-icon check-ticket-icon-btn" id="checkTicketIconBtn" title="Check Ticket"
+                    role="button" tabindex="0" style="position: relative; cursor: pointer; flex-shrink: 0;">🎟️</div>
                 <div class="user-profile" id="openProfileDrawer" style="cursor: pointer;">
                     <div class="user-avatar"></div>
                 </div>
@@ -261,6 +263,9 @@
                 style="max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--admin-text-muted);">
                 <div>&copy; 2026 Eventra Admin. All Rights Reserved.</div>
                 <div style="display: flex; gap: 2.5rem;">
+                    <a href="/public/assets/eventra-platform-guide.pdf" download
+                        style="color: inherit; text-decoration: none;"
+                        title="Download the complete Eventra platform guide (PDF)">Platform Guide (PDF)</a>
                     <span>Privacy</span>
                     <span>Support</span>
                 </div>
@@ -340,7 +345,9 @@
     <script src="../js/admin-main.js"></script>
     <script>
   document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
-</script>
+</script>    <script src="/public/js/ticket-verification.js" defer></script>
+    <script src="/public/js/dashboard-check-ticket.js" defer></script>
+    <script src="/public/js/holiday-alerts.js" defer></script>
 </body>
 
 </html>

@@ -1,0 +1,913 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EVENTRA — HOMEPAGE MODERN UI LAYER (home-modern.css)
+   ------------------------------------------------------------------------
+   • Loaded LAST on public/pages/index.html — overrides the inline critical
+     CSS + style.css without touching markup or JavaScript.
+   • UI ONLY. No selectors here add/remove functionality; the search button
+     keeps its BLUE hover (2026-09-23 standing request — do NOT green it).
+   • Hero: overlay strongly lightened so the event photo stays very visible;
+     legibility preserved with a soft bottom scrim + glyph drop-shadows.
+   • All decorative animation is wrapped in @media (prefers-reduced-motion:
+     no-preference); static styles remain for reduce users.
+   ══════════════════════════════════════════════════════════════════════════
+   ═ */
+
+/* ─── 0. Base touches ─────────────────────────────────────────────────────── */
+html {
+  scroll-padding-top: calc(var(--header-height, 80px) + 12px);
+}
+
+::selection {
+  background: rgba(255, 90, 95, 0.25);
+  color: #0f172a;
+}
+
+/* Thin branded scrollbar (WebKit) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ff5a5f, #2563eb);
+  border-radius: 999px;
+  border: 2px solid #f1f5f9;
+}
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #ff7b7f, #3b82f6); }
+
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 2026-09-29: no blue box while typing in text fields (user request) —
+   keyboard focus stays visible for buttons/links/selects only */
+input:focus-visible,
+input:focus,
+textarea:focus-visible,
+textarea:focus,
+.search-input-modern:focus,
+.search-input-modern:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ─── 1. HERO — image first, light cinematic scrim ────────────────────────── */
+.hero {
+  height: 680px;
+  isolation: isolate;
+}
+
+/* 1a. Kill the heavy dark/coral wash → keep the photo very visible.
+      Only a whisper of tint at the very top & bottom for text legibility. */
+.hero-overlay {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 10, 24, 0.38) 0%,
+      rgba(8, 10, 24, 0.05) 34%,
+      rgba(8, 10, 24, 0.04) 58%,
+      rgba(8, 10, 24, 0.42) 100%
+    );
+  z-index: 2;
+}
+
+/* 1b. Bottom scrim only — anchors the headline like a cinema lower-third */
+.hero-gradient {
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 8, 20, 0.18) 0%,
+    rgba(6, 8, 20, 0) 26%,
+    rgba(6, 8, 20, 0) 62%,
+    rgba(6, 8, 20, 0.34) 100%
+  );
+  z-index: 2;
+}
+
+/* 1c. Photo: nearly full brightness, gently enriched colours */
+.hero-background {
+  filter: brightness(0.94) saturate(1.08) contrast(1.02);
+}
+
+/* CSS-gradient fallback slide (pre-image paint) — keep it deep enough for
+   white text but add life via the aurora glows below */
+.hero-slide-static.hero-gradient-bg {
+  background:
+    radial-gradient(1100px 520px at 82% -10%, rgba(255, 90, 95, 0.32), transparent 60%),
+    radial-gradient(900px 480px at 12% 110%, rgba(37, 99, 235, 0.30), transparent 60%),
+    linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #4c0519 100%);
+}
+
+/* 1d. Aurora glow accents — two slow colour fields blended over the photo.
+      Screen blend keeps the image visible; pointer-events never blocked. */
+.hero-overlay::before,
+.hero-overlay::after {
+  content: "";
+  position: absolute;
+  width: 46vmax;
+  height: 46vmax;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+
+.hero-overlay::before {
+  top: -18vmax;
+  right: -10vmax;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 106, 61, 0.34),
+    rgba(255, 90, 95, 0.14) 45%,
+    transparent 72%
+  );
+  animation: auroraDriftA 26s ease-in-out infinite alternate;
+}
+
+.hero-overlay::after {
+  bottom: -20vmax;
+  left: -12vmax;
+  background: radial-gradient(
+    closest-side,
+    rgba(59, 130, 246, 0.30),
+    rgba(124, 58, 237, 0.12) 48%,
+    transparent 74%
+  );
+  animation: auroraDriftB 32s ease-in-out infinite alternate;
+}
+
+/* 1e. Headline — bigger, crisper, readable on any photo */
+.hero-content {
+  padding-bottom: 1.5rem;
+}
+
+.hero-title {
+  font-size: clamp(2.3rem, 5vw, 3.5rem);
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  text-shadow: none;
+  background: linear-gradient(100deg, #ffffff 20%, #ffd9da 55%, #ff8a8e 90%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(4, 8, 20, 0.55))
+    drop-shadow(0 1px 3px rgba(4, 8, 20, 0.6));
+}
+
+.hero-subtitle {
+  font-size: 1.12rem;
+  color: #f8fafc;
+  margin-top: 0.9rem;
+  background: rgba(10, 14, 30, 0.30);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 0.55rem 1.35rem;
+  display: inline-block;
+  text-shadow: 0 1px 8px rgba(4, 8, 20, 0.45);
+}
+
+/* 1f. Scroll cue — tiny chevron bobbing at the hero's base */
+.hero::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  width: 14px;
+  height: 14px;
+  border-right: 2.5px solid rgba(255, 255, 255, 0.85);
+  border-bottom: 2.5px solid rgba(255, 255, 255, 0.85);
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
+  opacity: 0.8;
+  z-index: 12;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 4px rgba(4, 8, 20, 0.5));
+}
+
+/* ─── 2. SEARCH BAR — glass card, glow ring, shine button ────────────────── */
+.search-wrapper-enhanced {
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 18px 44px -12px rgba(10, 14, 30, 0.28),
+    0 2px 6px rgba(10, 14, 30, 0.08);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.search-wrapper-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 24px 54px -12px rgba(10, 14, 30, 0.34),
+    0 2px 6px rgba(10, 14, 30, 0.08);
+}
+
+.search-wrapper-enhanced:focus-within {
+  transform: translateY(-2px);
+  /* 2026-09-29: blue glow ring removed (user request) — subtle lift only */
+  box-shadow:
+    0 24px 54px -12px rgba(10, 14, 30, 0.34),
+    0 2px 6px rgba(10, 14, 30, 0.08);
+}
+
+.search-input-modern {
+  font-size: 1.02rem;
+}
+
+/* Search button keeps BLUE on hover (2026-09-23 user request — do not change) */
+.search-button-modern {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.search-button-modern:hover {
+  background: var(--btn-default-bg, #2563eb);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.42);
+  filter: brightness(1.08);
+}
+
+.search-button-modern::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  transform: skewX(-20deg);
+}
+
+.search-button-modern:hover::after {
+  animation: shineSweep 0.8s ease;
+}
+
+/* ─── 3. HEADER — micro polish ────────────────────────────────────────────── */
+.header {
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06), 0 8px 24px -18px rgba(15, 23, 42, 0.25);
+}
+
+.logo img {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.logo:hover img {
+  transform: scale(1.04) rotate(-1.5deg);
+}
+
+/* ─── 4. FILTER SIDEBAR — frosted glass panel ─────────────────────────────── */
+.filter-sidebar {
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px -18px rgba(15, 23, 42, 0.25);
+}
+
+.filter-group-header {
+  transition: background 0.2s ease;
+  border-radius: 10px;
+}
+
+.filter-group-header:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.filter-group-header:hover label {
+  color: var(--primary-color, #2563eb);
+}
+
+.chevron-icon {
+  transition: transform 0.25s ease;
+}
+
+.filter-group-header[aria-expanded="true"] .chevron-icon {
+  transform: rotate(180deg);
+}
+
+.checkbox-item input[type="checkbox"] {
+  accent-color: #ff5a5f;
+}
+
+.checkbox-item {
+  transition: transform 0.18s ease;
+}
+
+.checkbox-item:hover {
+  transform: translateX(3px);
+}
+
+#resetFilters {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
+
+#resetFilters:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+/* ─── 5. SECTION HEADINGS — gradient accent bar + reveal ──────────────────── */
+#recentlyViewedSection h2,
+#upcomingSection h2,
+#nearbySection h2 {
+  font-size: 1.45rem !important;
+  letter-spacing: -0.01em;
+  position: relative;
+  padding-bottom: 0.55rem;
+  margin-bottom: 1.1rem !important;
+}
+
+#recentlyViewedSection h2::after,
+#upcomingSection h2::after,
+#nearbySection h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 64px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff5a5f, #f59e0b, #2563eb);
+}
+
+/* Results header */
+.results-header {
+  position: relative;
+}
+
+#resultsTitle {
+  letter-spacing: -0.01em;
+}
+
+#resultsCount {
+  color: var(--text-muted, #6b7280);
+}
+
+.sort-select {
+  border-radius: 10px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.sort-select:hover {
+  border-color: #93c5fd;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+/* ─── 6. EVENT CARDS — lift, glow ring, shine sweep, badge polish ─────────── */
+.event-card {
+  border-radius: 18px;
+  will-change: transform;
+}
+
+.event-card:hover {
+  transform: translateY(-10px);
+  box-shadow:
+    0 26px 50px -14px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(37, 99, 235, 0.35),
+    0 8px 20px -10px rgba(255, 90, 95, 0.25);
+}
+
+/* Gradient crown that ignites on hover */
+.event-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff5a5f, #f59e0b, #2563eb);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 3;
+}
+
+.event-card:hover::before {
+  opacity: 1;
+}
+
+.event-card:hover .event-image {
+  transform: scale(1.07);
+}
+
+/* Diagonal light sweep across the photo */
+.event-image-container::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -85%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  transform: skewX(-18deg);
+  transition: left 0.01s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.event-card:hover .event-image-container::after {
+  left: 130%;
+  transition: left 0.75s ease;
+}
+
+.event-category-badge {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-radius: 999px;
+}
+
+.event-status-badge {
+  border-radius: 999px;
+}
+
+.status-dot {
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+}
+
+.event-date-time {
+  letter-spacing: 0.01em;
+}
+
+/* Recently-viewed strip items */
+#recentlyViewedGrid > * {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+#recentlyViewedGrid > *:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 26px -12px rgba(15, 23, 42, 0.3);
+}
+
+/* Swiper nav — frosted circles; inline color beats normal CSS → !important */
+.swiper-button-next,
+.swiper-button-prev {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 22px -8px rgba(15, 23, 42, 0.35);
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+  color: #0f172a !important;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 17px !important;
+  font-weight: 800;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  background: #ff5a5f;
+  color: #ffffff !important;
+  transform: scale(1.08);
+}
+
+.swiper-pagination-bullet {
+  opacity: 0.45;
+}
+
+.swiper-pagination-bullet-active {
+  background: #ff5a5f;
+  opacity: 1;
+  width: 18px;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+/* ─── 7. PROFILE BANNER — living gradient (id + inline styles → !important) ─ */
+#profileCompletionBanner {
+  background: linear-gradient(120deg, #722f37 0%, #b23a48 35%, #ff5a5f 75%, #ff8a5f 100%) !important;
+  background-size: 220% 220% !important;
+  border-radius: 20px !important;
+  box-shadow: 0 18px 40px -16px rgba(114, 47, 55, 0.45) !important;
+}
+
+#profileCompletionBanner button {
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#profileCompletionBanner button:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 26px -10px rgba(15, 23, 42, 0.45);
+}
+
+/* ─── 8. PAGINATION + GENERIC BUTTONS ─────────────────────────────────────── */
+.pagination-btn {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -10px rgba(37, 99, 235, 0.45);
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.pagination-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.buy-ticket-btn {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.buy-ticket-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 14px 30px -10px rgba(15, 23, 42, 0.4);
+}
+
+/* ─── 9. FOOTER — hairline gradient + link micro-interactions ─────────────── */
+.footer {
+  position: relative;
+}
+
+.footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff5a5f, #f59e0b, #2563eb, #7c3aed);
+  opacity: 0.9;
+}
+
+.footer-links a {
+  transition: color 0.2s ease, padding-left 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: #ff8a8e;
+  padding-left: 4px;
+}
+
+.social-icon {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.social-icon:hover {
+  transform: translateY(-3px) scale(1.06);
+}
+
+/* ─── 10. MOTION — entrance animations (skipped for reduced motion) ───────── */
+@media (prefers-reduced-motion: no-preference) {
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Hero choreography: title → subtitle → search, rising with a soft un-blur */
+  .hero-title {
+    animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  }
+
+  .hero-subtitle {
+    animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+  }
+
+  .hero-search-overlay .search-container {
+    animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
+  }
+
+  .hero::after {
+    animation: chevronBob 2.2s ease-in-out 1.4s infinite;
+  }
+
+  /* Headline gradient shimmer */
+  .hero-title {
+    background-size: 220% auto;
+    animation-name: heroRise, titleShimmer;
+    animation-duration: 0.9s, 9s;
+    animation-delay: 0.15s, 1.2s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1), linear;
+    animation-iteration-count: 1, infinite;
+    animation-fill-mode: both, none;
+  }
+
+  /* Live status dot pulse */
+  .event-status-badge .status-dot {
+    animation: pulseDot 2.2s ease-out infinite;
+  }
+
+  /* Banner gradient slowly breathes */
+  #profileCompletionBanner {
+    animation: bannerShift 9s ease infinite;
+  }
+
+  /* Cards: softer rise replaces slideInLeft, with grid stagger */
+  .event-card {
+    animation: cardRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .events-grid .event-card:nth-child(1)  { animation-delay: 0.03s; }
+  .events-grid .event-card:nth-child(2)  { animation-delay: 0.08s; }
+  .events-grid .event-card:nth-child(3)  { animation-delay: 0.13s; }
+  .events-grid .event-card:nth-child(4)  { animation-delay: 0.18s; }
+  .events-grid .event-card:nth-child(5)  { animation-delay: 0.23s; }
+  .events-grid .event-card:nth-child(6)  { animation-delay: 0.28s; }
+  .events-grid .event-card:nth-child(7)  { animation-delay: 0.33s; }
+  .events-grid .event-card:nth-child(8)  { animation-delay: 0.38s; }
+  .events-grid .event-card:nth-child(n + 9) { animation-delay: 0.42s; }
+
+  /* Sections fade in when JS reveals them (display:none → block restarts) */
+  #recentlyViewedSection h2,
+  #upcomingSection h2,
+  #nearbySection h2,
+  #recentlyViewedSection h2::after,
+  #upcomingSection h2::after,
+  #nearbySection h2::after {
+    animation: fadeUp 0.55s ease-out both;
+  }
+
+  #upcomingSection .upcoming-swiper,
+  #nearbySection .nearby-swiper {
+    animation: fadeUp 0.6s ease-out 0.12s both;
+  }
+
+  /* Profile banner entrance */
+  #profileCompletionBanner {
+    animation: bannerShift 9s ease infinite, fadeUp 0.6s ease-out both;
+  }
+}
+
+/* Reduced-motion safety net: freeze everything this file adds */
+@media (prefers-reduced-motion: reduce) {
+  .hero-overlay::before,
+  .hero-overlay::after,
+  .hero-title,
+  .hero-subtitle,
+  .hero-search-overlay .search-container,
+  .hero::after,
+  .event-card,
+  .event-status-badge .status-dot,
+  #profileCompletionBanner,
+  #recentlyViewedSection h2,
+  #upcomingSection h2,
+  #nearbySection h2,
+  .event-image-container::after,
+  .search-button-modern::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Celebration layer (balloons + popups) intentionally still animates: it is
+     the page's core delight feature and degrades harmlessly if disabled. */
+
+  .hero-background {
+    animation-duration: 0s !important;
+  }
+}
+
+/* ─── 11. KEYFRAMES ───────────────────────────────────────────────────────── */
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes titleShimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes auroraDriftA {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-6vmax, 4vmax, 0) scale(1.15); }
+  100% { transform: translate3d(4vmax, 7vmax, 0) scale(0.95); }
+}
+
+@keyframes auroraDriftB {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(7vmax, -5vmax, 0) scale(1.12); }
+  100% { transform: translate3d(-5vmax, -8vmax, 0) scale(0.94); }
+}
+
+@keyframes cardRise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shineSweep {
+  to { left: 130%; }
+}
+
+@keyframes pulseDot {
+  0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+  70%  { box-shadow: 0 0 0 7px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+@keyframes bannerShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes chevronBob {
+  0%, 100% { transform: translateX(-50%) rotate(45deg) translate(0, 0); opacity: 0.55; }
+  50%      { transform: translateX(-50%) rotate(45deg) translate(4px, 4px); opacity: 0.95; }
+}
+
+/* ─── 12. CELEBRATION LAYER — balloons + exciting popups (UI only) ────────── */
+#homeCelebrationLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 850;
+  overflow: hidden;
+}
+
+.balloon {
+  position: absolute;
+  bottom: -140px;
+  width: 54px;
+  height: 68px;
+  border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(160deg, var(--b1, #ff5a5f), var(--b2, #c93a3e));
+  opacity: 0;
+  animation: balloonRise linear forwards;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 10px 14px rgba(15, 23, 42, 0.18));
+}
+
+.balloon::before {
+  /* knot */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: var(--b2, #c93a3e);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.balloon::after {
+  /* string */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 74px;
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.28), rgba(15, 23, 42, 0.05));
+  transform: translateX(-50%);
+}
+
+@keyframes balloonRise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-4deg) scale(0.9);
+  }
+  8% {
+    opacity: 0.95;
+  }
+  25% {
+    transform: translate3d(26px, -28vh, 0) rotate(5deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-22px, -56vh, 0) rotate(-5deg) scale(1.02);
+  }
+  75% {
+    transform: translate3d(18px, -82vh, 0) rotate(4deg) scale(1);
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-10px, -118vh, 0) rotate(-3deg) scale(0.98);
+  }
+}
+
+.home-pop {
+  position: absolute;
+  left: 50%;
+  top: 96px;
+  transform: translateX(-50%) translateY(-16px);
+  background: rgba(255, 255, 255, 0.96);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.8rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 90, 95, 0.35);
+  box-shadow:
+    0 18px 40px -14px rgba(15, 23, 42, 0.35),
+    0 0 0 4px rgba(255, 90, 95, 0.08);
+  opacity: 0;
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  max-width: min(92vw, 560px);
+  text-align: center;
+}
+
+.home-pop.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.home-pop b {
+  color: #ff5a5f;
+}
+
+/* ─── 13. MOBILE REFINEMENTS ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hero {
+    height: 560px;
+  }
+
+  .hero-overlay::before,
+  .hero-overlay::after {
+    width: 60vmax;
+    height: 60vmax;
+    opacity: 0.75;
+  }
+
+  .hero-subtitle {
+    font-size: 0.95rem;
+    padding: 0.45rem 1rem;
+  }
+
+  #recentlyViewedSection h2,
+  #upcomingSection h2,
+  #nearbySection h2 {
+    font-size: 1.2rem !important;
+  }
+
+  .home-pop {
+    top: 84px;
+    font-size: 0.85rem;
+    padding: 0.65rem 1.05rem;
+    max-width: 94vw;
+  }
+
+  .balloon {
+    width: 40px;
+    height: 50px;
+  }
+
+  .balloon::after {
+    height: 54px;
+  }
+
+  .swiper-button-next,
+  .swiper-button-prev {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}

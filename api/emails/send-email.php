@@ -78,6 +78,8 @@ try {
 
     $subject = "";
     $body = "";
+    // Eventra brand header (logo mark + wordmark) for every ad-hoc email body.
+    $brandHeader = EmailHelper::brandEmailHeaderHtml('20px');
     $attachments = [];
 
     switch ($type) {
@@ -96,7 +98,7 @@ try {
             }
 
             $subject = "Payment Receipt - " . $payment['event_name'];
-            $body = "
+            $body = $brandHeader . "
                 <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;'>
                     <h2 style='color: #2ecc71;'>Payment Received ✅</h2>
                     <p>Hi {$user['name']},</p>
@@ -145,12 +147,6 @@ try {
             $ticketContent = "";
 
             foreach ($tickets as $ticket) {
-                // Generate PDF ticket (includes QR code)
-                $pdfPath = generateTicketPDF($ticket);
-                if ($pdfPath) {
-                    $attachments[] = $pdfPath;
-                }
-
                 $ticketContent .= "
                     <div style='border: 2px dashed #2ecc71; padding: 15px; margin-bottom: 20px; border-radius: 10px;'>
                         <h3 style='margin: 0; color: #2ecc71;'>{$ticket['event_name']}</h3>
@@ -158,12 +154,11 @@ try {
                         <p style='margin: 5px 0;'><strong>Time:</strong> {$ticket['event_time']}</p>
                         <p style='margin: 5px 0;'><strong>Venue:</strong> {$ticket['location']}</p>
                         <p style='margin: 5px 0;'><strong>Ticket ID:</strong> <code>{$ticket['barcode']}</code></p>
-                        <p style='font-size: 13px; color: #666;'>[See attached PDF for your official ticket and QR code]</p>
                     </div>
                 ";
             }
 
-            $body = "
+            $body = $brandHeader . "
                 <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;'>
                     <h2 style='color: #2ecc71;'>Your Eventra Tickets 🎟️</h2>
                     <p>Hi {$user['name']}, your tickets are ready!</p>
@@ -178,7 +173,11 @@ try {
         case 'notification':
             $subject = $data['subject'] ?? "Event Update - Eventra";
             $message = $data['message'] ?? "";
-            $body = "
+            // SECURITY: $message is attacker-controllable JSON input and used
+            // to be interpolated raw — stored/reflected HTML injection into
+            // email bodies (phishing vector). Escape before embedding.
+            $message = htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8');
+            $body = $brandHeader . "
                 <div style='font-family: sans-serif; padding: 20px;'>
                     <h2 style='color: #2ecc71;'>Notification</h2>
                     <p>{$message}</p>

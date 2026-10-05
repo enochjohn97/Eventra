@@ -142,11 +142,14 @@ class Ticket
         if ($decoded) {
             $payload = json_decode($decoded, true);
             if ($payload && !empty($payload['tid']) && !empty($payload['sig'])) {
-                // Verify HMAC signature to prevent forgery
+                // Verify HMAC signature to prevent forgery.
+                // Must match buildSecureQRPayload's hash string exactly
+                // (includes the oid segment).
                 $dataStr = implode('|', [
                     $payload['tid'],
                     $payload['eid'] ?? '',
                     $payload['uid'] ?? '',
+                    $payload['oid'] ?? '',
                     $payload['ps']  ?? '',
                     $payload['iat'] ?? ''
                 ]);
@@ -161,5 +164,112 @@ class Ticket
 
         // Raw barcode fallback
         return $input;
+    }
+
+    /**
+     * Resolve a QR payload (or raw barcode) to its ticket barcode WITHOUT
+     * consuming/using the ticket. Used by the Check Ticket anti-fraud flow,
+     * which must never mark a ticket as used.
+     */
+    public static function resolveOnly(string $qrData): array
+    {
+        $barcode = self::resolveBarcode(trim($qrData));
+        if ($barcode === '__INVALID_SIGNATURE__' || $barcode === '') {
+            return ['success' => false, 'message' => 'Invalid or forged QR code.'];
+        }
+        return ['success' => true, 'barcode' => $barcode];
+    }
+
+    /**
+     * Build the shared proof payload for the Check Ticket feature.
+     * Read-only — never mutates ticket state. Price is presented with the
+     * 10% Eventra platform fee so it matches what the buyer actually paid.
+     */
+    public static function buildProofPayload(PDO $pdo, string $ticketId): array
+    {
+        $ticketId = trim($ticketId);
+        $stmt = $pdo->prepare("
+            SELECT t.barcode,
+                   t.custom_id,
+                   t.ticket_type,
+                   t.status        AS ticket_status,
+                   t.used,
+                   p.reference     AS payment_reference,
+                   p.amount        AS payment_amount,
+                   p.status        AS payment_status,
+                   p.paid_at,
+                   p.created_at    AS payment_created_at,
+                   e.event_name,
+                   e.custom_id     AS event_custom_id,
+                   e.image_path    AS event_image,
+                   e.event_date,
+                   e.event_time,
+                   e.price         AS event_base_price,
+                   e.metadata      AS event_metadata
+            FROM tickets t
+            JOIN payments p ON t.payment_id = p.id
+            JOIN events   e ON p.event_id  = e.id
+            WHERE t.barcode = ? OR t.custom_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$ticketId, $ticketId]);
+        $t = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$t) {
+            return ['success' => false, 'message' => "No ticket found for ID \"{$ticketId}\". Check the ID and try again."];
+        }
+        if ($t['payment_status'] !== 'paid') {
+            return ['success' => false, 'message' => 'Payment for this ticket has not been confirmed. Ticket is not valid.'];
+        }
+
+        // Resolve the effective ticket price from tier metadata (falls back
+        // to legacy event price) — identical logic to the web display.
+        $ticketType = strtolower((string)($t['ticket_type'] ?: 'regular'));
+        $meta = json_decode((string)($t['event_metadata'] ?? ''), true) ?: [];
+        $mode = strtolower((string)($meta['ticket_type_mode'] ?? 'all'));
+        $tierPrice = fn(string $k) => (float)($meta[$k] ?? 0);
+        $legacy = (float)$t['event_base_price'];
+
+        if ($mode === 'all' || $mode === '' || str_contains($mode, $ticketType) === false) {
+            $base = $legacy > 0 ? $legacy : max($tierPrice('regular_price'), $tierPrice('vip_price'), $tierPrice('premium_price'));
+        } else {
+            $base = match ($ticketType) {
+                'vip' => $tierPrice('vip_price'),
+                'premium' => $tierPrice('premium_price'),
+                default => $tierPrice('regular_price') ?: $legacy,
+            };
+        }
+        $priceWithFee = $base > 0 ? round($base * 1.1) : 0;
+
+        // Event image as an absolute URL when possible
+        $img = '';
+        if (!empty($t['event_image'])) {
+            $imgPath = $t['event_image'];
+            if (preg_match('#^https?://#', $imgPath)) {
+                $img = $imgPath;
+            } else {
+                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? 80) == 443 ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? '';
+                $img = $host !== '' ? $protocol . '://' . $host . '/' . ltrim(str_replace('\\', '/', $imgPath), '/') : '/' . ltrim($imgPath, '/');
+            }
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'ticket_id' => $t['barcode'],
+                'event_name' => $t['event_name'],
+                'event_image' => $img,
+                'price' => $priceWithFee,
+                'price_display' => $priceWithFee > 0 ? '₦' . number_format($priceWithFee) : 'Free',
+                'ticket_type' => ucfirst($ticketType),
+                'payment_reference' => $t['payment_reference'],
+                'payment_date' => $t['paid_at'] ?: $t['payment_created_at'],
+                'event_date' => $t['event_date'],
+                'event_time' => $t['event_time'] ? substr((string)$t['event_time'], 0, 5) : null,
+                'event_custom_id' => $t['event_custom_id'],
+                'ticket_status' => $t['used'] == 1 ? 'Used' : ($t['ticket_status'] === 'cancelled' ? 'Cancelled' : 'Valid'),
+            ],
+        ];
     }
 }

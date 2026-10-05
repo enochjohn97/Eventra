@@ -1047,15 +1047,15 @@ window.initPreviews = function () {
                                                 </button>
                                             </div>
 
-                                            <!-- Events (verified) -->
+                                            <!-- Events (all clients — 2026-09-29: no verification gate, show every event) -->
                                             ${
-                                              isVerified && events.length > 0
+                                              events.length > 0
                                                 ? `
                                             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;flex:1;overflow:hidden;">
                                                 <div style="font-size:0.63rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
                                                     <i data-lucide="calendar" style="width:11px;height:11px;"></i> Events (${events.length})
                                                 </div>
-                                                <div style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;padding-right:2px;">
+                                                <div style="display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;padding-right:2px;">
                                                     ${events
                                                       .map(
                                                         (ev) => `

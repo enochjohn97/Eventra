@@ -100,7 +100,10 @@ class _ProfileCompleteScreenState extends State<ProfileCompleteScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Complete Your Profile')),
-      body: SingleChildScrollView(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
@@ -174,6 +177,8 @@ class _ProfileCompleteScreenState extends State<ProfileCompleteScreen> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

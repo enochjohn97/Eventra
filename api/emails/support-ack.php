@@ -126,8 +126,10 @@ $escMessage = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
 $supportRef = 'SUP-' . strtoupper(bin2hex(random_bytes(4)));
 $submittedAt = date('j M Y, H:i') . ' UTC';
 $ackSubject = 'We received your ' . strtolower($category) . ' — Ticket ' . $supportRef;
+$brandHeaderHtml = EmailHelper::brandEmailHeaderHtml('20px');
 $ackBody = <<<HTML
 <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+    {$brandHeaderHtml}
     <h2 style="color: #2563eb; margin-top: 0;">Thank you for contacting Eventra</h2>
     <p>Hi {$escName},</p>
     <p>

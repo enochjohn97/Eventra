@@ -253,6 +253,17 @@ class EmailHelper
     }
 
     /**
+     * Public brand header for ad-hoc email templates (client approval/decline,
+     * support acknowledgment, broadcast notifications) that build their own
+     * HTML bodies but must still carry the Eventra logo. Light-background
+     * variant: coral E-monogram PNG data-URI + dark "Eventra" wordmark.
+     */
+    public static function brandEmailHeaderHtml(string $fontSize = '20px'): string
+    {
+        return self::brandHeaderLightHtml($fontSize);
+    }
+
+    /**
      * Resolve an image path/URL to an inline base64 data-URI.
      * Returns empty string if the image cannot be read.
      * Cap the image at 500 KB after encoding to keep email under size limits.
@@ -609,8 +620,8 @@ class EmailHelper
     /**
      * Build a fully self-contained ticket HTML.
      *
-     * $forPdf = true  → simplified inline-style layout optimised for DomPDF/wkhtmltopdf
-     * $forPdf = false → richer layout for email (still keeps total size < ~90 KB)
+     * $forPdf = true  → simplified inline-style layout (legacy PDF renderers; unused)
+     * $forPdf = false → rich layout for email (keeps total size < ~90 KB)
      */
     public static function buildTicketHtml(
         array $ticketData,
@@ -1033,9 +1044,8 @@ HTML;
         string $qrHtml,
         string $year
     ): string {
-        // ── wkhtmltopdf SAFE: always convert bgImage to a data: URI ──────────────
-        // Local paths and remote URLs both get embedded; wkhtmltopdf cannot reliably
-        // resolve absolute server paths or relative URLs in background-image CSS.
+        // ── Email-safe: always convert bgImage to a data: URI so it renders ────
+        // in every client (local paths and remote URLs both get embedded).
         $bgDataUri = '';
         if ($bgImage !== '') {
             if (str_starts_with($bgImage, 'data:image/')) {
@@ -1060,7 +1070,7 @@ HTML;
             ? "background-image:url('{$bgDataUri}');background-size:cover;background-position:center center;background-repeat:no-repeat;"
             : '';
 
-        // Solid-colour layers for the two sections (wkhtmltopdf drops rgba() alpha reliably)
+        // Solid-colour layers for the two sections (some clients drop rgba() alpha)
         // We use a semi-opaque PNG overlay trick via a 1×1 data URI OR just solid dark colors
         $bodyBg    = '#0b1324'; // ~rgba(11,19,36,1)  — main body section
         $stubBg    = '#1e2b3e'; // ~rgba(30,41,59,1)  — stub / QR section
@@ -1175,7 +1185,7 @@ HTML;
                      letter-spacing:4px;color:#ffffff;text-transform:uppercase;">SCAN QRCODE</span>
       </div>
 
-      <!-- QR white box — use a table to avoid inline-block rendering bugs in wkhtmltopdf -->
+      <!-- QR white box — table layout avoids inline-block rendering bugs -->
       <table cellpadding="8" cellspacing="0" border="0" align="center"
              style="border-collapse:collapse;background:#ffffff;border-radius:8px;margin:0 auto 8px auto;">
         <tr>
@@ -1373,7 +1383,10 @@ PDF;
     }
 
     /**
-     * Attempt to (re)generate a PDF at $outputPath using wkhtmltopdf.
+     * Generate a branded ticket PDF at $outputPath using the built-in
+     * pure-PHP PDF writer (no external binaries — wkhtmltopdf was removed).
+     * Used only for the user-initiated "Download Ticket" browser download;
+     * ticket emails are attachment-free by design.
      *
      * Returns true if the PDF was written successfully.
      */
@@ -1384,50 +1397,10 @@ PDF;
             if (!is_dir($outputDir)) {
                 @mkdir($outputDir, 0775, true);
             }
-            if (!is_writable($outputDir)) {
-                error_log("[EmailHelper] Output directory not writable: {$outputDir}. Using fallback PDF.");
-                return self::writeFallbackPdf($ticketData, $outputPath);
-            }
-
-            // Only attempt wkhtmltopdf if exec() is available
-            if (!function_exists('exec') || !@shell_exec('which wkhtmltopdf 2>/dev/null || where wkhtmltopdf 2>NUL')) {
-                error_log('[EmailHelper] wkhtmltopdf not available. Using fallback PDF.');
-                return self::writeFallbackPdf($ticketData, $outputPath);
-            }
-
-            // Generate raw HTML for the PDF using the existing builder
-            $html = self::buildTicketHtml($ticketData, true);
-
-            $tmpHtml = tempnam(sys_get_temp_dir(), 'ticket_html_') . '.html';
-            if ($tmpHtml === false || !@file_put_contents($tmpHtml, $html)) {
-                error_log('[EmailHelper] Could not write temp HTML. Using fallback PDF.');
-                return self::writeFallbackPdf($ticketData, $outputPath);
-            }
-
-            $wkhtmltopdf = 'wkhtmltopdf';
-            $cmd = escapeshellcmd($wkhtmltopdf)
-                . ' --enable-local-file-access --margin-top 0 --margin-right 0 --margin-bottom 0 --margin-left 0'
-                . ' --page-width 800px --page-height 400px --disable-smart-shrinking --enable-background'
-                . ' --print-media-type --no-stop-slow-scripts --javascript-delay 0'
-                . ' --images --background'
-                . ' ' . escapeshellarg($tmpHtml) . ' ' . escapeshellarg($outputPath) . ' 2>&1';
-
-            $output    = [];
-            $returnVar = -1;
-            @exec($cmd, $output, $returnVar);
-
-            @unlink($tmpHtml);
-
-            // Use fallback whenever wkhtmltopdf fails OR produces no/empty output
-            if ($returnVar !== 0 || !file_exists($outputPath) || filesize($outputPath) < 500) {
-                error_log('[EmailHelper] wkhtmltopdf result unsatisfactory (code ' . $returnVar . '). Using fallback PDF.');
-                return self::writeFallbackPdf($ticketData, $outputPath);
-            }
-
-            return true;
-        } catch (\Throwable $e) {
-            error_log('[EmailHelper] regeneratePdf exception: ' . $e->getMessage() . '. Using fallback PDF.');
             return self::writeFallbackPdf($ticketData, $outputPath);
+        } catch (\Throwable $e) {
+            error_log('[EmailHelper] regeneratePdf exception: ' . $e->getMessage());
+            return false;
         }
     }
 
@@ -1451,12 +1424,33 @@ PDF;
             $stream .= "BT\n/F1 11 Tf\n21 " . (235 - $i * 25) . " Td\n(" . $escape((string)$line) . ") Tj\nET\n";
         }
         $stream .= "0 0 0 rg 530 82 110 110 re f\n1 1 1 rg\nBT\n/F1 9 Tf\n530 260 Td\n(SCAN QRCODE) Tj\nET\n";
+
+        // ── Brand block: coral rounded-square E-monogram + "eventra." wordmark.
+        // Matches the Eventra logo (design/logos E-monogram) so every generated
+        // ticket PDF stays on-brand.
+        $stream .= "q\n";
+        $stream .= "1.00 0.35 0.37 rg\n"; // coral #ff5a5f
+        $bx = 21; $by = 24; $bw = 34; $bh = 34; $r = 8;
+        // Rounded-rect path via bezier corners (PDF origin bottom-left).
+        $stream .= ($bx + $r) . " $by m\n";
+        $stream .= ($bx + $bw - $r) . " $by l " . $bx + $bw . " $by " . $bx + $bw . " " . $by + $r . " " . $bx + $bw . " " . $by + $r . " c\n";
+        $stream .= $bx + $bw . " " . $by + $bh - $r . " l " . $bx + $bw . " " . $by + $bh . " " . $bx + $bw - $r . " " . $by + $bh . " " . $bx + $bw - $r . " " . $by + $bh . " c\n";
+        $stream .= ($bx + $r) . " " . $by + $bh . " l $bx " . $by + $bh . " $bx " . $by + $bh - $r . " $bx " . $by + $bh - $r . " c\n";
+        $stream .= "$bx " . $by + $r . " l $bx $by " . $bx + $r . " $by " . $bx + $r . " $by c\n";
+        $stream .= "h f\n";
+        // White bold "E" monogram centred in the badge.
+        $stream .= "1 1 1 rg BT /F2 19 Tf " . ($bx + 10) . " " . ($by + 9) . " Td (E) Tj ET\n";
+        // White wordmark beside the badge.
+        $stream .= "BT /F2 13 Tf " . ($bx + $bw + 8) . " " . ($by + 12) . " Td (Eventra.) Tj ET\n";
+        $stream .= "Q\n";
+
         $objects = [
             "<< /Type /Catalog /Pages 2 0 R >>",
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 4 0 R /F2 6 0 R >> >> /Contents 5 0 R >>",
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
             "<< /Length " . strlen($stream) . " >>\nstream\n" . $stream . "endstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
         ];
         $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
         $offsets = [0];
@@ -1466,9 +1460,9 @@ PDF;
         }
         $pdf .= "%" . str_repeat(" ", 512) . "\n";
         $xref = strlen($pdf);
-        $pdf .= "xref\n0 6\n0000000000 65535 f \n";
-        for ($i = 1; $i <= 5; $i++) $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
-        $pdf .= "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF\n";
+        $pdf .= "xref\n0 7\n0000000000 65535 f \n";
+        for ($i = 1; $i <= 6; $i++) $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        $pdf .= "trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF\n";
         return file_put_contents($outputPath, $pdf, LOCK_EX) !== false && filesize($outputPath) > 0;
     }
 }

@@ -13,7 +13,10 @@ checkAuthOptional();
 
 try {
     $q = $_GET['q'] ?? '';
-    $limit = (int) ($_GET['limit'] ?? 50);
+    // SECURITY: unbounded q / limit enabled cheap DoS (multi-MB LIKE patterns
+    // and huge result sets). Cap both.
+    $q = mb_substr(trim((string) $q), 0, 120);
+    $limit = min(100, max(1, (int) ($_GET['limit'] ?? 50)));
     $priority = $_GET['priority'] ?? null;
     $category = $_GET['category'] ?? null;
 
@@ -82,14 +85,44 @@ try {
 
     $where_sql = implode(' AND ', $where_clauses);
 
+    // Dynamic priority label — same CASE as get-events.php so search results
+    // carry identical ⭐/🔥/📈/📍 tags for the mobile app.
+    $meritScore = "(
+        (IFNULL(e.view_count,0) * 0.5)
+        + (IFNULL(e.sales_count,0) * 5)
+        + (IFNULL(e.attendee_count,0) * 3)
+        + (e.is_boosted * 100)
+    )";
+    $user_state = $_SESSION['user_state'] ?? '';
+    $userStateSql = $pdo->quote($user_state);
+    $priorityLabel = "CASE
+        WHEN e.is_boosted = 1 THEN '⭐ Featured'
+        WHEN IFNULL(e.sales_count,0) >= 50 THEN '🔥 Hot'
+        WHEN $meritScore > 60 THEN '📈 Trending'
+        WHEN e.event_date = CURDATE()
+             AND $userStateSql != ''
+             AND (
+                 FIND_IN_SET($userStateSql, e.state) > 0
+                 OR e.state = 'All States'
+                 OR e.state = 'all'
+             ) THEN '📍 Nearby'
+        ELSE ''
+    END";
+
+    // Pagination support (offset) so paged mobile search works.
+    $offset = max(0, (int) ($_GET['offset'] ?? 0));
+
     // Execute search
     $sql = "
-        SELECT e.*, c.business_name as organizer_name, c.profile_pic as client_profile_pic, c.verification_status $favorite_select
+        SELECT e.*,
+               $meritScore AS merit_score,
+               $priorityLabel AS priority_label,
+               c.business_name as organizer_name, c.profile_pic as client_profile_pic, c.verification_status $favorite_select
         FROM events e
         LEFT JOIN clients c ON e.client_id = c.id
         WHERE $where_sql
         ORDER BY e.event_date ASC
-        LIMIT ?
+        LIMIT ? OFFSET ?
     ";
 
     // Rebuild params to include user_id for the subquery if needed
@@ -101,6 +134,7 @@ try {
         $query_params[] = $p;
     }
     $query_params[] = $limit;
+    $query_params[] = $offset;
 
     $stmt = $pdo->prepare($sql);
 
@@ -112,9 +146,35 @@ try {
     $stmt->execute();
     $events = $stmt->fetchAll();
 
+    // Normalize image_path exactly like get-events.php
+    $events = array_map(function ($ev) use ($user_role) {
+        if (!empty($ev['metadata'])) {
+            $meta = json_decode($ev['metadata'], true);
+            if (is_array($meta)) $ev = array_merge($ev, $meta);
+        }
+        if ($user_role !== 'admin') {
+            unset($ev['is_boosted']);
+            unset($ev['priority']); // legacy column
+        }
+        if ($user_role === 'guest') {
+            unset($ev['metadata']);
+            unset($ev['client_profile_pic']);
+        }
+        if (!empty($ev['image_path'])) {
+            $img = str_replace('\\', '/', $ev['image_path']);
+            if (preg_match('#(/public/.+)$#i', $img, $m)) {
+                $ev['image_path'] = $m[1];
+            } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
+                $ev['image_path'] = '/' . $m[1];
+            }
+        }
+        return $ev;
+    }, $events);
+
     echo json_encode([
         'success' => true,
         'events' => $events,
+        'total' => count($events),
         'count' => count($events),
         'q' => $q
     ]);

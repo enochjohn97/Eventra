@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/event_utils.dart';
 import '../../core/widgets/adaptive_dialogs.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../providers/tickets_provider.dart';
 
 class TicketsScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     final provider = context.watch<TicketsProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Tickets')),
+      appBar: AppBar(title: const BrandLogo(size: 32)),
       body: RefreshIndicator(
         onRefresh: provider.load,
         child: provider.isLoading && provider.tickets.isEmpty
@@ -44,7 +45,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       Center(child: Text('Your purchased tickets will appear here.', style: TextStyle(color: AppTheme.textMuted))),
                     ],
                   )
-                : ListView.separated(
+                : Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: Breakpoints.listMaxWidth(MediaQuery.sizeOf(context).width),
+                  ),
+                  child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: provider.tickets.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -111,6 +117,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       );
                     },
                   ),
+                ),
+              ),
       ),
     );
   }

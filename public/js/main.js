@@ -27,20 +27,7 @@ let currentPage = 1;
 function getItemsPerPage() {
   const width = window.innerWidth;
 
-  // Calculate grid columns based on minmax(300px, 1fr) with gap: 2rem
-  const gapSize = 32; // 2rem in pixels
-  const cardMinWidth = 300;
-  const containerPadding = width >= 1024 ? 64 : width >= 768 ? 40 : 32;
-  const availableWidth = width - containerPadding * 2;
-
-  // Calculate columns that can fit based on available width
-  let columns = Math.floor(
-    (availableWidth + gapSize) / (cardMinWidth + gapSize),
-  );
-  columns = Math.max(1, Math.min(columns, 5)); // Between 1 and 5 columns
-
-  // Show 4-5 complete rows to fill reasonable viewport space without excessive scrolling
-  // This ensures better space utilization while keeping UX reasonable
+  // Rows per page: 5 full rows on desktop, 4 on tablet/mobile
   let rows = 5;
   if (width < 768) {
     rows = 4; // Fewer rows on mobile
@@ -48,10 +35,32 @@ function getItemsPerPage() {
     rows = 4; // Fewer rows on tablet
   }
 
-  // Calculate total items to display
-  let itemsPerPage = columns * rows;
+  // Preferred: measure the REAL rendered grid. It sits beside the 320px
+  // filter sidebar, so its usable width is much smaller than the window's —
+  // computing columns from window width caused half-empty last rows.
+  const grid = document.getElementById("all-events-grid");
+  if (grid && grid.clientWidth > 0) {
+    const tracks = window.getComputedStyle(grid).gridTemplateColumns;
+    if (tracks && tracks !== "none") {
+      const cols = tracks.split(" ").filter(Boolean).length;
+      if (cols > 0) return cols * rows;
+    }
+  }
 
-  return itemsPerPage;
+  // Fallback: estimate from window width (grid not measurable yet).
+  // Mirrors style.css: minmax(260px,1fr) desktop, minmax(280px,1fr) <=1024px.
+  const gapSize = width < 1024 ? 24 : 32; // 1.5rem / 2rem in px
+  const cardMinWidth = width < 1024 ? 280 : 260;
+  const containerPadding = width >= 1024 ? 64 : width >= 768 ? 40 : 32;
+  const sidebarAllowance = width >= 1024 ? 320 : 0; // filter sidebar only on desktop
+  const availableWidth = width - containerPadding * 2 - sidebarAllowance;
+
+  let columns = Math.floor(
+    (availableWidth + gapSize) / (cardMinWidth + gapSize),
+  );
+  columns = Math.max(1, Math.min(columns, 5)); // Between 1 and 5 columns
+
+  return columns * rows;
 }
 
 let itemsPerPage = getItemsPerPage();
@@ -519,30 +528,75 @@ function initUserIcon() {
     }
   });
 
-  // Unified click handler for the profile button
-  if (userProfileBtn) {
-    userProfileBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (authController.state === authController.states.AUTHENTICATED) {
-        // Toggle dropdown if logged in
-        if (profileDropdown) profileDropdown.classList.toggle("show");
-      } else {
-        // Show login modal if guest - Ensure clean state
-        authController.clearSession();
-        if (loginModal) {
-          loginModal.style.display = "flex";
-          setTimeout(() => loginModal.classList.add("show"), 10);
-          if (
-            window.authController &&
-            window.authController.googleInitialized
-          ) {
-            window.authController.renderGoogleButton("googleSignInContainer");
-          }
-          // Manual button is already in HTML, logical handler added in initUserIcon
+  // Unified click handler for the profile button.
+  // 2026-10-02 freeze fix: the handler used to be bound ONCE inside init(),
+  // which awaits the auth/network handshake first — if that stalled, the
+  // icon had NO listener and every click was dead until a page refresh.
+  // Bind via capture-phase delegation instead: the icon ALWAYS responds,
+  // even if the handshake is still in flight, and any stuck overlay state
+  // is cleared before toggling.
+  const handleProfileTrigger = (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest("#userProfileBtn") : null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Clear stuck overlay states that otherwise block every click until refresh:
+    const loginModalEl = document.getElementById("loginModal");
+    if (loginModalEl && loginModalEl.style.display === "flex" && !loginModalEl.classList.contains("show")) {
+      loginModalEl.style.display = "none"; // half-open from an interrupted close
+    }
+    const cartDd = document.getElementById("cartDropdown");
+    if (cartDd && !cartDd.contains(e.target)) cartDd.classList.remove("show");
+
+    const dd = document.getElementById("profileDropdown");
+    if (authController.state === authController.states.AUTHENTICATED) {
+      // Toggle dropdown if logged in
+      if (dd) {
+        dd.classList.toggle("show");
+        btn.setAttribute("aria-expanded", dd.classList.contains("show") ? "true" : "false");
+      }
+    } else {
+      // Show login modal if guest - Ensure clean state
+      authController.clearSession();
+      if (loginModalEl) {
+        loginModalEl.style.display = "flex";
+        setTimeout(() => loginModalEl.classList.add("show"), 10);
+        // Render the Google button whenever GIS is ready, regardless of the
+        // controller-level `googleInitialized` flag (it can be false even
+        // though GIS already initialized and is idle — that mismatch caused
+        // an endless render/abort loop of hidden sign-in iframes, which
+        // starved the main thread and froze the page).
+        if (
+          window.google &&
+          window.google.accounts &&
+          window.google.accounts.id &&
+          window.authController
+        ) {
+          window.authController.renderGoogleButton("googleSignInContainer");
+        } else if (
+          window.authController &&
+          window.authController.googleInitialized
+        ) {
+          window.authController.renderGoogleButton("googleSignInContainer");
         }
       }
-    });
+    }
+  };
+  document.addEventListener("click", handleProfileTrigger, true);
 
+  // Escape closes the profile dropdown
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const dd = document.getElementById("profileDropdown");
+    if (dd && dd.classList.contains("show")) {
+      dd.classList.remove("show");
+      const btn = document.getElementById("userProfileBtn");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  if (userProfileBtn) {
     // Handle Manual Google Click (Added for restored button)
     const googleBtn = document.getElementById("googleSignIn");
     if (googleBtn) {
@@ -556,9 +610,16 @@ function initUserIcon() {
     }
   }
 
-  // Close dropdown on click outside
-  document.addEventListener("click", () => {
-    if (profileDropdown) profileDropdown.classList.remove("show");
+  // Close dropdown on click outside (clicks inside the profile container
+  // never close it — menu actions close it explicitly themselves).
+  document.addEventListener("click", (e) => {
+    const dd = document.getElementById("profileDropdown");
+    if (!dd || !dd.classList.contains("show")) return;
+    const container = document.querySelector(".user-profile-container");
+    if (container && container.contains(e.target)) return;
+    dd.classList.remove("show");
+    const btn = document.getElementById("userProfileBtn");
+    if (btn) btn.setAttribute("aria-expanded", "false");
   });
 
   // Logout logic
@@ -1354,6 +1415,7 @@ window.addEventListener(
     const newLimit = getItemsPerPage();
     if (newLimit !== itemsPerPage) {
       itemsPerPage = newLimit;
+      currentPage = 1; // avoid landing on a page that no longer exists
       renderDiscovery();
     }
   }, 250),
@@ -1910,6 +1972,94 @@ function initSmoothScroll() {
   });
 }
 
+// Homepage celebration layer — rising balloons + rotating exciting event popups.
+// Purely visual: fixed overlay, pointer-events none, skipped for reduced-motion users.
+function initHomeCelebration() {
+  if (document.getElementById("homeCelebrationLayer")) return;
+  if (!document.body || !document.body.animate) return;
+
+  const layer = document.createElement("div");
+  layer.id = "homeCelebrationLayer";
+  layer.setAttribute("aria-hidden", "true");
+  document.body.appendChild(layer);
+
+  // Brand-flavored palette pairs [base, shade]
+  const palette = [
+    ["#ff5a5f", "#c93a3e"],
+    ["#f59e0b", "#d97706"],
+    ["#2563eb", "#1e40af"],
+    ["#7c3aed", "#5b21b6"],
+    ["#10b981", "#047857"],
+  ];
+
+  const spawnBalloon = (delayMs) => {
+    const balloon = document.createElement("div");
+    balloon.className = "balloon";
+    const [b1, b2] = palette[Math.floor(Math.random() * palette.length)];
+    const duration = 9000 + Math.random() * 7000;
+    balloon.style.setProperty("--b1", b1);
+    balloon.style.setProperty("--b2", b2);
+    balloon.style.left = `${Math.random() * 92 + 2}%`;
+    layer.appendChild(balloon);
+    // Motion is driven by the Web Animations API so it cannot be silently
+    // disabled by CSS-level reduced-motion overrides.
+    const rise = balloon.animate(
+      [
+        { transform: "translate3d(0, 0, 0) rotate(-4deg) scale(0.9)", opacity: 0 },
+        { transform: "translate3d(0, -8vh, 0) rotate(-2deg) scale(0.98)", opacity: 0.95, offset: 0.08 },
+        { transform: "translate3d(26px, -28vh, 0) rotate(5deg) scale(1)", offset: 0.25 },
+        { transform: "translate3d(-22px, -56vh, 0) rotate(-5deg) scale(1.02)", offset: 0.5 },
+        { transform: "translate3d(18px, -82vh, 0) rotate(4deg) scale(1)", opacity: 0.92, offset: 0.75 },
+        { transform: "translate3d(-10px, -118vh, 0) rotate(-3deg) scale(0.98)", opacity: 0 },
+      ],
+      { duration, delay: delayMs, easing: "linear", fill: "both" }
+    );
+    rise.onfinish = () => balloon.remove();
+    rise.oncancel = () => balloon.remove();
+  };
+
+  // Warm up the sky with a staggered burst, then release one every few seconds.
+  for (let i = 0; i < 12; i++) spawnBalloon(i * 550);
+  setInterval(() => spawnBalloon(0), 3200);
+
+  // Exciting popup messages that rotate above the hero.
+  const pop = document.createElement("div");
+  pop.className = "home-pop";
+  layer.appendChild(pop);
+  const messages = [
+    "🎉 New events drop every week — don't miss out!",
+    "🔥 <b>Trending now:</b> top shows are selling fast!",
+    "🎟️ Grab your tickets in <b>under a minute</b>",
+    "⭐ Tap the ♥ on any event to save it for later",
+    "🎈 Big moments live here — explore what's on!",
+    "🎵 Concerts, comedy, tech & more — all in one place",
+    "⚡ Instant e-tickets straight to your inbox",
+  ];
+  let msgIndex = 0;
+  const showPop = () => {
+    pop.innerHTML = messages[msgIndex % messages.length];
+    msgIndex++;
+    pop.animate(
+      [
+        { opacity: 0, transform: "translate(-50%, -16px)" },
+        { opacity: 1, transform: "translate(-50%, 0)" },
+      ],
+      { duration: 450, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" }
+    );
+    setTimeout(() => {
+      pop.animate(
+        [
+          { opacity: 1, transform: "translate(-50%, 0)" },
+          { opacity: 0, transform: "translate(-50%, -16px)" },
+        ],
+        { duration: 450, easing: "ease", fill: "forwards" }
+      );
+    }, 4600);
+  };
+  setTimeout(showPop, 1400);
+  setInterval(showPop, 9000);
+}
+
 // Initialize all functions
 async function init() {
   // Events are public content and must not wait for the session handshake.
@@ -1925,6 +2075,7 @@ async function init() {
   initPaginationListeners();
   initSmoothScroll();
   initHeaderScroll();
+  initHomeCelebration();
   if (typeof initGoogleAuth === "function") initGoogleAuth();
   if (typeof initUserLogin === "function") initUserLogin();
 

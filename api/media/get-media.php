@@ -64,9 +64,11 @@ try {
     // 2. Ensure "Event Assets" exists and Get all folders for current view
     $check_stmt = $pdo->prepare("SELECT id FROM media_folders WHERE client_id = ? AND name = 'Event Assets' LIMIT 1");
     $check_stmt->execute([$client_id]);
-    if (!$check_stmt->fetch()) {
+    $eaFolderId = $check_stmt->fetchColumn();
+    if (!$eaFolderId) {
         $create_stmt = $pdo->prepare("INSERT INTO media_folders (client_id, name, is_deleted, created_at) VALUES (?, 'Event Assets', 0, NOW())");
         $create_stmt->execute([$client_id]);
+        $eaFolderId = $pdo->lastInsertId();
     }
 
     // Auto-fix misplaced files: move files with 'Event Assets' name into the corresponding folder ID
@@ -76,24 +78,64 @@ try {
         WHERE client_id = ? AND folder_id IS NULL AND folder_name = 'Event Assets'
     ")->execute([$client_id, $client_id]);
 
-    // Sync missing event images into media table
-    $pdo->prepare("
-        INSERT INTO media (client_id, folder_id, folder_name, file_name, file_path, file_type, is_deleted)
-        SELECT e.client_id, 
-               (SELECT id FROM media_folders mf WHERE mf.client_id = e.client_id AND mf.name = 'Event Assets' AND mf.is_deleted = 0 LIMIT 1),
-               'Event Assets',
-               SUBSTRING_INDEX(e.image_path, '/', -1),
-               e.image_path,
-               'image',
-               0
-        FROM events e
-        WHERE e.image_path IS NOT NULL 
-          AND e.image_path != ''
-          AND e.client_id = ?
-          AND NOT EXISTS (
-              SELECT 1 FROM media m WHERE m.file_path = e.image_path COLLATE utf8mb4_unicode_ci
-          )
-    ")->execute([$client_id]);
+    // Sync missing event images into media table.
+    // (2026-09-29 fix: previous set-based INSERT omitted file_size/file_extension —
+    // both NOT NULL — so MySQL 1364 aborted it and the whole request 500'd.
+    // Now per-row with real file sizes; one bad row can't kill the listing.)
+    try {
+        $missing_stmt = $pdo->prepare("
+            SELECT e.client_id, e.image_path
+            FROM events e
+            WHERE e.image_path IS NOT NULL
+              AND e.image_path != ''
+              AND e.client_id = ?
+              AND e.deleted_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM media m WHERE m.file_path = e.image_path COLLATE utf8mb4_unicode_ci
+              )
+        ");
+        $missing_stmt->execute([$client_id]);
+        $missing = $missing_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($missing) {
+            $ins_stmt = $pdo->prepare("
+                INSERT INTO media (client_id, folder_id, folder_name, file_name, file_extension, file_path, file_type, file_size, mime_type, is_deleted)
+                VALUES (?, ?, 'Event Assets', ?, ?, ?, 'image', ?, ?, 0)
+            ");
+            $rootDir = dirname(__DIR__, 3);
+            foreach ($missing as $row) {
+                $path = str_replace('\\', '/', $row['image_path']);
+                $fileName = basename($path);
+                $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                $abs = $rootDir . $path;
+                $size = 0;
+                if (is_file($abs)) {
+                    $fs = filesize($abs);
+                    if ($fs !== false) { $size = (int)$fs; }
+                }
+                $mime = null;
+                if ($size > 0 && function_exists('mime_content_type')) {
+                    $m = @mime_content_type($abs);
+                    if ($m !== false) { $mime = $m; }
+                }
+                try {
+                    $ins_stmt->execute([
+                        $row['client_id'],
+                        $eaFolderId,
+                        $fileName,
+                        $ext !== '' ? $ext : null,
+                        $path,
+                        $size,
+                        $mime,
+                    ]);
+                } catch (Throwable $row_err) {
+                    error_log("[Get Media Sync Row Error] {$row['image_path']}: " . $row_err->getMessage());
+                }
+            }
+        }
+    } catch (Throwable $sync_err) {
+        error_log("[Get Media Sync Error] " . $sync_err->getMessage());
+    }
 
     $folders_sql = "SELECT id, name, created_at FROM media_folders WHERE client_id = ? AND is_deleted = ?";
     $f_params = [$client_id, $is_trash];

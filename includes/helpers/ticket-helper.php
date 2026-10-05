@@ -196,7 +196,7 @@ function generateTicketQRCode(array $ticketData): string
 
         $baseAppUrl = defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/');
         if (empty($baseAppUrl)) {
-            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $baseAppUrl = $scheme . '://' . $host;
         }
@@ -205,6 +205,26 @@ function generateTicketQRCode(array $ticketData): string
             $lanIp = gethostbyname(gethostname());
             if ($lanIp !== gethostname() && $lanIp !== '127.0.0.1' && filter_var($lanIp, FILTER_VALIDATE_IP)) {
                 $baseAppUrl = str_replace($parsedHost, $lanIp, $baseAppUrl);
+            }
+        }
+        // Portability: the QR must resolve on the host the ticket viewer is
+        // actually browsing. If the app is reached via localhost/LAN while
+        // APP_URL points at the production domain (or vice versa), a phone
+        // scanning the code would land on the wrong machine and fail. The
+        // current request host always wins when present.
+        $requestHost = $_SERVER['HTTP_HOST'] ?? '';
+        if ($requestHost !== '') {
+            $configHost = parse_url($baseAppUrl, PHP_URL_HOST) ?? '';
+            $configIsLocal = in_array($configHost, ['localhost', '127.0.0.1'], true);
+            $requestIsLocal = (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $requestHost);
+            if ($configHost !== '' && strcasecmp($configHost, preg_replace('/:\\d+$/', '', $requestHost)) !== 0
+                && ($configIsLocal !== $requestIsLocal)) {
+                // Mismatched host class — rebuild the URL from the request.
+                $reqScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                if ((($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') || (($_SERVER['SERVER_PORT'] ?? 80) == 443)) {
+                    $reqScheme = 'https';
+                }
+                $baseAppUrl = $reqScheme . '://' . $requestHost;
             }
         }
         $verificationUrl = $baseAppUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($ticketData['barcode'] ?? '');
@@ -288,98 +308,15 @@ function generateTicketQRCode(array $ticketData): string
 /**
  * Generate a PDF ticket with all required fields + embedded QR code.
  *
- * Required fields in $ticketData:
- *   event_name, event_date, event_time, location / address,
- *   user_name, barcode, event_id, user_id, payment_status
- *
+ * @deprecated Ticket emails are attachment-free (the rich HTML email embeds
+ *   the QR code). This stub remains only for backward compatibility with any
+ *   legacy caller and always returns an empty string without doing work.
  * @param array $ticketData
- * @return string Path to generated PDF file
- */
+ * @return string Always empty string */
 function generateTicketPDF(array $ticketData): string
 {
-    ini_set('memory_limit', '256M');
-
-    $ticket_id = trim((string) ($ticketData['barcode'] ?? ''));
-    if ($ticket_id === '') {
-        error_log('[TicketHelper] generateTicketPDF: missing barcode');
-        return '';
-    }
-
-    $qrCodePath = generateTicketQRCode($ticketData);
-    if ($qrCodePath === '' || !file_exists($qrCodePath)) {
-        error_log('[TicketHelper] QR generation failed for ticket ' . $ticket_id);
-        return '';
-    }
-
-    $event_image_path = $ticketData['event_image'] ?? $ticketData['image_path'] ?? null;
-    $price_value = $ticketData['price'] ?? $ticketData['amount'] ?? null;
-    $payment_status = $ticketData['payment_status'] ?? 'paid';
-    $amountFloat = is_numeric($price_value) ? (float) $price_value : 0.0;
-    $isFreeTicket = $payment_status === 'free'
-        || $amountFloat <= 0
-        || $price_value === '0'
-        || strtolower((string) $price_value) === 'free';
-
-    if ($isFreeTicket) {
-        $ticket_type = 'FREE';
-        $event_type_label = 'Free';
-    } else {
-        $ticket_type = strtoupper($ticketData['ticket_type'] ?? 'REGULAR');
-        $event_type_label = $ticket_type;
-    }
-
-    $qr_base64 = base64_encode_image($qrCodePath);
-    if ($qr_base64 === '') {
-        error_log('[TicketHelper] QR code image encoding failed for barcode ' . $ticket_id);
-        return '';
-    }
-
-    $event_img_base64 = '';
-    if ($event_image_path) {
-        $event_img_base64 = base64_encode_image($event_image_path);
-        if ($event_img_base64 === '') {
-            error_log('[TicketHelper] Event image encoding failed for path: ' . $event_image_path);
-        }
-    }
-
-    $richTicketData = [
-        'barcode'             => $ticket_id,
-        'ticket_id'           => $ticket_id,
-        'event_name'          => $ticketData['event_name'] ?? 'Event',
-        'user_name'           => $ticketData['user_name'] ?? 'Attendee',
-        'location'            => $ticketData['address'] ?? $ticketData['location'] ?? 'See event details',
-        'address'             => $ticketData['address'] ?? null,
-        'state'               => $ticketData['state'] ?? null,
-        'locations'           => $ticketData['locations'] ?? null,
-        'organizer'           => $ticketData['organizer'] ?? null,
-        'ticket_type'         => $ticket_type,
-        'ticket_type_display' => $event_type_label,
-        'qr_base64'           => $qr_base64,
-        'qr_path'             => $qrCodePath,
-        'event_image'         => $event_img_base64 !== '' ? $event_img_base64 : $event_image_path,
-        'amount'              => $price_value,
-        'event_date'          => $ticketData['event_date'] ?? null,
-        'event_time'          => $ticketData['event_time'] ?? null,
-        'selected_locs'       => $ticketData['selected_locs'] ?? null,
-        'quantity'            => $ticketData['quantity'] ?? 1,
-    ];
-
-    $dir = __DIR__ . '/../../public/assets/event_assets/tickets/';
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
-    }
-
-    $filePath = $dir . 'ticket_' . $ticket_id . '.pdf';
-
-    if (!EmailHelper::regeneratePdf($richTicketData, $filePath)) {
-        error_log('[TicketHelper] regeneratePdf failed for ticket ' . $ticket_id);
-        return '';
-    }
-
-    if (!file_exists($filePath) || filesize($filePath) < 500) {
-        error_log('[TicketHelper] PDF missing or too small after generation: ' . $filePath);
-        return '';
-    }
-
-    return $filePath;
+    // Deprecated no-op: ticket emails are attachment-free (the rich HTML
+    // email embeds the QR code). Downloadable PDFs are produced on demand
+    // by api/tickets/download-ticket.php via EmailHelper::regeneratePdf.
+    return '';
 }

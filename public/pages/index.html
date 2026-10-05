@@ -112,6 +112,10 @@
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" /></noscript>
 
+    <!-- Modern homepage UI layer — loaded LAST so it overrides everything above (UI only) -->
+    <link rel="preload" href="../css/home-modern.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="../css/home-modern.css" /></noscript>
+
     <!-- JSON-LD: Organization structured data -->
     <script type="application/ld+json">
     {
@@ -194,6 +198,7 @@
               </div>
               <hr />
               <a href="#" id="viewProfile">Profile</a>
+              <a href="#" id="checkTicketBtn">🎟️ Check Ticket</a>
               <a href="#" onclick="toggleCartView(event)" style="display: flex; justify-content: space-between; align-items: center;">
                 My Favorites
                 <span id="cartBadge" style="background: #ff5a5f; color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none;">0</span>
@@ -677,6 +682,7 @@
           <h4>Customer care</h4>
           <ul>
             <li>Help center</li>
+            <li><a href="/public/assets/eventra-platform-guide.pdf" download title="Download the complete Eventra platform guide (PDF)">Platform Guide (PDF)</a></li>
             <li>Terms &amp; Conditions</li>
             <li>Privacy policy</li>
             <li>Cookie policy</li>
@@ -1070,6 +1076,9 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" onload="if(window.lucide)window.lucide.createIcons();" defer></script>
     <script src="../js/heartbeat.js" defer></script>
     <script src="../js/main.js" defer></script>
+    <script src="../js/ticket-verification.js" defer></script>
+    <script src="../js/check-ticket.js" defer></script>
+    <script src="../js/holiday-alerts.js" defer></script>
   </body>
 </html>
 

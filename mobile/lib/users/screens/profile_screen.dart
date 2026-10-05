@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
+import '../../core/theme/app_theme.dart' show Breakpoints;
 import '../../core/widgets/adaptive_dialogs.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -107,8 +109,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.user;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: SingleChildScrollView(
+      appBar: AppBar(title: const BrandLogo(size: 32)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: Breakpoints.formMaxWidth(MediaQuery.sizeOf(context).width),
+          ),
+          child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
@@ -203,6 +210,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

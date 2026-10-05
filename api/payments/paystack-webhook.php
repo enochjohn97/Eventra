@@ -23,6 +23,15 @@ $unverified_event = json_decode($input, true);
 $reference = $unverified_event['data']['reference'] ?? '';
 
 $activeSecretKey = !empty(PAYSTACK_WEBHOOK_SECRET) ? PAYSTACK_WEBHOOK_SECRET : PAYSTACK_SECRET_KEY;
+if (empty($activeSecretKey)) {
+    // No secret configured — signature verification is impossible. Respond
+    // cleanly instead of letting the empty HMAC key produce a misleading
+    // pass/fail. Ops still see the problem in the error log.
+    error_log('[Paystack Webhook] No webhook/secret key configured — rejecting payload.');
+    http_response_code(503);
+    echo json_encode(['success' => false, 'message' => 'Webhook not configured.']);
+    exit;
+}
 
 if ($reference) {
     $keyStmt = $pdo->prepare("
@@ -252,36 +261,15 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             $barcode = $barcodes[0]; // Primary for email notified
         } else {
             $barcode = $existingTickets[0]['barcode'];
-            $pdfPath = __DIR__ . '/../../public/assets/event_assets/tickets/ticket_' . $barcode . '.pdf';
-            if (!file_exists($pdfPath)) {
-                $ticketData = [
-                    'barcode'        => $barcode,
-                    'event_id'       => $order['event_id'],
-                    'user_id'        => $order['user_id'],
-                    'order_id'       => $order['id'],
-                    'event_name'     => $order['event_name'],
-                    'event_date'     => $order['event_date'],
-                    'event_time'     => $order['event_time'],
-                    'location'       => $order['location'] ?? $order['address'],
-                    'address'        => $order['address'],
-                    'state'          => $order['state'] ?? null,
-                    'locations'      => $order['locations'] ?? null,
-                    'user_name'      => $order['user_name'],
-                    'payment_status' => 'paid',
-                    'event_image'    => $order['image_path'] ?? null,
-                ];
-                $pdfPath = generateTicketPDF($ticketData);
-            }
-            $barcode = $existingTickets[0]['barcode'];
         }
 
         // ── Post-commit: notifications + email/SMS run AFTER the transaction commits ──
         // Captured in a closure so the DB transaction can commit instantly and the
         // buyer's ticket data is durable before any slow network I/O happens.
         $GLOBALS['_webhook_post_commit'] = function () use ($barcodes, $ticketDataMap, $buyerName, $buyerEmail, $order) {
-            // Send one email per purchase with one PDF attachment per ticket.
+            // One consolidated, attachment-free email per purchase: the QR is
+            // embedded in the HTML body; PDFs are never emailed.
             $emailData = null;
-            $emailAttachments = [];
             foreach ($barcodes as $bc) {
                 $td = $ticketDataMap[$bc] ?? [
                     'barcode'     => $bc,
@@ -299,19 +287,13 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     'order_id'    => $order['id'],
                     'amount'      => $order['amount'],
                 ];
-                $sendTo = $td['buyer_email'] ?? $order['user_email'];
-
-                $pdfPath = generateTicketPDF($td);
-                $currentPdf = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
-
                 if ($emailData === null) {
                     $emailData = $td;
-                    $emailRecipient = $sendTo;
                 }
-                $emailAttachments = array_merge($emailAttachments, $currentPdf);
             }
             if ($emailData !== null) {
-                EmailHelper::sendTicketEmailFull($emailRecipient, $emailData, $emailAttachments);
+                $emailRecipient = $emailData['buyer_email'] ?? $order['user_email'];
+                EmailHelper::sendTicketEmailFull($emailRecipient, $emailData);
             }
 
             // SMS to buyer

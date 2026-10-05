@@ -17,6 +17,10 @@ $client_id   = $data['client_id'] ?? null;
 $status      = $data['status'] ?? null;      // 1 = approve, 0 = decline
 $admin_notes = trim($data['admin_notes'] ?? '');
 
+// SECURITY: admin notes are echoed into client notification emails and the
+// client dashboard — strip tags + cap length to prevent HTML injection.
+$admin_notes = mb_substr(strip_tags($admin_notes), 0, 500);
+
 if (!$client_id || !in_array($status, [0, 1], true)) {
     echo json_encode(['success' => false, 'message' => 'Invalid parameters. Need client_id and status (0 or 1).']);
     exit;
@@ -99,9 +103,11 @@ try {
                 $type = 'account_declined';
             }
 
-            // Create HTML message for Email
+            // Create HTML message for Email (with Eventra brand header/logo)
+            $brandHeaderHtml = EmailHelper::brandEmailHeaderHtml('20px');
             $msg_html = "
             <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; border-radius: 8px; background: #ffffff;'>
+                {$brandHeaderHtml}
                 <div style='margin-bottom: 20px; font-size: 15px;'>
                     <p style='margin-top: 0;'>{$msg}</p>
                 </div>

@@ -411,7 +411,14 @@ class AuthController {
       this.showButtonFallback(containerId);
       return;
     }
-    if (!this.googleInitialized) {
+    // The controller-level flag can lag behind the real GIS state (shared
+    // latch across portals, retry paths, etc). When the Google SDK itself is
+    // present, always allow a render — the guard below previously blocked
+    // re-renders and the manual-button path rendered in a loop instead.
+    if (!this.googleInitialized &&
+        !(typeof window.google !== "undefined" &&
+          window.google.accounts &&
+          window.google.accounts.id)) {
       return;
     }
 
@@ -430,13 +437,26 @@ class AuthController {
         height: container.offsetHeight,
       });
 
-      // Clear any existing content EXCEPT if it contains rendered content already
+      // Idempotent render: if the GIS button/iframe is already in place,
+      // do NOTHING. Re-clearing + re-calling renderButton() makes Google
+      // create a NEW iframe every time; on networks where the GIS button
+      // request fails (403/abort, e.g. VPN/region blocks), the old code
+      // spun forever creating thousands of dead iframes — this silently
+      // starved the main thread and FROZE the whole page (the profile icon
+      // "stuck" bug). One render attempt per container per page load.
       const hasExistingButton =
         container.querySelector('[data-testid="button"]') ||
-        container.querySelector(".gis-button");
-      if (!hasExistingButton) {
-        container.innerHTML = "";
+        container.querySelector(".gis-button") ||
+        container.querySelector("iframe") ||
+        (container.querySelector("button") && !container.querySelector("#googleSignIn")) ||
+        container.dataset.gisRenderAttempted === "1";
+      if (hasExistingButton) {
+        return;
       }
+      container.dataset.gisRenderAttempted = "1";
+
+      // Clear any stale non-button content, then render once.
+      container.innerHTML = "";
 
       // Render the button with error handling
       try {
@@ -449,20 +469,15 @@ class AuthController {
           logo_alignment: "left",
         });
 
-        // Verify the button was actually rendered
-        let renderAttempt = 0;
-        const verifyRender = setInterval(() => {
-          renderAttempt++;
+        // Verify the button was actually rendered — SINGLE check, no polling
+        // loop. The manual Google button below remains usable either way.
+        setTimeout(() => {
           const hasButton = container.querySelector("button") !== null;
           const hasIframe = container.querySelector("iframe") !== null;
-
-          if (hasButton || hasIframe) {
-            clearInterval(verifyRender);
-          } else if (renderAttempt > 10) {
-            clearInterval(verifyRender);
+          if (!hasButton && !hasIframe) {
             this.showButtonFallback(containerId);
           }
-        }, 50);
+        }, 800);
       } catch (renderError) {
         this.showButtonFallback(containerId);
       }

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eventra Mobile — UI Preview</title>
+<style>
+  :root{
+    --primary:#072A8E; --accent:#395CAA; --text:#111827; --muted:#6B7280;
+    --bg:#F9FAFC; --card:#fff; --coral:#FF5A5F; --success:#388E3C; --err:#EF4444;
+    --line:#EAEEF2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+  body{background:#0E1526;padding:28px 20px 60px;color:#fff;}
+  h1{font-size:26px;font-weight:800;letter-spacing:-0.5px;margin:6px 0 4px;}
+  h1 span{color:var(--coral);}
+  .sub{color:#8ea0bf;font-size:13px;margin-bottom:26px;}
+  .board{margin-bottom:44px;}
+  .board-title{font-size:15px;font-weight:700;color:#cdd9ee;margin-bottom:14px;letter-spacing:.3px;}
+  .board-title b{color:var(--coral);}
+  .row{display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap;}
+  .device{background:#101828;border-radius:42px;padding:12px;box-shadow:0 24px 60px -18px rgba(0,0,0,.75);flex:0 0 auto;}
+  .device.tablet{border-radius:34px;}
+  .screen{position:relative;width:360px;height:780px;border-radius:32px;overflow:hidden;background:var(--bg);color:var(--text);}
+  .tablet .screen{width:560px;height:760px;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#101828;border-radius:0 0 16px 16px;z-index:60;}
+  .status{position:absolute;top:0;left:0;right:0;height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:12.5px;font-weight:600;z-index:55;color:var(--text);}
+  .status.onimg{color:#fff;}
+  .status .icons{display:flex;gap:5px;align-items:center;}
+  .status .dot{width:15px;height:10px;display:inline-block;}
+  .label{margin-top:12px;text-align:center;color:#8ea0bf;font-size:12.5px;font-weight:600;}
+  /* ── shared app UI ── */
+  .appbar{background:#fff;padding:40px 16px 10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 0 var(--line);position:relative;z-index:10;}
+  .appbar.plain{padding-top:44px;}
+  .brand{display:flex;align-items:center;gap:8px;}
+  .brand img{width:30px;height:30px;}
+  .brand .wm{font-size:17px;font-weight:800;letter-spacing:-0.5px;color:#101A2E;}
+  .brand .wm i{color:var(--coral);font-style:normal;}
+  .iconbtn{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:18px;background:transparent;}
+  .body{height:calc(100% - 88px);overflow:hidden;position:relative;}
+  .search{margin:12px 16px 8px;background:#fff;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;padding:0 12px;height:50px;color:var(--muted);font-size:14px;gap:9px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .grid1{padding:6px 16px 16px;display:flex;flex-direction:column;gap:14px;}
+  .grid2{padding:6px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .ecard{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.09);}
+  .ecard .img{position:relative;height:150px;background:#ddd center/cover;}
+  .ecard .img.tall{height:132px;}
+  .pill{position:absolute;top:10px;left:10px;background:#fff;border-radius:20px;padding:5px 10px;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.14);}
+  .stat{position:absolute;bottom:10px;left:10px;display:flex;align-items:center;gap:5px;background:rgba(114,47,55,.13);border-radius:20px;padding:4px 9px;font-size:10.5px;font-weight:700;color:#722F37;}
+  .stat .dot{width:6px;height:6px;border-radius:50%;background:#722F37;}
+  .tlabel{font-size:10px;color:var(--muted);font-weight:500;margin-top:1px;}
+  .tierpick{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;margin-bottom:14px;}
+  .tierpick div{flex:1;text-align:center;padding:11px 4px;font-size:13px;font-weight:600;color:var(--muted);border-right:1px solid var(--line);}
+  .tierpick div:last-child{border-right:none;}
+  .tierpick div.sel{background:var(--primary);color:#fff;}
+  .tierpick div small{display:block;font-size:10px;font-weight:700;margin-top:2px;}
+  .seg .meta{margin-bottom:0;}
+  .heart{position:absolute;top:6px;right:6px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.93);display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .heart.loved{color:#e0245e;}
+  .ecard .pad{padding:12px 14px 14px;}
+  .eid{font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.2px;}
+  .ename{font-size:15.5px;font-weight:700;line-height:1.25;margin:3px 0 7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .meta{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;margin-bottom:3px;}
+  .meta svg{flex:0 0 auto;}
+  .pricerow{display:flex;justify-content:space-between;align-items:center;margin-top:9px;}
+  .price{font-size:15.5px;font-weight:800;color:var(--primary);}
+  .price.free{color:var(--success);}
+  .chip{background:rgba(7,42,142,.08);color:var(--primary);font-size:11px;padding:4px 8px;border-radius:8px;font-weight:600;}
+  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:#fff;display:flex;box-shadow:0 -4px 14px rgba(16,24,40,.07);padding:8px 4px 14px;z-index:20;}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);font-weight:600;}
+  .navitem.active{color:var(--primary);}
+  .navitem .ic{font-size:20px;line-height:1;}
+  /* buttons */
+  .btn{display:flex;width:100%;height:52px;border-radius:12px;align-items:center;justify-content:center;font-size:15.5px;font-weight:600;background:var(--primary);color:#fff;}
+  .btn.outline{background:#fff;color:var(--primary);border:1px solid var(--primary);}
+  .btn.google{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18);font-weight:600;font-size:15px;}
+  .btn.danger{background:#fff;color:#dc2626;border:1px solid #dc2626;}
+  /* splash */
+  .splash{background:#fff;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
+  .splash img{width:112px;height:112px;}
+  .splash .wm{font-size:34px;font-weight:800;letter-spacing:-1px;color:#101A2E;margin-top:14px;}
+  .splash .wm i{color:var(--coral);font-style:normal;}
+  .spinner{width:30px;height:30px;border:3px solid #ffd7d8;border-top-color:var(--coral);border-radius:50%;animation:spin 1s linear infinite;margin-top:28px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* welcome */
+  .welcome{height:100%;background:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab6f673e658e.png') center/cover;position:relative;display:flex;}
+  .welcome .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.85));}
+  .welcome .inner{position:relative;z-index:2;padding:60px 24px 24px;display:flex;flex-direction:column;width:100%;}
+  .welcome .brandwhite .wm{color:#fff;}
+  .welcome h2{color:#fff;font-size:33px;font-weight:800;line-height:1.12;margin-top:auto;}
+  .welcome p{color:rgba(255,255,255,.9);font-size:14.5px;line-height:1.45;margin:12px 0 26px;}
+  /* login */
+  .login{height:100%;padding:70px 24px 24px;display:flex;flex-direction:column;background:var(--bg);}
+  .login img{width:72px;height:72px;}
+  .login h2{font-size:27px;font-weight:800;margin-top:22px;}
+  .login p{color:var(--muted);line-height:1.45;margin-top:8px;font-size:14px;}
+  .login .push{margin-top:auto;}
+  /* detail sheet */
+  .sheetwrap{position:absolute;inset:0;background:rgba(0,0,0,.35);}
+  .sheet{position:absolute;left:0;right:0;bottom:0;top:52px;background:#fff;border-radius:24px 24px 0 0;overflow:hidden;display:flex;flex-direction:column;}
+  .sheet .hero{height:190px;position:relative;background:#ddd center/cover;}
+  .sheet .cbtns{position:absolute;top:12px;right:12px;display:flex;gap:8px;}
+  .cbtn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.18);}
+  .cbtn.loved{color:#e0245e;}
+  .sheet .pad{padding:18px 20px;overflow:hidden;}
+  .sheet h3{font-size:24px;font-weight:800;line-height:1.15;margin:2px 0 4px;}
+  .sheet .org{color:var(--muted);font-size:13px;}
+  .info{display:flex;gap:12px;align-items:center;padding:8px 0;}
+  .info .sq{width:38px;height:38px;border-radius:10px;background:rgba(7,42,142,.08);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:16px;flex:0 0 auto;}
+  .info .lab{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.6px;}
+  .info .val{font-weight:600;font-size:13.5px;}
+  .sheet .about{font-size:18px;font-weight:700;margin-top:6px;}
+  .sheet .abouttxt{color:var(--muted);font-size:12.5px;line-height:1.5;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  /* checkout */
+  .checkout{height:100%;padding:0 0 0 0;background:var(--bg);overflow:hidden;}
+  .checkout .inner{padding:14px 20px 20px;overflow:hidden;height:calc(100% - 88px);}
+  .evcard{background:#fff;border-radius:16px;padding:14px;display:flex;gap:12px;box-shadow:0 1px 3px rgba(16,24,40,.09);}
+  .evcard .thumb{width:72px;height:72px;border-radius:12px;background:#ddd center/cover;flex:0 0 auto;}
+  .evcard .t{font-weight:700;font-size:15px;line-height:1.25;}
+  .evcard .m{color:var(--muted);font-size:12.5px;margin-top:3px;}
+  .sect{font-size:16.5px;font-weight:700;margin:18px 0 10px;}
+  .field{background:#fff;border:1px solid var(--line);border-radius:12px;height:50px;display:flex;flex-direction:column;justify-content:center;padding:0 14px;position:relative;}
+  .field label{font-size:10.5px;color:var(--muted);font-weight:600;}
+  .field .v{font-size:14px;font-weight:500;color:var(--text);}
+  .field .req::after{content:" *";color:var(--err);}
+  .frow{display:flex;gap:12px;}
+  .frow .field{flex:1;}
+  .qty{display:flex;justify-content:space-between;align-items:center;margin-top:16px;}
+  .qty .stepper{display:flex;align-items:center;gap:14px;font-weight:700;font-size:16px;}
+  .qty .stepper .s{font-size:22px;color:var(--muted);}
+  .pr{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;}
+  .pr .l{font-weight:500;}
+  .pr .r{font-weight:600;}
+  .pr.total{font-size:15.5px;}
+  .pr.total .l,.pr.total .r{font-weight:800;color:var(--primary);}
+  .divider{height:1px;background:var(--line);margin:10px 0;}
+  .paybtn{margin-top:14px;}
+  /* paystack */
+  .psbody{background:#f3f5f9;height:calc(100% - 88px);padding:22px 18px;overflow:hidden;}
+  .psbox{background:#fff;border-radius:14px;padding:20px 16px;box-shadow:0 2px 10px rgba(16,24,40,.08);}
+  .pslogo{font-size:19px;font-weight:800;color:#0BA4DB;}
+  .pslogo span{color:#0e3b5c;}
+  .psamt{font-size:27px;font-weight:800;color:#0e3b5c;text-align:center;margin:16px 0 4px;}
+  .psfor{text-align:center;color:#6b7280;font-size:12px;margin-bottom:16px;}
+  .psfield{border:1px solid #dfe3ea;border-radius:9px;padding:10px 12px;margin-bottom:10px;}
+  .psfield label{font-size:10px;color:#8b94a3;font-weight:700;letter-spacing:.4px;}
+  .psfield .v{font-size:14px;color:#0e3b5c;font-weight:600;letter-spacing:1px;}
+  .psrow{display:flex;gap:10px;}
+  .psrow .psfield{flex:1;}
+  .psbtn{background:#0BA4DB;color:#fff;border-radius:9px;height:46px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;margin-top:6px;}
+  .pssec{display:flex;align-items:center;justify-content:center;gap:6px;color:#8b94a3;font-size:11px;margin-top:14px;}
+  /* success */
+  .success{height:calc(100% - 88px);padding:10px 24px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;overflow:hidden;}
+  .success img{width:64px;height:64px;align-self:center;}
+  .okcircle{width:86px;height:86px;border-radius:50%;background:rgba(56,142,60,.12);display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--success);margin-top:6px;}
+  .success h3{font-size:22px;font-weight:800;margin-top:16px;}
+  .success .ev{color:var(--muted);font-size:13.5px;margin-top:6px;}
+  .success .amt{font-weight:700;margin-top:6px;font-size:14px;}
+  .qrbox{background:#fff;border-radius:16px;padding:14px;box-shadow:0 6px 18px rgba(16,24,40,.13);margin-top:16px;}
+  .success .ref{font-size:11.5px;color:var(--muted);margin-top:10px;}
+  .success .push{margin-top:auto;width:100%;}
+  .btn.gap{margin-bottom:10px;}
+  /* tickets list */
+  .tcard{background:#fff;border-radius:16px;padding:14px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(16,24,40,.09);align-items:flex-start;}
+  .tcard .thumb{width:64px;height:64px;border-radius:12px;background:#ddd center/cover;flex:0 0 auto;}
+  .tcard .n{font-weight:700;font-size:15px;}
+  .tcard .d{color:var(--muted);font-size:12.5px;margin-top:3px;}
+  .tcard .bc{font-size:11px;color:var(--muted);margin-top:4px;}
+  .chips{display:flex;gap:8px;margin-top:8px;}
+  .sc{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(7,42,142,.08);color:var(--primary);}
+  .sc.green{background:rgba(56,142,60,.12);color:var(--success);}
+  .mailbtn{margin-left:auto;color:var(--muted);font-size:17px;}
+  /* profile */
+  .prof{padding:16px 22px;height:calc(100% - 88px);overflow:hidden;}
+  .avatar{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,#395CAA,#072A8E);color:#fff;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:800;margin:4px auto 0;}
+  .pname{text-align:center;font-weight:800;font-size:19px;margin-top:10px;}
+  .pmail{text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px;}
+  .prof .field{margin-bottom:12px;height:54px;}
+  /* M3 nav selected pill */
+  .navitem.active .ic{background:rgba(7,42,142,.1);border-radius:14px;padding:2px 16px;}
+  .kbd{background:#1b2740;border:1px solid #2c3b5e;color:#cdd9ee;border-radius:6px;padding:1px 7px;font-size:11.5px;}
+</style>
+</head>
+<body>
+
+<h1>Eventra <span>Mobile</span> — UI Preview</h1>  <div class="sub">Built from the live Flutter code — theme, real logo, REAL event data from the shared DB (paid tiers: Regular ₦100–1000, VIP ₦2000–5000; +10% platform fee, same math as web). Phone = 360×780 dp · iPad = 820×1100.</div>
+
+<!-- ══════════ BOARD 1 — Splash & Sign-in ══════════ -->
+<div class="board">
+  <div class="board-title">BOARD 1 · <b>Splash → Welcome → Google Sign-In</b></div>
+  <div class="row">
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ <span class="dot" style="background:#111827;border-radius:2px;"></span></span></div>
+        <div class="splash">
+          <img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png" alt="logo">
+          <div class="wm">eventra<i>.</i></div>
+          <div class="spinner"></div>
+        </div>
+      </div></div>
+      <div class="label">Splash — white background, real logo (navy removed)</div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status onimg"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="welcome">
+          <div class="shade"></div>
+          <div class="inner">
+            <div class="brand brandwhite"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png" style="width:40px;height:40px;"><span class="wm" style="font-size:22px;font-weight:800;">eventra<i style="color:var(--coral);font-style:normal;">.</i></span></div>
+            <h2>Discover Africa's<br>Best Events</h2>
+            <p>Concerts, festivals, conferences and more — all in one beautiful app.</p>
+            <div class="btn" style="margin-bottom:12px;">Get Started</div>
+            <div class="btn outline" style="background:transparent;color:#fff;border-color:#fff;">I already have an account</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="label">Welcome — brand lockup now on hero</div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="login">
+          <img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png" alt="logo">
+          <h2>Welcome to Eventra</h2>
+          <p>Sign in to discover events, save favorites, and get tickets.</p>
+          <div class="push"></div>
+          <div class="btn google">
+            <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.4 5.8c4.4-4.1 7.2-10.1 7.2-17.5z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.3-5.6l-7.4-5.8c-2 1.4-4.7 2.2-7.9 2.2-6.3 0-11.7-3.7-13.6-9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+            <span style="margin-left:10px;">Continue with Google</span>
+          </div>
+        </div>
+      </div></div>
+      <div class="label">Login — real logo replaces placeholder icon</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ BOARD 2 — Discover & Event details ══════════ -->
+<div class="board">
+  <div class="board-title">BOARD 2 · <b>Home (phone + iPad) → Event preview sheet</b> — live data via <span class="kbd">/api/events</span></div>
+  <div class="row">
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar" style="padding-top:40px;">
+          <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+          <div class="iconbtn">≡</div>
+        </div>
+        <div class="body">
+          <div class="search">🔍 <b style="color:var(--text);">kaduna</b> <span style="margin-left:auto;font-size:11px;color:var(--success);">2 results</span></div>
+          <div class="grid1">
+            <div class="ecard">
+              <div class="img" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6aba6ceb5c7ca.png');">
+                <div class="heart">♡</div>
+                <div class="stat"><span class="dot"></span>Upcoming</div>
+              </div>
+              <div class="pad">
+                <div class="eid">EVT-20260928-A6B1</div>
+                <div class="ename">Kaduna Book Fair</div>
+                <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 29, 2026</div>
+                <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Kaduna · Trade Fair Complex</div>
+                <div class="pricerow"><span><span class="price">₦110</span><div class="tlabel">(Regular)</div></span><span class="chip">Education</span></div>
+              </div>
+            </div>
+            <div class="ecard">
+              <div class="img" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab705744f808.png');">
+                <div class="heart loved">♥</div>
+                <div class="stat"><span class="dot"></span>Upcoming</div>
+              </div>
+              <div class="pad">
+                <div class="eid">EVT-20260926-…</div>
+                <div class="ename">Abuja National Tourism Expo</div>
+                <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 28, 2026</div>
+                <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Abuja · International Conference Centre</div>
+                <div class="pricerow"><span><span class="price">₦1,100 - ₦2,200</span><div class="tlabel">(Regular, VIP)</div></span><span class="chip">Tourism</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem active"><span class="ic">⌂</span>Home</div>
+          <div class="navitem"><span class="ic">♡</span>Favorites</div>
+          <div class="navitem"><span class="ic">▭</span>Tickets</div>
+          <div class="navitem"><span class="ic">◍</span>Profile</div>
+        </div>
+      </div></div>
+      <div class="label">Home — logo in app bar, 1-col phone grid</div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar" style="padding-top:40px;">
+          <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+          <div class="iconbtn">≡</div>
+        </div>
+        <div class="body" style="background:rgba(0,0,0,.32);"></div>
+        <div class="sheetwrap"></div>
+        <div class="sheet">
+          <div class="hero" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab704fe20a02.png');">
+            <div class="cbtns"><span class="cbtn">↗</span><span class="cbtn loved">♥</span><span class="cbtn">✕</span></div>
+          </div>
+          <div class="pad">
+            <div class="eid">EVT-20260927-…</div>
+            <h3>Lafia Heritage &amp; Tourism Day</h3>
+            <div class="org">Organized by Nelsona Events</div>
+            <div style="margin-top:10px;">
+              <div class="info"><span class="sq">📅</span><span><div class="lab">DATE</div><div class="val">Sep 30, 2026</div></span></div>
+              <div class="info"><span class="sq">🕐</span><span><div class="lab">TIME</div><div class="val">10:00 AM</div></span></div>
+              <div class="info"><span class="sq">📍</span><span><div class="lab">VENUE</div><div class="val">Lafia City Square, Nasarawa</div></span></div>
+              <div class="info"><span class="sq">▭</span><span><div class="lab">PRICE</div><div class="val">₦1,100 - ₦2,200 (Regular, VIP)</div></span></div>
+            </div>
+            <div class="about">About</div>
+            <div class="abouttxt">A celebration of Nasarawa's diverse cultures — arts, crafts, traditional music and cuisine in the heart of Lafia.</div>
+            <div class="btn" style="margin-top:12px;">Get Ticket</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="label">Event preview sheet — tap a card to open</div>
+    </div>
+
+    <div class="device tablet"><div class="screen">
+      <div class="notch" style="width:150px;"></div>
+      <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+      <div class="appbar" style="padding-top:40px;">
+        <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+        <div class="iconbtn">≡</div>
+      </div>
+      <div class="body">
+        <div class="search" style="max-width:720px;">🔍 Search events, venues, categories…</div>
+        <div class="grid2">
+          <div class="ecard">
+            <div class="img tall" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab7043e9a188.png');">
+              <div class="heart">♡</div>
+            </div>
+            <div class="pad">
+              <div class="ename">Ado-Ekiti Cultural &amp; Creative Showcase</div>
+              <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 30, 2026</div>
+              <div class="pricerow"><span><span class="price">₦1,100 - ₦2,200</span><div class="tlabel">(Regular, VIP)</div></span><span class="chip">Culture</span></div>
+            </div>
+          </div>
+          <div class="ecard">
+            <div class="img tall" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab704fe20a02.png');">
+              <div class="heart">♡</div>
+            </div>
+            <div class="pad">
+              <div class="ename">Lafia Heritage &amp; Tourism Day</div>
+              <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 30, 2026</div>
+              <div class="pricerow"><span><span class="price">₦1,100</span><div class="tlabel">(Regular)</div></span><span class="chip">Tourism</span></div>
+            </div>
+          </div>
+          <div class="ecard">
+            <div class="img tall" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab705744f808.png');">
+              <div class="heart">♡</div>
+            </div>
+            <div class="pad">
+              <div class="ename">Abuja National Tourism Expo</div>
+              <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 28, 2026</div>
+              <div class="pricerow"><span><span class="price">₦1,100 - ₦2,200</span><div class="tlabel">(Regular, VIP)</div></span><span class="chip">Tourism</span></div>
+            </div>
+          </div>
+          <div class="ecard">
+            <div class="img tall" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6aba6ceb5c7ca.png');">
+              <div class="heart">♡</div>
+            </div>
+            <div class="pad">
+              <div class="ename">Kaduna Book Fair</div>
+              <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 29, 2026</div>
+              <div class="pricerow"><span><span class="price">₦110</span><div class="tlabel">(Regular)</div></span><span class="chip">Education</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bottomnav">
+        <div class="navitem active"><span class="ic">⌂</span>Home</div>
+        <div class="navitem"><span class="ic">♡</span>Favorites</div>
+        <div class="navitem"><span class="ic">▭</span>Tickets</div>
+        <div class="navitem"><span class="ic">◍</span>Profile</div>
+      </div>
+    </div></div>
+    <div class="label">iPad — 2-column grid, centered 720dp content</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ BOARD 3 — Checkout & Payment ══════════ -->
+<div class="board">
+  <div class="board-title">BOARD 3 · <b>Checkout → Paystack (realtime payment) → Ticket with QR</b></div>
+  <div class="row">
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar plain">
+          <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+          <div class="iconbtn">←</div>
+        </div>
+        <div class="checkout"><div class="inner">
+          <div class="evcard">
+            <div class="thumb" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6aba6ceb5c7ca.png');"></div>
+            <div>
+              <div class="t">Kaduna Book Fair</div>
+              <div class="m">Sep 29, 2026</div>
+              <div class="m" style="font-size:11.5px;">Kaduna · Trade Fair Complex</div>
+            </div>
+          </div>
+          <div class="sect">Ticket Type</div>
+          <div class="tierpick">
+            <div class="sel">Regular<small>₦110</small></div>
+          </div>
+          <div class="sect" style="margin-top:4px;">Contact Information</div>
+          <div class="frow">
+            <div class="field"><label>FIRST NAME <span style="color:var(--err);">*</span></label><div class="v">Femi</div></div>
+            <div class="field"><label>LAST NAME <span style="color:var(--err);">*</span></label><div class="v">Kemi</div></div>
+          </div>
+          <div style="height:12px;"></div>
+          <div class="field"><label>EMAIL <span style="color:var(--err);">*</span></label><div class="v">postmail689@gmail.com</div></div>
+          <div style="height:12px;"></div>
+          <div class="field"><label>PHONE <span style="color:var(--err);">*</span></label><div class="v">0708 988 7654</div></div>
+          <div class="qty">
+            <span style="font-weight:600;">Quantity</span>
+            <span class="stepper"><span class="s">−</span>1<span class="s">＋</span></span>
+          </div>
+          <div class="pr"><span class="l">Subtotal (Regular × 1)</span><span class="r">₦100</span></div>
+          <div class="pr"><span class="l">Service fee (10%)</span><span class="r">₦10</span></div>
+          <div class="divider"></div>
+          <div class="pr total"><span class="l">Total</span><span class="r">₦110</span></div>
+          <div class="btn paybtn">Pay ₦110 with Paystack</div>
+        </div></div>
+      </div></div>
+      <div class="label">Checkout — real tier prices, fee math identical to web, auto-filled profile</div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar plain">
+          <span style="font-weight:700;font-size:16px;">Paystack Checkout</span>
+          <div class="iconbtn">✕</div>
+        </div>
+        <div class="psbody">
+          <div class="psbox">
+            <div class="pslogo">paystack<span>typ</span></div>
+            <div class="psamt">₦110.00</div>
+            <div class="psfor">Kaduna Book Fair · Regular × 1 · live Paystack key</div>
+            <div class="psfield"><label>CARD NUMBER</label><div class="v">4084 0840 8408 4081</div></div>
+            <div class="psrow">
+              <div class="psfield"><label>EXPIRY</label><div class="v">09/30</div></div>
+              <div class="psfield"><label>CVV</label><div class="v">•••</div></div>
+            </div>
+            <div class="psbtn">Pay ₦110.00</div>
+            <div class="pssec">🔒 Secured by <b>Paystack</b></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="label">Realtime payment — Paystack hosted page in secure WebView</div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar" style="background:transparent;box-shadow:none;"><span></span></div>
+        <div class="success">
+          <img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png" alt="logo">
+          <div class="okcircle">✓</div>
+          <h3>Payment Successful!</h3>
+          <div class="ev">Kaduna Book Fair · Regular</div>
+          <div class="amt">Amount: ₦110.00 — paid via Paystack (realtime)</div>
+          <div class="qrbox">
+            <svg width="170" height="170" viewBox="0 0 29 29" shape-rendering="crispEdges">
+              <rect width="29" height="29" fill="#fff"/>
+              <g fill="#111827">
+              <rect x="0" y="0" width="7" height="7"/><rect x="22" y="0" width="7" height="7"/><rect x="0" y="22" width="7" height="7"/>
+              <rect x="1" y="1" width="5" height="5" fill="#fff"/><rect x="23" y="1" width="5" height="5" fill="#fff"/><rect x="1" y="23" width="5" height="5" fill="#fff"/>
+              <rect x="2" y="2" width="3" height="3"/><rect x="24" y="2" width="3" height="3"/><rect x="2" y="24" width="3" height="3"/>
+              <rect x="9" y="1" width="1" height="1"/><rect x="11" y="0" width="2" height="1"/><rect x="14" y="1" width="1" height="2"/><rect x="16" y="0" width="1" height="1"/><rect x="18" y="1" width="2" height="1"/>
+              <rect x="9" y="3" width="2" height="1"/><rect x="13" y="3" width="1" height="1"/><rect x="15" y="4" width="2" height="1"/><rect x="19" y="3" width="1" height="1"/>
+              <rect x="10" y="5" width="1" height="2"/><rect x="12" y="6" width="2" height="1"/><rect x="16" y="5" width="1" height="1"/><rect x="18" y="6" width="1" height="1"/>
+              <rect x="1" y="9" width="1" height="1"/><rect x="3" y="9" width="2" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="0" y="12" width="2" height="1"/><rect x="4" y="12" width="1" height="2"/><rect x="6" y="13" width="1" height="1"/>
+              <rect x="1" y="15" width="1" height="1"/><rect x="3" y="16" width="2" height="1"/><rect x="5" y="15" width="1" height="1"/>
+              <rect x="9" y="9" width="2" height="2"/><rect x="13" y="9" width="1" height="1"/><rect x="15" y="10" width="2" height="1"/><rect x="19" y="9" width="1" height="2"/><rect x="21" y="10" width="1" height="1"/>
+              <rect x="10" y="12" width="1" height="1"/><rect x="12" y="13" width="2" height="1"/><rect x="17" y="12" width="1" height="2"/><rect x="20" y="13" width="2" height="1"/>
+              <rect x="9" y="15" width="1" height="1"/><rect x="11" y="16" width="2" height="1"/><rect x="14" y="15" width="1" height="2"/><rect x="16" y="17" width="2" height="1"/><rect x="19" y="16" width="1" height="1"/>
+              <rect x="22" y="15" width="1" height="1"/><rect x="24" y="16" width="1" height="2"/><rect x="26" y="15" width="2" height="1"/><rect x="23" y="18" width="2" height="1"/>
+              <rect x="0" y="18" width="1" height="1"/><rect x="2" y="19" width="2" height="1"/><rect x="5" y="18" width="1" height="2"/><rect x="6" y="20" width="1" height="1"/>
+              <rect x="9" y="19" width="2" height="1"/><rect x="12" y="20" width="1" height="1"/><rect x="14" y="19" width="1" height="1"/><rect x="17" y="20" width="2" height="1"/><rect x="20" y="19" width="1" height="1"/>
+              <rect x="9" y="22" width="1" height="1"/><rect x="11" y="23" width="1" height="1"/><rect x="13" y="22" width="2" height="1"/><rect x="16" y="23" width="1" height="1"/><rect x="18" y="22" width="1" height="2"/>
+              <rect x="21" y="22" width="1" height="1"/><rect x="24" y="23" width="2" height="1"/><rect x="27" y="22" width="1" height="1"/>
+              <rect x="10" y="25" width="1" height="1"/><rect x="12" y="26" width="2" height="1"/><rect x="15" y="25" width="1" height="1"/><rect x="17" y="26" width="2" height="1"/><rect x="22" y="25" width="1" height="1"/><rect x="25" y="26" width="1" height="1"/>
+              </g>
+            </svg>
+          </div>
+          <div class="ref">Reference: PSH_QA_8f3a9c21e7</div>
+          <div class="push">
+            <div class="btn outline gap">Resend Ticket Email</div>
+            <div class="btn">Back to Home</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="label">Success — webhook-verified, embedded QR ticket, email-only delivery</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ BOARD 4 — Library & Account ══════════ -->
+<div class="board">
+  <div class="board-title">BOARD 4 · <b>Favorites → Tickets → Profile</b> + iPad layouts</div>
+  <div class="row">
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar plain">
+          <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+          <div class="iconbtn">⟳</div>
+        </div>
+        <div class="body">
+          <div class="grid1">
+            <div class="ecard">
+              <div class="img" style="height:140px;background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab705744f808.png');">
+                <div class="heart loved">♥</div>
+              </div>
+              <div class="pad">
+                <div class="ename">Abuja National Tourism Expo</div>
+                <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 28, 2026</div>
+                <div class="pricerow"><span><span class="price">₦1,100 - ₦2,200</span><div class="tlabel">(Regular, VIP)</div></span><span class="chip">Tourism</span></div>
+              </div>
+            </div>
+            <div class="ecard">
+              <div class="img" style="height:140px;background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6aba6ceb5c7ca.png');">
+                <div class="heart loved">♥</div>
+              </div>
+              <div class="pad">
+                <div class="ename">Kaduna Book Fair</div>
+                <div class="meta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Sep 29, 2026</div>
+                <div class="pricerow"><span><span class="price">₦110</span><div class="tlabel">(Regular)</div></span><span class="chip">Education</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem"><span class="ic">⌂</span>Home</div>
+          <div class="navitem active"><span class="ic">♥</span>Favorites</div>
+          <div class="navitem"><span class="ic">▭</span>Tickets</div>
+          <div class="navitem"><span class="ic">◍</span>Profile</div>
+        </div>
+      </div></div>
+      <div class="label">Favorites — hearted events via <span class="kbd">/api/favorites</span></div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar plain">
+          <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+          <div class="iconbtn">⟳</div>
+        </div>
+        <div class="body">
+          <div class="grid1" style="gap:12px;">
+            <div class="tcard">
+              <div class="thumb" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6aba6ceb5c7ca.png');"></div>
+              <div style="flex:1;">
+                <div class="n">Kaduna Book Fair</div>
+                <div class="d">Sep 29, 2026</div>
+                <div class="bc">Barcode: TKT-20260930-4F2A</div>
+                <div class="chips"><span class="sc">VALID</span><span class="sc green">Email sent</span></div>
+              </div>
+              <div class="mailbtn">✉</div>
+            </div>
+            <div class="tcard">
+              <div class="thumb" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab704fe20a02.png');"></div>
+              <div style="flex:1;">
+                <div class="n">Lafia Heritage &amp; Tourism Day</div>
+                <div class="d">Sep 30, 2026</div>
+                <div class="bc">Barcode: TKT-20260930-9C71</div>
+                <div class="chips"><span class="sc">VALID</span><span class="sc green">Email sent</span></div>
+              </div>
+              <div class="mailbtn">✉</div>
+            </div>
+            <div class="tcard" style="opacity:.55;">
+              <div class="thumb" style="background-image:url('http://127.0.0.1:8099/public/assets/event_assets/event_6ab7043e9a188.png');"></div>
+              <div style="flex:1;">
+                <div class="n">Ado-Ekiti Cultural &amp; Creative Showcase</div>
+                <div class="d">Sep 30, 2026 · used</div>
+                <div class="bc">Barcode: TKT-20260928-2B19</div>
+                <div class="chips"><span class="sc" style="background:rgba(107,114,128,.12);color:#6B7280;">USED</span></div>
+              </div>
+              <div class="mailbtn">✉</div>
+            </div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem"><span class="ic">⌂</span>Home</div>
+          <div class="navitem"><span class="ic">♡</span>Favorites</div>
+          <div class="navitem active"><span class="ic">▭</span>Tickets</div>
+          <div class="navitem"><span class="ic">◍</span>Profile</div>
+        </div>
+      </div></div>
+      <div class="label">Tickets — QR-verified entry, "Resend email" action</div>
+    </div>
+
+    <div>
+      <div class="device"><div class="screen">
+        <div class="notch"></div>
+        <div class="status"><span>9:41</span><span class="icons">▲ ▾ ▮</span></div>
+        <div class="appbar plain">
+          <div class="brand"><img src="http://127.0.0.1:8099/public/assets/brand/logo-mark.png"><span class="wm">eventra<i>.</i></span></div>
+          <div class="iconbtn">↻</div>
+        </div>
+        <div class="prof">
+          <div class="avatar">FK</div>
+          <div class="pname">Femi Kemi</div>
+          <div class="pmail">postmail689@gmail.com</div>
+          <div class="field"><label>FULL NAME <span style="color:var(--err);">*</span></label><div class="v">Femi Kemi</div></div>
+          <div class="field"><label>EMAIL <span style="color:var(--err);">*</span></label><div class="v">postmail689@gmail.com</div></div>
+          <div class="field"><label>PHONE <span style="color:var(--err);">*</span></label><div class="v">07089887654</div></div>
+          <div class="btn" style="margin-top:8px;">Save Changes</div>
+          <div class="btn danger" style="margin-top:12px;">Log Out</div>
+        </div>
+        <div class="bottomnav">
+          <div class="navitem"><span class="ic">⌂</span>Home</div>
+          <div class="navitem"><span class="ic">♡</span>Favorites</div>
+          <div class="navitem"><span class="ic">▭</span>Tickets</div>
+          <div class="navitem active"><span class="ic">◍</span>Profile</div>
+        </div>
+      </div></div>
+      <div class="label">Profile — QA user from the shared database</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

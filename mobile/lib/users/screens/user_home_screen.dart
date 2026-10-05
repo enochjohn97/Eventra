@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../models/event_model.dart';
 import '../providers/events_provider.dart';
 import '../widgets/event_card.dart';
@@ -42,10 +43,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   int _columns(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    if (w >= 900) return 3;
-    if (w >= 600) return 2;
-    return 1;
+    return Breakpoints.gridColumns(MediaQuery.sizeOf(context).width);
   }
 
   @override
@@ -55,7 +53,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Discover Events'),
+        title: const BrandLogo(size: 32),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
@@ -81,30 +79,35 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'Search events, venues, categories...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              eventsProvider.setSearch('');
-                              eventsProvider.loadEvents(refresh: true);
-                              setState(() {});
-                            },
-                          )
-                        : null,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Search events, venues, categories...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  eventsProvider.setSearch('');
+                                  eventsProvider.loadEvents(refresh: true);
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                      ),
+                      onSubmitted: (v) {
+                        eventsProvider.setSearch(v.trim());
+                        eventsProvider.loadEvents(refresh: true);
+                      },
+                      onChanged: (_) => setState(() {}),
+                    ),
                   ),
-                  onSubmitted: (v) {
-                    eventsProvider.setSearch(v.trim());
-                    eventsProvider.loadEvents(refresh: true);
-                  },
-                  onChanged: (_) => setState(() {}),
                 ),
               ),
             ),
@@ -147,7 +150,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                     crossAxisCount: columns,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 0.78,
+                    childAspectRatio: Breakpoints.cardAspectRatio(
+                      MediaQuery.sizeOf(context).width,
+                    ),
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {

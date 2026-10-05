@@ -1,5 +1,38 @@
 import 'package:flutter/material.dart';
 
+/// Shared responsive breakpoints so phones, iPads/tablets and desktops all
+/// get an optimal layout from the same code.
+class Breakpoints {
+  static const double tablet = 600;
+  static const double desktop = 1024;
+  static const double wideDesktop = 1400;
+
+  /// Event-card grid columns per viewport width.
+  static int gridColumns(double width) {
+    if (width >= wideDesktop) return 4;
+    if (width >= desktop) return 3;
+    if (width >= tablet) return 2;
+    return 1;
+  }
+
+  /// Event-card aspect ratio (width/height) — wider cards on tablets get a
+  /// slightly shorter body so images stay balanced.
+  static double cardAspectRatio(double width) {
+    if (width >= desktop) return 0.84;
+    if (width >= tablet) return 0.8;
+    return 0.75;
+  }
+
+  /// Max width for single-column lists (tickets) on large screens.
+  static double listMaxWidth(double width) => width >= tablet ? 720 : double.infinity;
+
+  /// Max width for forms (checkout, profile) on large screens.
+  static double formMaxWidth(double width) => width >= tablet ? 640 : double.infinity;
+
+  /// Max width for the event detail sheet content on large screens.
+  static double sheetMaxWidth(double width) => width >= desktop ? 720 : double.infinity;
+}
+
 class AppTheme {
   static const Color primary = Color(0xFF072A8E);
   static const Color primaryDark = Color(0xFF000080);

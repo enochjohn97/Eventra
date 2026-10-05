@@ -253,31 +253,20 @@ try {
 
             $pdo->commit();
 
-            // 5. Generate PDFs (fast, local) — the SLOW email send happens AFTER
-            //    the buyer's response below. Previously the SMTP call blocked the
-            //    request and a >30s mail server froze checkout until PHP's
-            //    max_execution_time killed it, leaving the buyer with an empty
-            //    response even though the order succeeded.
+            // 5. Collect ticket data for the attachment-free confirmation email —
+            //    the SLOW email send happens AFTER the buyer's response below.
+            //    Previously the SMTP call blocked the request and a >30s mail
+            //    server froze checkout until PHP's max_execution_time killed it,
+            //    leaving the buyer with an empty response even though the order
+            //    succeeded.
             $freeEmailData = null;
-            $freePdfAttachments = [];
             $freeEmailRecipient = null;
             foreach ($allFreeTicketData as $ftd) {
                 $sendTo = $ftd['buyer_email'] ?? $user_email;
-                // Generate PDF attachment before sending email
-                $pdfAttachment = [];
-                try {
-                    $pdfFilePath = generateTicketPDF($ftd);
-                    if ($pdfFilePath && file_exists($pdfFilePath) && filesize($pdfFilePath) >= 1000) {
-                        $pdfAttachment = [$pdfFilePath];
-                    }
-                } catch (\Throwable $pdfErr) {
-                    error_log('[initialize.php] Free ticket PDF generation failed for ' . ($ftd['barcode'] ?? '') . ': ' . $pdfErr->getMessage());
-                }
                 if ($freeEmailData === null) {
                     $freeEmailData = $ftd;
                     $freeEmailRecipient = $sendTo;
                 }
-                $freePdfAttachments = array_merge($freePdfAttachments, $pdfAttachment);
             }
 
             $orgStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
@@ -307,12 +296,12 @@ try {
             // Respond to the buyer NOW; deliver email + notifications afterwards.
             require_once '../../includes/helpers/response-helper.php';
             finishResponseThen($freePayload, function () use (
-                $freeEmailData, $freeEmailRecipient, $freePdfAttachments,
+                $freeEmailData, $freeEmailRecipient,
                 $auth_id, $event, $tickets, $organizer_auth_id, $user_name
             ) {
                 if ($freeEmailData !== null) {
                     try {
-                        EmailHelper::sendTicketEmailFull($freeEmailRecipient, $freeEmailData, $freePdfAttachments);
+                        EmailHelper::sendTicketEmailFull($freeEmailRecipient, $freeEmailData);
                     } catch (\Throwable $mailEx) {
                         error_log('[initialize.php] Free ticket email failed (post-response): ' . $mailEx->getMessage());
                     }

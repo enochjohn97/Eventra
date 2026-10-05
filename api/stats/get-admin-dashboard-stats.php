@@ -83,6 +83,8 @@ try {
     $active_clients = $active_clients_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // 4. Upcoming and Past Events
+    // 2026-10-02: no artificial cap — the dashboard must show ALL events
+    // (upcoming + past), not just the first few hundred.
     $events_stmt = $pdo->prepare("
         SELECT e.id, e.event_name, e.event_date, e.image_path, c.business_name as client_name,
                IF(e.event_date >= CURDATE(), 'upcoming', 'past') as event_type
@@ -92,7 +94,6 @@ try {
         ORDER BY IF(e.event_date >= CURDATE(), 0, 1) ASC,
                  IF(e.event_date >= CURDATE(), e.event_date, 0) ASC,
                  IF(e.event_date >= CURDATE(), 0, e.event_date) DESC
-        LIMIT 20
     ");
     $events_stmt->execute();
     $all_events = $events_stmt->fetchAll(PDO::FETCH_ASSOC);

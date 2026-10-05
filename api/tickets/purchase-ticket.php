@@ -29,6 +29,10 @@ $payment_reference = $data['payment_reference'] ?? null;
 $referred_by_client_name = $data['referred_by_client'] ?? null;
 $selected_locs = $data['selected_locs'] ?? null;
 
+// Hard cap: a single order may never buy more than 10 tickets. Prevents
+// resource-abuse orders (quantity=100000) and DoS-style queue flooding.
+$quantity = max(1, min($quantity, 10));
+
 if (!$event_id || $quantity < 1) {
     echo json_encode(['success' => false, 'message' => 'Invalid event ID or quantity']);
     exit;
@@ -133,30 +137,76 @@ try {
         $gatewayResponse = "";
 
         // --- Real Paystack Verification ---
-        $url = "https://api.paystack.co/transaction/verify/" . rawurlencode($payment_reference);
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer " . PAYSTACK_SECRET_KEY,
-            "Cache-Control: no-cache",
-        ]);
+        // The charge may run on the ORGANIZER's own Paystack account (v2
+        // Connect model) instead of the platform account. Verifying strictly
+        // with the platform key fails for organizers buying tickets to their
+        // own event ("Payment verification failed"), so try the organizer's
+        // key first when the current user is the event's organizer.
+        $orgStmt = $pdo->prepare(
+            "SELECT c.paystack_connection_status, c.paystack_auth_token
+             FROM events e
+             JOIN clients c ON e.client_id = c.id
+             WHERE e.id = ? LIMIT 1"
+        );
+        $orgStmt->execute([$event_id]);
+        $orgRow = $orgStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (($_ENV['APP_ENV'] ?? '') === 'local') {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $isOrganizerBuyer = false;
+        if ($orgRow) {
+            // Is the buyer this event's organizer? Compare auth ids directly.
+            $isOrgStmt = $pdo->prepare(
+                "SELECT cl.client_auth_id
+                 FROM clients cl
+                 JOIN auth_accounts a ON cl.client_auth_id = a.id
+                 WHERE cl.id = (SELECT client_id FROM events WHERE id = ? LIMIT 1)
+                 AND a.id = ? LIMIT 1"
+            );
+            $isOrgStmt->execute([$event_id, $auth_id]);
+            $isOrganizerBuyer = (bool) $isOrgStmt->fetchColumn();
         }
 
-        $gatewayResponse = curl_exec($ch);
-        // curl_close($ch); is deprecated in PHP 8.4+ and no longer needed.
+        $candidateKeys = [];
+        if ($isOrganizerBuyer && !empty($orgRow['paystack_auth_token'])
+            && ($orgRow['paystack_connection_status'] ?? '') === 'connected') {
+            $candidateKeys[] = $orgRow['paystack_auth_token'];
+        }
+        $candidateKeys[] = PAYSTACK_SECRET_KEY;
 
-        $paystackResult = json_decode($gatewayResponse);
-        if ($paystackResult && $paystackResult->status && $paystackResult->data->status === 'success') {
+        $url = "https://api.paystack.co/transaction/verify/" . rawurlencode($payment_reference);
+        $paystackResult = null;
+        foreach ($candidateKeys as $candidateKey) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Bearer " . $candidateKey,
+                "Cache-Control: no-cache",
+            ]);
+
+            if (($_ENV['APP_ENV'] ?? '') === 'local') {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            }
+
+            $gatewayResponse = curl_exec($ch);
+            // curl_close($ch); is deprecated in PHP 8.4+ and no longer needed.
+
+            $paystackResult = json_decode($gatewayResponse);
+            if ($paystackResult && $paystackResult->status
+                && isset($paystackResult->data->status) && $paystackResult->data->status === 'success') {
+                break; // verified under this key
+            }
+            $paystackResult = null; // try next key
+        }
+
+        if ($paystackResult) {
             $verificationSuccess = true;
 
-            // Extra check: amount match
-            $expectedAmountKobo = round($total_price * 100);
-            if ($paystackResult->data->amount < $expectedAmountKobo) {
+            // Extra check: amount must cover the expected price (charges can
+            // legitimately round up, but never come in short).
+            $expectedAmountKobo = (int) round($total_price * 100);
+            if ((int) $paystackResult->data->amount < $expectedAmountKobo) {
                 $verificationSuccess = false;
                 $gatewayResponse = json_encode(['success' => false, 'message' => 'Amount mismatch on gateway.']);
             }
@@ -310,24 +360,18 @@ try {
         $allTicketData[] = $ticketData;
     }
 
-    // Send one email per purchase with one PDF attachment per ticket.
+    // Send one consolidated, attachment-free email per purchase. The rich
+    // HTML email embeds the QR code directly; PDFs are only produced for the
+    // user-initiated "Download Ticket" action, never emailed.
     $emailData = null;
-    $emailAttachments = [];
     foreach ($allTicketData as $ticketData) {
-        try {
-            $pdfPath = generateTicketPDF($ticketData);
-            $pdfs = ($pdfPath && file_exists($pdfPath)) ? [$pdfPath] : [];
-            if ($emailData === null) {
-                $emailData = $ticketData;
-            }
-            $emailAttachments = array_merge($emailAttachments, $pdfs);
-        } catch (\Throwable $mailErr) {
-            error_log("[purchase-ticket.php] Email FAILED | barcode={$ticketData['barcode']} error=" . $mailErr->getMessage());
+        if ($emailData === null) {
+            $emailData = $ticketData;
         }
     }
     if ($emailData !== null) {
         try {
-            EmailHelper::sendTicketEmailFull($user['email'], $emailData, $emailAttachments);
+            EmailHelper::sendTicketEmailFull($user['email'], $emailData);
         } catch (\Throwable $mailErr) {
             error_log('[purchase-ticket.php] Consolidated email FAILED: ' . $mailErr->getMessage());
         }

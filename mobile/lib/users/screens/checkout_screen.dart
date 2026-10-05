@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/event_utils.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../models/event_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/user_payment_service.dart';
@@ -25,7 +26,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   late TextEditingController _emailCtrl;
   late TextEditingController _phoneCtrl;
   int _quantity = 1;
-  final String _ticketType = 'regular';
+  late String _ticketType;
   bool _processing = false;
 
   @override
@@ -41,6 +42,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
     _emailCtrl = TextEditingController(text: user?.email ?? '');
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    // Only tiers the organizer actually enabled are selectable; default to
+    // the cheapest active tier so the buyer always sees a correct amount.
+    final tiers = EventUtils.activeTiers(widget.event)
+        .where((t) => EventUtils.basePriceForTier(widget.event, t) >= 0)
+        .toList();
+    _ticketType = tiers.first;
   }
 
   @override
@@ -52,16 +59,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
-  double get _unitPrice {
-    switch (_ticketType) {
-      case 'vip':
-        return widget.event.vipPrice ?? widget.event.price;
-      case 'premium':
-        return widget.event.premiumPrice ?? widget.event.price;
-      default:
-        return widget.event.regularPrice ?? widget.event.price;
-    }
-  }
+  /// Base tier price (before fee) — exactly what the backend charges for.
+  double get _unitPrice => EventUtils.basePriceForTier(widget.event, _ticketType);
 
   double get _subtotal => _unitPrice * _quantity;
   double get _surcharge => _subtotal * 0.10;
@@ -202,9 +201,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         widget.event.absoluteImageUrl ??
         ApiClient().absoluteUrl(widget.event.imagePath);
 
+    final formWidth = Breakpoints.formMaxWidth(MediaQuery.sizeOf(context).width);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
-      body: SingleChildScrollView(
+      appBar: AppBar(title: const BrandLogo(size: 32)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: formWidth),
+          child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
@@ -303,6 +307,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 validator: _req,
               ),
               const SizedBox(height: 20),
+              // Ticket tier picker — only the tiers the organizer enabled,
+              // with the same per-tier amounts the web checkout charges.
+              if (EventUtils.activeTiers(widget.event).length > 1) ...[
+                const Text(
+                  'Ticket Type',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                SegmentedButton<String>(
+                  segments: EventUtils.activeTiers(widget.event)
+                      .map(
+                        (t) => ButtonSegment(
+                          value: t,
+                          label: Text(
+                            t[0].toUpperCase() + t.substring(1),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  selected: {_ticketType},
+                  onSelectionChanged: (selection) =>
+                      setState(() => _ticketType = selection.first),
+                ),
+                const SizedBox(height: 16),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -334,7 +364,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              _priceRow('Subtotal', _subtotal),
+              _priceRow(
+                  'Subtotal (${_ticketType[0].toUpperCase()}${_ticketType.substring(1)} × $_quantity)',
+                  _subtotal),
               _priceRow('Service fee (10%)', _surcharge),
               const Divider(height: 24),
               _priceRow('Total', _total, bold: true),
@@ -358,6 +390,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

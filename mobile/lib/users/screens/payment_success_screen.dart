@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/brand_logo.dart';
+// (Breakpoints come from app_theme.dart)
 import '../services/user_ticket_service.dart';
 
 class PaymentSuccessScreen extends StatefulWidget {
@@ -39,11 +41,15 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
     final amount = widget.payload['amount'];
 
     return Scaffold(
-      body: SafeArea(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
+              const BrandLogo(size: 40),
               const Spacer(),
               Container(
                 width: 88,
@@ -89,6 +95,8 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

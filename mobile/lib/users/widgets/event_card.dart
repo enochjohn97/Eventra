@@ -43,7 +43,9 @@ class EventCard extends StatelessWidget {
                     )
                   else
                     _fallbackImage(),
-                  if (event.priorityLabel != null && event.priorityLabel!.isNotEmpty)
+                  // Priority tag (⭐ Featured / 🔥 Hot / 📈 Trending / 📍 Nearby) —
+                  // server-authoritative, identical to the web card badge.
+                  if (EventUtils.priorityBadge(event) != null)
                     Positioned(
                       top: 12,
                       left: 12,
@@ -55,11 +57,46 @@ class EventCard extends StatelessWidget {
                           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                         ),
                         child: Text(
-                          event.priorityLabel!,
+                          EventUtils.priorityBadge(event)!,
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
+                  // Status badge (Upcoming / Sold Out / Passed) — bottom-left,
+                  // same labels and colors as the web app.
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Color(EventUtils.statusBadge(event).colorValue).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: Color(EventUtils.statusBadge(event).colorValue),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            EventUtils.statusBadge(event).label,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(EventUtils.statusBadge(event).colorValue),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   if (onFavorite != null)
                     Positioned(
                       top: 8,
@@ -126,10 +163,26 @@ class EventCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        EventUtils.formatPrice(event),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primary),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              EventUtils.formatPrice(event),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: EventUtils.isFree(event) ? AppTheme.success : AppTheme.primary,
+                              ),
+                            ),
+                            Text(
+                              '(${EventUtils.tierLabel(event)})',
+                              style: const TextStyle(fontSize: 10.5, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
                       ),
                       if (event.category != null)
                         Container(

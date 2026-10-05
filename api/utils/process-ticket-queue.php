@@ -96,7 +96,7 @@ foreach ($files as $jobFile) {
 
         // Generate each ticket, then send one email with all ticket PDFs attached.
         $emailData = null;
-        $emailAttachments = [];
+
         foreach ($barcodes as $index => $barcode) {
             try {
                 $ticketDataForLoop = array_merge($ticketData, ['barcode' => $barcode]);
@@ -110,15 +110,6 @@ foreach ($files as $jobFile) {
                         $stmt = $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?");
                         $stmt->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
                     }
-                }
-
-                // Generate PDF
-                $pdfPath = generateTicketPDF($ticketDataForLoop);
-                $currentPdf = [];
-                if ($pdfPath && file_exists($pdfPath)) {
-                    $currentPdf = [$pdfPath];
-                } else {
-                    error_log("[process-ticket-queue.php] PDF missing after generation for barcode $barcode (ticket $ticket_id)");
                 }
 
                 // Enrich per-ticket data so emails can render the QR correctly
@@ -137,7 +128,6 @@ foreach ($files as $jobFile) {
                 if ($emailData === null) {
                     $emailData = $sendData;
                 }
-                $emailAttachments = array_merge($emailAttachments, $currentPdf);
 
             } catch (\Throwable $genError) {
                 // Log structured failure
@@ -157,7 +147,7 @@ foreach ($files as $jobFile) {
 
         if ($emailData !== null) {
             try {
-                EmailHelper::sendTicketEmailFull($user_email, $emailData, $emailAttachments);
+                EmailHelper::sendTicketEmailFull($user_email, $emailData);
             } catch (Exception $e) {
                 error_log("[process-ticket-queue.php] Email send failed for reference $reference: " . $e->getMessage());
             }

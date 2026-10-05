@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../providers/app_config_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/google_auth_service.dart';
@@ -28,26 +29,17 @@ class _LoginScreenState extends State<LoginScreen> {
     final isBusy = auth.isLoading || _isLoggingIn;
 
     return Scaffold(
-      body: SafeArea(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(flex: 1),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.celebration_rounded,
-                  color: AppTheme.primary,
-                  size: 36,
-                ),
-              ),
+              const BrandLogo(size: 72, showWordmark: false),
               const SizedBox(height: 24),
               const Text(
                 'Welcome to Eventra',
@@ -89,6 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
             ],
+          ),
+        ),
           ),
         ),
       ),

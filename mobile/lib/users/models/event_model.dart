@@ -29,6 +29,7 @@ class EventModel {
   final double? longitude;
   final int? ticketCount;
   final int? maxCapacity;
+  final bool isSoldOut;
 
   const EventModel({
     required this.id,
@@ -61,6 +62,7 @@ class EventModel {
     this.longitude,
     this.ticketCount,
     this.maxCapacity,
+    this.isSoldOut = false,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json, {String? baseOrigin}) {
@@ -112,6 +114,9 @@ class EventModel {
       longitude: json['longitude'] != null ? toDouble(json['longitude']) : null,
       ticketCount: json['ticket_count'] != null ? int.tryParse(json['ticket_count'].toString()) : null,
       maxCapacity: json['max_capacity'] != null ? int.tryParse(json['max_capacity'].toString()) : null,
+      isSoldOut: json['sold_out'] == true ||
+          (json['sold_out'] is int && json['sold_out'] > 0) ||
+          json['sold_out']?.toString() == '1',
     );
   }
 
@@ -149,6 +154,7 @@ class EventModel {
         'longitude': longitude,
         'ticket_count': ticketCount,
         'max_capacity': maxCapacity,
+        'sold_out': isSoldOut ? 1 : 0,
       };
 
   EventModel copyWith({bool? isFavorite}) {
@@ -183,6 +189,7 @@ class EventModel {
       longitude: longitude,
       ticketCount: ticketCount,
       maxCapacity: maxCapacity,
+      isSoldOut: isSoldOut,
     );
   }
 }
