@@ -5,6 +5,8 @@ import 'package:dio/io.dart';
 
 import '../storage/secure_storage.dart';
 import 'api_exception.dart';
+import 'endpoint_resolver.dart';
+import 'host_challenge.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -16,12 +18,16 @@ class ApiClient {
   // Retry delays for transient server errors (e.g. brief HTML responses from anti-bot layer)
   static const _retryDelays = [3, 5];
 
+  /// Default = production. `--dart-define=API_BASE_URL` overrides the starting
+  /// value; [EndpointResolver] may switch it at runtime once it probes which
+  /// origin (live or local) actually serves the API.
+  static const _defaultBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://eventra-website.liveblog365.com/api',
+  );
+
   ApiClient._internal() {
-    const apiBaseUrl = String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'https://eventra-website.liveblog365.com/api',
-    );
-    final parsedBaseUrl = Uri.tryParse(apiBaseUrl);
+    final parsedBaseUrl = Uri.tryParse(_defaultBaseUrl);
     if (parsedBaseUrl == null ||
         !parsedBaseUrl.hasScheme ||
         (parsedBaseUrl.scheme != 'http' && parsedBaseUrl.scheme != 'https') ||
@@ -30,9 +36,20 @@ class ApiClient {
     }
     baseOrigin = '${parsedBaseUrl.scheme}://${parsedBaseUrl.authority}';
 
+    // NOTE: `dio` is created exactly once. Services (GoogleAuthService,
+    // AppConfigService, …) capture `ApiClient().dio` in static fields, so the
+    // instance must never be replaced — [setBaseUrl] mutates its options.
+    _createDio(_defaultBaseUrl);
+
+    // Let EndpointResolver switch this client to whichever origin (live or
+    // local) actually serves the API.
+    EndpointResolver.registerAdopter(setBaseUrl);
+  }
+
+  void _createDio(String url) {
     dio = Dio(
       BaseOptions(
-        baseUrl: apiBaseUrl.replaceFirst(RegExp(r'/$'), ''),
+        baseUrl: url.replaceFirst(RegExp(r'/$'), ''),
         // Long enough for the shared host's cold start; individual requests
         // override this downward where appropriate (see user_profile_service).
         connectTimeout: const Duration(seconds: 120),
@@ -56,6 +73,12 @@ class ApiClient {
       return client;
     };
 
+    // Preserve a challenge cookie obtained by [EndpointResolver] across switches.
+    final existingCookie = _bypassCookie;
+    if (existingCookie != null) {
+      dio.options.headers['Cookie'] = existingCookie;
+    }
+
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -70,10 +93,48 @@ class ApiClient {
         onResponse: (response, handler) async {
           final contentType =
               (response.headers.value('content-type') ?? '').toLowerCase();
+          final body = _bodyAsString(response.data);
+          final isHtml =
+              contentType.contains('text/html') || _looksLikeHtml(body);
+
+          // ── Hosting anti-bot challenge (AES JS puzzle → __test cookie) ────
+          // Solving it natively is instant and works the same on Android/iOS
+          // and against local or live hosts — no WebView required.
+          if (isHtml && HostChallenge.isChallenge(body)) {
+            final solved = HostChallenge.solve(body);
+            final alreadyRetried =
+                (response.requestOptions.extra['_challengeRetried'] as bool?) ==
+                    true;
+            if (solved != null && !alreadyRetried) {
+              setBypassCookie(solved);
+              final opts = response.requestOptions;
+              opts.extra['_challengeRetried'] = true;
+              try {
+                final freshDio = Dio(dio.options);
+                final retryResponse = await freshDio.fetch(opts);
+                return handler.resolve(retryResponse);
+              } catch (e) {
+                return handler.reject(
+                  e is DioException
+                      ? e
+                      : DioException(requestOptions: opts, error: e),
+                );
+              }
+            }
+            return handler.reject(
+              DioException(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioExceptionType.badResponse,
+                message:
+                    'Eventra could not pass the hosting security check. '
+                    'Please try again in a moment.',
+              ),
+            );
+          }
+
           final isColdStart = [502, 503, 504].contains(response.statusCode) ||
               contentType.contains('text/html');
-          // HTML 200 = hosting WAF/security challenge — retry with backoff
-          // (same logic as 5xx cold-start below; do NOT reject immediately).
           if (isColdStart) {
             // Render cold-start: retry with backoff
             final retryCount =
@@ -114,14 +175,54 @@ class ApiClient {
             final contentType =
                 (error.response?.headers.value('content-type') ?? '')
                     .toLowerCase();
+            final body = _bodyAsString(error.response?.data);
+            final isHtml =
+                contentType.contains('text/html') || _looksLikeHtml(body);
+
+            // HTML error body = anti-bot challenge — solve and replay instead
+            // of failing (mirrors the success-path handling above).
+            if (isHtml && HostChallenge.isChallenge(body)) {
+              final solved = HostChallenge.solve(body);
+              final alreadyRetried =
+                  (error.requestOptions.extra['_challengeRetried'] as bool?) ==
+                      true;
+              if (solved != null && !alreadyRetried) {
+                setBypassCookie(solved);
+                error.requestOptions.extra['_challengeRetried'] = true;
+                try {
+                  final freshDio = Dio(dio.options);
+                  final retryResponse =
+                      await freshDio.fetch(error.requestOptions);
+                  return handler.resolve(retryResponse);
+                } catch (e) {
+                  return handler.next(
+                    e is DioException
+                        ? e
+                        : DioException(
+                            requestOptions: error.requestOptions,
+                            error: e,
+                          ),
+                  );
+                }
+              }
+              return handler.next(
+                DioException(
+                  requestOptions: error.requestOptions,
+                  response: error.response,
+                  type: DioExceptionType.badResponse,
+                  message:
+                      'Eventra could not pass the hosting security check. '
+                      'Please try again in a moment.',
+                ),
+              );
+            }
+
             final isColdStart = [
               502,
               503,
               504,
             ].contains(error.response?.statusCode);
-            if (contentType.contains('text/html')) {
-              // HTML error body = WAF/security challenge — treat as cold-start
-              // and fall through to the retry logic below rather than failing.
+            if (isHtml) {
               final retryCount =
                   (error.requestOptions.extra['_retryCount'] as int? ?? 0);
               if (retryCount < _retryDelays.length) {
@@ -131,13 +232,17 @@ class ApiClient {
                 error.requestOptions.extra['_retryCount'] = retryCount + 1;
                 try {
                   final freshDio = Dio(dio.options);
-                  final retryResponse = await freshDio.fetch(error.requestOptions);
+                  final retryResponse =
+                      await freshDio.fetch(error.requestOptions);
                   return handler.resolve(retryResponse);
                 } catch (e) {
                   return handler.next(
                     e is DioException
                         ? e
-                        : DioException(requestOptions: error.requestOptions, error: e),
+                        : DioException(
+                            requestOptions: error.requestOptions,
+                            error: e,
+                          ),
                   );
                 }
               }
@@ -160,9 +265,8 @@ class ApiClient {
                 error.requestOptions.extra['_retryCount'] = retryCount + 1;
                 try {
                   final freshDio = Dio(dio.options);
-                  final retryResponse = await freshDio.fetch(
-                    error.requestOptions,
-                  );
+                  final retryResponse =
+                      await freshDio.fetch(error.requestOptions);
                   return handler.resolve(retryResponse);
                 } catch (e) {
                   return handler.next(
@@ -243,9 +347,24 @@ class ApiClient {
     );
   }
 
+  static String _bodyAsString(dynamic data) {
+    if (data == null) return '';
+    if (data is String) return data;
+    try {
+      return data.toString();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static bool _looksLikeHtml(String body) {
+    final head = body.trimLeft().toLowerCase();
+    return head.startsWith('<!doctype html') || head.startsWith('<html');
+  }
+
   /// Fresh Dio instance for recovery retries. No interceptors: a retry must
   /// never recurse back into the recovery logic.
-  late final Dio _recoveryDio = Dio(dio.options);
+  Dio get _recoveryDio => Dio(dio.options);
 
   /// Attempts a silent Google re-authentication and returns true if a fresh
   /// backend token was stored. Kept as a late-bound hook to avoid a static
@@ -267,8 +386,32 @@ class ApiClient {
     }
   }
 
+  String? _bypassCookie;
+
+  /// Cookie obtained from the hosting anti-bot challenge. Attached to every
+  /// request until the host issues a new one (solved inline by the interceptor).
   void setBypassCookie(String cookie) {
+    _bypassCookie = cookie;
     dio.options.headers['Cookie'] = cookie;
+  }
+
+  /// Switch the API origin at runtime (used by [EndpointResolver] after it
+  /// determines whether the live host or a local server serves the API).
+  ///
+  /// Mutates the existing [dio] rather than replacing it: every service holds
+  /// a reference to `ApiClient().dio`.
+  void setBaseUrl(String url) {
+    final parsed = Uri.tryParse(url);
+    if (parsed == null ||
+        !parsed.hasScheme ||
+        (parsed.scheme != 'http' && parsed.scheme != 'https') ||
+        parsed.host.isEmpty) {
+      return;
+    }
+    final normalized = url.replaceFirst(RegExp(r'/$'), '');
+    if (dio.options.baseUrl == normalized) return;
+    dio.options.baseUrl = normalized;
+    baseOrigin = '${parsed.scheme}://${parsed.authority}';
   }
 
   void syncOrigin(String? appUrl) {

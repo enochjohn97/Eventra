@@ -57,8 +57,27 @@ try {
         }
     }
 
+    // BVN is no longer a document upload — clients verify an 11-digit number
+    // (api/clients/verify-identity.php) which records bvn_verified + a masked
+    // copy in metadata. Expose both so the admin modal can show the status
+    // instead of a permanent "Not uploaded".
+    $bvnVerified = !empty($meta['bvn_verified']);
+    $client['bvn_verified'] = $bvnVerified ? 1 : 0;
+    $client['bvn_masked'] = $meta['bvn_number_masked'] ?? '';
+    $client['bvn_verified_at'] = $meta['bvn_verified_at'] ?? null;
+    $client['bvn_provider'] = $meta['bvn_provider'] ?? null;
+    $client['nin_verified'] = !empty($meta['nin_verified']) ? 1 : 0;
+    $client['nin_masked'] = $meta['nin_number_masked'] ?? '';
+
     $client['kyc_documents'] = [
-        'bvn' => ['url' => $client['kyc_bvn_file'] ?? null, 'status' => !empty($client['kyc_bvn_file']) ? 'uploaded' : 'missing'],
+        'bvn' => [
+            'url' => $client['kyc_bvn_file'] ?? null,
+            'status' => $bvnVerified
+                ? 'verified'
+                : (!empty($client['kyc_bvn_file']) ? 'uploaded' : 'missing'),
+            'verified' => $bvnVerified,
+            'masked' => $meta['bvn_number_masked'] ?? '',
+        ],
         'nin' => ['url' => $client['kyc_nin_file'] ?? null, 'status' => !empty($client['kyc_nin_file']) ? 'uploaded' : 'missing'],
         'cac' => ['url' => $client['kyc_cac_file'] ?? null, 'status' => !empty($client['kyc_cac_file']) ? 'uploaded' : 'missing'],
         'voters_card' => ['url' => $client['kyc_voter_card_file'] ?? null, 'status' => !empty($client['kyc_voter_card_file']) ? 'uploaded' : 'missing'],

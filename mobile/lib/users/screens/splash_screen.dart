@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/config/app_config.dart';
-import '../../core/network/api_client.dart';
+import '../../core/network/endpoint_resolver.dart';
 import '../providers/app_config_provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -22,83 +21,38 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late final WebViewController _webViewController;
-  Timer? _bypassTimeout;
-  Timer? _cookieCheckTimer;
   bool _bootStarted = false;
 
   @override
   void initState() {
     super.initState();
-    final origin = ApiClient().baseOrigin ?? '';
-    if (origin.contains('localhost') ||
-        origin.contains('127.0.0.1') ||
-        origin.contains('10.0.2.2')) {
-      _startBoot();
-    } else {
-      _initBypass();
-    }
-  }
-
-  void _initBypass() {
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) async {
-            if (_bootStarted) return;
-            _cookieCheckTimer?.cancel();
-            _cookieCheckTimer = Timer.periodic(
-              const Duration(milliseconds: 500),
-              (_) => _readBypassCookie(),
-            );
-            _readBypassCookie();
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(ApiClient().baseOrigin!));
-
-    _bypassTimeout = Timer(const Duration(seconds: 20), _startBoot);
-  }
-
-  Future<void> _readBypassCookie() async {
-    if (_bootStarted) return;
-    try {
-      final cookies = await _webViewController.runJavaScriptReturningResult(
-        'document.cookie',
-      );
-      final cookieStr = cookies.toString().replaceAll('"', '');
-      final testCookie = cookieStr
-          .split(';')
-          .firstWhere((p) => p.trim().startsWith('__test='), orElse: () => '');
-      if (testCookie.isNotEmpty) {
-        ApiClient().setBypassCookie(testCookie.trim());
-        _startBoot();
-      }
-    } catch (_) {}
+    // The hosting anti-bot challenge is solved natively inside ApiClient
+    // (HostChallenge), so there is no longer a WebView cookie-bypass step to
+    // wait for — boot immediately.
+    _startBoot();
   }
 
   void _startBoot() {
     if (_bootStarted) return;
     _bootStarted = true;
-    _bypassTimeout?.cancel();
-    _cookieCheckTimer?.cancel();
     _boot();
   }
 
-  @override
-  void dispose() {
-    _bypassTimeout?.cancel();
-    _cookieCheckTimer?.cancel();
-    super.dispose();
-  }
-
   Future<void> _boot() async {
+    // Discover whether the live host or a local dev server serves the API
+    // before any provider hits the network.
+    try {
+      await EndpointResolver.resolve()
+          .timeout(const Duration(seconds: 20));
+    } catch (_) {}
+    if (!mounted) return;
+
     final config = context.read<AppConfigProvider>();
     final auth = context.read<AuthProvider>();
     try {
       await config.load().timeout(const Duration(seconds: 8));
     } catch (_) {}
+    if (!mounted) return;
     try {
       await auth.bootstrap().timeout(const Duration(seconds: 8));
     } catch (_) {
@@ -139,51 +93,34 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          if (!_bootStarted)
-            Positioned(
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 1,
-              child: Opacity(
-                opacity: 0.01,
-                child: WebViewWidget(controller: _webViewController),
+      body: Container(
+        width: double.infinity,
+        color: Colors.white,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/logo.png',
+              width: 112,
+              height: 112,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 14),
+            RichText(
+              text: const TextSpan(
+                text: 'venOut',
+                style: TextStyle(
+                  color: Color(0xFF101A2E),
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1,
+                ),
               ),
             ),
-          // White splash with the real EventOut logo (matches native launch
-          // splash: white background + centered E-monogram).
-          Container(
-            width: double.infinity,
-            color: Colors.white,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 112,
-                  height: 112,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 14),
-                RichText(
-                  text: const TextSpan(
-                    text: 'venOut',
-                    style: TextStyle(
-                      color: Color(0xFF101A2E),
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const CircularProgressIndicator(color: Color(0xFFFF5A5F)),
-              ],
-            ),
-          ),
-        ],
+            const SizedBox(height: 28),
+            const CircularProgressIndicator(color: Color(0xFFFF5A5F)),
+          ],
+        ),
       ),
     );
   }

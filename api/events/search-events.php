@@ -35,6 +35,9 @@ try {
         $where_clauses[] = "e.status = 'published'";
     }
 
+    // Detect free-keyword — also match zero-price events
+    $isFreeQuery = (strtolower($q) === 'free');
+
     // Unified Search logic
     if (!empty($q)) {
         $where_clauses[] = "(
@@ -45,6 +48,7 @@ try {
             OR e.category LIKE ? 
             OR e.priority LIKE ?
             OR DATE_FORMAT(e.event_date, '%Y-%m-%d') LIKE ?
+            OR (? = 1 AND (e.price = 0 OR e.price IS NULL))
         )";
         $search_term = "%$q%";
         $params[] = $search_term;
@@ -54,6 +58,7 @@ try {
         $params[] = $search_term;
         $params[] = $search_term;
         $params[] = $search_term;
+        $params[] = $isFreeQuery ? 1 : 0;
     }
 
     if ($priority && $priority !== 'all') {

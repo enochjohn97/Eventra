@@ -40,6 +40,8 @@ if (strlen($query) < 2) {
 $searchTerm = '%' . $query . '%';
 // Day-first rendering of the same query so "05-10-2026" style dates hit too.
 $dayFirstTerm = '%' . preg_replace('/^(\d{1,2})\D(\d{1,2})\D(\d{4})$/', '$2-$1-$3', $query) . '%';
+// Free-keyword: also match zero-price events
+$isFreeQuery = (strtolower(trim($query)) === 'free') ? 1 : 0;
 
 try {
     $results = [
@@ -65,6 +67,7 @@ try {
             OR DATE_FORMAT(event_date, '%Y-%m-%d') LIKE ?
             OR DATE_FORMAT(event_date, '%d-%m-%Y') LIKE ?
             OR CAST(id AS CHAR) LIKE ?
+            OR (? = 1 AND (price = 0 OR price IS NULL))
         )
         LIMIT 5
     ");
@@ -77,7 +80,8 @@ try {
         $searchTerm,
         $searchTerm,
         $dayFirstTerm,
-        $searchTerm
+        $searchTerm,
+        $isFreeQuery
     ]);
     $results['events'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

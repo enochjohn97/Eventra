@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/network/api_client.dart';
+import 'core/network/endpoint_resolver.dart';
 import 'users/providers/app_config_provider.dart';
 import 'users/providers/auth_provider.dart';
 import 'users/providers/events_provider.dart';
@@ -16,6 +17,10 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   ApiClient();
+  // Discover the API origin (live host vs local dev server) in the background
+  // while the first frame renders; splash awaits the same future before any
+  // provider hits the network.
+  EndpointResolver.resolve();
   runApp(const EventraUserApp());
 }
 
@@ -42,6 +47,11 @@ class _EventraUserAppState extends State<EventraUserApp> {
   }
 
   Future<void> _initializeAuthAndConfig() async {
+    // Never race the endpoint probe: config.load() must hit the origin that
+    // EndpointResolver settles on.
+    try {
+      await EndpointResolver.resolve().timeout(const Duration(seconds: 20));
+    } catch (_) {}
     try {
       await GoogleAuthService.configure();
     } catch (_) {}

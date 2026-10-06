@@ -705,6 +705,30 @@ window.adminRenderKycRow = function (label, filePath) {
     </div>`;
 };
 
+// BVN is verified as an 11-digit number (no document upload since 2026-09-23),
+// so the row shows the verification state + masked number from metadata
+// instead of the file-based "Not uploaded".
+window.adminRenderBvnRow = function (client) {
+  const doc = client.kyc_documents?.bvn || {};
+  const verified =
+    client.bvn_verified == 1 || doc.verified === true || doc.status === "verified";
+  const masked = client.bvn_masked || doc.masked || "";
+
+  if (verified) {
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+            <div style="width:40px;height:40px;border-radius:6px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="badge-check" style="width:18px;height:18px;color:#10b981;"></i></div>
+            <div style="min-width:0;flex:1;">
+                <div style="font-size:0.72rem;font-weight:700;color:#334155;">BVN</div>
+                <div style="font-size:0.65rem;color:#10b981;font-weight:600;" title="Verified through the central registry">Verified${masked ? ` &middot; ${escapeHTML(masked)}` : ""}</div>
+            </div>
+        </div>`;
+  }
+  if (client.kyc_bvn_file || doc.url) {
+    return adminRenderKycRow("BVN", doc.url || client.kyc_bvn_file);
+  }
+  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#94a3b8;font-size:0.76rem;"><i data-lucide="file-x" style="width:14px;height:14px;flex-shrink:0;"></i><span style="flex:1;">BVN</span><span>Not verified</span></div>`;
+};
+
 window.adminSavePaystackAccountStatus = async function (clientId, status) {
   try {
     const res = await apiFetch("/api/admin/update-client-paystack.php", {
@@ -1013,7 +1037,7 @@ window.initPreviews = function () {
                                                       "&#39;",
                                                     )}' onclick="downloadAllKYC(this, '${escapeHTML(client.business_name || client.name || "Client").replace(/'/g, "\\'")}')" style="background:#eff6ff;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;font-weight:700;color:#3b82f6;cursor:pointer;display:flex;align-items:center;gap:3px;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><i data-lucide="download" style="width:11px;height:11px;"></i>Download All</button>
                                                 </div>
-                                                ${adminRenderKycRow("BVN", client.kyc_documents?.bvn?.url || client.kyc_bvn_file)}
+                                                ${adminRenderBvnRow(client)}
                                                 ${adminRenderKycRow("NIN", client.kyc_documents?.nin?.url || client.kyc_nin_file)}
                                                 ${adminRenderKycRow("CAC", client.kyc_documents?.cac?.url || client.kyc_cac_file)}
                                                 ${adminRenderKycRow("Voter's Card", client.kyc_documents?.voters_card?.url || client.kyc_voter_card_file)}

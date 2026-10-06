@@ -66,6 +66,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Local/dev API servers are plain http; the production API is https.
+	     NSAllowsLocalNetworking keeps App Transport Security strict for the
+	     internet while still allowing a LAN/emulator dev server on iOS. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>GIDClientID</key>
 	<string>76953809917-eguefgb6sgetu8a7g5grjh966il7slq6.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>

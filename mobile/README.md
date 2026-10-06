@@ -81,10 +81,41 @@ Legacy `.php` endpoints remain for the web app.
 - **Profile**: same `PUT /api/profile` validation as web (11-digit numeric phone cap, email uniqueness on auth_accounts, etc.); failures now surface instead of being silently swallowed.
 - **Payments**: WebView checkout (Paystack hosted page) because the backend builds the Paystack transaction server-side (organizer subaccounts, splits, channels) and has no mobile-SDK integration. Fulfillment is **webhook-driven**; the app polls `POST /payments/verify` (up to ~15s) which reports `success` / `processing` / `failed` and is idempotent against the webhook.
 
+## API endpoint discovery (live + local, no rebuild)
+
+`EndpointResolver` (`lib/core/network/endpoint_resolver.dart`) picks the API
+origin at runtime by probing `GET {origin}/config/app` until one answers with
+real JSON. Probe order:
+
+1. `--dart-define=API_BASE_URL` (hard pin for a specific environment)
+2. Last known-good origin (persisted in SharedPreferences — fast path)
+3. Extra origins from `--dart-define=API_BASE_URLS=https://a.com/api,https://b.com/api`
+4. The production default in `_production`
+5. Local dev candidates (`10.0.2.2:8000`, `127.0.0.1:8000`, `localhost:8000`) —
+   only probed when no remote origin answered, so production users never wait on them
+
+**Re-hosting the backend?** Either add the new URL to `_production`
+(one constant) or ship it via `--dart-define=API_BASE_URLS=…`. The winning
+origin is remembered, so the app goes straight to it on later launches and
+falls back to re-probing when it stops answering.
+
+## Hosting anti-bot challenge
+
+Some hosts (openresty/AES JS challenge) answer API requests with an HTML
+puzzle page instead of JSON — this is what produced *"Eventra API is blocked
+by the hosting security challenge"*. `HostChallenge`
+(`lib/core/network/host_challenge.dart`) solves it natively: extract the three
+`toNumbers(...)` values, AES-128-CBC decrypt with the page key, replay the
+request with the resulting `__test` cookie. The Dio interceptor does this
+transparently on both error and success paths, so Android and iOS behave the
+same — no WebView, no user action. Regression-tested against a challenge page
+captured verbatim from production (`test/host_challenge_test.dart`).
+
 ## Verify
 
 ```bash
 flutter analyze --no-fatal-infos --no-fatal-warnings
+flutter test
 flutter build apk --debug \
    --dart-define=API_BASE_URL=http://10.0.2.2:8000/api \
    --dart-define=GOOGLE_ANDROID_CLIENT_ID=your-android-client-id \
