@@ -1,4 +1,4 @@
-/// Typed exception for EvenOut API failures.
+/// Typed exception for EventOut API failures.
 ///
 /// Carries just enough structure for callers to distinguish:
 ///  * [unauthorized] — the session token was rejected (401/403 with an auth

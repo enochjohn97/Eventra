@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/network/endpoint_resolver.dart';
 import '../../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
 
@@ -78,7 +79,7 @@ class GoogleAuthService {
     } catch (_) {}
   }
 
-  /// Interactive sign-in. Returns the EvenOut user, or null when the user
+  /// Interactive sign-in. Returns the EventOut user, or null when the user
   /// dismissed the Google sheet (cancellation is not an error).
   ///
   /// Throws [ApiException] with a user-presentable message on real failures.
@@ -139,9 +140,17 @@ class GoogleAuthService {
     return exchangeTokenWithBackend(idToken);
   }
 
-  /// Exchanges a Google ID token for an EvenOut session (shared by
+  /// Exchanges a Google ID token for an EventOut session (shared by
   /// interactive and silent sign-in).
-  static Future<UserModel> exchangeTokenWithBackend(String idToken) async {
+  ///
+  /// When the currently-picked API origin refuses connections (e.g. the local
+  /// dev server was adopted at launch and later stopped), we force the
+  /// endpoint resolver to re-probe — which falls back to the live host — and
+  /// retry once, so sign-in never depends on a locally-running server.
+  static Future<UserModel> exchangeTokenWithBackend(
+    String idToken, {
+    bool retried = false,
+  }) async {
     final Response<dynamic> response;
     try {
       response = await _dio.post(
@@ -149,7 +158,18 @@ class GoogleAuthService {
         data: {'credential': idToken, 'intent': 'user'},
       );
     } on DioException catch (error) {
-      throw apiErrorFromDio(error, 'EvenOut could not complete Google sign-in.');
+      final connectionLost =
+          error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout;
+      if (connectionLost && !retried) {
+        final reResolved = await EndpointResolver.resolve(force: true);
+        if (reResolved) {
+          return exchangeTokenWithBackend(idToken, retried: true);
+        }
+      }
+      throw apiErrorFromDio(error, 'EventOut could not complete Google sign-in.');
     }
 
     final data = response.data is Map
@@ -162,7 +182,7 @@ class GoogleAuthService {
     if (data['success'] != true || serverToken == null || userJson == null) {
       throw ApiException(
         data['message']?.toString() ??
-            'EvenOut could not complete Google sign-in.',
+            'EventOut could not complete Google sign-in.',
         statusCode: response.statusCode,
       );
     }

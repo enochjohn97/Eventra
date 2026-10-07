@@ -28,7 +28,7 @@ class EventUtils {
     return timeStr;
   }
 
-  /// EvenOut platform fee applied to every base price so the app shows the
+  /// EventOut platform fee applied to every base price so the app shows the
   /// same amount the buyer is charged (identical to the web app's math).
   static double applyPlatformFee(double base) => base > 0 ? (base * 1.1).roundToDouble() : 0;
 

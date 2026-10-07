@@ -28,12 +28,20 @@ Flutter companion app for Eventra attendees.
 
 ## Setup
 
+**You do not need to run a local server for Google sign-in (or anything else).**
+By default the app targets the production API
+(`https://eventra-website.liveblog365.com/api`); `EndpointResolver` only falls
+back to local dev origins when the live host does not answer, never probes a
+stale local origin ahead of production, pins production when nothing answers,
+and the `/auth/google` exchange re-probes and retries once if the picked origin
+stops accepting connections mid-session.
+
 1. Copy `.env.example` to `.env` in project root and configure DB, Google, Paystack, mail keys.
-2. Start PHP backend from repo root:
+2. *(Local backend development only)* Start PHP backend from repo root:
    ```bash
    php -S localhost:8000 -t . server/index.php
    ```
-3. Configure API URL when running the app:
+3. *(Local backend development only)* Configure API URL when running the app:
    - Android emulator: `--dart-define=API_BASE_URL=http://10.0.2.2:8000/api`
    - iOS simulator: `--dart-define=API_BASE_URL=http://127.0.0.1:8000/api`
    - Physical device: use your machine LAN IP, e.g. `http://192.168.1.5:8000/api`

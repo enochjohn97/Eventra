@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const BrandLogo(size: 72, showWordmark: false),
               const SizedBox(height: 24),
               const Text(
-                'Welcome to EvenOut',
+                'Welcome',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),

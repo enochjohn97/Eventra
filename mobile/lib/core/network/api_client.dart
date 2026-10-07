@@ -60,7 +60,7 @@ class ApiClient {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'Connection': 'close',
-          'User-Agent': 'Dart/3.12.2 (EvenOut Mobile)',
+          'User-Agent': 'Dart/3.12.2 (EventOut Mobile)',
           'X-Requested-With': 'XMLHttpRequest',
         },
       ),

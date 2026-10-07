@@ -15,7 +15,7 @@ Map<String, dynamic> _toMap(dynamic raw) {
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
     } on FormatException {
       throw const ApiException(
-        'EvenOut server returned an invalid response. Please try again.',
+        'EventOut server returned an invalid response. Please try again.',
       );
     }
   }
@@ -66,7 +66,7 @@ class UserProfileService {
     } on DioException catch (error) {
       throw apiErrorFromDio(
         error,
-        'Unable to sync your profile with EvenOut.',
+        'Unable to sync your profile with EventOut.',
       );
     }
     final data = _toMap(response.data);

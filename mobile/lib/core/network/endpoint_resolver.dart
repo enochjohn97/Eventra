@@ -70,11 +70,17 @@ class EndpointResolver {
     }
 
     add(_override.isEmpty ? null : _override);
-    add(saved);
     for (final raw in _extraOrigins.split(',')) {
       add(raw.trim());
     }
+    // A stale *local dev* origin (php -S from a previous run) must never be
+    // probed before the live host — that is what forced developers to start
+    // the local server before sign-in worked. Local origins are demoted to
+    // the fallback pass below; only remote last-known-good origins keep the
+    // fast path.
+    if (saved != null && !_isLocalOrigin(saved)) add(saved);
     add(_production);
+    if (saved != null && _isLocalOrigin(saved)) add(saved);
 
     // Remote candidates first; only fall back to local dev servers if none of
     // them answer (a production device should not hang on 10.0.2.2).
@@ -86,10 +92,24 @@ class EndpointResolver {
 
     if (winner != null) return _adopt(prefs, winner);
 
-    // Nothing answered: keep whatever is configured so callers still surface
-    // a normal connection error instead of failing silently.
+    // Nothing answered (offline, or the API moved): pin the production origin
+    // so the app deterministically targets the live host instead of retrying
+    // dead dev-server addresses on every request.
+    await _adopt(prefs, _production);
     _inflight = null;
     return false;
+  }
+
+  /// True for loopback / RFC1918 / emulator hosts (local `php -S` dev server).
+  static bool _isLocalOrigin(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    return host == 'localhost' ||
+        host == '127.0.0.1' ||
+        host == '::1' ||
+        host == '10.0.2.2' ||
+        host.startsWith('192.168.') ||
+        host.startsWith('10.') ||
+        RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host);
   }
 
   static Future<String?> _probeAll(List<String> candidates) async {
@@ -107,8 +127,8 @@ class EndpointResolver {
     final dio = Dio(
       BaseOptions(
         baseUrl: base,
-        connectTimeout: const Duration(seconds: 8),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 8),
         headers: {
           'Accept': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
