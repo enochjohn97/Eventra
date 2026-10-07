@@ -38,6 +38,11 @@ class EmailHelper
     /**
      * Core send method — direct send via SMTP.
      */
+    // CID used to embed the brand logo (logo-mark.png) in every outgoing email.
+    // Gmail/Outlook do NOT render data: URI images, so the logo must ship as a
+    // real embedded (CID) attachment to display reliably.
+    const BRAND_LOGO_CID = 'eventout_logo';
+
     public static function sendEmail(
         string $to,
         string $subject,
@@ -46,6 +51,21 @@ class EmailHelper
         string $altBody     = '',
         array  $embeddedImages = []
     ): array {
+        // ── Auto-embed the brand logo whenever the body references it via cid: ──
+        if (str_contains((string) $body, 'cid:' . self::BRAND_LOGO_CID)) {
+            $logoPath = self::brandLogoPath();
+            $logoAttached = false;
+            foreach ($embeddedImages as $_img) {
+                if (($_img['cid'] ?? '') === self::BRAND_LOGO_CID) {
+                    $logoAttached = true;
+                    break;
+                }
+            }
+            if ($logoPath !== '' && !$logoAttached) {
+                $embeddedImages[] = ['path' => $logoPath, 'cid' => self::BRAND_LOGO_CID, 'name' => 'logo-mark.png'];
+            }
+        }
+
         // ── SMTP send via PHPMailer ──────
         if (empty(SMTP_HOST) || empty(SMTP_USER) || empty(SMTP_PASS)) {
             error_log('[EmailHelper] SMTP credentials not configured.');
@@ -64,6 +84,11 @@ class EmailHelper
             $headers .= "Reply-To: " . $replyTo . "\r\n";
             
             // Note: Attachments and embedded images are not supported in this simple fallback
+            // Native mail() has no embedded-image support — swap the cid for a
+            // data URI so the logo still renders in this degraded path.
+            if (str_contains($body, 'cid:' . self::BRAND_LOGO_CID)) {
+                $body = str_replace('cid:' . self::BRAND_LOGO_CID, self::brandMarkDataUri(), $body);
+            }
             $sent = @mail($to, $subject, $body, $headers);
             if ($sent) {
                 return ['success' => true, 'message' => 'Email sent successfully via native mail()'];
@@ -215,9 +240,29 @@ class EmailHelper
      * Brand header row for ticket emails/PDFs: E-mark + "EventOut" wordmark
      * text on one line. $fontSize in px (email) or pt (PDF context).
      */
-    private static function brandHeaderHtml(string $fontSize = '15px'): string
+    /** Absolute path to the brand logo PNG, or '' when unavailable. */
+    private static function brandLogoPath(): string
     {
-        $mark = self::brandMarkDataUri();
+        $path = self::normalisePath(__DIR__ . '/../../public/assets/brand/logo-mark.png');
+        return (file_exists($path) && filesize($path) > 0) ? $path : '';
+    }
+
+    /**
+     * Logo image source: a cid: reference (embedded by sendEmail) for emails,
+     * or the inline data-URI for PDF/HTML renderers that cannot resolve cid:.
+     * Returns '' when the logo asset is missing (header degrades to text only).
+     */
+    private static function brandLogoSrc(bool $useCid = true): string
+    {
+        if (self::brandLogoPath() === '') {
+            return '';
+        }
+        return $useCid ? 'cid:' . self::BRAND_LOGO_CID : self::brandMarkDataUri();
+    }
+
+    private static function brandHeaderHtml(string $fontSize = '15px', bool $useCid = true): string
+    {
+        $mark = self::brandLogoSrc($useCid);
         $imgHtml = $mark !== ''
             ? '<img src="' . $mark . '" width="30" height="30" alt="EventOut" style="width:30px;height:30px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
             : '';
@@ -236,9 +281,9 @@ class EmailHelper
      * receipts): the coral E-monogram logo mark + a dark "EventOut" wordmark.
      * Kept table-based so it renders in Outlook/Gmail.
      */
-    private static function brandHeaderLightHtml(string $fontSize = '22px'): string
+    private static function brandHeaderLightHtml(string $fontSize = '22px', bool $useCid = true): string
     {
-        $mark = self::brandMarkDataUri();
+        $mark = self::brandLogoSrc($useCid);
         $imgHtml = $mark !== ''
             ? '<img src="' . $mark . '" width="34" height="34" alt="EventOut" style="width:34px;height:34px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
             : '';
@@ -1075,7 +1120,8 @@ HTML;
         $bodyBg    = '#0b1324'; // ~rgba(11,19,36,1)  — main body section
         $stubBg    = '#1e2b3e'; // ~rgba(30,41,59,1)  — stub / QR section
 
-        $brandHeader = self::brandHeaderHtml('14pt');
+        $brandHeader = self::brandHeaderHtml('14pt', false); // PDF: data-URI (no mail cid:)
+
 
         return <<<PDF
 <!DOCTYPE html>
