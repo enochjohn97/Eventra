@@ -64,6 +64,9 @@ function sendSMS($phoneNumber, $message, $messageType = 'ticket_confirmation', a
     $phoneNumber = preg_replace('/\D+/', '', (string) $phoneNumber);
     if (str_starts_with($phoneNumber, '0') && strlen($phoneNumber) === 11) {
         $phoneNumber = '234' . substr($phoneNumber, 1);
+    } elseif (strlen($phoneNumber) === 10) {
+        // Local mobile without a leading 0 (e.g. 8031234567) → Nigerian country code.
+        $phoneNumber = '234' . $phoneNumber;
     } elseif (str_starts_with($phoneNumber, '234') && strlen($phoneNumber) === 13) {
         // Already normalized.
     } else {

@@ -212,8 +212,11 @@ try {
 
                 if ($locDiffMinutes <= 60 && $locDiffMinutes >= -40) {
                     $subject = "Reminder: {$eventName} starts in 30 minutes!";
+                    // Brand header (embedded logo) so reminder emails carry the EventOut logo.
+                    $brandHeader = EmailHelper::brandEmailHeaderHtml();
                     $body = "
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
+                            {$brandHeader}
                             <h2 style='color: #ff5a5f;'>Event Reminder</h2>
                             <p>Hi <strong>{$attendee['name']}</strong>,</p>
                             <p>This is a friendly reminder that <strong>{$eventName}</strong> is starting in just 30 minutes!</p>
