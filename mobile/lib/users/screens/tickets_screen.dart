@@ -33,22 +33,64 @@ class _TicketsScreenState extends State<TicketsScreen> {
         onRefresh: provider.load,
         child: provider.isLoading && provider.tickets.isEmpty
             ? const Center(child: CircularProgressIndicator())
+            : provider.tickets.isEmpty && provider.error != null
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 120),
+                  Center(
+                    child: Text(
+                      provider.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Center(
+                    child: Text(
+                      'Pull down to retry.',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ),
+                ],
+              )
             : provider.tickets.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(child: Icon(Icons.confirmation_number_outlined, size: 56, color: AppTheme.textMuted)),
-                      SizedBox(height: 16),
-                      Center(child: Text('No tickets yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
-                      SizedBox(height: 8),
-                      Center(child: Text('Your purchased tickets will appear here.', style: TextStyle(color: AppTheme.textMuted))),
-                    ],
-                  )
-                : Center(
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  Center(
+                    child: Icon(
+                      Icons.confirmation_number_outlined,
+                      size: 56,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      'No tickets yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Your purchased tickets will appear here.',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ),
+                ],
+              )
+            : Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: Breakpoints.listMaxWidth(MediaQuery.sizeOf(context).width),
+                    maxWidth: Breakpoints.listMaxWidth(
+                      MediaQuery.sizeOf(context).width,
+                    ),
                   ),
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
@@ -68,8 +110,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                   width: 72,
                                   height: 72,
                                   child: ticket.absoluteEventImage != null
-                                      ? CachedNetworkImage(imageUrl: ticket.absoluteEventImage!, fit: BoxFit.cover)
-                                      : Container(color: AppTheme.primary.withValues(alpha: 0.1), child: const Icon(Icons.event)),
+                                      ? CachedNetworkImage(
+                                          imageUrl: ticket.absoluteEventImage!,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Container(
+                                          color: AppTheme.primary.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          child: const Icon(Icons.event),
+                                        ),
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -77,18 +127,38 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(ticket.eventName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                                    Text(
+                                      ticket.eventName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                     const SizedBox(height: 4),
-                                    Text(EventUtils.formatDate(ticket.eventDate), style: const TextStyle(color: AppTheme.textMuted)),
+                                    Text(
+                                      EventUtils.formatDate(ticket.eventDate),
+                                      style: const TextStyle(
+                                        color: AppTheme.textMuted,
+                                      ),
+                                    ),
                                     const SizedBox(height: 4),
-                                    Text('Barcode: ${ticket.barcode}', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                                    Text(
+                                      'Barcode: ${ticket.barcode}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textMuted,
+                                      ),
+                                    ),
                                     const SizedBox(height: 8),
                                     Row(
                                       children: [
                                         StatusChip(ticket.status),
                                         if (ticket.paymentStatus == 'paid') ...[
                                           const SizedBox(width: 8),
-                                          const StatusChip('Email sent', color: AppTheme.success),
+                                          const StatusChip(
+                                            'Email sent',
+                                            color: AppTheme.success,
+                                          ),
                                         ],
                                       ],
                                     ),
@@ -101,11 +171,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                   try {
                                     await provider.resendEmail(ticket);
                                     if (context.mounted) {
-                                      await showAdaptiveMessage(context, message: 'Ticket email sent to your inbox.');
+                                      await showAdaptiveMessage(
+                                        context,
+                                        message:
+                                            'Ticket email sent to your inbox.',
+                                      );
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      await showAdaptiveMessage(context, message: e.toString());
+                                      await showAdaptiveMessage(
+                                        context,
+                                        message: e.toString(),
+                                      );
                                     }
                                   }
                                 },
@@ -137,7 +214,14 @@ class StatusChip extends StatelessWidget {
         color: (color ?? AppTheme.primary).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, color: color ?? AppTheme.primary, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: color ?? AppTheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

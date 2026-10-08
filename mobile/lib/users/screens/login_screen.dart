@@ -33,56 +33,56 @@ class _LoginScreenState extends State<LoginScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Spacer(flex: 1),
-              const BrandLogo(size: 72, showWordmark: false),
-              const SizedBox(height: 24),
-              const Text(
-                'Welcome',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Sign in to discover events, save favorites, and get tickets.',
-                style: TextStyle(color: AppTheme.textMuted, height: 1.4),
-              ),
-              const Spacer(flex: 2),
-              if (auth.error != null ||
-                  (configError != null && !googleReady)) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.error.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Spacer(flex: 1),
+                  const BrandLogo(size: 72, showWordmark: false),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Welcome',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
                   ),
-                  child: Text(
-                    auth.error ??
-                        configError ??
-                        'Google Sign-In is unavailable.',
-                    style: const TextStyle(color: AppTheme.error),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Sign in to discover events, save favorites, and get tickets.',
+                    style: TextStyle(color: AppTheme.textMuted, height: 1.4),
                   ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              SizedBox(
-                width: double.infinity,
-                child: isBusy
-                    ? Center(
-                        child: Platform.isIOS
-                            ? const CupertinoActivityIndicator()
-                            : const CircularProgressIndicator(),
-                      )
-                    : _GoogleButton(onPressed: () => _handleLogin(context)),
+                  const Spacer(flex: 2),
+                  if (auth.error != null ||
+                      (configError != null && !googleReady)) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.error.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        auth.error ??
+                            configError ??
+                            'Google Sign-In is unavailable.',
+                        style: const TextStyle(color: AppTheme.error),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: isBusy
+                        ? Center(
+                            child: Platform.isIOS
+                                ? const CupertinoActivityIndicator()
+                                : const CircularProgressIndicator(),
+                          )
+                        : _GoogleButton(onPressed: () => _handleLogin(context)),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
+            ),
           ),
         ),
       ),
@@ -90,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoggingIn = true);
     try {
       if (!GoogleAuthService.isConfigured) {
@@ -99,8 +100,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final auth = context.read<AuthProvider>();
       final ok = await auth.signInWithGoogle();
+      if (!ok) {
+        if (auth.error == null) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Google sign-in did not complete. Please try again.'),
+            ),
+          );
+        }
+        return;
+      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Signed in successfully.')),
+      );
       if (!context.mounted) return;
-      if (!ok) return;
       context.go('/home');
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);

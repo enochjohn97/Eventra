@@ -15,7 +15,8 @@ Flutter companion app for Eventra attendees.
 2. Register the app's **SHA-1 and SHA-256 fingerprints** on the **Android** OAuth client:
    - debug keystore: `cd android && ./gradlew signingReport` (or `keytool -list -v -alias androiddebugkey -keystore %USERPROFILE%\.android\debug.keystore -storepass android`)
    - release keystore: run the same `keytool` command against your release keystore.
-   - **No fingerprint = the exact "audience mismatch / DEVELOPER_ERROR" failure.** (Android 16's upgraded Play services returns a full-screen error dialog instead of the old silent cancel.)
+   - Current debug/release signing SHA-1: `DF:57:2A:32:82:5E:6D:8D:0F:39:80:53:31:08:D6:F7:2A:2F:56:9C`; SHA-256: `B8:44:D3:A9:E5:81:53:7A:C6:69:15:9D:95:3C:8A:16:AA:99:AA:2B:4A:DF:F7:5A:3C:68:26:4D:7F:45:56:A1`.
+   - The current device test fails after account selection with Google's `UNREGISTERED_ON_API_CONSOLE`; register this package and signing certificate on an Android OAuth client in the same Cloud project as the web client.
    - The fingerprint must be on the client whose **package name is `com.example.eventra_mobile`** (rename the app id and re-register if you change it).
 3. **OAuth consent screen** must be published (or the testers list must include the Google account used on device) and the `.../auth/...` scope must be non-sensitive / approved.
 4. If the API is hosted behind a challenge/WAF (e.g. InfinityFree-style), requests from the app must be allowlisted — see the splash-screen cookie bypass for that host.

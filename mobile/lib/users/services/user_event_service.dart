@@ -6,7 +6,15 @@ import '../models/event_model.dart';
 Map<String, dynamic> _toMap(dynamic raw) {
   if (raw is Map<String, dynamic>) return raw;
   if (raw is Map) return Map<String, dynamic>.from(raw);
-  if (raw is String) return jsonDecode(raw) as Map<String, dynamic>;
+  if (raw is String) {
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } on FormatException {
+      throw Exception(
+        'EventOut server returned an invalid response. Please try again.',
+      );
+    }
+  }
   throw Exception('Unexpected response format: ${raw.runtimeType}');
 }
 

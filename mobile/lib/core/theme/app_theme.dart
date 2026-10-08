@@ -24,13 +24,16 @@ class Breakpoints {
   }
 
   /// Max width for single-column lists (tickets) on large screens.
-  static double listMaxWidth(double width) => width >= tablet ? 720 : double.infinity;
+  static double listMaxWidth(double width) =>
+      width >= tablet ? 720 : double.infinity;
 
   /// Max width for forms (checkout, profile) on large screens.
-  static double formMaxWidth(double width) => width >= tablet ? 640 : double.infinity;
+  static double formMaxWidth(double width) =>
+      width >= tablet ? 640 : double.infinity;
 
   /// Max width for the event detail sheet content on large screens.
-  static double sheetMaxWidth(double width) => width >= desktop ? 720 : double.infinity;
+  static double sheetMaxWidth(double width) =>
+      width >= desktop ? 720 : double.infinity;
 }
 
 class AppTheme {
@@ -77,14 +80,18 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           side: const BorderSide(color: primary),
           foregroundColor: primary,
         ),
@@ -101,7 +108,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: bgCard,
@@ -109,6 +119,26 @@ class AppTheme {
         unselectedItemColor: textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
+      ),
+      // NavigationBar (bottom tabs): the selected pill uses the primary blue
+      // background, so its icon and label must render white on top of it.
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: bgCard,
+        indicatorColor: primary,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? Colors.white
+                : textMuted,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            color: states.contains(WidgetState.selected) ? primary : textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

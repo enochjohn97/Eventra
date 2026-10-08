@@ -6,7 +6,15 @@ import '../models/ticket_model.dart';
 Map<String, dynamic> _toMap(dynamic raw) {
   if (raw is Map<String, dynamic>) return raw;
   if (raw is Map) return Map<String, dynamic>.from(raw);
-  if (raw is String) return jsonDecode(raw) as Map<String, dynamic>;
+  if (raw is String) {
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } on FormatException {
+      throw Exception(
+        'EventOut server returned an invalid response. Please try again.',
+      );
+    }
+  }
   throw Exception('Unexpected response format: ${raw.runtimeType}');
 }
 
@@ -21,19 +29,33 @@ class UserTicketService {
       throw Exception(data['message']?.toString() ?? 'Failed to load tickets');
     }
     return (data['tickets'] as List? ?? [])
-        .map((t) => TicketModel.fromJson(Map<String, dynamic>.from(t as Map), baseOrigin: _origin))
+        .map(
+          (t) => TicketModel.fromJson(
+            Map<String, dynamic>.from(t as Map),
+            baseOrigin: _origin,
+          ),
+        )
         .toList();
   }
 
-  static Future<void> sendTicketEmail({String? reference, String? barcode, int? ticketId}) async {
-    final response = await _dio.post('/tickets/send', data: {
-      'reference': ?reference,
-      'barcode': ?barcode,
-      'ticket_id': ?ticketId,
-    });
+  static Future<void> sendTicketEmail({
+    String? reference,
+    String? barcode,
+    int? ticketId,
+  }) async {
+    final response = await _dio.post(
+      '/tickets/send',
+      data: {
+        'reference': ?reference,
+        'barcode': ?barcode,
+        'ticket_id': ?ticketId,
+      },
+    );
     final data = response.data as Map<String, dynamic>;
     if (data['success'] != true) {
-      throw Exception(data['message']?.toString() ?? 'Failed to send ticket email');
+      throw Exception(
+        data['message']?.toString() ?? 'Failed to send ticket email',
+      );
     }
   }
 }

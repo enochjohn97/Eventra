@@ -1,8 +1,11 @@
+// ignore_for_file: depend_on_referenced_packages
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/endpoint_resolver.dart';
 import '../providers/app_config_provider.dart';
@@ -65,7 +68,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final onboardingDone = prefs.getBool(AppConfig.onboardingKey) ?? false;
 
-    if (!onboardingDone) {
+    if (!onboardingDone &&
+        auth.status != AuthStatus.authenticated &&
+        auth.status != AuthStatus.profileIncomplete) {
       context.go('/welcome');
       return;
     }
@@ -99,23 +104,11 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
+            SvgPicture.asset(
               'assets/images/logo-wordmark.svg',
-              width: 112,
-              height: 112,
+              width: 220,
+              height: 80,
               fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 14),
-            RichText(
-              text: const TextSpan(
-                text: 'venOut',
-                style: TextStyle(
-                  color: Color(0xFF101A2E),
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1,
-                ),
-              ),
             ),
             const SizedBox(height: 28),
             const CircularProgressIndicator(color: Color(0xFFFF5A5F)),

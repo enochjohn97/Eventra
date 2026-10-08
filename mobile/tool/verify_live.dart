@@ -13,7 +13,7 @@ Future<void> main() async {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'Dart/3.12.2 (EvenOut Mobile)',
+        'User-Agent': 'Dart/3.12.2 (EventOut Mobile)',
         'X-Requested-With': 'XMLHttpRequest',
       },
     ),

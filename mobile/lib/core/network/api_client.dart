@@ -91,8 +91,8 @@ class ApiClient {
           return handler.next(options);
         },
         onResponse: (response, handler) async {
-          final contentType =
-              (response.headers.value('content-type') ?? '').toLowerCase();
+          final contentType = (response.headers.value('content-type') ?? '')
+              .toLowerCase();
           final body = _bodyAsString(response.data);
           final isHtml =
               contentType.contains('text/html') || _looksLikeHtml(body);
@@ -102,17 +102,18 @@ class ApiClient {
           // and against local or live hosts — no WebView required.
           if (isHtml && HostChallenge.isChallenge(body)) {
             final solved = HostChallenge.solve(body);
-            final alreadyRetried =
-                (response.requestOptions.extra['_challengeRetried'] as bool?) ==
-                    true;
-            if (solved != null && !alreadyRetried) {
+            if (solved != null) {
               setBypassCookie(solved);
               final opts = response.requestOptions;
-              opts.extra['_challengeRetried'] = true;
+              // CRITICAL: a replayed RequestOptions never re-reads
+              // dio.options.headers, so the bypass cookie must be attached
+              // to the request itself or the host serves the challenge again.
+              opts.headers['Cookie'] = solved;
               try {
-                final freshDio = Dio(dio.options);
-                final retryResponse = await freshDio.fetch(opts);
-                return handler.resolve(retryResponse);
+                final retryResponse = await _replay(opts);
+                if (retryResponse != null) {
+                  return handler.resolve(retryResponse);
+                }
               } catch (e) {
                 return handler.reject(
                   e is DioException
@@ -133,30 +134,25 @@ class ApiClient {
             );
           }
 
-          final isColdStart = [502, 503, 504].contains(response.statusCode) ||
+          final isColdStart =
+              [502, 503, 504].contains(response.statusCode) ||
               contentType.contains('text/html');
           if (isColdStart) {
-            // Render cold-start: retry with backoff
-            final retryCount =
-                (response.requestOptions.extra['_retryCount'] as int? ?? 0);
-            if (retryCount < _retryDelays.length) {
-              await Future.delayed(Duration(seconds: _retryDelays[retryCount]));
-              final opts = response.requestOptions;
-              opts.extra['_retryCount'] = retryCount + 1;
-              try {
-                // Use a fresh Dio instance to avoid reusing the poisoned HttpClient
-                // connection that received the HTML/WAF response.
-                // Intentionally NOT copying interceptors — prevents recursive retry loops.
-                final freshDio = Dio(dio.options);
-                final retryResponse = await freshDio.fetch(opts);
+            // Cold start / WAF page: wait briefly, then replay on a fresh
+            // connection until the host answers with real API data.
+            final opts = response.requestOptions;
+            await Future.delayed(Duration(seconds: _retryDelays[0]));
+            try {
+              final retryResponse = await _replay(opts);
+              if (retryResponse != null) {
                 return handler.resolve(retryResponse);
-              } catch (e) {
-                return handler.reject(
-                  e is DioException
-                      ? e
-                      : DioException(requestOptions: opts, error: e),
-                );
               }
+            } catch (e) {
+              return handler.reject(
+                e is DioException
+                    ? e
+                    : DioException(requestOptions: opts, error: e),
+              );
             }
             return handler.reject(
               DioException(
@@ -183,25 +179,22 @@ class ApiClient {
             // of failing (mirrors the success-path handling above).
             if (isHtml && HostChallenge.isChallenge(body)) {
               final solved = HostChallenge.solve(body);
-              final alreadyRetried =
-                  (error.requestOptions.extra['_challengeRetried'] as bool?) ==
-                      true;
-              if (solved != null && !alreadyRetried) {
+              if (solved != null) {
                 setBypassCookie(solved);
-                error.requestOptions.extra['_challengeRetried'] = true;
+                final opts = error.requestOptions;
+                // Replay never re-reads dio.options.headers — attach the
+                // bypass cookie to the request itself (see onResponse).
+                opts.headers['Cookie'] = solved;
                 try {
-                  final freshDio = Dio(dio.options);
-                  final retryResponse =
-                      await freshDio.fetch(error.requestOptions);
-                  return handler.resolve(retryResponse);
+                  final retryResponse = await _replay(opts);
+                  if (retryResponse != null) {
+                    return handler.resolve(retryResponse);
+                  }
                 } catch (e) {
                   return handler.next(
                     e is DioException
                         ? e
-                        : DioException(
-                            requestOptions: error.requestOptions,
-                            error: e,
-                          ),
+                        : DioException(requestOptions: opts, error: e),
                   );
                 }
               }
@@ -223,32 +216,23 @@ class ApiClient {
               504,
             ].contains(error.response?.statusCode);
             if (isHtml) {
-              final retryCount =
-                  (error.requestOptions.extra['_retryCount'] as int? ?? 0);
-              if (retryCount < _retryDelays.length) {
-                await Future.delayed(
-                  Duration(seconds: _retryDelays[retryCount]),
-                );
-                error.requestOptions.extra['_retryCount'] = retryCount + 1;
-                try {
-                  final freshDio = Dio(dio.options);
-                  final retryResponse =
-                      await freshDio.fetch(error.requestOptions);
+              final opts = error.requestOptions;
+              await Future.delayed(Duration(seconds: _retryDelays[0]));
+              try {
+                final retryResponse = await _replay(opts);
+                if (retryResponse != null) {
                   return handler.resolve(retryResponse);
-                } catch (e) {
-                  return handler.next(
-                    e is DioException
-                        ? e
-                        : DioException(
-                            requestOptions: error.requestOptions,
-                            error: e,
-                          ),
-                  );
                 }
+              } catch (e) {
+                return handler.next(
+                  e is DioException
+                      ? e
+                      : DioException(requestOptions: opts, error: e),
+                );
               }
               return handler.next(
                 DioException(
-                  requestOptions: error.requestOptions,
+                  requestOptions: opts,
                   response: error.response,
                   type: DioExceptionType.badResponse,
                   message: 'Service temporarily unavailable. Please try again.',
@@ -256,32 +240,23 @@ class ApiClient {
               );
             }
             if (isColdStart) {
-              final retryCount =
-                  (error.requestOptions.extra['_retryCount'] as int? ?? 0);
-              if (retryCount < _retryDelays.length) {
-                await Future.delayed(
-                  Duration(seconds: _retryDelays[retryCount]),
-                );
-                error.requestOptions.extra['_retryCount'] = retryCount + 1;
-                try {
-                  final freshDio = Dio(dio.options);
-                  final retryResponse =
-                      await freshDio.fetch(error.requestOptions);
+              final opts = error.requestOptions;
+              await Future.delayed(Duration(seconds: _retryDelays[0]));
+              try {
+                final retryResponse = await _replay(opts);
+                if (retryResponse != null) {
                   return handler.resolve(retryResponse);
-                } catch (e) {
-                  return handler.next(
-                    e is DioException
-                        ? e
-                        : DioException(
-                            requestOptions: error.requestOptions,
-                            error: e,
-                          ),
-                  );
                 }
+              } catch (e) {
+                return handler.next(
+                  e is DioException
+                      ? e
+                      : DioException(requestOptions: opts, error: e),
+                );
               }
               return handler.next(
                 DioException(
-                  requestOptions: error.requestOptions,
+                  requestOptions: opts,
                   response: error.response,
                   type: error.type,
                   error: error.error,
@@ -355,6 +330,46 @@ class ApiClient {
     } catch (_) {
       return '';
     }
+  }
+
+  /// Replays [opts] on a fresh Dio instance (no interceptors — avoids
+  /// recursive retry loops and reuses no poisoned HttpClient connection that
+  /// previously received an HTML/WAF response) until the host answers with
+  /// real API data instead of an HTML page.
+  ///
+  /// Returns the first non-HTML response, or null when every attempt still
+  /// returned HTML — callers must reject in that case so an HTML body never
+  /// reaches a JSON parser (it surfaces as a raw FormatException otherwise).
+  Future<Response<dynamic>?> _replay(RequestOptions opts) async {
+    for (var attempt = 0; attempt < _retryDelays.length + 1; attempt++) {
+      if (attempt > 0) {
+        await Future.delayed(Duration(seconds: _retryDelays[attempt - 1]));
+      }
+      final freshDio = Dio(dio.options);
+      final Response<dynamic> res;
+      try {
+        res = await freshDio.fetch(opts);
+      } catch (_) {
+        // Transport-level failure on a retry — surface it to the caller.
+        rethrow;
+      }
+      final contentType = (res.headers.value('content-type') ?? '')
+          .toLowerCase();
+      final body = _bodyAsString(res.data);
+      if (!contentType.contains('text/html') && !_looksLikeHtml(body)) {
+        return res;
+      }
+      // Host still serving an HTML page — attach a fresh challenge cookie
+      // (if any) and try again on the next loop iteration.
+      if (HostChallenge.isChallenge(body)) {
+        final cookie = HostChallenge.solve(body);
+        if (cookie != null) {
+          setBypassCookie(cookie);
+          opts.headers['Cookie'] = cookie;
+        }
+      }
+    }
+    return null;
   }
 
   static bool _looksLikeHtml(String body) {
@@ -443,10 +458,7 @@ ApiException apiErrorFromDio(Object error, String fallback) {
     if (data is Map) {
       final message = data['message']?.toString();
       if (message != null && message.isNotEmpty) {
-        return ApiException(
-          message,
-          statusCode: error.response?.statusCode,
-        );
+        return ApiException(message, statusCode: error.response?.statusCode);
       }
     }
     return ApiException(

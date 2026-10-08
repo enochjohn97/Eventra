@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The official EventOut brand lockup: coral E-monogram badge + "venOut"
+/// The official EventOut brand lockup: coral E-monogram badge + "ventOut"
 /// wordmark. Used on every screen header so the brand is always visible.
 ///
 /// [variant] white renders the wordmark in white for dark/photo backgrounds.
@@ -23,7 +23,7 @@ class BrandLogo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/images/logo-wordmark.svg',
+          'assets/images/logo.png',
           width: size,
           height: size,
           fit: BoxFit.contain,
@@ -32,7 +32,7 @@ class BrandLogo extends StatelessWidget {
           const SizedBox(width: 8),
           RichText(
             text: TextSpan(
-            text: 'venOut',
+            text: 'ventOut',
               style: TextStyle(
                 color: wordmarkColor,
                 fontSize: size * 0.55,

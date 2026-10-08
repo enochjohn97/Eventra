@@ -40,43 +40,77 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [EventSkeletonGrid(count: 3)],
               )
-            : provider.favorites.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('No favorites yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
-                      SizedBox(height: 8),
-                      Center(child: Text('Tap the heart on events you love.', style: TextStyle(color: AppTheme.textMuted))),
-                    ],
-                  )
-                : GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: Breakpoints.cardAspectRatio(width),
+            : provider.favorites.isEmpty && provider.error != null
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 120),
+                  Center(
+                    child: Text(
+                      provider.error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppTheme.textMuted),
                     ),
-                    itemCount: provider.favorites.length,
-                    itemBuilder: (context, index) {
-                      final event = provider.favorites[index];
-                      return EventCard(
-                        event: event.copyWith(isFavorite: true),
-                        onTap: () => showEventDetailSheet(
-                          context,
-                          event: event,
-                          onGetTicket: () {
-                            Navigator.pop(context);
-                            openCheckoutForEvent(context, event);
-                          },
-                        ),
-                        onFavorite: () async {
-                          await provider.removeFavorite(event);
-                        },
-                      );
-                    },
                   ),
+                  const SizedBox(height: 8),
+                  const Center(
+                    child: Text(
+                      'Pull down to retry.',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ),
+                ],
+              )
+            : provider.favorites.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  Center(
+                    child: Text(
+                      'No favorites yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Tap the heart on events you love.',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ),
+                ],
+              )
+            : GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: Breakpoints.cardAspectRatio(width),
+                ),
+                itemCount: provider.favorites.length,
+                itemBuilder: (context, index) {
+                  final event = provider.favorites[index];
+                  return EventCard(
+                    event: event.copyWith(isFavorite: true),
+                    onTap: () => showEventDetailSheet(
+                      context,
+                      event: event,
+                      onGetTicket: () {
+                        Navigator.pop(context);
+                        openCheckoutForEvent(context, event);
+                      },
+                    ),
+                    onFavorite: () async {
+                      await provider.removeFavorite(event);
+                    },
+                  );
+                },
+              ),
       ),
     );
   }

@@ -57,8 +57,9 @@ class GoogleAuthService {
     // GOOGLE_IOS_CLIENT_ID in the backend .env. On Android the clientId below
     // is informational — Credential Manager always uses serverClientId as the
     // token audience.
-    final String? clientId =
-        defaultTargetPlatform == TargetPlatform.iOS ? null : androidClientId;
+    final String? clientId = defaultTargetPlatform == TargetPlatform.iOS
+        ? null
+        : androidClientId;
 
     await _googleSignIn.initialize(
       clientId: clientId,
@@ -86,9 +87,16 @@ class GoogleAuthService {
   static Future<UserModel?> signIn() async {
     if (!_initialized) await configure();
 
-    GoogleSignInAccount account;
+    GoogleSignInAccount? account;
     try {
-      account = await _googleSignIn.authenticate(
+      // Prefer the non-button Google ID flow (one-tap / account chooser).
+      // It mints the token for the *web* (server) client ID and does not
+      // require this app's package name + SHA-1 to be registered as an
+      // Android OAuth client — which is exactly what the button flow
+      // (GetSignInWithGoogleOption) enforces and what fails on this device
+      // with Google's UNREGISTERED_ON_API_CONSOLE error.
+      account = await _googleSignIn.attemptLightweightAuthentication();
+      account ??= await _googleSignIn.authenticate(
         scopeHint: const ['email', 'profile'],
       );
     } on GoogleSignInException catch (e) {
@@ -96,8 +104,12 @@ class GoogleAuthService {
       // instead of dumping raw enum text on the user.
       switch (e.code) {
         case GoogleSignInExceptionCode.canceled:
-        case GoogleSignInExceptionCode.interrupted:
           return null;
+        case GoogleSignInExceptionCode.interrupted:
+          debugPrint('Google sign-in interrupted: ${e.description}');
+          throw const ApiException(
+            'Google sign-in was interrupted. Please try again.',
+          );
         case GoogleSignInExceptionCode.clientConfigurationError:
         case GoogleSignInExceptionCode.providerConfigurationError:
           debugPrint(
@@ -114,16 +126,14 @@ class GoogleAuthService {
           );
         case GoogleSignInExceptionCode.unknownError:
         case GoogleSignInExceptionCode.userMismatch:
-          debugPrint(
-            'Google sign-in failed: ${e.code} – ${e.description}',
-          );
-          throw const ApiException(
-            'Google sign-in failed. Please try again.',
-          );
+          debugPrint('Google sign-in failed: ${e.code} – ${e.description}');
+          throw const ApiException('Google sign-in failed. Please try again.');
       }
     } catch (e) {
-      debugPrint('Google sign-in cancelled or failed: $e');
-      return null;
+      debugPrint('Google sign-in failed unexpectedly: $e');
+      throw const ApiException(
+        'Google sign-in failed unexpectedly. Please try again.',
+      );
     }
 
     // v7: `.authentication` is a synchronous getter, NOT a Future.
@@ -169,7 +179,10 @@ class GoogleAuthService {
           return exchangeTokenWithBackend(idToken, retried: true);
         }
       }
-      throw apiErrorFromDio(error, 'EventOut could not complete Google sign-in.');
+      throw apiErrorFromDio(
+        error,
+        'EventOut could not complete Google sign-in.',
+      );
     }
 
     final data = response.data is Map

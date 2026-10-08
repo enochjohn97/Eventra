@@ -30,7 +30,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   void _onScroll() {
-    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
       context.read<EventsProvider>().loadEvents();
     }
   }
@@ -63,9 +64,15 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'newest', child: Text('Newest')),
-              PopupMenuItem(value: 'date', child: Text('Upcoming Date')),
-              PopupMenuItem(value: 'price_low', child: Text('Price: Low to High')),
-              PopupMenuItem(value: 'price_high', child: Text('Price: High to Low')),
+              PopupMenuItem(value: 'date', child: Text('Event Date')),
+              PopupMenuItem(
+                value: 'price_low',
+                child: Text('Price: Low to High'),
+              ),
+              PopupMenuItem(
+                value: 'price_high',
+                child: Text('Price: High to Low'),
+              ),
               PopupMenuItem(value: 'popular', child: Text('Popularity')),
               PopupMenuItem(value: 'merit', child: Text('Trending Merit')),
             ],
@@ -122,7 +129,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   child: EventSkeletonGrid(count: columns * 3),
                 ),
               )
-            else if (eventsProvider.error != null && eventsProvider.events.isEmpty)
+            else if (eventsProvider.error != null &&
+                eventsProvider.events.isEmpty)
               SliverFillRemaining(
                 child: _EmptyState(
                   icon: Icons.cloud_off,
@@ -154,17 +162,14 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                       MediaQuery.sizeOf(context).width,
                     ),
                   ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final event = eventsProvider.events[index];
-                      return EventCard(
-                        event: event,
-                        onTap: () => _openEvent(context, event),
-                        onFavorite: () => _toggleFavorite(context, event),
-                      );
-                    },
-                    childCount: eventsProvider.events.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final event = eventsProvider.events[index];
+                    return EventCard(
+                      event: event,
+                      onTap: () => _openEvent(context, event),
+                      onFavorite: () => _toggleFavorite(context, event),
+                    );
+                  }, childCount: eventsProvider.events.length),
                 ),
               ),
             if (eventsProvider.isLoadingMore)
@@ -196,7 +201,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       await context.read<EventsProvider>().toggleFavorite(event);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -227,9 +234,16 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 56, color: AppTheme.textMuted),
             const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
-            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textMuted)),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textMuted),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: onAction, child: Text(actionLabel)),
           ],

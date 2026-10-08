@@ -23,4 +23,12 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 
+gradle.beforeProject {
+    if (name == "google_sign_in_android") {
+        pluginManager.withPlugin("com.android.library") {
+            pluginManager.apply("org.jetbrains.kotlin.android")
+        }
+    }
+}
+
 include(":app")
