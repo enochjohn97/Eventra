@@ -15,8 +15,10 @@ class ApiClient {
 
   factory ApiClient() => _instance;
 
-  // Retry delays for transient server errors (e.g. brief HTML responses from anti-bot layer)
-  static const _retryDelays = [3, 5];
+  // Retry delays for transient server errors (e.g. brief HTML responses from
+  // anti-bot layer) — also gives the challenge solver up to 4 fresh attempts,
+  // which matters on flaky mobile connections that truncate the challenge HTML.
+  static const _retryDelays = [2, 3, 5];
 
   /// Default = production. `--dart-define=API_BASE_URL` overrides the starting
   /// value; [EndpointResolver] may switch it at runtime once it probes which
@@ -59,7 +61,10 @@ class ApiClient {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Connection': 'close',
+          // NOTE: no `Connection: close` — keep-alive lets the anti-bot
+          // challenge and its replay share one connection, and avoids the
+          // mid-body resets ('Connection closed while receiving data') the
+          // shared host produces on mobile networks.
           'User-Agent': 'Dart/3.12.2 (EventOut Mobile)',
           'X-Requested-With': 'XMLHttpRequest',
         },
@@ -101,26 +106,30 @@ class ApiClient {
           // Solving it natively is instant and works the same on Android/iOS
           // and against local or live hosts — no WebView required.
           if (isHtml && HostChallenge.isChallenge(body)) {
+            final opts = response.requestOptions;
             final solved = HostChallenge.solve(body);
             if (solved != null) {
               setBypassCookie(solved);
-              final opts = response.requestOptions;
               // CRITICAL: a replayed RequestOptions never re-reads
               // dio.options.headers, so the bypass cookie must be attached
               // to the request itself or the host serves the challenge again.
               opts.headers['Cookie'] = solved;
-              try {
-                final retryResponse = await _replay(opts);
-                if (retryResponse != null) {
-                  return handler.resolve(retryResponse);
-                }
-              } catch (e) {
-                return handler.reject(
-                  e is DioException
-                      ? e
-                      : DioException(requestOptions: opts, error: e),
-                );
+            }
+            // ALWAYS replay, even when the inline solve failed (truncated
+            // challenge body on a flaky connection): _replay re-fetches a
+            // fresh challenge page and solves it there, instead of failing
+            // the request outright with 'hosting security check'.
+            try {
+              final retryResponse = await _replay(opts);
+              if (retryResponse != null) {
+                return handler.resolve(retryResponse);
               }
+            } catch (e) {
+              return handler.reject(
+                e is DioException
+                    ? e
+                    : DioException(requestOptions: opts, error: e),
+              );
             }
             return handler.reject(
               DioException(
@@ -178,25 +187,28 @@ class ApiClient {
             // HTML error body = anti-bot challenge — solve and replay instead
             // of failing (mirrors the success-path handling above).
             if (isHtml && HostChallenge.isChallenge(body)) {
+              final opts = error.requestOptions;
               final solved = HostChallenge.solve(body);
               if (solved != null) {
                 setBypassCookie(solved);
-                final opts = error.requestOptions;
                 // Replay never re-reads dio.options.headers — attach the
                 // bypass cookie to the request itself (see onResponse).
                 opts.headers['Cookie'] = solved;
-                try {
-                  final retryResponse = await _replay(opts);
-                  if (retryResponse != null) {
-                    return handler.resolve(retryResponse);
-                  }
-                } catch (e) {
-                  return handler.next(
-                    e is DioException
-                        ? e
-                        : DioException(requestOptions: opts, error: e),
-                  );
+              }
+              // Replay unconditionally: _replay re-fetches and re-solves a
+              // fresh challenge when the inline solve failed (truncated
+              // body) so a flaky first response never fails the request.
+              try {
+                final retryResponse = await _replay(opts);
+                if (retryResponse != null) {
+                  return handler.resolve(retryResponse);
                 }
+              } catch (e) {
+                return handler.next(
+                  e is DioException
+                      ? e
+                      : DioException(requestOptions: opts, error: e),
+                );
               }
               return handler.next(
                 DioException(
@@ -349,9 +361,27 @@ class ApiClient {
       final Response<dynamic> res;
       try {
         res = await freshDio.fetch(opts);
-      } catch (_) {
-        // Transport-level failure on a retry — surface it to the caller.
-        rethrow;
+      } on DioException catch (error) {
+        final failedResponse = error.response;
+        if (failedResponse == null) {
+          // Transport-level failure on a retry — surface it to the caller.
+          rethrow;
+        }
+        final failedContentType =
+            (failedResponse.headers.value('content-type') ?? '').toLowerCase();
+        final failedBody = _bodyAsString(failedResponse.data);
+        if (!failedContentType.contains('text/html') &&
+            !_looksLikeHtml(failedBody)) {
+          rethrow;
+        }
+        if (HostChallenge.isChallenge(failedBody)) {
+          final cookie = HostChallenge.solve(failedBody);
+          if (cookie != null) {
+            setBypassCookie(cookie);
+            opts.headers['Cookie'] = cookie;
+          }
+        }
+        continue;
       }
       final contentType = (res.headers.value('content-type') ?? '')
           .toLowerCase();

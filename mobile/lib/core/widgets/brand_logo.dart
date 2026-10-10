@@ -29,7 +29,6 @@ class BrandLogo extends StatelessWidget {
           fit: BoxFit.contain,
         ),
         if (showWordmark) ...[
-          const SizedBox(width: 8),
           RichText(
             text: TextSpan(
             text: 'ventOut',

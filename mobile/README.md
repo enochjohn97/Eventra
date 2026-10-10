@@ -38,18 +38,21 @@ and the `/auth/google` exchange re-probes and retries once if the picked origin
 stops accepting connections mid-session.
 
 1. Copy `.env.example` to `.env` in project root and configure DB, Google, Paystack, mail keys.
-2. *(Local backend development only)* Start PHP backend from repo root:
+2. *(Local backend development only; use a trusted network for device testing)* Start PHP backend from repo root:
    ```bash
-   php -S localhost:8000 -t . server/index.php
+   php -S 0.0.0.0:8000 -t . server/index.php
    ```
 3. *(Local backend development only)* Configure API URL when running the app:
    - Android emulator: `--dart-define=API_BASE_URL=http://10.0.2.2:8000/api`
    - iOS simulator: `--dart-define=API_BASE_URL=http://127.0.0.1:8000/api`
-   - Physical device: use your machine LAN IP, e.g. `http://192.168.1.5:8000/api`
+   - Flutter web in a local browser: `--dart-define=API_BASE_URL=http://localhost:8000/api`
+   - Physical device: use your machine's LAN IP, e.g. `http://192.168.1.5:8000/api` (a phone's `localhost` points to the phone, not your computer)
    - Production: `https://eventra-website.liveblog365.com/api` (default)
    - Add `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID` for the native
      OAuth clients, plus `GOOGLE_SERVER_CLIENT_ID` for the backend web client
      (the audience the Android token is minted for).
+   - For a Flutter web deployment on another domain, build with the live API URL
+     and add the deployed web origin to the backend's `ALLOWED_ORIGINS`.
 
 ## Run
 

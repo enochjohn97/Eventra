@@ -19,7 +19,10 @@ Future<void> main() async {
     ),
   );
 
-  const base = 'https://eventra-website.liveblog365.com/api';
+  const base = String.fromEnvironment(
+    'BASE',
+    defaultValue: 'http://localhost:8000/api',
+  );
 
   for (final path in ['/config/app']) {
     var response = await dio.get<dynamic>('$base$path');

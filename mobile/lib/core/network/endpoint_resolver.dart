@@ -84,7 +84,8 @@ class EndpointResolver {
 
     // Remote candidates first; only fall back to local dev servers if none of
     // them answer (a production device should not hang on 10.0.2.2).
-    final winner = await _probeAll(candidates) ??
+    final winner =
+        await _probeAll(candidates) ??
         await _probeAll([
           ...candidates,
           ..._localCandidates.map((u) => u.replaceFirst(RegExp(r'/$'), '')),
@@ -129,6 +130,7 @@ class EndpointResolver {
         baseUrl: base,
         connectTimeout: const Duration(seconds: 5),
         receiveTimeout: const Duration(seconds: 8),
+        validateStatus: (status) => status != null,
         headers: {
           'Accept': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -142,7 +144,10 @@ class EndpointResolver {
         final data = response.data;
 
         if (data is Map) {
-          return data['success'] == true;
+          return response.statusCode != null &&
+              response.statusCode! >= 200 &&
+              response.statusCode! < 300 &&
+              data['success'] == true;
         }
         if (data is String && HostChallenge.isChallenge(data)) {
           final cookie = HostChallenge.solve(data);

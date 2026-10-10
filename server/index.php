@@ -219,13 +219,10 @@ if (strpos($uri, '/api/') === 0) {
     }
 
     if ($method === 'GET' && $cleanPath === 'events') {
-        if (!empty($_GET['search'])) {
-            $_GET['q'] = $_GET['search'];
-            $dispatchApi('events/search-events.php');
-        }
         if (!empty($_GET['favorite']) && $_GET['favorite'] !== '0') {
             $dispatchApi('favorites/get-favorites.php');
         }
+
         $page = max(1, (int)($_GET['page'] ?? 1));
         $limit = (int)($_GET['limit'] ?? 10);
         if ($limit <= 0) {
@@ -245,6 +242,12 @@ if (strpos($uri, '/api/') === 0) {
             ];
             $_GET['sort_by'] = $sortMap[strtolower((string)$_GET['sort'])] ?? $_GET['sort'];
         }
+
+        if (!empty($_GET['search'])) {
+            $_GET['q'] = $_GET['search'];
+            $dispatchApi('events/search-events.php');
+        }
+
         $dispatchApi('events/get-events.php');
     }
 

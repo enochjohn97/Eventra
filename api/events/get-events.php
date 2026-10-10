@@ -218,7 +218,7 @@ try {
 
     // Sort
     $sort_by  = $_GET['sort_by'] ?? 'newest';
-    $order_sql = match($sort_by) {
+    $sort_order_sql = match($sort_by) {
         'popular'    => "e.attendee_count DESC",
         'merit'      => "$meritScore DESC",
         'date'       => "e.event_date ASC, e.event_time ASC",
@@ -226,6 +226,7 @@ try {
         'price_high' => "e.price DESC",
         default      => "e.created_at DESC",
     };
+    $order_sql = "CASE WHEN e.event_date < CURDATE() THEN 1 ELSE 0 END ASC, $sort_order_sql, e.id DESC";
 
     $sql = "SELECT
             e.*,
@@ -317,4 +318,3 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Unable to load events right now. Please try again shortly.']);
 }
-

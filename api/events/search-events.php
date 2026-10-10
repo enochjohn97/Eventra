@@ -117,6 +117,25 @@ try {
     // Pagination support (offset) so paged mobile search works.
     $offset = max(0, (int) ($_GET['offset'] ?? 0));
 
+    $count_stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM events e
+        LEFT JOIN clients c ON e.client_id = c.id
+        WHERE $where_sql
+    ");
+    $count_stmt->execute($params);
+    $total = (int) $count_stmt->fetchColumn();
+
+    $sort_by = $_GET['sort_by'] ?? 'newest';
+    $sort_order_sql = match ($sort_by) {
+        'popular' => 'e.attendee_count DESC',
+        'merit' => "$meritScore DESC",
+        'date' => 'e.event_date ASC, e.event_time ASC',
+        'price_low' => 'e.price ASC',
+        'price_high' => 'e.price DESC',
+        default => 'e.created_at DESC',
+    };
+
     // Execute search
     $sql = "
         SELECT e.*,
@@ -126,7 +145,8 @@ try {
         FROM events e
         LEFT JOIN clients c ON e.client_id = c.id
         WHERE $where_sql
-        ORDER BY e.event_date ASC
+        ORDER BY CASE WHEN e.event_date < CURDATE() THEN 1 ELSE 0 END ASC,
+                 $sort_order_sql, e.id DESC
         LIMIT ? OFFSET ?
     ";
 
@@ -179,7 +199,7 @@ try {
     echo json_encode([
         'success' => true,
         'events' => $events,
-        'total' => count($events),
+        'total' => $total,
         'count' => count($events),
         'q' => $q
     ]);

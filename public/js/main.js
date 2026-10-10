@@ -1552,7 +1552,7 @@ function shareEvent(
   }
 
   const domain =
-    "https://eventra-website.liveblog365.com/public/pages/index.html";
+    "http://localhost:8000/public/pages/index.html";
   const nameSlug = encodeURIComponent(
     eventName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
