@@ -330,6 +330,19 @@ try {
 
     // ── Feature Gate: Paystack Connect required for paid events ─────────────
     $isPaidEvent = ($price > 0 || $regular_price > 0 || $vip_price > 0 || $premium_price > 0);
+    $activeTicketPrices = [$price];
+    if ($ticket_type_mode !== 'all' && !str_contains($ticket_type_mode, 'all')) {
+        $activeTicketPrices = [];
+        foreach (explode(',', $ticket_type_mode) as $tier) {
+            if ($tier === 'regular') $activeTicketPrices[] = $regular_price;
+            if ($tier === 'vip') $activeTicketPrices[] = $vip_price;
+            if ($tier === 'premium') $activeTicketPrices[] = $premium_price;
+        }
+    }
+    $is_free = isset($_POST['is_free'])
+        && $_POST['is_free'] === '1'
+        && !empty($activeTicketPrices)
+        && max($activeTicketPrices) <= 0;
     $paystackStatus = $client_data['paystack_connection_status'] ?? 'disconnected';
     // if ($isPaidEvent && $paystackStatus !== 'connected') {
     //     http_response_code(403);
@@ -537,6 +550,7 @@ try {
         'vip_quantity' => $vip_quantity,
         'premium_quantity' => $premium_quantity,
         'ticket_type_mode' => $ticket_type_mode,
+        'is_free' => $is_free,
         'google_calendar_event_id' => $google_event_id,
         'google_calendar_status' => $google_event_id ? 'scheduled' : 'pending'
     ];

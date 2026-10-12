@@ -2,6 +2,40 @@ import 'package:intl/intl.dart';
 import '../../users/models/event_model.dart';
 
 class EventUtils {
+  /// Filter vocabularies — identical to the web app (public/js/utils.js) so a
+  /// filter chosen in the app matches the same events the website returns.
+  static const List<String> nigeriaStates = [
+    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue',
+    'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe',
+    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
+    'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau',
+    'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT',
+  ];
+
+  static const List<String> eventCategories = [
+    'Conference', 'Workshop', 'Seminar', 'Entertainment', 'Sport & Fitness',
+    'Exhibition', 'Networking', 'Festival', 'Concert', 'Business', 'Education',
+    'Social', 'Personal', 'Community', 'Religion', 'Cultural', 'Technology',
+    'Art', 'Health', 'Food', 'Agriculture', 'Tourism', 'Fashion',
+    'Real Estate', 'Awards', 'Charity', 'Finance', 'Gaming', 'Political',
+    'Creative', 'Entrepreneurship & Innovation', 'Other',
+  ];
+
+  /// Priority tags exactly as the web offers them.
+  static const List<String> priorityTags = [
+    'Featured', 'Hot', 'Trending', 'Nearby', 'Upcoming',
+  ];
+
+  /// Price buckets used by the app's filter sheet. Values are the backend
+  /// contract: free / price_max / price_min+price_max.
+  static const List<({String label, bool free, int? min, int? max})> priceBuckets = [
+    (label: 'Free', free: true, min: null, max: null),
+    (label: 'Under ₦5,000', free: false, min: null, max: 5000),
+    (label: '₦5,000 – ₦20,000', free: false, min: 5000, max: 20000),
+    (label: '₦20,000 – ₦50,000', free: false, min: 20000, max: 50000),
+    (label: '₦50,000+', free: false, min: 50000, max: null),
+  ];
+
   static String formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return 'Date TBA';
     try {
@@ -66,13 +100,26 @@ class EventUtils {
   /// Card/summary price exactly like the web app:
   ///  * "all" mode      → legacy price + fee, or "Free"
   ///  * explicit tiers  → "₦min - ₦max" over the ACTIVE tiers (+ fee)
+  ///
+  /// Tier prices are stored in two places: the legacy `event.price` column and
+  /// the merged top-level tier fields the backend expands from event metadata
+  /// (`regular_price / vip_price / premium_price`). The web card reads those
+  /// expanded fields, so this must too — otherwise every tiered paid event with
+  /// `price = 0` in the legacy column is wrongly shown as FREE.
   static String formatPrice(EventModel event) {
     final tiers = activeTiers(event);
-    final isAll = tiers.length == 3;
+    final configuredModes = (event.ticketTypeMode ?? 'all')
+        .split(',')
+        .map((mode) => mode.trim().toLowerCase())
+        .where((mode) => mode.isNotEmpty)
+        .toList();
+    final isLegacySinglePrice =
+        configuredModes.isEmpty || configuredModes.contains('all');
 
-    if (isAll) {
+    if (isLegacySinglePrice) {
+      // Legacy single price applies the platform fee, same as the web card.
       final withFee = applyPlatformFee(event.price);
-      return withFee > 0 ? '₦${_comma(withFee)}' : 'Free';
+      if (withFee > 0) return '₦${_comma(withFee)}';
     }
 
     final prices = tiers
@@ -82,16 +129,44 @@ class EventUtils {
       ..sort();
 
     if (prices.isEmpty) {
-      // Tiers exist but all priced 0 — fall back to legacy price.
+      // Tiers exist but every active tier is priced 0 — fall back to the
+      // legacy price so a tiered event priced only on the legacy column still
+      // renders its real amount instead of becoming FREE.
       final withFee = applyPlatformFee(event.price);
-      return withFee > 0 ? '₦${_comma(withFee)}' : 'Free';
+      if (withFee > 0) return '₦${_comma(withFee)}';
+      return event.isFree == false ? 'Price unavailable' : 'Free';
     }
     if (prices.length == 1) return '₦${_comma(prices.first)}';
     return '₦${_comma(prices.first)} - ₦${_comma(prices.last)}';
   }
 
   /// True when the event charges nothing across every active tier.
-  static bool isFree(EventModel event) => !formatPrice(event).startsWith('₦');
+  static bool isFree(EventModel event) {
+    final modes = activeTiers(event);
+    if (modes.any((tier) => basePriceForTier(event, tier) > 0) ||
+        event.price > 0) {
+      return false;
+    }
+    return event.isFree ?? true;
+  }
+
+  /// True when the event's date is already behind today (same rule as the web).
+  static bool isPassed(EventModel event) => statusBadge(event).label == 'Passed';
+
+  /// Passed events cannot be bought into and offer no share/favorite affordances.
+  static bool canBuyTickets(EventModel event) =>
+      !isPassed(event) && !event.isSoldOut;
+
+  /// The web shows the tier picker only when the organizer enabled MORE THAN
+  /// ONE specific tier — `all` means the legacy single price, so no picker.
+  static bool showTierSelector(EventModel event) {
+    final modes = (event.ticketTypeMode ?? 'all')
+        .split(',')
+        .map((m) => m.trim().toLowerCase())
+        .where((m) => m.isNotEmpty)
+        .toList();
+    return modes.length > 1 && !modes.contains('all');
+  }
 
   /// Upcoming / Sold Out / Passed — same rules as the web cards.
   static ({String label, int colorValue}) statusBadge(EventModel event) {
@@ -120,6 +195,15 @@ class EventUtils {
     if (raw.toLowerCase().contains('upcoming')) return null;
     return raw;
   }
+
+  /// Fee-inclusive price for one tier, e.g. "₦2,200" or "Free".
+  static String tierPriceLabel(EventModel event, String tier) {
+    final withFee = applyPlatformFee(basePriceForTier(event, tier));
+    return withFee > 0 ? '₦${_comma(withFee)}' : 'Free';
+  }
+
+  static String tierName(String tier) =>
+      tier.isEmpty ? tier : tier[0].toUpperCase() + tier.substring(1);
 
   static String _comma(double value) {
     final fmt = NumberFormat('#,##0', 'en_NG');

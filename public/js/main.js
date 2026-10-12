@@ -1011,24 +1011,22 @@ function createEventCard(event, index) {
     if (!event.priority_label && event.priority) {
       displayPriority = `${getPriorityIcon(event.priority)} ${event.priority.charAt(0).toUpperCase() + event.priority.slice(1)}`;
     }
-    let pColor = "#722f37";
-    let pBg = "white";
+    // Badge text must stay readable on the badge background.
+    // Final badge color is applied as inline background on the badge itself,
+    // so the text color is always contrast-safe white.
     const lowerPriority = displayPriority.toLowerCase();
+    let pBg = "#722f37";
     if (lowerPriority.includes("hot")) {
-      pColor = "white";
       pBg = "#ff4757";
     } else if (lowerPriority.includes("trending")) {
-      pColor = "white";
       pBg = "#3742fa";
     } else if (lowerPriority.includes("featured")) {
-      pColor = "white";
       pBg = "#2ed573";
     } else if (lowerPriority.includes("nearby")) {
-      pColor = "white";
       pBg = "#00b894";
     }
 
-    priorityBadge = `<div class="event-status-badge" style="color: ${pColor}; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pColor === "white" ? pBg : pColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-left: 0.5rem;">
+    priorityBadge = `<div class="event-status-badge" style="color: #ffffff; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pBg}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-left: 0.5rem;">
       ${displayPriority}
     </div>`;
   }
@@ -1044,8 +1042,8 @@ function createEventCard(event, index) {
 
         <div class="event-badges">
           <span class="event-category-badge">${category}</span>
-          <div class="event-status-badge" style="color: ${statusColor};">
-            <span class="status-dot" style="background-color: ${statusColor};"></span>
+          <div class="event-status-badge" style="color: #ffffff; background-color: ${statusColor};">
+            <span class="status-dot" style="background-color: #ffffff;"></span>
             ${statusLabel}
           </div>
           ${priorityBadge}
@@ -1551,8 +1549,9 @@ function shareEvent(
     }
   }
 
-  const domain =
-    "http://localhost:8000/public/pages/index.html";
+  // Resolve the share base from whatever host actually serves the app, so the
+  // same code works locally (localhost:8000) and on the live platform.
+  const domain = `${window.location.origin}/public/pages/index.html`;
   const nameSlug = encodeURIComponent(
     eventName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
@@ -1758,6 +1757,7 @@ function initSmoothScroll() {
 
 // Initialize all functions
 async function init() {
+  startHomeCelebration();
   // Events are public content and must not wait for the session handshake.
   const eventsPromise = loadEvents().then(() => {
     initializeSlider("hot-events-grid");
@@ -1781,6 +1781,78 @@ async function init() {
     if (globalSearch && globalSearch.value.trim()) return; // skip during active search
     loadEvents(); // loadEvents -> applyFilters preserves checked state since filters init only once
   }, 60000);
+}
+
+function startHomeCelebration() {
+  let layer = document.getElementById("homeCelebrationLayer");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "homeCelebrationLayer";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(layer);
+  }
+
+  const palettes = [
+    ["#ff5a5f", "#c93a3e"],
+    ["#3b82f6", "#1d4ed8"],
+    ["#f59e0b", "#d97706"],
+    ["#22c55e", "#15803d"],
+    ["#a855f7", "#7e22ce"],
+    ["#ec4899", "#be185d"],
+    ["#06b6d4", "#0e7490"],
+  ];
+
+  const spawnBalloon = (delayMs = 0) => {
+    if (!layer || !document.body.contains(layer)) return;
+    const balloon = document.createElement("div");
+    balloon.className = "balloon";
+    const colors = palettes[Math.floor(Math.random() * palettes.length)];
+    const duration = 8500 + Math.random() * 4500;
+    balloon.style.setProperty("--b1", colors[0]);
+    balloon.style.setProperty("--b2", colors[1]);
+    balloon.style.left = `${Math.random() * 90 + 5}%`;
+    layer.appendChild(balloon);
+
+    if (typeof balloon.animate === "function") {
+      const anim = balloon.animate(
+        [
+          { transform: "translate3d(0, 0, 0) rotate(-4deg) scale(0.9)", opacity: 0 },
+          { transform: "translate3d(0, -8vh, 0) rotate(-2deg) scale(0.98)", opacity: 0.95, offset: 0.08 },
+          { transform: "translate3d(26px, -28vh, 0) rotate(5deg) scale(1)", offset: 0.25 },
+          { transform: "translate3d(-22px, -56vh, 0) rotate(-5deg) scale(1.02)", offset: 0.5 },
+          { transform: "translate3d(18px, -82vh, 0) rotate(4deg) scale(1)", opacity: 0.92, offset: 0.75 },
+          { transform: "translate3d(-10px, -118vh, 0) rotate(-3deg) scale(0.98)", opacity: 0 },
+        ],
+        { duration, delay: delayMs, easing: "linear", fill: "both" }
+      );
+      anim.onfinish = () => balloon.remove();
+      anim.oncancel = () => balloon.remove();
+    } else {
+      balloon.style.animation = `balloonRise ${duration}ms linear forwards`;
+      balloon.style.animationDelay = `${delayMs}ms`;
+      balloon.addEventListener("animationend", () => balloon.remove(), { once: true });
+    }
+  };
+
+  const burst = (count = 10) => {
+    const num = Math.max(1, count || 10);
+    for (let i = 0; i < num; i++) {
+      spawnBalloon(i * 160 + Math.random() * 120);
+    }
+  };
+
+  window.EventraCelebration = { burst, spawnBalloon };
+
+  // Initial ambient launch
+  burst(8);
+
+  // Keep festive ambient balloons drifting across the homepage
+  if (!window._homeCelebrationInterval) {
+    window._homeCelebrationInterval = setInterval(() => {
+      if (document.hidden) return;
+      spawnBalloon(0);
+    }, 4200);
+  }
 }
 
 // Initialize when DOM is ready

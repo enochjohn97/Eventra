@@ -23,6 +23,21 @@ class Breakpoints {
     return 0.75;
   }
 
+  /// Height one event card needs: a 16:10 image plus the compact text body.
+  /// An explicit extent (rather than an aspect ratio) is what keeps the cards
+  /// from showing a tall empty block under their price row; the text scale is
+  /// respected so larger system fonts still fit.
+  static double cardExtent({
+    required double gridWidth,
+    required int columns,
+    required double textScale,
+  }) {
+    const spacing = 16.0;
+    final tileWidth = (gridWidth - spacing * (columns - 1)) / columns;
+    final imageHeight = tileWidth * 10 / 16;
+    return imageHeight + 162 * textScale.clamp(1.0, 1.5);
+  }
+
   /// Max width for single-column lists (tickets) on large screens.
   static double listMaxWidth(double width) =>
       width >= tablet ? 720 : double.infinity;

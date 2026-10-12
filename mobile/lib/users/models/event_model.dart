@@ -15,6 +15,7 @@ class EventModel {
   final double? vipPrice;
   final double? premiumPrice;
   final String? ticketTypeMode;
+  final bool? isFree;
   final String? imagePath;
   final String? absoluteImageUrl;
   final String? organizerName;
@@ -48,6 +49,7 @@ class EventModel {
     this.vipPrice,
     this.premiumPrice,
     this.ticketTypeMode,
+    this.isFree,
     this.imagePath,
     this.absoluteImageUrl,
     this.organizerName,
@@ -72,13 +74,24 @@ class EventModel {
       return double.tryParse(v.toString()) ?? 0;
     }
 
+    bool? toNullableBool(dynamic v) {
+      if (v == null) return null;
+      if (v is bool) return v;
+      if (v is num) return v != 0;
+      final value = v.toString().trim().toLowerCase();
+      if (value == '1' || value == 'true' || value == 'yes') return true;
+      if (value == '0' || value == 'false' || value == 'no') return false;
+      return null;
+    }
+
     String? imagePath = json['image_path']?.toString();
     String? absoluteImage = json['absolute_image_url']?.toString();
     if ((absoluteImage == null || absoluteImage.isEmpty) &&
         imagePath != null &&
         imagePath.isNotEmpty &&
         baseOrigin != null) {
-      absoluteImage = '$baseOrigin/${imagePath.replaceFirst(RegExp(r'^/'), '')}';
+      absoluteImage =
+          '$baseOrigin/${imagePath.replaceFirst(RegExp(r'^/'), '')}';
     }
 
     return EventModel(
@@ -94,27 +107,39 @@ class EventModel {
       location: json['location']?.toString(),
       state: json['state']?.toString(),
       price: toDouble(json['price']),
-      regularPrice: json['regular_price'] != null ? toDouble(json['regular_price']) : null,
-      vipPrice: json['vip_price'] != null ? toDouble(json['vip_price']) : null,
-      premiumPrice: json['premium_price'] != null ? toDouble(json['premium_price']) : null,
-      ticketTypeMode: json['ticket_type_mode']?.toString() ?? json['ticket_type']?.toString(),
+      regularPrice: toDouble(json['regular_price']),
+      vipPrice: toDouble(json['vip_price']),
+      premiumPrice: toDouble(json['premium_price']),
+      ticketTypeMode:
+          json['ticket_type_mode']?.toString() ??
+          json['ticket_type']?.toString(),
+      isFree: toNullableBool(json['is_free']),
       imagePath: imagePath,
       absoluteImageUrl: absoluteImage,
-      organizerName: json['organizer_name']?.toString() ?? json['client_name']?.toString(),
+      organizerName:
+          json['organizer_name']?.toString() ?? json['client_name']?.toString(),
       clientName: json['client_name']?.toString(),
-      priorityLabel: json['priority_label']?.toString() ?? json['priority']?.toString(),
+      priorityLabel:
+          json['priority_label']?.toString() ?? json['priority']?.toString(),
       salesCount: int.tryParse(json['sales_count']?.toString() ?? '') ?? 0,
-      attendeeCount: int.tryParse(json['attendee_count']?.toString() ?? '') ?? 0,
+      attendeeCount:
+          int.tryParse(json['attendee_count']?.toString() ?? '') ?? 0,
       viewCount: int.tryParse(json['view_count']?.toString() ?? '') ?? 0,
-      isFavorite: (json['is_favorite']?.toString() ?? '0') == '1' ||
+      isFavorite:
+          (json['is_favorite']?.toString() ?? '0') == '1' ||
           json['is_favorite'] == true ||
           (json['is_favorite'] is int && json['is_favorite'] > 0),
       status: json['status']?.toString() ?? 'published',
       latitude: json['latitude'] != null ? toDouble(json['latitude']) : null,
       longitude: json['longitude'] != null ? toDouble(json['longitude']) : null,
-      ticketCount: json['ticket_count'] != null ? int.tryParse(json['ticket_count'].toString()) : null,
-      maxCapacity: json['max_capacity'] != null ? int.tryParse(json['max_capacity'].toString()) : null,
-      isSoldOut: json['sold_out'] == true ||
+      ticketCount: json['ticket_count'] != null
+          ? int.tryParse(json['ticket_count'].toString())
+          : null,
+      maxCapacity: json['max_capacity'] != null
+          ? int.tryParse(json['max_capacity'].toString())
+          : null,
+      isSoldOut:
+          json['sold_out'] == true ||
           (json['sold_out'] is int && json['sold_out'] > 0) ||
           json['sold_out']?.toString() == '1',
     );
@@ -124,38 +149,39 @@ class EventModel {
   /// so cached events keep resolvable images even when restored without a
   /// `baseOrigin` (see EventCacheService).
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'custom_id': customId,
-        'event_name': eventName,
-        'description': description,
-        'category': category,
-        'event_type': eventType,
-        'event_date': eventDate,
-        'event_time': eventTime,
-        'address': address,
-        'location': location,
-        'state': state,
-        'price': price,
-        'regular_price': regularPrice,
-        'vip_price': vipPrice,
-        'premium_price': premiumPrice,
-        'ticket_type_mode': ticketTypeMode,
-        'image_path': imagePath,
-        'absolute_image_url': absoluteImageUrl,
-        'organizer_name': organizerName,
-        'client_name': clientName,
-        'priority_label': priorityLabel,
-        'sales_count': salesCount,
-        'attendee_count': attendeeCount,
-        'view_count': viewCount,
-        'is_favorite': isFavorite ? 1 : 0,
-        'status': status,
-        'latitude': latitude,
-        'longitude': longitude,
-        'ticket_count': ticketCount,
-        'max_capacity': maxCapacity,
-        'sold_out': isSoldOut ? 1 : 0,
-      };
+    'id': id,
+    'custom_id': customId,
+    'event_name': eventName,
+    'description': description,
+    'category': category,
+    'event_type': eventType,
+    'event_date': eventDate,
+    'event_time': eventTime,
+    'address': address,
+    'location': location,
+    'state': state,
+    'price': price,
+    'regular_price': regularPrice,
+    'vip_price': vipPrice,
+    'premium_price': premiumPrice,
+    'ticket_type_mode': ticketTypeMode,
+    'is_free': isFree,
+    'image_path': imagePath,
+    'absolute_image_url': absoluteImageUrl,
+    'organizer_name': organizerName,
+    'client_name': clientName,
+    'priority_label': priorityLabel,
+    'sales_count': salesCount,
+    'attendee_count': attendeeCount,
+    'view_count': viewCount,
+    'is_favorite': isFavorite ? 1 : 0,
+    'status': status,
+    'latitude': latitude,
+    'longitude': longitude,
+    'ticket_count': ticketCount,
+    'max_capacity': maxCapacity,
+    'sold_out': isSoldOut ? 1 : 0,
+  };
 
   EventModel copyWith({bool? isFavorite}) {
     return EventModel(
@@ -175,6 +201,7 @@ class EventModel {
       vipPrice: vipPrice,
       premiumPrice: premiumPrice,
       ticketTypeMode: ticketTypeMode,
+      isFree: isFree,
       imagePath: imagePath,
       absoluteImageUrl: absoluteImageUrl,
       organizerName: organizerName,

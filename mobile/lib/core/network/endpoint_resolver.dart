@@ -30,21 +30,44 @@ class EndpointResolver {
   /// Lets a re-hosted backend be added without touching this file.
   static const _extraOrigins = String.fromEnvironment('API_BASE_URLS');
 
-  /// Known live origins, most-authoritative first. Add the new host here (or
-  /// pass it via `API_BASE_URLS`) when the backend moves platforms.
-  static const _production = 'https://eventra-website.liveblog365.com/api';
+  /// Live platform origin. Override at build time when the backend is moved;
+  /// development builds still prefer a reachable local server.
+  static const _production = String.fromEnvironment(
+    'PRODUCTION_API_BASE_URL',
+    defaultValue: 'https://eventra-website.liveblog365.com/api',
+  );
 
+  /// Local dev-server origins. A dev build prefers whichever of these answers
+  /// (USB `adb reverse`, emulator loopback, or a LAN host) so the same build
+  /// works against `php -S` locally and against the live platform in
+  /// production without any rebuild.
   static const _localCandidates = [
     'http://10.0.2.2:8000/api', // Android emulator → host loopback
-    'http://127.0.0.1:8000/api', // iOS simulator / local
-    'http://localhost:8000/api',
+    'http://127.0.0.1:8000/api', // iOS simulator / Flutter web on the host
+    'http://localhost:8000/api', // Flutter web / desktop on the host
   ];
+
+  /// Origin the app itself is served from (Flutter web only). Web and API are
+  /// normally deployed together, so `<origin>/api` is the most likely live
+  /// endpoint and lets a deployed web build target its own host with no
+  /// rebuild. Empty on native builds.
+  static List<String> get _runtimeCandidates {
+    if (!kIsWeb) return const [];
+    final base = Uri.base;
+    if (!base.hasScheme || base.host.isEmpty) return const [];
+    return ['${base.scheme}://${base.authority}/api'];
+  }
 
   static bool _resolved = false;
 
   static Future<bool>? _inflight;
 
+  /// Origin currently adopted by [ApiClient].
+  static String? _current;
+
   static bool get resolved => _resolved;
+
+  static String? get current => _current;
 
   /// Probe until one origin answers with real API JSON. Safe to call multiple
   /// times — concurrent callers share one probe, and after the first success
@@ -61,42 +84,60 @@ class EndpointResolver {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefsKey);
 
-    final candidates = <String>[];
-    void add(String? url) {
+    final local = <String>[];
+    final remote = <String>[];
+    void add(List<String> into, String? url) {
       if (url == null || url.isEmpty) return;
       final normalized = url.replaceFirst(RegExp(r'/$'), '');
-      if (Uri.tryParse(normalized) == null) return;
-      if (!candidates.contains(normalized)) candidates.add(normalized);
+      final parsed = Uri.tryParse(normalized);
+      if (parsed == null || parsed.host.isEmpty) return;
+      if (!into.contains(normalized)) into.add(normalized);
     }
 
-    add(_override.isEmpty ? null : _override);
+    // An explicit `--dart-define=API_BASE_URL` always wins inside its group.
+    add(_isLocalOrigin(_override) ? local : remote, _override);
     for (final raw in _extraOrigins.split(',')) {
-      add(raw.trim());
+      final url = raw.trim();
+      if (url.isEmpty) continue;
+      add(_isLocalOrigin(url) ? local : remote, url);
     }
-    // A stale *local dev* origin (php -S from a previous run) must never be
-    // probed before the live host — that is what forced developers to start
-    // the local server before sign-in worked. Local origins are demoted to
-    // the fallback pass below; only remote last-known-good origins keep the
-    // fast path.
-    if (saved != null && !_isLocalOrigin(saved)) add(saved);
-    add(_production);
-    if (saved != null && _isLocalOrigin(saved)) add(saved);
+    // Last known-good origin keeps the fast path, in its own group.
+    if (saved != null) add(_isLocalOrigin(saved) ? local : remote, saved);
+    for (final candidate in _localCandidates) {
+      add(local, candidate);
+    }
+    // On web the API is served from the page's own origin: that is the live
+    // endpoint for a deployed build, and loopback for a local dev build.
+    for (final runtime in _runtimeCandidates) {
+      add(_isLocalOrigin(runtime) ? local : remote, runtime);
+    }
+    add(remote, _production);
 
-    // Remote candidates first; only fall back to local dev servers if none of
-    // them answer (a production device should not hang on 10.0.2.2).
-    final winner =
-        await _probeAll(candidates) ??
-        await _probeAll([
-          ...candidates,
-          ..._localCandidates.map((u) => u.replaceFirst(RegExp(r'/$'), '')),
-        ]);
+    // Both groups are probed at the same time so the two never add up to
+    // sequential timeouts. Which answer wins depends on the build:
+    //
+    //  * dev build (`flutter run` — USB device, emulator, desktop): a reachable
+    //    local `php -S` server wins immediately. Before, the remote host was
+    //    probed first, so a device that *could* reach the dev server was still
+    //    pinned to the live host — every screen then failed with 'hosting
+    //    security check' / 'could not load events'.
+    //  * release build (installed on the live platform): the live host wins,
+    //    and a local server is only used when nothing remote answers.
+    final localProbe = _probeLocal(local);
+    final remoteProbe = _probeAll(remote);
+    final winner = kReleaseMode
+        ? (await remoteProbe ?? await localProbe)
+        : (await localProbe ?? await remoteProbe);
 
     if (winner != null) return _adopt(prefs, winner);
 
-    // Nothing answered (offline, or the API moved): pin the production origin
-    // so the app deterministically targets the live host instead of retrying
-    // dead dev-server addresses on every request.
-    await _adopt(prefs, _production);
+    // Nothing answered (offline, or the API moved). With a configured live
+    // origin, pin it so requests target the real host instead of retrying
+    // dead dev-server addresses; without one, stay unresolved so the app keeps
+    // retrying discovery rather than adopting an empty origin.
+    if (_production.isNotEmpty) {
+      await _adopt(prefs, _production);
+    }
     _inflight = null;
     return false;
   }
@@ -122,14 +163,33 @@ class EndpointResolver {
     return null;
   }
 
+  /// Probes every local candidate at once (they are all loopback/LAN, so they
+  /// fail instantly when absent) and returns the first that answered in
+  /// priority order, not whichever raced ahead.
+  static Future<String?> _probeLocal(List<String> candidates) async {
+    if (candidates.isEmpty) return null;
+    final answers = await Future.wait(
+      candidates.map((candidate) => _probe(candidate, quick: true)),
+    );
+    for (var i = 0; i < candidates.length; i++) {
+      if (answers[i]) return candidates[i];
+    }
+    return null;
+  }
+
   /// True when [base] answers `GET {base}/config/app` with API JSON, including
   /// hosts that first return the anti-bot challenge page.
-  static Future<bool> _probe(String base) async {
+  static Future<bool> _probe(String base, {bool quick = false}) async {
     final dio = Dio(
       BaseOptions(
         baseUrl: base,
-        connectTimeout: const Duration(seconds: 5),
-        receiveTimeout: const Duration(seconds: 8),
+        // Bounded so a dead/unreachable candidate cannot eat the splash
+        // timeout (main.dart awaits resolve() for at most 20s before it falls
+        // back to the last-known-good / production origin). The local pass is
+        // tighter still: a local error (fatal HTML, no server) must not delay
+        // the live path.
+        connectTimeout: Duration(seconds: quick ? 2 : 5),
+        receiveTimeout: Duration(seconds: quick ? 3 : 8),
         validateStatus: (status) => status != null,
         headers: {
           'Accept': 'application/json',
@@ -139,8 +199,19 @@ class EndpointResolver {
     );
 
     try {
-      for (var attempt = 0; attempt < 2; attempt++) {
-        final response = await dio.get<dynamic>('/config/app');
+      final attempts = quick ? 1 : 2;
+      for (var attempt = 0; attempt < attempts; attempt++) {
+        if (attempt > 0) {
+          // The local PHP dev server is single-threaded and can queue this
+          // probe behind a slow DB-backed request — retry before giving up.
+          await Future.delayed(const Duration(seconds: 1));
+        }
+        final Response<dynamic> response;
+        try {
+          response = await dio.get<dynamic>('/config/app');
+        } on DioException catch (_) {
+          continue;
+        }
         final data = response.data;
 
         if (data is Map) {
@@ -166,6 +237,7 @@ class EndpointResolver {
   }
 
   static Future<bool> _adopt(SharedPreferences prefs, String url) async {
+    _current = url;
     await prefs.setString(_prefsKey, url);
     // Applied lazily through the callback so EndpointResolver never imports
     // ApiClient (ApiClient's services import this file's package graph).
@@ -173,6 +245,22 @@ class EndpointResolver {
     _resolved = true;
     debugPrint('EndpointResolver → using API at $url');
     return true;
+  }
+
+  /// Re-runs discovery after a request failed to *reach* the adopted origin
+  /// (live host down, dev server started after boot, network switched).
+  /// Returns true when the adopted origin actually moved, so the caller can
+  /// safely replay the failed request against the new one.
+  static Future<bool> recover() async {
+    final previous = _current;
+    _resolved = false;
+    _inflight = null;
+    try {
+      await resolve();
+    } catch (_) {
+      return false;
+    }
+    return _current != null && _current != previous;
   }
 
   static void Function(String url)? _onAdopt;

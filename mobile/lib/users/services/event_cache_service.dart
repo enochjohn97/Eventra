@@ -10,8 +10,8 @@ import '../models/event_model.dart';
 /// Strategy (see README "Sync architecture"):
 ///  * Only the first page of each feed variant is persisted — enough to paint
 ///    the home grid immediately; older pages are cheap to re-fetch.
-///  * Rows are keyed by `feed:{sort}:{search}` so switching sort/search never
-///    shows stale data from another variant.
+///  * Rows are keyed by API origin, sort, and search so local and live
+///    events cannot be mixed when endpoint discovery switches environments.
 ///  * Entries expire after [maxAge]; providers treat cache as a *preview* and
 ///    always refresh from the network afterwards, so this never drifts out of
 ///    sync with the web app — worst case is showing slightly old data for the
@@ -48,8 +48,11 @@ class EventCacheService {
     return _db!;
   }
 
-  static String keyFor({required String sort, String? search}) =>
-      'feed:$sort:${search?.trim() ?? ''}';
+  static String keyFor({
+    required String sort,
+    String? search,
+    String? origin,
+  }) => 'feed:${origin ?? 'unknown'}:$sort:${search?.trim() ?? ''}';
 
   /// Persists a page of events. Page 1 replaces the stored page; higher
   /// pages are appended (used only if callers choose to persist them).
@@ -63,8 +66,7 @@ class EventCacheService {
       final db = await _database;
       final now = DateTime.now().millisecondsSinceEpoch;
       await db.transaction((txn) async {
-        await txn.delete(_table,
-            where: 'cache_key = ?', whereArgs: [cacheKey]);
+        await txn.delete(_table, where: 'cache_key = ?', whereArgs: [cacheKey]);
         for (var i = 0; i < events.length; i++) {
           await txn.insert(_table, {
             'cache_key': cacheKey,
@@ -96,14 +98,16 @@ class EventCacheService {
       final cachedAt = (rows.first['cached_at'] as int?) ?? 0;
       final age = DateTime.now().millisecondsSinceEpoch - cachedAt;
       if (age > _maxAge.inMilliseconds) {
-        await db.delete(_table,
-            where: 'cache_key = ?', whereArgs: [cacheKey]);
+        await db.delete(_table, where: 'cache_key = ?', whereArgs: [cacheKey]);
         return null;
       }
 
       return rows
-          .map((row) =>
-              EventModel.fromJson(jsonDecode(row['payload'] as String) as Map<String, dynamic>))
+          .map(
+            (row) => EventModel.fromJson(
+              jsonDecode(row['payload'] as String) as Map<String, dynamic>,
+            ),
+          )
           .toList();
     } catch (_) {
       return null;

@@ -20,12 +20,23 @@ class ApiClient {
   // which matters on flaky mobile connections that truncate the challenge HTML.
   static const _retryDelays = [2, 3, 5];
 
-  /// Default = production. `--dart-define=API_BASE_URL` overrides the starting
-  /// value; [EndpointResolver] may switch it at runtime once it probes which
-  /// origin (live or local) actually serves the API.
+  /// Starting origin. `--dart-define=API_BASE_URL` overrides it;
+  /// [EndpointResolver] then switches it at runtime to whichever origin
+  /// actually answers (local dev server, or the live host when one exists).
+  ///
+  /// No live deployment is hardcoded here on purpose: the app must never be
+  /// pinned to a host that may be gone. On a fresh live host, build with
+  /// `--dart-define=API_BASE_URLS=https://your-host/api`.
   static const _defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://eventra-website.liveblog365.com/api',
+    defaultValue: _localBaseUrl,
+  );
+
+  /// Local dev server — the only environment that exists right now
+  /// (`php -S 0.0.0.0:8000` + `adb reverse tcp:8000 tcp:8000`).
+  static const _localBaseUrl = String.fromEnvironment(
+    'LOCAL_API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000/api',
   );
 
   ApiClient._internal() {
@@ -319,6 +330,25 @@ class ApiClient {
           }
           if (error.type == DioExceptionType.connectionError ||
               error.type == DioExceptionType.connectionTimeout) {
+            final opts = error.requestOptions;
+            // The adopted origin is unreachable (live host down, or the local
+            // dev server was started after boot / moved to another port).
+            // Re-discover once, so the app heals itself into whichever origin
+            // actually serves the API instead of failing every screen.
+            final alreadyRecovered =
+                (opts.extra['_endpointRecovered'] as bool?) == true;
+            if (!alreadyRecovered) {
+              final moved = await EndpointResolver.recover();
+              if (moved) {
+                opts.extra['_endpointRecovered'] = true;
+                try {
+                  final retry = await _recoveryDio.fetch(opts);
+                  return handler.resolve(retry);
+                } catch (_) {
+                  // Fall through to the friendly transport error below.
+                }
+              }
+            }
             return handler.next(
               DioException(
                 requestOptions: error.requestOptions,

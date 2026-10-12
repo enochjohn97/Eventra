@@ -41,7 +41,8 @@ if (!$user_id) {
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-if (!isset($data['event_id'])) {
+// `clear_all` is the bulk action behind the mobile Favorites tab's "Clear all".
+if (!isset($data['event_id']) && empty($data['clear_all'])) {
     echo json_encode(['success' => false, 'message' => 'Event ID is required']);
     exit;
 }
@@ -49,6 +50,19 @@ if (!isset($data['event_id'])) {
 $event_id = $data['event_id'];
 
 try {
+    // Bulk clear every favorite for this user in one request.
+    if (!empty($data['clear_all'])) {
+        $stmt = $pdo->prepare("DELETE FROM favorites WHERE user_id = ?");
+        $stmt->execute([$user_id]);
+        echo json_encode([
+            'success' => true,
+            'message' => 'All favorites removed',
+            'cleared' => $stmt->rowCount(),
+            'is_favorite' => false,
+        ]);
+        exit;
+    }
+
     // Check if already favorited
     $stmt = $pdo->prepare("SELECT id FROM favorites WHERE user_id = ? AND event_id = ?");
     $stmt->execute([$user_id, $event_id]);

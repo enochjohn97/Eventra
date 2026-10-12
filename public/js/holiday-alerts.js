@@ -45,18 +45,20 @@
     return Math.round((b - a) / 86400000);
   }
 
-  function safeReadJSON(key) {
+  function safeReadJSON(key, storage) {
+    storage = storage || (typeof window !== "undefined" && window.sessionStorage) || (typeof window !== "undefined" && window.localStorage);
     try {
-      var raw = window.localStorage ? localStorage.getItem(key) : null;
+      var raw = storage ? storage.getItem(key) : null;
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
     }
   }
 
-  function safeWriteJSON(key, value) {
+  function safeWriteJSON(key, value, storage) {
+    storage = storage || (typeof window !== "undefined" && window.sessionStorage) || (typeof window !== "undefined" && window.localStorage);
     try {
-      if (window.localStorage) localStorage.setItem(key, JSON.stringify(value));
+      if (storage) storage.setItem(key, JSON.stringify(value));
     } catch (e) { /* private mode / quota - alerts simply show again next visit */ }
   }
 
@@ -66,20 +68,13 @@
   }
 
   // ------------------------------------------------------------------
-  // "Already shown?" log (per holiday, per browser)
+  // "Already shown?" log (per holiday, per browser session)
   // ------------------------------------------------------------------
 
   function readShownLog() {
-    var log = safeReadJSON(SHOWN_LOG_KEY);
+    var log = safeReadJSON(SHOWN_LOG_KEY, typeof window !== "undefined" ? window.sessionStorage : null);
     if (!log || typeof log !== "object") return {};
-    var now = Date.now();
-    var fresh = {};
-    for (var k in log) {
-      if (Object.prototype.hasOwnProperty.call(log, k)) {
-        if (typeof log[k] === "number" && now - log[k] < SHOWN_LOG_TTL) fresh[k] = log[k];
-      }
-    }
-    return fresh;
+    return log;
   }
 
   function wasShown(log, key) {
@@ -88,7 +83,7 @@
 
   function markShown(log, key) {
     log[key] = Date.now();
-    safeWriteJSON(SHOWN_LOG_KEY, log);
+    safeWriteJSON(SHOWN_LOG_KEY, log, typeof window !== "undefined" ? window.sessionStorage : null);
   }
 
   // ------------------------------------------------------------------
@@ -161,7 +156,8 @@
     var when = days <= 0 ? "today" :
       days === 1 ? "tomorrow" :
       "in " + days + " days";
-    return emoji + " Upcoming holiday: " + title + " " + when +
+    var prefix = days <= 14 ? "Upcoming holiday: " : "Next holiday: ";
+    return emoji + " " + prefix + title + " " + when +
       " (" + formatDateFriendly(holiday.date) + "). Get ready!";
   }
 
@@ -183,11 +179,15 @@
         window.Swal.fire({
           toast: true,
           position: "top-end",
-          icon: type === "error" ? "error" : "info",
+          icon: type === "error" ? "error" : (type === "success" ? "success" : "info"),
           title: message,
           showConfirmButton: false,
           timer: duration,
           timerProgressBar: true,
+          customClass: {
+            container: "holiday-alert-container",
+            popup: "holiday-alert-toast",
+          },
           didOpen: function (toastEl) {
             toastEl.addEventListener("mouseenter", function () { window.Swal.stopTimer && window.Swal.stopTimer(toastEl); });
             toastEl.addEventListener("mouseleave", function () { window.Swal.resumeTimer && window.Swal.resumeTimer(toastEl); });
@@ -209,22 +209,24 @@
   function fallbackToast(message, duration) {
     try {
       var el = document.createElement("div");
+      el.className = "holiday-fallback-toast";
       el.setAttribute("role", "status");
       el.setAttribute("aria-live", "polite");
       el.style.cssText =
-        "position:fixed;top:80px;right:20px;max-width:360px;z-index:999999;" +
-        "background:#111827;color:#fff;padding:14px 18px;border-radius:12px;" +
-        "box-shadow:0 12px 40px rgba(0,0,0,.28);font:600 14px/1.5 system-ui,-apple-system,sans-serif;" +
-        "opacity:0;transform:translateX(24px);transition:opacity .3s ease,transform .3s ease;";
+        "position:fixed;top:88px;right:20px;max-width:calc(100vw - 40px);box-sizing:border-box;z-index:999999;" +
+        "background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:14px 18px;border-radius:14px;" +
+        "box-shadow:0 14px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,0.12);" +
+        "font:600 14px/1.5 system-ui,-apple-system,sans-serif;opacity:0;transform:translateY(-10px);" +
+        "transition:opacity .3s ease,transform .3s ease;";
       el.textContent = message;
       document.body.appendChild(el);
       requestAnimationFrame(function () {
         el.style.opacity = "1";
-        el.style.transform = "translateX(0)";
+        el.style.transform = "translateY(0)";
       });
       setTimeout(function () {
         el.style.opacity = "0";
-        el.style.transform = "translateX(24px)";
+        el.style.transform = "translateY(-10px)";
         setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
       }, duration);
     } catch (e) { /* never let the alert feature break the page */ }
@@ -235,7 +237,7 @@
   // ------------------------------------------------------------------
 
   function fetchHolidays(force) {
-    var cached = safeReadJSON(DATA_CACHE_KEY);
+    var cached = safeReadJSON(DATA_CACHE_KEY, typeof window !== "undefined" ? window.localStorage : null);
     if (!force && cached && cached.fetched_at && (Date.now() - cached.fetched_at) < DATA_CACHE_TTL &&
         cached.holidays && Array.isArray(cached.holidays)) {
       return Promise.resolve(cached.holidays);
@@ -252,7 +254,7 @@
       if (!data || data.success !== true || !Array.isArray(data.holidays)) {
         throw new Error("unexpected holiday payload");
       }
-      safeWriteJSON(DATA_CACHE_KEY, { fetched_at: Date.now(), holidays: data.holidays });
+      safeWriteJSON(DATA_CACHE_KEY, { fetched_at: Date.now(), holidays: data.holidays }, typeof window !== "undefined" ? window.localStorage : null);
       return data.holidays;
     });
   }
@@ -274,7 +276,7 @@
     return null;
   }
 
-  function evaluate(holidays) {
+  function evaluate(holidays, isForce) {
     if (!Array.isArray(holidays) || holidays.length === 0) return;
 
     var isPreview = previewDate();
@@ -284,35 +286,47 @@
       .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 
     var todaysHolidays = upcoming.filter(function (h) { return h.date === today; });
-    var log = isPreview ? {} : readShownLog();
-    // Preview runs must never overwrite the real once-per-day dedupe log.
-    function seen(key) { return isPreview ? false : wasShown(log, key); }
-    function remember(key) { if (!isPreview) markShown(log, key); }
+    var log = (isPreview || isForce) ? {} : readShownLog();
+    // Preview runs must never overwrite the real once-per-session dedupe log.
+    function seen(key) { return (isPreview || isForce) ? false : wasShown(log, key); }
+    function remember(key) { if (!isPreview && !isForce) markShown(log, key); }
 
     if (todaysHolidays.length > 0) {
       var key = "today:" + today;
       if (seen(key)) return;
       remember(key);
+      if (window.EventraCelebration && typeof window.EventraCelebration.burst === "function") {
+        window.EventraCelebration.burst(16);
+      }
       showToast(buildTodayMessage(todaysHolidays), "success");
       return;
     }
 
-    // No holiday today -> notify once about the next holiday within the window.
+    // No holiday today -> notify about the next holiday within the window,
+    // or the nearest upcoming holiday on the calendar.
+    var targetHoliday = null;
     for (var i = 0; i < upcoming.length; i++) {
       var diff = daysBetween(today, upcoming[i].date);
       if (diff <= 0) continue;
-      if (diff > UPCOMING_WINDOW_DAYS) break; // list is sorted; nothing else is close
-      var upKey = "upcoming:" + today + ":" + upcoming[i].date + ":" + upcoming[i].title;
-      if (seen(upKey)) return; // already announced today
+      if (!targetHoliday) targetHoliday = upcoming[i];
+      if (diff <= UPCOMING_WINDOW_DAYS) {
+        targetHoliday = upcoming[i];
+        break;
+      }
+    }
+
+    if (targetHoliday) {
+      var upKey = "upcoming:" + today + ":" + targetHoliday.date + ":" + targetHoliday.title;
+      if (seen(upKey)) return;
       remember(upKey);
-      showToast(buildUpcomingMessage(upcoming[i], today), "info");
+      showToast(buildUpcomingMessage(targetHoliday, today), "info");
       return;
     }
   }
 
   function run(force) {
     fetchHolidays(force)
-      .then(evaluate)
+      .then(function (data) { evaluate(data, force); })
       .catch(function () { /* silent: holiday alerts are best-effort */ });
   }
 
@@ -337,7 +351,17 @@
       fetchHolidays(false)
         .then(function (holidays) {
           var todays = holidays.filter(function (h) { return h && h.date === isoDate; });
-          if (todays.length) showToast(buildTodayMessage(todays), "success");
+          if (todays.length) {
+            if (window.EventraCelebration && typeof window.EventraCelebration.burst === "function") {
+              window.EventraCelebration.burst(16);
+            }
+            showToast(buildTodayMessage(todays), "success");
+          } else {
+            var nearest = holidays.find(function (h) { return h && h.date >= isoDate; });
+            if (nearest) {
+              showToast(buildUpcomingMessage(nearest, isoDate), "info");
+            }
+          }
         })
         .catch(function () { });
     },

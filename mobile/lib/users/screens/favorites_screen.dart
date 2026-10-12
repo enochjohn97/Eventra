@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/event_utils.dart';
+import '../../core/widgets/adaptive_dialogs.dart';
 import '../../core/widgets/brand_logo.dart';
+import '../providers/events_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/event_card.dart';
 import '../widgets/event_detail_sheet.dart';
@@ -31,7 +34,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final columns = Breakpoints.gridColumns(width);
 
     return Scaffold(
-      appBar: AppBar(title: const BrandLogo(size: 32)),
+      appBar: AppBar(
+        title: const BrandLogo(size: 32),
+        actions: [
+          if (provider.favorites.isNotEmpty)
+            TextButton(
+              onPressed: provider.isLoading ? null : () => _clearAll(provider),
+              child: const Text('Clear all'),
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: provider.load,
         child: provider.isLoading && provider.favorites.isEmpty
@@ -86,11 +98,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               )
             : GridView.builder(
                 padding: const EdgeInsets.all(16),
+                // Always scrollable so pull-to-refresh works even with a short
+                // list, and long lists scroll normally.
+                physics: const AlwaysScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: Breakpoints.cardAspectRatio(width),
+                  mainAxisExtent: Breakpoints.cardExtent(
+                    gridWidth: width - 32,
+                    columns: columns,
+                    textScale: MediaQuery.textScalerOf(context).scale(1),
+                  ),
                 ),
                 itemCount: provider.favorites.length,
                 itemBuilder: (context, index) {
@@ -105,13 +124,53 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         openCheckoutForEvent(context, event);
                       },
                     ),
-                    onFavorite: () async {
-                      await provider.removeFavorite(event);
-                    },
+                    // Passed events show no heart here either.
+                    onFavorite: EventUtils.isPassed(event)
+                        ? null
+                        : () async {
+                            await provider.removeFavorite(event);
+                          },
                   );
                 },
               ),
       ),
     );
+  }
+
+  /// "Clear all" — confirms first, then wipes favorites server-side and resets
+  /// the heart state on the home feed so the two tabs never disagree.
+  Future<void> _clearAll(FavoritesProvider provider) async {
+    final confirmed = await showAdaptiveConfirm(
+      context,
+      title: 'Clear all favorites?',
+      message: 'This removes every event from your favorites.',
+      confirm: 'Clear all',
+      isDestructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await provider.clearAll();
+      if (!mounted) return;
+      final events = context.read<EventsProvider>().events;
+      for (final event in events) {
+        if (event.isFavorite) {
+          context.read<EventsProvider>().updateFavoriteState(event.id, false);
+        }
+      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('All favorites cleared'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 }

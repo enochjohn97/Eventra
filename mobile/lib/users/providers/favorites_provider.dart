@@ -21,6 +21,20 @@ class FavoritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Empties the user's favorites on the server and locally.
+  Future<void> clearAll() async {
+    try {
+      await UserEventService.clearFavorites();
+      favorites = [];
+      error = null;
+      notifyListeners();
+    } catch (e) {
+      error = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> removeFavorite(EventModel event) async {
     try {
       await UserEventService.toggleFavorite(event.id);

@@ -4,9 +4,10 @@ header("Cross-Origin-Opener-Policy: same-origin-allow-popups");
 header("Cross-Origin-Embedder-Policy: unsafe-none");
 
 // --- CORS Configuration ---
-$allowed_origins = [
-    'https://eventra-website.liveblog365.com',
-];
+// No live host is hardcoded: a stale entry silently authorised (or omitted) a
+// host that may not be the one actually serving the app. Browser origins come
+// from ALLOWED_ORIGINS below; native mobile clients send no Origin at all.
+$allowed_origins = [];
 
 // Auto-allow any localhost / 127.0.0.1 origin (any port) for local testing
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

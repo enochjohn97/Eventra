@@ -21,8 +21,15 @@ class EventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = event.absoluteImageUrl ??
         (event.imagePath != null ? ApiClient().absoluteUrl(event.imagePath) : '');
+    // Passed events offer no favorite affordance (sold-out ones still do).
+    final canFavorite = onFavorite != null && !EventUtils.isPassed(event);
 
-    return Card(
+    // Aligned to the top so the card hugs its content instead of stretching to
+    // the grid tile — this is what left the tall empty white block the card
+    // used to show below the price row.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -52,13 +59,13 @@ class EventCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.primaryDark,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                         ),
                         child: Text(
                           EventUtils.priorityBadge(event)!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                       ),
                     ),
@@ -70,7 +77,7 @@ class EventCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Color(EventUtils.statusBadge(event).colorValue).withValues(alpha: 0.14),
+                        color: Color(EventUtils.statusBadge(event).colorValue),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -80,7 +87,7 @@ class EventCard extends StatelessWidget {
                             width: 7,
                             height: 7,
                             decoration: BoxDecoration(
-                              color: Color(EventUtils.statusBadge(event).colorValue),
+                              color: Colors.white,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -90,14 +97,14 @@ class EventCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
-                              color: Color(EventUtils.statusBadge(event).colorValue),
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  if (onFavorite != null)
+                  if (canFavorite)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -117,22 +124,25 @@ class EventCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (event.customId != null)
                     Text(
                       event.customId!,
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
                     ),
                   Text(
                     event.eventName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textMain),
+                    style: const TextStyle(fontSize: 15, height: 1.25, fontWeight: FontWeight.w700, color: AppTheme.textMain),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       const Icon(Icons.calendar_today, size: 14, color: AppTheme.textMuted),
@@ -145,7 +155,7 @@ class EventCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
                       const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.textMuted),
@@ -160,7 +170,7 @@ class EventCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -171,8 +181,10 @@ class EventCard extends StatelessWidget {
                           children: [
                             Text(
                               EventUtils.formatPrice(event),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w800,
                                 color: EventUtils.isFree(event) ? AppTheme.success : AppTheme.primary,
                               ),
@@ -200,6 +212,7 @@ class EventCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

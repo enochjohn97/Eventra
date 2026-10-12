@@ -779,7 +779,7 @@ textarea:focus,
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 42%),
     linear-gradient(160deg, var(--b1, #ff5a5f), var(--b2, #c93a3e));
   opacity: 0;
-  animation: balloonRise linear forwards;
+  animation: balloonRise 10s linear forwards;
   will-change: transform, opacity;
   filter: drop-shadow(0 10px 14px rgba(15, 23, 42, 0.18));
 }
@@ -863,6 +863,20 @@ textarea:focus,
 
 .home-pop b {
   color: #ff5a5f;
+}
+
+/* Holiday & celebration toast placement below fixed header */
+.holiday-alert-container,
+div.swal2-container.swal2-top-end {
+  top: 84px !important;
+  right: 16px !important;
+  z-index: 999999 !important;
+}
+
+.holiday-alert-toast {
+  box-shadow: 0 16px 40px -10px rgba(15, 23, 42, 0.35) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 90, 95, 0.15) !important;
 }
 
 /* ─── 13. MOBILE REFINEMENTS ──────────────────────────────────────────────── */

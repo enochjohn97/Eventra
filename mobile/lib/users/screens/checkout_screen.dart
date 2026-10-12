@@ -60,7 +60,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   /// Base tier price (before fee) — exactly what the backend charges for.
-  double get _unitPrice => EventUtils.basePriceForTier(widget.event, _ticketType);
+  /// Falls back to the legacy `price` for events whose tier columns are empty
+  /// so a paid event can never be mistaken for a free one.
+  double get _unitPrice {
+    final base = EventUtils.basePriceForTier(widget.event, _ticketType);
+    if (base > 0) return base;
+    return widget.event.price > 0 ? widget.event.price : 0;
+  }
 
   double get _subtotal => _unitPrice * _quantity;
   double get _surcharge => _subtotal * 0.10;
@@ -307,30 +313,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 validator: _req,
               ),
               const SizedBox(height: 20),
-              // Ticket tier picker — only the tiers the organizer enabled,
-              // with the same per-tier amounts the web checkout charges.
-              if (EventUtils.activeTiers(widget.event).length > 1) ...[
+              // Ticket tier picker — only the tiers the organizer enabled
+              // (mode "all" is a single legacy price, exactly like the web),
+              // each showing the amount that tier is actually charged.
+              if (EventUtils.showTierSelector(widget.event)) ...[
                 const Text(
                   'Ticket Type',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 10),
-                SegmentedButton<String>(
-                  segments: EventUtils.activeTiers(widget.event)
-                      .map(
-                        (t) => ButtonSegment(
-                          value: t,
-                          label: Text(
-                            t[0].toUpperCase() + t.substring(1),
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  selected: {_ticketType},
-                  onSelectionChanged: (selection) =>
-                      setState(() => _ticketType = selection.first),
-                ),
+                _tierSelector(),
                 const SizedBox(height: 16),
               ],
               Row(
@@ -395,6 +387,71 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Tier chips: selected tier is filled with the brand blue and its label is
+  /// white, unselected tiers stay white with a hairline border.
+  Widget _tierSelector() {
+    final tiers = EventUtils.activeTiers(widget.event);
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final tier in tiers)
+          Builder(
+            builder: (context) {
+              final selected = tier == _ticketType;
+              return Material(
+                color: selected ? AppTheme.primary : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: selected ? AppTheme.primary : const Color(0xFFE5E7EB),
+                    width: 1.5,
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => setState(() => _ticketType = tier),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (selected) ...[
+                          const Icon(Icons.check, size: 15, color: Colors.white),
+                          const SizedBox(width: 6),
+                        ],
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              EventUtils.tierName(tier),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: selected ? Colors.white : AppTheme.textMain,
+                              ),
+                            ),
+                            Text(
+                              EventUtils.tierPriceLabel(widget.event, tier),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: selected ? Colors.white : AppTheme.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 

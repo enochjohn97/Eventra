@@ -29,10 +29,13 @@ $requestIsHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['SERVER_PORT'] ?? 80) == 443);
 $host = $_SERVER['HTTP_HOST'] ?? '';
 // localhost, 127.0.0.1, and private LAN IPs have no TLS certificate — never
-// force-redirect them to https or every local/LAN device breaks.
-$isLocalHost = (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host)
-    || (bool) preg_match('/^(192\.168|10)\.\d+\.\d+\.\d+(:\d+)?$/i', $host)
-    || (bool) preg_match('/^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+(:\d+)?$/i', $host);
+// force-redirect them to https or every local/LAN device breaks. (The LAN
+// patterns must accept all four octets: a device testing over Wi-Fi sends
+// `192.168.x.y:8000`, and a mismatched pattern made the server answer every
+// LAN request with a 301 to `https://192.168.x.y:8000` — i.e. nowhere.)
+$isLocalHost = (bool) preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i', $host)
+    || (bool) preg_match('/^(10|192\.168)\.\d{1,3}\.\d{1,3}(:\d+)?$/i', $host)
+    || (bool) preg_match('/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?$/i', $host);
 
 if (!$requestIsHttps && !$isLocalHost && !empty($host)) {
     header('Location: https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/'), true, 301);
@@ -173,7 +176,9 @@ if (isset($legacyRedirects[$uri])) {
 
 // Basic API Routing
 if (strpos($uri, '/api/') === 0) {
-    $apiPath = substr($uri, 5); // Strip /api/
+    // Trim trailing slashes so pretty mobile routes like /api/events/ (the
+    // browser/Apache slashed form) resolve to the same handler as /api/events.
+    $apiPath = trim(substr($uri, 5), '/'); // Strip /api/ and any trailing /
     
     // Safety: Strip .php to prevent .php.php resolution
     $cleanPath = preg_replace('/\.php$/', '', $apiPath);
@@ -243,8 +248,25 @@ if (strpos($uri, '/api/') === 0) {
             $_GET['sort_by'] = $sortMap[strtolower((string)$_GET['sort'])] ?? $_GET['sort'];
         }
 
-        if (!empty($_GET['search'])) {
-            $_GET['q'] = $_GET['search'];
+        // Any discovery filter is served by the search handler, which
+        // understands keywords AND category/state/priority/price — so the app
+        // can filter without typing a keyword and still get correct paging.
+        $hasDiscoveryFilters = false;
+        foreach (['search', 'category', 'state', 'priority', 'free', 'price_min', 'price_max'] as $filterKey) {
+            $value = $_GET[$filterKey] ?? '';
+            if (is_array($value)) {
+                $hasDiscoveryFilters = count($value) > 0;
+            } else {
+                $trimmed = trim((string) $value);
+                $hasDiscoveryFilters = $trimmed !== '' && $trimmed !== '0';
+            }
+            if ($hasDiscoveryFilters) break;
+        }
+
+        if ($hasDiscoveryFilters) {
+            if (!empty($_GET['search'])) {
+                $_GET['q'] = $_GET['search'];
+            }
             $dispatchApi('events/search-events.php');
         }
 
@@ -293,6 +315,11 @@ if (strpos($uri, '/api/') === 0) {
 
     if ($method === 'GET' && $cleanPath === 'config/paystack') {
         $dispatchApi('payments/paystack.php');
+    }
+
+    // Public utility endpoints used by the web homepage + mobile app.
+    if ($method === 'GET' && ($cleanPath === 'utils/holiday-alerts' || $cleanPath === 'utils/holiday-alerts.php')) {
+        $dispatchApi('utils/holiday-alerts.php');
     }
 
     // Handle pluralization inconsistencies for main portals

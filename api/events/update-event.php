@@ -383,6 +383,18 @@ try {
         $vip_price = floatval($price);
         $premium_price = floatval($price);
     }
+    $activeTicketPrices = [$price];
+    if ($ticket_type_mode !== 'all' && !str_contains($ticket_type_mode, 'all')) {
+        $activeTicketPrices = [];
+        foreach (explode(',', $ticket_type_mode) as $tier) {
+            if ($tier === 'regular') $activeTicketPrices[] = $regular_price;
+            if ($tier === 'vip') $activeTicketPrices[] = $vip_price;
+            if ($tier === 'premium') $activeTicketPrices[] = $premium_price;
+        }
+    }
+    $is_free = $is_free
+        && !empty($activeTicketPrices)
+        && max($activeTicketPrices) <= 0;
 
     // Recalculate ticket_count / total_tickets when quantities change
     $new_regular_qty = !empty($_POST['regular_quantity']) ? intval($_POST['regular_quantity']) : null;
@@ -421,7 +433,8 @@ try {
         'regular_quantity' => $new_regular_qty,
         'vip_quantity' => $new_vip_qty,
         'premium_quantity' => $new_premium_qty,
-        'ticket_type_mode' => $ticket_type_mode
+        'ticket_type_mode' => $ticket_type_mode,
+        'is_free' => $is_free
     ]);
     $metadata_json = json_encode($new_metadata);
 

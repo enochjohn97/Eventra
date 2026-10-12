@@ -75,6 +75,17 @@ Options -Indexes
     # Pass Authorization header to PHP — required on shared hosting
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # API pretty routes used by the mobile app (/api/events, /api/favorites,
+    # /api/tickets, /api/profile …) must ALWAYS reach the front controller.
+    # Those paths match real directories (api/events/, api/favorites/ …), so
+    # the "-d" bypass below handed them straight to Apache, which 301s to the
+    # slashed form and then answers 403 — the mobile app never got JSON.
+    # Real files (e.g. /api/events/get-events.php used by the web app) are
+    # excluded by !-f, so direct .php calls keep working unchanged.
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ server/index.php [L]
+
     # Redirect Trailing Slashes If Not A Directory...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)/$ /$1 [L,R=301]

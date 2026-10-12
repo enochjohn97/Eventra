@@ -22,17 +22,34 @@ class UserEventService {
   static final Dio _dio = ApiClient().dio;
   static String? get _origin => ApiClient().baseOrigin;
 
+  /// Server-side discovery query. Any filter present is applied by the
+  /// backend (same rules the web sidebar uses), so paging stays correct
+  /// instead of filtering only the 12 items already on screen.
   static Future<({List<EventModel> events, int total})> fetchEvents({
     int page = 1,
     int limit = 12,
     String? search,
     String? sort,
+    String? category,
+    String? state,
+    String? priority,
+    bool freeOnly = false,
+    int? priceMin,
+    int? priceMax,
   }) async {
     final params = <String, dynamic>{
       'page': page,
       'limit': limit,
       if (sort != null && sort.isNotEmpty) 'sort': sort,
+      // `search` is what makes the router use the search handler; the filter
+      // params below are understood by that handler even without a keyword.
       if (search != null && search.isNotEmpty) 'search': search,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (state != null && state.isNotEmpty) 'state': state,
+      if (priority != null && priority.isNotEmpty) 'priority': priority,
+      if (freeOnly) 'free': '1',
+      'price_min': ?priceMin,
+      'price_max': ?priceMax,
     };
 
     late Response<dynamic> response;
@@ -77,6 +94,22 @@ class UserEventService {
     );
     final data = _toMap(response.data);
     return data['is_favorite'] == true;
+  }
+
+  /// Removes every favorite for the signed-in user ("Clear all" on the
+  /// Favorites tab). Returns how many rows the server deleted.
+  static Future<int> clearFavorites() async {
+    final response = await _dio.post(
+      '/favorites/toggle',
+      data: {'clear_all': true},
+    );
+    final data = _toMap(response.data);
+    if (data['success'] != true) {
+      throw Exception(
+        data['message']?.toString() ?? 'Failed to clear favorites',
+      );
+    }
+    return int.tryParse(data['cleared']?.toString() ?? '') ?? 0;
   }
 
   static Future<List<EventModel>> fetchFavorites({

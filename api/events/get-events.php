@@ -216,14 +216,22 @@ try {
         ? "(SELECT COUNT(*) FROM favorites WHERE user_id = ? AND event_id = e.id) AS is_favorite"
         : "0 AS is_favorite";
 
-    // Sort
+    // Sort. Tier prices are stored in the event metadata JSON (the legacy
+    // `price` column is 0 for tiered events), so price sorting compares the
+    // highest priced active tier — the same amount the cards display.
+    $effectivePrice = "GREATEST(
+        IFNULL(e.price,0),
+        IFNULL(CASE WHEN JSON_VALID(e.metadata) THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(e.metadata, '$.regular_price')) AS DECIMAL(12,2)) ELSE 0 END,0),
+        IFNULL(CASE WHEN JSON_VALID(e.metadata) THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(e.metadata, '$.vip_price')) AS DECIMAL(12,2)) ELSE 0 END,0),
+        IFNULL(CASE WHEN JSON_VALID(e.metadata) THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(e.metadata, '$.premium_price')) AS DECIMAL(12,2)) ELSE 0 END,0)
+    )";
     $sort_by  = $_GET['sort_by'] ?? 'newest';
     $sort_order_sql = match($sort_by) {
         'popular'    => "e.attendee_count DESC",
         'merit'      => "$meritScore DESC",
         'date'       => "e.event_date ASC, e.event_time ASC",
-        'price_low'  => "e.price ASC",
-        'price_high' => "e.price DESC",
+        'price_low'  => "$effectivePrice ASC",
+        'price_high' => "$effectivePrice DESC",
         default      => "e.created_at DESC",
     };
     $order_sql = "CASE WHEN e.event_date < CURDATE() THEN 1 ELSE 0 END ASC, $sort_order_sql, e.id DESC";

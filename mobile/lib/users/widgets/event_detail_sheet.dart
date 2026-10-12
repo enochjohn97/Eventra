@@ -103,6 +103,12 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= Breakpoints.tablet;
+    // Passed events: no share, no favorite, and ticket sales are closed.
+    final passed = EventUtils.isPassed(_event);
+    final canBuy = EventUtils.canBuyTickets(_event);
+    final buyLabel = passed
+        ? 'Event has passed'
+        : (_event.isSoldOut ? 'Sold Out' : 'Get Ticket');
     return DraggableScrollableSheet(
       initialChildSize: isWide ? 0.82 : 0.88,
       minChildSize: 0.5,
@@ -137,13 +143,13 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.primaryDark,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                         ),
                         child: Text(
                           EventUtils.priorityBadge(_event)!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                       ),
                     ),
@@ -152,14 +158,16 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                     right: 12,
                     child: Row(
                       children: [
-                        _circleBtn(Icons.share_outlined, _share),
-                        const SizedBox(width: 8),
-                        _circleBtn(
-                          _event.isFavorite ? Icons.favorite : Icons.favorite_border,
-                          _toggleFavorite,
-                          color: _event.isFavorite ? Colors.red : null,
-                        ),
-                        const SizedBox(width: 8),
+                        if (!passed) ...[
+                          _circleBtn(Icons.share_outlined, _share),
+                          const SizedBox(width: 8),
+                          _circleBtn(
+                            _event.isFavorite ? Icons.favorite : Icons.favorite_border,
+                            _toggleFavorite,
+                            color: _event.isFavorite ? Colors.red : null,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         _circleBtn(Icons.close, () => Navigator.pop(context)),
                       ],
                     ),
@@ -228,8 +236,8 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: widget.onGetTicket,
-                        child: const Text('Get Ticket'),
+                        onPressed: canBuy ? widget.onGetTicket : null,
+                        child: Text(buyLabel),
                       ),
                     ),
                     const SizedBox(height: 12),

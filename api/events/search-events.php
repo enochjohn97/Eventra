@@ -17,8 +17,32 @@ try {
     // and huge result sets). Cap both.
     $q = mb_substr(trim((string) $q), 0, 120);
     $limit = min(100, max(1, (int) ($_GET['limit'] ?? 50)));
-    $priority = $_GET['priority'] ?? null;
+    $priority = strtolower(trim((string) ($_GET['priority'] ?? '')));
     $category = $_GET['category'] ?? null;
+    $state    = trim((string) ($_GET['state'] ?? ''));
+
+    // ── Filter helpers (shared with the mobile discovery sheet) ────────────
+    // Merit score drives the trending tag and the `merit` sort.
+    $meritScore = "(
+        (IFNULL(e.view_count,0) * 0.5)
+        + (IFNULL(e.sales_count,0) * 5)
+        + (IFNULL(e.attendee_count,0) * 3)
+        + (e.is_boosted * 100)
+    )";
+    // Base price across every tier — used by the Free / price-range filters.
+    // Tier prices live in the event metadata JSON (there are no tier columns),
+    // so they are extracted safely and default to 0 for legacy rows.
+    $tierPrice = static function (string $key): string {
+        return "CASE WHEN JSON_VALID(e.metadata)
+                     THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(e.metadata, '$." . $key . "')) AS DECIMAL(12,2))
+                     ELSE 0 END";
+    };
+    $effectivePrice = "GREATEST(
+        IFNULL(e.price,0),
+        IFNULL(" . $tierPrice('regular_price') . ",0),
+        IFNULL(" . $tierPrice('vip_price') . ",0),
+        IFNULL(" . $tierPrice('premium_price') . ",0)
+    )";
 
     // Build search query base
     $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -47,28 +71,77 @@ try {
             OR e.location LIKE ? 
             OR e.category LIKE ? 
             OR e.priority LIKE ?
+            OR e.description LIKE ?
             OR DATE_FORMAT(e.event_date, '%Y-%m-%d') LIKE ?
-            OR (? = 1 AND (e.price = 0 OR e.price IS NULL))
+            OR (? = 1 AND $effectivePrice <= 0)
         )";
         $search_term = "%$q%";
-        $params[] = $search_term;
-        $params[] = $search_term;
-        $params[] = $search_term;
-        $params[] = $search_term;
-        $params[] = $search_term;
-        $params[] = $search_term;
-        $params[] = $search_term;
+        for ($i = 0; $i < 8; $i++) { // 8 LIKE placeholders above
+            $params[] = $search_term;
+        }
         $params[] = $isFreeQuery ? 1 : 0;
     }
 
-    if ($priority && $priority !== 'all') {
-        $where_clauses[] = "e.priority = ?";
-        $params[] = $priority;
+    // Priority tags — same rules as the ⭐/🔥/📈/📍 labels the server puts on
+    // every event (and the web sidebar filters on). The legacy `priority`
+    // ENUM is NOT used: it defaults to 'nearby' on every row and would match
+    // everything, so only the computed meaning is trusted.
+    if ($priority !== '' && $priority !== 'all') {
+        switch ($priority) {
+            case 'featured':
+                $where_clauses[] = "e.is_boosted = 1";
+                break;
+            case 'hot':
+                $where_clauses[] = "IFNULL(e.sales_count,0) >= 50";
+                break;
+            case 'trending':
+                $where_clauses[] = "($meritScore) > 60";
+                break;
+            case 'nearby':
+                $where_clauses[] = "e.event_date = CURDATE()";
+                break;
+            case 'upcoming':
+                $where_clauses[] = "e.event_date >= CURDATE()";
+                break;
+            default:
+                // Unknown tag — fall back to a plain text match so custom
+                // labels keep working.
+                $where_clauses[] = "LOWER(IFNULL(e.priority,'')) LIKE ?";
+                $params[] = '%' . $priority . '%';
+        }
     }
 
     if ($category && $category !== 'all') {
         $where_clauses[] = "e.category = ?";
         $params[] = $category;
+    }
+
+    // State — events may cover several states (FIND_IN_SET) or all of them.
+    if ($state !== '' && strtolower($state) !== 'all') {
+        $where_clauses[] = "(
+            FIND_IN_SET(?, e.state) > 0
+            OR e.state = 'All States'
+            OR e.state = 'all'
+            OR e.state LIKE ?
+        )";
+        $params[] = $state;
+        $params[] = '%' . $state . '%';
+    }
+
+    // Price — "free" chip plus optional range bounds (base, fee-exclusive).
+    $freeOnly = isset($_GET['free']) && $_GET['free'] !== '' && $_GET['free'] !== '0';
+    if ($freeOnly) {
+        $where_clauses[] = "$effectivePrice <= 0";
+    }
+    $priceMin = (isset($_GET['price_min']) && $_GET['price_min'] !== '') ? (float) $_GET['price_min'] : null;
+    $priceMax = (isset($_GET['price_max']) && $_GET['price_max'] !== '') ? (float) $_GET['price_max'] : null;
+    if ($priceMin !== null) {
+        $where_clauses[] = "$effectivePrice >= ?";
+        $params[] = $priceMin;
+    }
+    if ($priceMax !== null) {
+        $where_clauses[] = "$effectivePrice <= ?";
+        $params[] = $priceMax;
     }
 
     // Identify user for favorites subquery
@@ -92,12 +165,6 @@ try {
 
     // Dynamic priority label — same CASE as get-events.php so search results
     // carry identical ⭐/🔥/📈/📍 tags for the mobile app.
-    $meritScore = "(
-        (IFNULL(e.view_count,0) * 0.5)
-        + (IFNULL(e.sales_count,0) * 5)
-        + (IFNULL(e.attendee_count,0) * 3)
-        + (e.is_boosted * 100)
-    )";
     $user_state = $_SESSION['user_state'] ?? '';
     $userStateSql = $pdo->quote($user_state);
     $priorityLabel = "CASE
@@ -131,8 +198,10 @@ try {
         'popular' => 'e.attendee_count DESC',
         'merit' => "$meritScore DESC",
         'date' => 'e.event_date ASC, e.event_time ASC',
-        'price_low' => 'e.price ASC',
-        'price_high' => 'e.price DESC',
+        // Tier prices live in the event metadata JSON, so the legacy `price`
+        // column alone (often 0) would make price sorting appear broken.
+        'price_low' => "$effectivePrice ASC",
+        'price_high' => "$effectivePrice DESC",
         default => 'e.created_at DESC',
     };
 

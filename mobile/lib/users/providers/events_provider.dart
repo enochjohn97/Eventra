@@ -1,44 +1,95 @@
 import 'package:flutter/foundation.dart';
+import '../../core/network/api_client.dart';
 import '../models/event_model.dart';
 import '../services/event_cache_service.dart';
 import '../services/user_event_service.dart';
 
+/// Active discovery filters. Mirrors the web app's sidebar (category, state,
+/// priority, price) and sort dropdown so the app and website return the same
+/// events for the same selections.
+class EventFilters {
+  String search = '';
+  String sort = 'newest';
+  String? category;
+  String? state;
+
+  /// featured | hot | trending | nearby | upcoming
+  String? priority;
+  bool freeOnly = false;
+  int? priceMin;
+  int? priceMax;
+
+  int get activeCount => [
+    if (search.trim().isNotEmpty) search,
+    if (category != null) category,
+    if (state != null) state,
+    if (priority != null) priority,
+    if (freeOnly) 'free',
+    if (priceMin != null || priceMax != null) 'price',
+  ].length;
+
+  bool get hasFilters => activeCount > 0;
+
+  void clear() {
+    search = '';
+    sort = 'newest';
+    category = null;
+    state = null;
+    priority = null;
+    freeOnly = false;
+    priceMin = null;
+    priceMax = null;
+  }
+}
+
 class EventsProvider extends ChangeNotifier {
   final List<EventModel> events = [];
+  final EventFilters filters = EventFilters();
+
   bool isLoading = false;
   bool isLoadingMore = false;
-  bool hasMore = true;
 
   /// True while the UI is showing the persisted cache preview and the fresh
   /// network fetch is still in flight.
   bool isRefreshing = false;
 
   String? error;
-  String search = '';
-  String sort = 'newest';
-  int _page = 1;
   int _total = 0;
-  static const int _pageSize = 12;
+  int _page = 1;
+  int _requestId = 0;
+  static const int pageSize = 12;
 
-  String get _cacheKey =>
-      EventCacheService.keyFor(sort: sort, search: search);
+  // ── Convenience accessors kept for the existing screens ──────────────────
+  String get search => filters.search;
+  String get sort => filters.sort;
 
+  /// Pages available on the server for the current filters (at least 1).
+  int get totalPages => _total <= 0 ? 1 : ((_total + pageSize - 1) ~/ pageSize);
+
+  int get currentPage => _page;
+  int get total => _total;
+
+  String get _cacheKey => EventCacheService.keyFor(
+    sort: filters.sort,
+    search: filters.search,
+    origin: ApiClient().baseOrigin,
+  );
+
+  /// Loads the current page. `refresh` restarts from page 1.
   Future<void> loadEvents({bool refresh = false}) async {
     if (isLoading || isLoadingMore) return;
-    if (refresh) {
-      _page = 1;
-      hasMore = true;
-    }
-    if (!hasMore && !refresh) return;
+    if (refresh) _page = 1;
 
-    // Offline-friendly start: paint the cached first page immediately, then
-    // let the network refresh replace it. The cache is only consulted when
-    // the grid is empty (initial load), never over fresh data.
+    final requestId = ++_requestId;
+
     if (_page == 1) {
       isLoading = true;
       error = null;
       notifyListeners();
-      if (events.isEmpty) {
+      // Offline-friendly start: paint the cached first page immediately, then
+      // let the network refresh replace it. The cache is only consulted when
+      // the grid is empty (initial load), never over fresh data.
+      if (events.isEmpty && !filters.hasFilters) {
         final cached = await EventCacheService.instance.loadPage(_cacheKey);
         if (cached != null && cached.isNotEmpty && events.isEmpty) {
           events
@@ -56,47 +107,96 @@ class EventsProvider extends ChangeNotifier {
     try {
       final result = await UserEventService.fetchEvents(
         page: _page,
-        limit: _pageSize,
-        search: search.isEmpty ? null : search,
-        sort: sort,
+        limit: pageSize,
+        search: filters.search.trim().isEmpty ? null : filters.search.trim(),
+        sort: filters.sort,
+        category: filters.category,
+        state: filters.state,
+        priority: filters.priority,
+        freeOnly: filters.freeOnly,
+        priceMin: filters.priceMin,
+        priceMax: filters.priceMax,
       );
-      if (_page == 1) {
-        events
-          ..clear()
-          ..addAll(result.events);
-        isRefreshing = false;
-        // Persist only the first page — it's the one the next launch shows.
-        EventCacheService.instance.savePage(_cacheKey, result.events);
-      } else {
-        events.addAll(result.events);
-      }
+      // A newer request (keystroke / page change) won the race — drop this one.
+      if (requestId != _requestId) return;
+
+      events
+        ..clear()
+        ..addAll(result.events);
+      isRefreshing = false;
       _total = result.total;
-      hasMore = events.length < _total;
-      _page++;
+      _page = _page.clamp(1, totalPages);
       error = null;
+      // Persist only the unfiltered first page — it's the one the next launch
+      // shows, and cached filter results would be misleading.
+      if (_page == 1 && !filters.hasFilters) {
+        EventCacheService.instance.savePage(_cacheKey, result.events);
+      }
     } catch (e) {
-      error = e.toString().replaceFirst('Exception: ', '');
-      // Keep cached events visible; only surface the error when there is
-      // nothing to show at all.
-      if (events.isNotEmpty && _page == 1) isRefreshing = false;
+      if (requestId == _requestId) {
+        error = e.toString().replaceFirst('Exception: ', '');
+        if (events.isNotEmpty && _page == 1) isRefreshing = false;
+      }
     } finally {
-      isLoading = false;
-      isLoadingMore = false;
-      notifyListeners();
+      if (requestId == _requestId) {
+        isLoading = false;
+        isLoadingMore = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> refresh() => loadEvents(refresh: true);
 
+  /// Jump to a specific result page (1-based); keeps the current filters.
+  Future<void> goToPage(int page) async {
+    final target = page.clamp(1, totalPages);
+    if (target == _page) return;
+    _page = target;
+    events.clear();
+    notifyListeners();
+    await loadEvents();
+  }
+
   void setSearch(String value) {
-    search = value;
+    if (filters.search == value) return;
+    filters.search = value;
   }
 
   void setSort(String value) {
-    sort = value;
+    filters.sort = value;
   }
 
-  Future<void> searchAndReload() => loadEvents(refresh: true);
+  void setCategory(String? value) {
+    filters.category = value;
+  }
+
+  void setState(String? value) {
+    filters.state = value;
+  }
+
+  void setPriority(String? value) {
+    filters.priority = value;
+  }
+
+  void setPriceBucket({required bool freeOnly, int? min, int? max}) {
+    filters.freeOnly = freeOnly;
+    filters.priceMin = min;
+    filters.priceMax = max;
+  }
+
+  void clearFilters() {
+    filters.clear();
+    _page = 1;
+  }
+
+  /// Live search: called from the search field after a short debounce.
+  Future<void> applySearch(String value) {
+    setSearch(value);
+    return loadEvents(refresh: true);
+  }
+
+  Future<void> applyFilters() => loadEvents(refresh: true);
 
   Future<bool> toggleFavorite(EventModel event) async {
     try {
@@ -107,7 +207,7 @@ class EventsProvider extends ChangeNotifier {
         notifyListeners();
         // Keep the cache's favorite flags roughly in sync; a failed write is
         // harmless since the next successful refresh overwrites the page.
-        EventCacheService.instance.savePage(_cacheKey, events.take(_pageSize).toList());
+        EventCacheService.instance.savePage(_cacheKey, events.take(pageSize).toList());
       }
       return isFav;
     } catch (e) {
