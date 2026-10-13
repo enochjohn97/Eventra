@@ -22,9 +22,9 @@
   // ── Determine login page URL by role ──────────────────────────────────────
   function getLoginUrl() {
     const path = window.location.pathname;
-    if (path.includes("/admin/")) return "/admin/pages/adminLogin.html";
-    if (path.includes("/client/")) return "/client/pages/clientLogin.html";
-    return "/public/pages/landing.html";
+    if (path.includes("/admin/")) return "/admin/login.html";
+    if (path.includes("/client/")) return "/client/login.html";
+    return "/index.html";
   }
 
   // ── Track last activity ────────────────────────────────────────────────────

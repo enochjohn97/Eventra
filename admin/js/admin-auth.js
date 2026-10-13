@@ -185,7 +185,7 @@ class AdminAuth {
         }
 
         setTimeout(() => {
-            window.location.href = '../../admin/pages/adminLogin.html';
+            window.location.href = '/admin/login.html';
         }, 500);
     }
 }

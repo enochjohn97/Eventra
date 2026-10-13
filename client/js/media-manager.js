@@ -619,7 +619,7 @@ async function openFolder(id, name) {
     const grid = document.getElementById('folderMediaGrid');
     const emptyState = document.getElementById('modalEmptyState');
 
-    // Guard: modal HTML is only present on media.html — bail out silently elsewhere
+    // Guard: modal HTML is only present on /client/media.html — bail out silently elsewhere
     if (!modal || !nameEl || !emptyState) return;
 
     nameEl.textContent = name;

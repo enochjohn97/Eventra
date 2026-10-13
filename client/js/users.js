@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 Swal.fire('Deleted', data.message, 'success').then(() => {
                     // Redirect to login
-                    window.location.href = '../../client/pages/clientLogin.html';
+                    window.location.href = '/client/login.html';
                 });
             } else {
                 Swal.fire('Error', data.message || 'Failed to delete account.', 'error');

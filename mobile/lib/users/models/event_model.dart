@@ -86,10 +86,16 @@ class EventModel {
 
     String? imagePath = json['image_path']?.toString();
     String? absoluteImage = json['absolute_image_url']?.toString();
-    if ((absoluteImage == null || absoluteImage.isEmpty) &&
-        imagePath != null &&
+    // The app switches between the local dev server and the live platform, and
+    // cached events keep whatever absolute URL they were built with. Always
+    // re-resolve a root-relative path against the origin that is live NOW,
+    // otherwise an uploaded banner fetched while on localhost keeps 404-ing
+    // after the switch (the grey placeholder instead of the image).
+    if (imagePath != null &&
         imagePath.isNotEmpty &&
-        baseOrigin != null) {
+        !imagePath.startsWith('http') &&
+        baseOrigin != null &&
+        baseOrigin.isNotEmpty) {
       absoluteImage =
           '$baseOrigin/${imagePath.replaceFirst(RegExp(r'^/'), '')}';
     }

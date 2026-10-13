@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
 import '../models/ticket_model.dart';
 
 Map<String, dynamic> _toMap(dynamic raw) {
@@ -23,20 +24,40 @@ class UserTicketService {
   static String? get _origin => ApiClient().baseOrigin;
 
   static Future<List<TicketModel>> getTickets() async {
-    final response = await _dio.get('/tickets');
-    final data = _toMap(response.data);
-    if (data['success'] != true) {
-      throw Exception(data['message']?.toString() ?? 'Failed to load tickets');
+    try {
+      final response = await _dio.get('/tickets');
+      final data = _toMap(response.data);
+      if (data['success'] != true) {
+        throw Exception(
+          data['message']?.toString() ?? 'Failed to load tickets',
+        );
+      }
+      final records = (data['tickets'] as List? ?? [])
+          .map((ticket) => Map<String, dynamic>.from(ticket as Map))
+          .toList();
+      await SecureStorage.savePrivateList('tickets', records);
+      return records
+          .map((ticket) => TicketModel.fromJson(ticket, baseOrigin: _origin))
+          .toList();
+    } on DioException catch (error) {
+      if (!_isOffline(error)) {
+        throw Exception(error.message ?? 'Failed to load tickets');
+      }
+      final cached = await SecureStorage.getPrivateList('tickets');
+      if (cached == null) {
+        throw Exception(error.message ?? 'Failed to load tickets');
+      }
+      return cached
+          .map((ticket) => TicketModel.fromJson(ticket, baseOrigin: _origin))
+          .toList();
     }
-    return (data['tickets'] as List? ?? [])
-        .map(
-          (t) => TicketModel.fromJson(
-            Map<String, dynamic>.from(t as Map),
-            baseOrigin: _origin,
-          ),
-        )
-        .toList();
   }
+
+  static bool _isOffline(DioException error) =>
+      error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.receiveTimeout ||
+      error.type == DioExceptionType.sendTimeout;
 
   /// Proof-of-validity check — the mobile equivalent of the web app's
   /// "Check Ticket" modal (unlimited checks by ticket ID / barcode).
@@ -73,7 +94,8 @@ class UserTicketService {
       dataUri: data['data_uri']?.toString() ?? '',
       scansUsed: int.tryParse(data['scans_used']?.toString() ?? '') ?? 0,
       scanLimit: int.tryParse(data['scan_limit']?.toString() ?? '') ?? 5,
-      scansRemaining: int.tryParse(data['scans_remaining']?.toString() ?? '') ?? 0,
+      scansRemaining:
+          int.tryParse(data['scans_remaining']?.toString() ?? '') ?? 0,
     );
   }
 

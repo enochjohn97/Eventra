@@ -4,7 +4,7 @@ window.openSupportCenter = function () {
   );
   if (typeof window.showGlobalSupportPanel === "function")
     return window.showGlobalSupportPanel();
-  window.location.assign("/admin/pages/payments.html?tab=refunds");
+  window.location.assign("/admin/payments.html?tab=refunds");
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -53,7 +53,7 @@ function initInactivityMonitor() {
     warningTimer = setTimeout(showWarning, WARNING_TIME);
     inactivityTimer = setTimeout(() => {
       if (window.logout) window.logout();
-      else window.location.href = "../../admin/pages/adminLogin.html";
+      else window.location.href = "/admin/login.html";
     }, SESSION_TIMEOUT);
 
     if (Date.now() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
@@ -234,7 +234,7 @@ async function logout() {
         storage.remove("admin_auth_token");
 
         // Redirect to login
-        window.location.href = "../../admin/pages/adminLogin.html";
+        window.location.href = "/admin/login.html";
       } else {
         Swal.fire("Logout Failed", resultData.message, "error");
       }
@@ -242,7 +242,7 @@ async function logout() {
       // Clear local storage anyway
       storage.remove("admin_user");
       storage.remove("admin_auth_token");
-      window.location.href = "../../admin/pages/adminLogin.html";
+      window.location.href = "/admin/login.html";
     }
   }
 }
@@ -808,9 +808,9 @@ window.initPreviews = function () {
       const path = window.location.pathname;
       let html = "";
 
-      if (path.includes("users.html")) {
+      if (path.includes("/admin/users.html")) {
         return; // Handled safely in users.js
-      } else if (path.includes("clients.html")) {
+      } else if (path.includes("/admin/clients.html")) {
         const clientId = row.dataset.id;
         const name = row.cells[1].innerText;
         const profilePic = getProfileImg(row.dataset.profilePic, name);
@@ -1143,9 +1143,9 @@ window.initPreviews = function () {
             }
           });
         return; // Prevent default row click behavior which shows old static modal
-      } else if (path.includes("tickets.html")) {
+      } else if (path.includes("/admin/tickets.html")) {
         return; // Handled safely in tickets.js via createTicketRow
-      } else if (path.includes("events.html")) {
+      } else if (path.includes("/admin/events.html")) {
         // Use the specialized previewEvent function if available
         if (typeof window.previewEvent === "function") {
           window.previewEvent(row.dataset.id);

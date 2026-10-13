@@ -47,8 +47,6 @@ if (!isset($data['event_id']) && empty($data['clear_all'])) {
     exit;
 }
 
-$event_id = $data['event_id'];
-
 try {
     // Bulk clear every favorite for this user in one request.
     if (!empty($data['clear_all'])) {
@@ -60,6 +58,12 @@ try {
             'cleared' => $stmt->rowCount(),
             'is_favorite' => false,
         ]);
+        exit;
+    }
+
+    $event_id = $data['event_id'] ?? null;
+    if (!$event_id) {
+        echo json_encode(['success' => false, 'message' => 'Event ID is required']);
         exit;
     }
 

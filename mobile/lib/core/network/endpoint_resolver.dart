@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,13 +16,19 @@ import 'host_challenge.dart';
 ///   1. `--dart-define=API_BASE_URL` (explicit override always wins when set
 ///      *and* reachable — a release build hard-pins production this way)
 ///   2. Last known-good origin from SharedPreferences (fast path)
-///   3. Production default
-///   4. Local dev candidates (emulator/simulator/LAN) — only probed when no
-///      remote candidate answered, so production users never wait on them
+///   3. The LAN address the backend reported for itself (`lan_url`) — the one
+///      local origin that survives unplugging the USB cable
+///   4. Local dev candidates (USB `adb reverse`, emulator, `LOCAL_API_HOSTS`)
+///   5. A sweep of the phone's own subnet for a dev server (dev builds only)
+///   6. Production default (also the last-resort fallback)
 class EndpointResolver {
   EndpointResolver._();
 
   static const _prefsKey = 'api_endpoint';
+
+  /// Last LAN origin the backend advertised for itself (`lan_url`). Preferred
+  /// over USB loopback whenever it answers — see [rememberLanOrigin].
+  static const _lanKey = 'api_lan_origin';
 
   /// Explicit compile-time override (empty when not provided).
   static const _override = String.fromEnvironment('API_BASE_URL');
@@ -30,22 +38,40 @@ class EndpointResolver {
   /// Lets a re-hosted backend be added without touching this file.
   static const _extraOrigins = String.fromEnvironment('API_BASE_URLS');
 
-  /// Live platform origin. Override at build time when the backend is moved;
-  /// development builds still prefer a reachable local server.
+  /// Live platform origin. The deployed host is the default so the app always
+  /// has a real endpoint to fall back to — including a release build, and a
+  /// phone with the USB cable unplugged. Override at build time when the
+  /// backend moves: `--dart-define=PRODUCTION_API_BASE_URL=https://host/api`.
   static const _production = String.fromEnvironment(
     'PRODUCTION_API_BASE_URL',
     defaultValue: 'https://eventra-website.liveblog365.com/api',
   );
 
-  /// Local dev-server origins. A dev build prefers whichever of these answers
-  /// (USB `adb reverse`, emulator loopback, or a LAN host) so the same build
-  /// works against `php -S` locally and against the live platform in
-  /// production without any rebuild.
-  static const _localCandidates = [
-    'http://10.0.2.2:8000/api', // Android emulator → host loopback
-    'http://127.0.0.1:8000/api', // iOS simulator / Flutter web on the host
-    'http://localhost:8000/api', // Flutter web / desktop on the host
-  ];
+  /// Local dev-server hosts, comma separated `host[:port]`:
+  /// `--dart-define=LOCAL_API_HOSTS=192.168.1.43:8000,127.0.0.1:8000`.
+  ///
+  /// Deliberately NOT hardcoded to one machine's Wi-Fi address: a stale IP is
+  /// the classic cause of "the app only works while the cable is plugged in"
+  /// (it fights the real host and adds a dead candidate to every probe).
+  static const _localHosts = String.fromEnvironment(
+    'LOCAL_API_HOSTS',
+    defaultValue: '127.0.0.1:8000,localhost:8000,10.0.2.2:8000',
+  );
+
+  /// Origins derived from [_localHosts]. 127.0.0.1 = USB `adb reverse` /
+  /// iOS simulator, localhost = loopback, 10.0.2.2 = Android emulator. The
+  /// laptop's Wi-Fi address is learned at runtime instead (see
+  /// [rememberLanOrigin]) so it never has to be hardcoded.
+  static List<String> get _localCandidates {
+    final list = <String>[];
+    for (final raw in _localHosts.split(',')) {
+      final host = raw.trim();
+      if (host.isEmpty) continue;
+      final url = 'http://$host/api';
+      if (!list.contains(url)) list.add(url);
+    }
+    return list;
+  }
 
   /// Origin the app itself is served from (Flutter web only). Web and API are
   /// normally deployed together, so `<origin>/api` is the most likely live
@@ -61,6 +87,9 @@ class EndpointResolver {
   static bool _resolved = false;
 
   static Future<bool>? _inflight;
+
+  /// LAN origin learned from the backend (see [rememberLanOrigin]).
+  static String? _lanOrigin;
 
   /// Origin currently adopted by [ApiClient].
   static String? _current;
@@ -101,8 +130,14 @@ class EndpointResolver {
       if (url.isEmpty) continue;
       add(_isLocalOrigin(url) ? local : remote, url);
     }
+    // The Wi-Fi origin the backend reported for itself goes first: it is the
+    // only local address that keeps answering after the USB cable is pulled.
+    _lanOrigin ??= prefs.getString(_lanKey);
+    add(local, _lanOrigin);
+
     // Last known-good origin keeps the fast path, in its own group.
     if (saved != null) add(_isLocalOrigin(saved) ? local : remote, saved);
+
     for (final candidate in _localCandidates) {
       add(local, candidate);
     }
@@ -111,35 +146,73 @@ class EndpointResolver {
     for (final runtime in _runtimeCandidates) {
       add(_isLocalOrigin(runtime) ? local : remote, runtime);
     }
-    add(remote, _production);
+    if (_production.isNotEmpty) {
+      add(remote, _production);
+    }
 
-    // Both groups are probed at the same time so the two never add up to
-    // sequential timeouts. Which answer wins depends on the build:
-    //
-    //  * dev build (`flutter run` — USB device, emulator, desktop): a reachable
-    //    local `php -S` server wins immediately. Before, the remote host was
-    //    probed first, so a device that *could* reach the dev server was still
-    //    pinned to the live host — every screen then failed with 'hosting
-    //    security check' / 'could not load events'.
-    //  * release build (installed on the live platform): the live host wins,
-    //    and a local server is only used when nothing remote answers.
-    final localProbe = _probeLocal(local);
+    final explicitOverride = _override.replaceFirst(RegExp(r'/$'), '');
+    if (explicitOverride.isNotEmpty &&
+        await _probe(
+          explicitOverride,
+          quick: _isLocalOrigin(explicitOverride),
+        )) {
+      return _adopt(prefs, explicitOverride);
+    }
+
+    // Probe both groups, but prefer the local dev server when it answers:
+    // the live host is not being used right now (broken assets), and localhost
+    // via USB `adb reverse` or LAN is the working origin. Remote/production
+    // stays the fallback so the app still works with no laptop anywhere.
+    final localProbe = () async {
+      final configured = await _probeLocal(local);
+      if (configured != null) return configured;
+      return _discoverLanOrigin();
+    }();
     final remoteProbe = _probeAll(remote);
-    final winner = kReleaseMode
-        ? (await remoteProbe ?? await localProbe)
-        : (await localProbe ?? await remoteProbe);
+    final winner = await localProbe ?? await remoteProbe;
 
     if (winner != null) return _adopt(prefs, winner);
 
-    // Nothing answered (offline, or the API moved). With a configured live
-    // origin, pin it so requests target the real host instead of retrying
-    // dead dev-server addresses; without one, stay unresolved so the app keeps
-    // retrying discovery rather than adopting an empty origin.
+    // Nothing answered. Pin the live platform so the app keeps working when the
+    // phone is unplugged from the laptop (or no dev server is running) instead
+    // of retrying a loopback address that only exists while the cable is in.
     if (_production.isNotEmpty) {
       await _adopt(prefs, _production);
     }
     _inflight = null;
     return false;
+  }
+
+  /// Records the LAN origin the backend advertises for itself (`lan_url` in
+  /// `GET /config/app`, e.g. `http://192.168.1.43:8000`).
+  ///
+  /// Called once the app has reached the server through *any* origin — USB
+  /// loopback included — so it can switch to the Wi-Fi address and keep working
+  /// with the cable unplugged. Triggering a re-probe here is safe: the value is
+  /// remembered before resolving, so this can only fire once per address.
+  static void rememberLanOrigin(String? url) {
+    final normalized = _normalize(url);
+    if (normalized == null || !_isLocalOrigin(normalized)) return;
+    if (_lanOrigin == normalized) return;
+
+    _lanOrigin = normalized;
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(_lanKey, normalized))
+        .ignore();
+
+    if (_current != null && _current != normalized) {
+      _resolved = false;
+      _inflight = null;
+      resolve(force: true);
+    }
+  }
+
+  static String? _normalize(String? url) {
+    if (url == null || url.isEmpty) return null;
+    final normalized = url.replaceFirst(RegExp(r'/$'), '');
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null || parsed.host.isEmpty) return null;
+    return normalized;
   }
 
   /// True for loopback / RFC1918 / emulator hosts (local `php -S` dev server).
@@ -152,6 +225,89 @@ class EndpointResolver {
         host.startsWith('192.168.') ||
         host.startsWith('10.') ||
         RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host);
+  }
+
+  /// Finds a dev server on the phone's own network by probing the local /24.
+  ///
+  /// The laptop's address cannot be known in advance (DHCP hands out a new one
+  /// on the next network) and hardcoding it is exactly what broke before. The
+  /// phone already knows its own address and subnet, so the same /24 is probed
+  /// concurrently in small batches with a tight timeout — a full pass takes
+  /// about a second, and the winner is persisted so later launches skip it.
+  ///
+  /// Skipped in release builds (a shipped app must not port-scan a user's
+  /// network) and when the phone is not on a private IPv4 network.
+  static Future<String?> _discoverLanOrigin() async {
+    if (kReleaseMode) return null;
+
+    final List<NetworkInterface> interfaces;
+    try {
+      interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+      );
+    } catch (_) {
+      return null;
+    }
+
+    final candidates = <String>[];
+    for (final iface in interfaces) {
+      for (final address in iface.addresses) {
+        if (!_isPrivateIPv4(address.address)) continue;
+        final subnet = address.address.substring(
+          0,
+          address.address.lastIndexOf('.'),
+        );
+        for (var host = 1; host <= 254; host++) {
+          final url = 'http://$subnet.$host:8000/api';
+          if (!candidates.contains(url)) candidates.add(url);
+        }
+      }
+    }
+    if (candidates.isEmpty) return null;
+
+    const batchSize = 48;
+    for (var start = 0; start < candidates.length; start += batchSize) {
+      final batch = candidates.sublist(
+        start,
+        (start + batchSize).clamp(0, candidates.length),
+      );
+      final answers = await Future.wait(batch.map(_quickProbe));
+      for (var i = 0; i < batch.length; i++) {
+        if (answers[i]) return batch[i];
+      }
+    }
+    return null;
+  }
+
+  static bool _isPrivateIPv4(String ip) =>
+      ip.startsWith('192.168.') ||
+      ip.startsWith('10.') ||
+      RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(ip);
+
+  /// Minimal probe used while sweeping the LAN: no retries, no challenge
+  /// solving, sub-second budget — it must fail fast on 250+ silent hosts.
+  static Future<bool> _quickProbe(String base) async {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: base,
+        connectTimeout: const Duration(milliseconds: 450),
+        receiveTimeout: const Duration(milliseconds: 700),
+        validateStatus: (status) => status != null,
+        headers: const {'Accept': 'application/json'},
+      ),
+    );
+    try {
+      final response = await dio.get<dynamic>('/config/app');
+      final data = response.data;
+      return response.statusCode == 200 &&
+          data is Map &&
+          data['success'] == true;
+    } catch (_) {
+      return false;
+    } finally {
+      dio.close(force: true);
+    }
   }
 
   static Future<String?> _probeAll(List<String> candidates) async {

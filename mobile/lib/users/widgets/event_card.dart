@@ -19,8 +19,13 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = event.absoluteImageUrl ??
-        (event.imagePath != null ? ApiClient().absoluteUrl(event.imagePath) : '');
+    // Resolve the stored path against the CURRENT origin every build: the app
+    // can be pointed at the local dev server or the live platform, and a URL
+    // baked in while the other one was adopted renders as a broken image.
+    final path = event.imagePath;
+    final imageUrl = (path != null && path.isNotEmpty)
+        ? ApiClient().absoluteUrl(path)
+        : (event.absoluteImageUrl ?? '');
     // Passed events offer no favorite affordance (sold-out ones still do).
     final canFavorite = onFavorite != null && !EventUtils.isPassed(event);
 

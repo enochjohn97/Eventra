@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../../core/network/api_client.dart';
 import '../models/event_model.dart';
 
 /// Persistent cache of the events feed for an instant, offline-friendly start.
@@ -10,12 +11,10 @@ import '../models/event_model.dart';
 /// Strategy (see README "Sync architecture"):
 ///  * Only the first page of each feed variant is persisted — enough to paint
 ///    the home grid immediately; older pages are cheap to re-fetch.
-///  * Rows are keyed by API origin, sort, and search so local and live
-///    events cannot be mixed when endpoint discovery switches environments.
-///  * Entries expire after [maxAge]; providers treat cache as a *preview* and
-///    always refresh from the network afterwards, so this never drifts out of
-///    sync with the web app — worst case is showing slightly old data for the
-///    moment before the refresh lands.
+///  * Rows are keyed by sort and search, so the last feed remains available
+///    when endpoint discovery switches between local and live environments.
+///  * Cached data is a preview; every launch still refreshes it from the
+///    network when possible.
 class EventCacheService {
   EventCacheService._();
   static final EventCacheService instance = EventCacheService._();
@@ -23,8 +22,6 @@ class EventCacheService {
   static const _dbName = 'eventra_cache.db';
   static const _dbVersion = 1;
   static const _table = 'cached_events';
-  static const _maxAge = Duration(minutes: 30);
-
   Database? _db;
 
   Future<Database> get _database async {
@@ -48,11 +45,8 @@ class EventCacheService {
     return _db!;
   }
 
-  static String keyFor({
-    required String sort,
-    String? search,
-    String? origin,
-  }) => 'feed:${origin ?? 'unknown'}:$sort:${search?.trim() ?? ''}';
+  static String keyFor({required String sort, String? search}) =>
+      'feed:$sort:${search?.trim() ?? ''}';
 
   /// Persists a page of events. Page 1 replaces the stored page; higher
   /// pages are appended (used only if callers choose to persist them).
@@ -87,25 +81,48 @@ class EventCacheService {
   Future<List<EventModel>?> loadPage(String cacheKey) async {
     try {
       final db = await _database;
-      final rows = await db.query(
+      var rows = await db.query(
         _table,
         where: 'cache_key = ?',
         whereArgs: [cacheKey],
         orderBy: 'position ASC',
       );
+      if (rows.isEmpty && cacheKey.startsWith('feed:')) {
+        final legacyKeys = await db.query(
+          _table,
+          columns: ['cache_key'],
+          where: 'cache_key LIKE ?',
+          whereArgs: ['%:${cacheKey.substring('feed:'.length)}'],
+          orderBy: 'cached_at DESC',
+          limit: 1,
+        );
+        if (legacyKeys.isNotEmpty) {
+          final legacyKey = legacyKeys.first['cache_key'] as String;
+          rows = await db.query(
+            _table,
+            where: 'cache_key = ?',
+            whereArgs: [legacyKey],
+            orderBy: 'position ASC',
+          );
+          await db.update(
+            _table,
+            {'cache_key': cacheKey},
+            where: 'cache_key = ?',
+            whereArgs: [legacyKey],
+          );
+        }
+      }
       if (rows.isEmpty) return null;
 
-      final cachedAt = (rows.first['cached_at'] as int?) ?? 0;
-      final age = DateTime.now().millisecondsSinceEpoch - cachedAt;
-      if (age > _maxAge.inMilliseconds) {
-        await db.delete(_table, where: 'cache_key = ?', whereArgs: [cacheKey]);
-        return null;
-      }
-
+      // Pass the origin that is live right now so restored events rebuild
+      // their image URLs for the current environment instead of keeping the
+      // origin they were cached from.
+      final origin = ApiClient().baseOrigin;
       return rows
           .map(
             (row) => EventModel.fromJson(
               jsonDecode(row['payload'] as String) as Map<String, dynamic>,
+              baseOrigin: origin,
             ),
           )
           .toList();

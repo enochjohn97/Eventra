@@ -58,8 +58,96 @@ if ($requestIsHttps) {
 }
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// ── Short public URLs ───────────────────────────────────────────────────────
+// The public pages live in public/pages/ but are addressed from the site root,
+// so the browser only ever sees the short form — localhost:8000/index.html,
+// /checkout.html, /event-details.html, /payment.html — on BOTH the PHP dev
+// server and Apache (Apache reaches this front controller through .htaccess,
+// so one map covers local and live). The long /public/pages/... path keeps
+// working, so old bookmarks, emails, QR codes and share links never break.
+$shortPageAliases = [
+    // User portal (public pages)
+    '/index.html' => 'public/pages/index.html',
+    '/checkout.html' => 'public/pages/checkout.html',
+    '/event-details.html' => 'public/pages/event-details.html',
+    '/payment.html' => 'public/pages/payment.html',
+    // Legacy short aliases (kept so old links never break)
+    '/adminLogin.html' => 'admin/pages/adminLogin.html',
+    '/clientLogin.html' => 'client/pages/clientLogin.html',
+    // Admin portal — short URLs for every admin page
+    '/admin/dashboard.html' => 'admin/pages/adminDashboard.html',
+    '/admin/events.html' => 'admin/pages/adminEvents.html',
+    '/admin/tickets.html' => 'admin/pages/adminTickets.html',
+    '/admin/payments.html' => 'admin/pages/adminPayments.html',
+    '/admin/users.html' => 'admin/pages/adminUsers.html',
+    '/admin/clients.html' => 'admin/pages/adminClients.html',
+    '/admin/login.html' => 'admin/pages/adminLogin.html',
+    // Client portal — short URLs for every client page
+    '/client/dashboard.html' => 'client/pages/clientDashboard.html',
+    '/client/events.html' => 'client/pages/clientEvents.html',
+    '/client/tickets.html' => 'client/pages/clientTickets.html',
+    '/client/payments.html' => 'client/pages/clientPayment.html',
+    '/client/users.html' => 'client/pages/clientUsers.html',
+    '/client/media.html' => 'client/pages/clientMedia.html',
+    '/client/login.html' => 'client/pages/clientLogin.html',
+    '/client/forgot-password.html' => 'client/pages/client-forgot-password.html',
+    '/client/reset-password.html' => 'client/pages/client-reset-password.html',
+    '/client/scanner.html' => 'client/pages/scanner.html',
+];
+$shortPageBaseHrefs = [
+    '/adminLogin.html' => '/admin/pages/',
+    '/clientLogin.html' => '/client/pages/',
+    '/admin/dashboard.html' => '/admin/pages/',
+    '/admin/events.html' => '/admin/pages/',
+    '/admin/tickets.html' => '/admin/pages/',
+    '/admin/payments.html' => '/admin/pages/',
+    '/admin/users.html' => '/admin/pages/',
+    '/admin/clients.html' => '/admin/pages/',
+    '/admin/login.html' => '/admin/pages/',
+    '/client/dashboard.html' => '/client/pages/',
+    '/client/events.html' => '/client/pages/',
+    '/client/tickets.html' => '/client/pages/',
+    '/client/payments.html' => '/client/pages/',
+    '/client/users.html' => '/client/pages/',
+    '/client/media.html' => '/client/pages/',
+    '/client/login.html' => '/client/pages/',
+    '/client/forgot-password.html' => '/client/pages/',
+    '/client/reset-password.html' => '/client/pages/',
+    '/client/scanner.html' => '/client/pages/',
+];
+
+$aliasPath = $shortPageAliases[$uri] ?? null;
+if ($aliasPath !== null) {
+    $aliasFile = $rootDir . '/' . $aliasPath;
+    if (!is_file($aliasFile)) {
+        // Never fall through to the redirect below: that would loop.
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Missing page: ' . $aliasPath;
+        exit;
+    }
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    if (isset($shortPageBaseHrefs[$uri])) {
+        $page = file_get_contents($aliasFile);
+        if ($page === false) {
+            http_response_code(500);
+            exit;
+        }
+        $base = '<base href="' . htmlspecialchars($shortPageBaseHrefs[$uri], ENT_QUOTES, 'UTF-8') . '">';
+        $page = preg_replace('/(<head\b[^>]*>)/i', '$1' . $base, $page, 1);
+        echo $page;
+    } else {
+        readfile($aliasFile);
+    }
+    exit;
+}
+
 if ($uri === '/' || $uri === '/index.php' || $uri === '/server/index.php') {
-    header('Location: /public/pages/index.html', true, 302);
+    header('Location: /index.html', true, 302);
     exit;
 }
 
@@ -102,11 +190,11 @@ $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // ── Short URL routes (mirror of root index.php for the built-in server) ────
 if (preg_match('#^/e/([A-Za-z0-9\-_]{1,150})$#', $uri, $m)) {
-    header('Location: /public/pages/event-details.html?event=' . rawurlencode($m[1]), true, 302);
+    header('Location: /event-details.html?event=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 if (preg_match('#^/e/([A-Za-z0-9\-_]{1,150})/pay$#', $uri, $m)) {
-    header('Location: /public/pages/checkout.html?event=' . rawurlencode($m[1]), true, 302);
+    header('Location: /checkout.html?event=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 if (preg_match('#^/t/([A-Za-z0-9\-_]{1,120})$#', $uri, $m)) {
@@ -114,7 +202,7 @@ if (preg_match('#^/t/([A-Za-z0-9\-_]{1,120})$#', $uri, $m)) {
     exit;
 }
 if (preg_match('#^/r/([A-Za-z0-9\-_]{1,190})$#', $uri, $m)) {
-    header('Location: /public/pages/payment.html?reference=' . rawurlencode($m[1]), true, 302);
+    header('Location: /payment.html?reference=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 // Database-backed opaque short links (hide real file locations).
@@ -139,11 +227,11 @@ if (preg_match('#^/(api/s|s)$#', $uri) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') 
 if (preg_match('#^/go/(admin|client|user)$#', $uri, $m)) {
     $portal = strtolower($m[1]);
     if ($portal === 'admin') {
-        header('Location: /admin/pages/adminLogin.html', true, 302);
+        header('Location: /admin/login.html', true, 302);
     } elseif ($portal === 'client') {
-        header('Location: /client/pages/clientLogin.html', true, 302);
+        header('Location: /client/login.html', true, 302);
     } else {
-        header('Location: /public/pages/index.html', true, 302);
+        header('Location: /index.html', true, 302);
     }
     exit;
 }
@@ -151,23 +239,27 @@ if (preg_match('#^/go/(admin|client|user)$#', $uri, $m)) {
 // Portal entry point redirects (formerly index.php in /client and /admin)
 if ($uri === '/client' || $uri === '/client/') {
     if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'client') {
-        header('Location: /client/pages/clientDashboard.html');
+        header('Location: /client/dashboard.html');
     } else {
-        header('Location: /client/pages/clientLogin.html');
+        header('Location: /client/login.html');
     }
     exit;
 }
 
 if ($uri === '/admin' || $uri === '/admin/') {
-    header('Location: /admin/pages/adminLogin.html');
+    if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin') {
+        header('Location: /admin/dashboard.html');
+    } else {
+        header('Location: /admin/login.html');
+    }
     exit;
 }
 
 // Legacy portal redirects
 $legacyRedirects = [
-    '/admin/login' => '/admin/pages/adminLogin.html',
-    '/client/login' => '/client/pages/clientLogin.html',
-    '/user/login' => '/public/pages/index.html'
+    '/admin/login' => '/admin/login.html',
+    '/client/login' => '/client/login.html',
+    '/user/login' => '/index.html'
 ];
 if (isset($legacyRedirects[$uri])) {
     header('Location: ' . $legacyRedirects[$uri]);
@@ -369,5 +461,5 @@ header('Content-Type: text/html; charset=utf-8');
 echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>404 — EventOut</title>'
    . '<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0f172a;color:#f8fafc;text-align:center}a{color:#ff5a5f}</style></head>'
    . '<body><div><h1 style="font-size:4rem;margin:0 0 .5rem">404</h1><p>Page not found.</p>'
-   . '<p><a href="/public/pages/index.html">Back to EventOut</a></p></div></body></html>';
+   . '<p><a href="/index.html">Back to EventOut</a></p></div></body></html>';
 exit;

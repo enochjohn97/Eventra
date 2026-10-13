@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
 import '../models/event_model.dart';
 
 Map<String, dynamic> _toMap(dynamic raw) {
@@ -116,23 +117,41 @@ class UserEventService {
     int page = 1,
     int limit = 50,
   }) async {
-    final response = await _dio.get(
-      '/favorites',
-      queryParameters: {'page': page, 'limit': limit},
-    );
-    final data = _toMap(response.data);
-    if (data['success'] != true) {
-      throw Exception(
-        data['message']?.toString() ?? 'Failed to load favorites',
+    try {
+      final response = await _dio.get(
+        '/favorites',
+        queryParameters: {'page': page, 'limit': limit},
       );
+      final data = _toMap(response.data);
+      if (data['success'] != true) {
+        throw Exception(
+          data['message']?.toString() ?? 'Failed to load favorites',
+        );
+      }
+      final records = (data['events'] as List? ?? [])
+          .map((event) => Map<String, dynamic>.from(event as Map))
+          .toList();
+      await SecureStorage.savePrivateList('favorites', records);
+      return records
+          .map((event) => EventModel.fromJson(event, baseOrigin: _origin))
+          .toList();
+    } on DioException catch (error) {
+      if (!_isOffline(error)) {
+        throw Exception(error.message ?? 'Failed to load favorites');
+      }
+      final cached = await SecureStorage.getPrivateList('favorites');
+      if (cached == null) {
+        throw Exception(error.message ?? 'Failed to load favorites');
+      }
+      return cached
+          .map((event) => EventModel.fromJson(event, baseOrigin: _origin))
+          .toList();
     }
-    return (data['events'] as List? ?? [])
-        .map(
-          (e) => EventModel.fromJson(
-            Map<String, dynamic>.from(e as Map),
-            baseOrigin: _origin,
-          ),
-        )
-        .toList();
   }
+
+  static bool _isOffline(DioException error) =>
+      error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.receiveTimeout ||
+      error.type == DioExceptionType.sendTimeout;
 }

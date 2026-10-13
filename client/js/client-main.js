@@ -8,7 +8,7 @@ window.openSupportCenter = function () {
   );
   if (typeof window.showDisputeCenter === "function")
     return window.showDisputeCenter();
-  window.location.assign("/client/pages/payments.html?tab=refunds");
+  window.location.assign("/client/payments.html?tab=refunds");
 };
 
 // Track all active interval IDs to clear on logout
@@ -93,7 +93,7 @@ function initInactivityMonitor() {
     warningTimer = setTimeout(showWarning, WARNING_TIME);
     inactivityTimer = setTimeout(() => {
       if (window.logout) window.logout();
-      else window.location.href = "../../client/pages/clientLogin.html";
+      else window.location.href = "/client/login.html";
     }, SESSION_TIMEOUT);
 
     if (Date.now() - lastHeartbeatTime > HEARTBEAT_INTERVAL) {
@@ -310,8 +310,8 @@ async function logout() {
   const keys = storage.getRoleKeys();
   const loginPage =
     keys.user === "admin_user"
-      ? "../../admin/pages/adminLogin.html"
-      : "../../client/pages/clientLogin.html";
+      ? "/admin/login.html"
+      : "/client/login.html";
   window.location.href = loginPage;
 }
 
@@ -373,7 +373,7 @@ if (deleteAccountBtn) {
             "Your account has been successfully removed.",
             "success",
           ).then(() => {
-            window.location.href = "../../client/pages/clientLogin.html";
+            window.location.href = "/client/login.html";
           });
         } else {
           Swal.fire("Error", data.message || "Deletion failed", "error");
@@ -461,7 +461,7 @@ function initProfileClick() {
     userProfile.appendChild(drop);
   }
 
-  // <a href="#" onclick="if(typeof window.showDisputeCenter==='function')window.showDisputeCenter();else window.location.assign('/client/pages/payments.html?tab=refunds');return false;"
+  // <a href="#" onclick="if(typeof window.showDisputeCenter==='function')window.showDisputeCenter();else window.location.assign('/client/payments.html?tab=refunds');return false;"
   //              style="display:flex;align-items:center;gap:10px;padding:11px 16px;color:#374151;text-decoration:none;font-size:.88rem;font-weight:600;"> Support Center</a>
 
   // Toggle open/close

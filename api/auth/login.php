@@ -295,11 +295,11 @@ try {
         }
 
         // Role-Based Redirects (absolute paths for JS redirect)
-        $redirect = '/public/pages/index.html'; // Default for users
+        $redirect = '/index.html'; // Default for users
         if ($userRole === 'admin') {
-            $redirect = '/admin/pages/adminDashboard.html';
+            $redirect = '/admin/dashboard.html';
         } elseif ($userRole === 'client') {
-            $redirect = '/client/pages/clientDashboard.html';
+            $redirect = '/client/dashboard.html';
         }
 
         // Fetch fresh user profile directly from database for clean hydration

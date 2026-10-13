@@ -113,7 +113,7 @@ class SearchManager {
 
         switch(type) {
             case 'events':
-                link = `events.html?highlight=${item.id}`;
+                link = `/admin/events.html?highlight=${item.id}`;
                 title = item.name || '';
                 meta = [
                     item.custom_id,
@@ -125,7 +125,7 @@ class SearchManager {
                 ].filter(v => v !== undefined && v !== null && v !== '').join(' • ');
                 break;
             case 'tickets':
-                link = `tickets.html?highlight=${item.id}`;
+                link = `/admin/tickets.html?highlight=${item.id}`;
                 title = item.event_name || item.user_name || item.custom_id || `Ticket #${item.id}`;
                 meta = [
                     item.custom_id || `#${item.id}`,
@@ -136,7 +136,7 @@ class SearchManager {
                 ].filter(Boolean).join(' • ');
                 break;
             case 'payments':
-                link = `payments.html?highlight=${item.id}`;
+                link = `/admin/payments.html?highlight=${item.id}`;
                 title = item.event_name || item.user_name || item.custom_id || `Payment #${item.id}`;
                 meta = [
                     item.custom_id || item.reference || `#${item.id}`,
@@ -148,11 +148,11 @@ class SearchManager {
                 ].filter(Boolean).join(' • ');
                 break;
             case 'users':
-                link = `users.html?highlight=${item.id}`;
+                link = `/admin/users.html?highlight=${item.id}`;
                 meta = [item.custom_id, item.email].filter(Boolean).join(' • ');
                 break;
             case 'clients':
-                link = `clients.html?highlight=${item.id}`;
+                link = `/admin/clients.html?highlight=${item.id}`;
                 meta = [item.custom_id, `ID ${item.id}`, item.company || item.email].filter(Boolean).join(' • ');
                 break;
         }

@@ -377,7 +377,7 @@ async function deleteClientProfile() {
                     storage.remove('client_user');
                     storage.remove('client_auth_token');
                     if (storage.get('auth_token')) storage.remove('auth_token');
-                    window.location.href = '../../client/pages/clientLogin.html';
+                    window.location.href = '/client/login.html';
                 });
             } else {
                 Swal.fire('Error', data.message || 'Failed to delete profile.', 'error');

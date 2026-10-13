@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Users - EventOut Admin</title>
+    <title>Events - EventOut Admin</title>
     <link rel="stylesheet" href="../css/admin-style.css">
     <link rel="stylesheet" href="/public/assets/brand/sidebar-logo.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -29,43 +29,44 @@
         </div>
         <ul class="sidebar-menu">
             <li class="menu-item">
-                <a href="adminDashboard.html">
+                <a href="/admin/dashboard.html">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
-            <li class="menu-item">
-                <a href="events.html">
+            <li class="menu-item active">
+                <a href="/admin/events.html">
                     <i data-lucide="calendar"></i>
                     <span>Events</span>
                 </a>
             </li>
             <li class="menu-item">
-                <a href="tickets.html">
+                <a href="/admin/tickets.html">
                     <i data-lucide="ticket"></i>
                     <span>Tickets</span>
                 </a>
             </li>
             <li class="menu-item">
-                <a href="payments.html">
+                <a href="/admin/payments.html">
                     <i data-lucide="credit-card"></i>
                     <span>Payments</span>
                 </a>
             </li>
-            <li class="menu-item active">
-                <a href="users.html">
+            <li class="menu-item">
+                <a href="/admin/users.html">
                     <i data-lucide="users"></i>
                     <span>Users</span>
                 </a>
             </li>
             <li class="menu-item">
-                <a href="clients.html">
+                <a href="/admin/clients.html">
                     <i data-lucide="briefcase"></i>
                     <span>Clients</span>
                 </a>
             </li>
         </ul>
     </aside>
+
     <div class="main-layout">
         <header class="header">
             <div class="header-search">
@@ -87,60 +88,106 @@
         </header>
 
         <main class="content-area">
+            <!-- Page header with title -->
             <div class="page-header">
                 <div class="page-title">
-                    <h1 style="font-size: 1.75rem; font-weight: 800;">Users Management</h1>
+                    <h1 style="font-size: 1.75rem; font-weight: 800;">Events Management</h1>
                 </div>
             </div>
-
+            
             <div class="stats-grid">
-                <!-- <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">User Checked-In</span>
-                        <div class="stat-icon icon-purple"><i data-lucide="user-check"></i></div>
-                    </div>
-                    <span class="stat-value" id="usersCheckedIn">0</span>
-                </div> -->
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">User Active</span>
-                        <div class="stat-icon icon-green"><i data-lucide="activity"></i></div>
+                        <span class="stat-label">Events Created</span>
+                        <div class="stat-icon icon-purple"><i data-lucide="calendar-plus"></i></div>
                     </div>
-                    <span class="stat-value" id="usersActive">0</span>
+                    <span class="stat-value" id="eventsCreated">0</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">User Registered</span>
-                        <div class="stat-icon icon-blue"><i data-lucide="user-plus"></i></div>
+                        <span class="stat-label">Events Published</span>
+                        <div class="stat-icon icon-green"><i data-lucide="check-circle"></i></div>
                     </div>
-                    <span class="stat-value" id="usersRegistered">0</span>
+                    <span class="stat-value" id="eventsPublished">0</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Events Deleted</span>
+                        <div class="stat-icon icon-red"><i data-lucide="trash-2"></i></div>
+                    </div>
+                    <span class="stat-value" id="eventsDeleted">0</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Events Scheduled</span>
+                        <div class="stat-icon icon-orange"><i data-lucide="clock"></i></div>
+                    </div>
+                    <span class="stat-value" id="eventsScheduled">0</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Events Restored</span>
+                        <div class="stat-icon icon-blue"><i data-lucide="refresh-ccw"></i></div>
+                    </div>
+                    <span class="stat-value" id="eventsRestored">0</span>
                 </div>
             </div>
 
             <div class="table-container" style="padding: 2rem; border-radius: 16px;">
-                <div class="table-header" style="margin-bottom: 1.5rem; padding: 0; border: none; display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="font-size: 1.25rem; font-weight: 700;">All Users</h3>
+                <div class="table-header" style="margin-bottom: 1.5rem; padding: 0; border: none; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <h3 style="font-size: 1.25rem; font-weight: 700;">All Events</h3>
+                    <div class="table-filters" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <select id="statusFilter" class="filter-select" style="padding: 0.5rem 1rem; border-radius: 10px; border: 1px solid var(--admin-border); background: #fff; font-size: 0.85rem; outline: none;">
+                            <option value="all">All Status</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="passed">Passed</option>
+                        </select>
+                        <select id="categoryFilter" class="filter-select" style="padding: 0.5rem 1rem; border-radius: 10px; border: 1px solid var(--admin-border); background: #fff; font-size: 0.85rem; outline: none;">
+                            <option value="all">All Categories</option>
+                            <option value="Conference">Conference</option>
+                            <option value="Workshop">Workshop</option>
+                            <option value="Concert">Concert</option>
+                            <option value="Exhibition">Exhibition</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <select id="priceFilter" class="filter-select" style="padding: 0.5rem 1rem; border-radius: 10px; border: 1px solid var(--admin-border); background: #fff; font-size: 0.85rem; outline: none;">
+                            <option value="all">All Prices</option>
+                            <option value="free">Free</option>
+                            <option value="paid">Paid</option>
+                            <option value="premium">Premium (>50k)</option>
+                        </select>
+                        <select id="attendeeFilter" class="filter-select" style="padding: 0.5rem 1rem; border-radius: 10px; border: 1px solid var(--admin-border); background: #fff; font-size: 0.85rem; outline: none;">
+                            <option value="all">All Attendees</option>
+                            <option value="0-50">0 - 50</option>
+                            <option value="51-200">51 - 200</option>
+                            <option value="201+">201+</option>
+                        </select>
+                    </div>
                 </div>
                 <table style="width: 100%; border-collapse: separate; border-spacing: 0 10px;">
                     <thead>
                         <tr>
                             <th style="width: 40px; padding-left: 1.5rem;"><input type="checkbox" id="selectAll"></th>
-                            <th class="sortable" data-sort="id" style="border-bottom: 2px solid #f1f5f9;">USERS ID</th>
-                            <th class="sortable" data-sort="name" style="border-bottom: 2px solid #f1f5f9;">USER NAME</th>
-                            <th class="sortable" data-sort="email" style="border-bottom: 2px solid #f1f5f9;">EMAIL</th>
-                            <th class="sortable" data-sort="phone" style="border-bottom: 2px solid #f1f5f9;">PHONE CONTACT</th>
-                            <th class="sortable" data-sort="gender" style="border-bottom: 2px solid #f1f5f9;">GENDER</th>
-                            <th class="sortable" data-sort="state" style="border-bottom: 2px solid #f1f5f9;">STATE</th>
-                            <th class="sortable" data-sort="country" style="border-bottom: 2px solid #f1f5f9;">COUNTRY</th>
-                            <th class="sortable" data-sort="city" style="border-bottom: 2px solid #f1f5f9;">CITY</th>
-                            <th class="sortable" data-sort="address" style="border-bottom: 2px solid #f1f5f9;">ADDRESS</th> 
-                            <th class="sortable" data-sort="status" style="border-bottom: 2px solid #f1f5f9;">STATUS</th>
-                            <th class="sortable" data-sort="last_login_at" style="border-bottom: 2px solid #f1f5f9;">LAST LOGIN</th>
+                            <th class="sortable" data-sort="custom_id">EVENTS ID</th>
+                            <th class="sortable" data-sort="event_name">EVENTS NAME</th>
+                            <th class="sortable" data-sort="priority">PRIORITY</th>
+                            <th class="sortable" data-sort="event_date">DATE</th>
+                            <th class="sortable" data-sort="event_time">TIME</th>
+                            <th class="sortable" data-sort="event_type">CATEGORY</th>
+                            <th>PHONE</th>
+                            <th class="sortable" data-sort="price">PRICE</th>
+                            <th class="text-center">ATTENDEES</th>
+                            <th>TAG</th>
+                            <th>LINK</th>
+                            <th class="sortable" data-sort="status">STATUS</th>
                         </tr>
                     </thead>
-                    <tbody id="usersTableBody">
+                    <tbody id="eventsTableBody">
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 3rem; color: var(--admin-text-muted);">Loading users...</td>
+                            <td colspan="7" style="text-align: center; padding: 3rem; color: var(--admin-text-muted);">Loading events...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -162,7 +209,7 @@
     <!-- Notifications Drawer -->
     <div class="drawer" id="notificationsDrawer">
         <div class="drawer-header">
-            <h2>Notifications</h2>
+            <h3>Notifications</h3>
         </div>
         <div class="drawer-content"></div>
     </div>
@@ -201,14 +248,17 @@
     <script src="../js/notification-manager.js"></script>
     <script src="../js/profile-pic-upload.js"></script>
     <script src="../js/search-manager.js"></script>
-    <script src="../js/pages/users.js"></script>
-    <script src="../../public/js/heartbeat.js"></script>
+    <script src="../js/pages/events.js"></script>
+    <script src="../js/event-preview.js"></script>
     <script src="../js/admin-main.js"></script>
     <script src="../../public/js/pagination.js"></script>
+    <script src="../../public/js/heartbeat.js"></script>
     <script>
-  document.addEventListener('DOMContentLoaded', function() { if(window.lucide) lucide.createIcons(); });
-</script>
+        lucide.createIcons();
+        setInterval(function(){if(document.visibilityState==='visible')location.reload();},60000);
+    </script>
 
 </body>
 </html>
+
 

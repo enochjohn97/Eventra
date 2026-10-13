@@ -23,8 +23,15 @@ class UserHomeScreen extends StatefulWidget {
 class _UserHomeScreenState extends State<UserHomeScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
+  Timer? _holidayTimer;
   List<Holiday> _holidays = const [];
   bool _holidayAlertShown = false;
+
+  /// Holiday/festive notices repeat while a holiday is actually close by, the
+  /// same way the website re-shows them. 3 minutes by default — override with
+  /// `--dart-define=HOLIDAY_ALERT_MINUTES=2` (or 5). 0 disables repeating.
+  static const _holidayAlertMinutes =
+      int.fromEnvironment('HOLIDAY_ALERT_MINUTES', defaultValue: 3);
 
   @override
   void initState() {
@@ -40,6 +47,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _holidayTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -51,19 +59,43 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       if (!mounted) return;
       setState(() => _holidays = list);
       await _announceHoliday(list);
+      _scheduleHolidayRepeat(list);
     } catch (_) {
       // Holidays are best-effort — never disturb discovery when unavailable.
     }
   }
 
-  Future<void> _announceHoliday(List<Holiday> all) async {
-    if (_holidayAlertShown || !mounted) return;
-    _holidayAlertShown = true;
+  /// Re-shows the holiday notice every [_holidayAlertMinutes] minutes while a
+  /// holiday is today or within 7 days, and stops as soon as none is near — so
+  /// a quiet calendar never nags and a busy one keeps reminding.
+  void _scheduleHolidayRepeat(List<Holiday> all) {
+    _holidayTimer?.cancel();
+    _holidayTimer = null;
+    if (_holidayAlertMinutes <= 0) return;
+    final near = HolidayService.today(all) != null ||
+        HolidayService.withinDays(all, 7) != null;
+    if (!near) return;
+    _holidayTimer = Timer.periodic(
+      Duration(minutes: _holidayAlertMinutes),
+      (_) => _announceHoliday(all, repeat: true),
+    );
+  }
+
+  Future<void> _announceHoliday(List<Holiday> all, {bool repeat = false}) async {
+    if (!mounted) return;
+    if (!repeat) {
+      if (_holidayAlertShown) return;
+      _holidayAlertShown = true;
+    }
 
     final today = HolidayService.today(all);
     if (today != null) {
-      final ok = await HolidayService.claimAlert('today:${today.date}');
-      if (!ok || !mounted) return;
+      // A repeat pass skips the once-per-install claim so the notice can come
+      // back on the interval while the holiday is still current.
+      if (!repeat) {
+        final ok = await HolidayService.claimAlert('today:${today.date}');
+        if (!ok || !mounted) return;
+      }
       final head = today.greeting ?? "It's a holiday today!";
       _showHolidaySnack(
         '${today.emoji} $head Today is ${today.title} — ${today.friendlyDate}. Enjoy the celebration!',
@@ -73,8 +105,11 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
     final next = HolidayService.withinDays(all, 7);
     if (next == null) return;
-    final ok = await HolidayService.claimAlert('upcoming:${next.date}:${next.title}');
-    if (!ok || !mounted) return;
+    if (!repeat) {
+      final ok =
+          await HolidayService.claimAlert('upcoming:${next.date}:${next.title}');
+      if (!ok || !mounted) return;
+    }
     final diff = next.day!.difference(DateTime.parse(_todayIso())).inDays;
     final when = diff <= 0 ? 'today' : (diff == 1 ? 'tomorrow' : 'in $diff days');
     _showHolidaySnack(

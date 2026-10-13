@@ -374,7 +374,7 @@ function renderFilteredEvents() {
           : formatDate(event.event_date);
 
         return `
-        <div class="event-feed-item summarized" style="cursor: pointer; display: flex; gap: 15px; align-items: center; padding: 1rem;" onclick="window.location.href='events.html?highlight=${safeId}'">
+        <div class="event-feed-item summarized" style="cursor: pointer; display: flex; gap: 15px; align-items: center; padding: 1rem;" onclick="window.location.href='/client/events.html?highlight=${safeId}'">
             <div style="width: 50px; height: 50px; border-radius: 8px; flex-shrink: 0; background: #f3f4f6; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #9ca3af;">
                 ${event.image_path ? `<img src="${event.image_path.startsWith("/") ? "../.." + event.image_path : "../../" + event.image_path}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.innerHTML='📷'">` : "📷"}
             </div>

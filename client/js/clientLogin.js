@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (sliderText) sliderText.style.display = "none";
   } else if (intent === "user") {
     // Users should only use Google Sign-in via the homepage modal
-    window.location.href = "../../public/pages/index.html";
+    window.location.href = "../../index.html";
     return;
   }
 
@@ -535,7 +535,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setTimeout(() => {
       const redirectUrl = new URL(
-        result.redirect || "/client/pages/clientDashboard.html",
+        result.redirect || "/client/dashboard.html",
         window.location.origin,
       );
       redirectUrl.searchParams.set("session_refresh", Date.now().toString());

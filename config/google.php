@@ -5,7 +5,8 @@ require_once __DIR__ . '/env-loader.php';
 // Keep the web client usable when hosting has not copied the optional .env file.
 function getGoogleClientId(): string
 {
-    return trim((string) ($_ENV['GOOGLE_CLIENT_ID'] ?? ''))
+    return trim((string) ($_ENV['GOOGLE_SERVER_CLIENT_ID'] ?? ''))
+        ?: trim((string) ($_ENV['GOOGLE_CLIENT_ID'] ?? ''))
         ?: '76953809917-o7bf7c7qbvpu7qglejqe77as5gb609fb.apps.googleusercontent.com';
 }
 

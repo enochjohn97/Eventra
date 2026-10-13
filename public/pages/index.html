@@ -100,12 +100,12 @@
     </style>
 
     <!-- Async-load non-critical CSS -->
-    <link rel="preload" href="../css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-    <noscript><link rel="stylesheet" href="../css/style.css" /></noscript>
-    <link rel="preload" href="../css/filters.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-    <noscript><link rel="stylesheet" href="../css/filters.css" /></noscript>
-    <link rel="preload" href="../css/media-enhancement.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-    <noscript><link rel="stylesheet" href="../css/media-enhancement.css" /></noscript>
+    <link rel="preload" href="/public/css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="/public/css/style.css" /></noscript>
+    <link rel="preload" href="/public/css/filters.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="/public/css/filters.css" /></noscript>
+    <link rel="preload" href="/public/css/media-enhancement.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="/public/css/media-enhancement.css" /></noscript>
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
     <link rel="stylesheet" href="/public/css/sweetalert-brand.css" />
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" /></noscript>
@@ -113,7 +113,7 @@
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" /></noscript>
 
     <!-- Modern homepage UI layer — loaded LAST so it overrides everything above (UI only) -->
-    <link rel="stylesheet" href="../css/home-modern.css" />
+    <link rel="stylesheet" href="/public/css/home-modern.css" />
 
     <!-- JSON-LD: Organization structured data -->
     <script type="application/ld+json">
@@ -133,7 +133,7 @@
     <!-- Header / Navigation -->
     <header class="header">
       <nav class="nav-container">
-        <a href="/public/pages/index.html" class="logo" aria-label="EventOut home">
+        <a href="/index.html" class="logo" aria-label="EventOut home">
           <img src="/public/assets/brand/logo-wordmark.svg" alt="EventOut" height="56" />
         </a>
 
@@ -669,7 +669,7 @@
           <h4>Partner with us</h4>
           <ul>
             <li>
-              <a href="../../client/pages/clientLogin.html?intent=client&mode=signup">Become a Client</a>
+              <a href="/client/login.html?intent=client&mode=signup">Become a Client</a>
             </li>
           </ul>
         </div>
@@ -728,7 +728,7 @@
     <div id="hdFilterContainer"></div>
     <script>
       // Load the SVG filter dynamically
-      fetch("../assets/hd-enhancement.svg")
+      fetch("/public/assets/hd-enhancement.svg")
         .then((response) => response.text())
         .then((data) => {
           document.getElementById("hdFilterContainer").innerHTML = data;
@@ -1061,19 +1061,19 @@
     </div>
 
     <!-- Scripts: all deferred — nothing blocks first paint -->
-    <script src="../js/storage.js" defer></script>
-    <script src="../js/guest-identity.js" defer></script>
-    <script src="../js/utils.js" defer></script>
-    <script src="../js/auth-controller.js" defer></script>
+    <script src="/public/js/storage.js" defer></script>
+    <script src="/public/js/guest-identity.js" defer></script>
+    <script src="/public/js/utils.js" defer></script>
+    <script src="/public/js/auth-controller.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
     <!-- Lucide loaded after DOMContentLoaded to eliminate render-block -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" onload="if(window.lucide)window.lucide.createIcons();" defer></script>
-    <script src="../js/heartbeat.js" defer></script>
-    <script src="../js/main.js" defer></script>
-    <script src="../js/ticket-verification.js" defer></script>
-    <script src="../js/check-ticket.js" defer></script>
-    <script src="../js/holiday-alerts.js" defer></script>
+    <script src="/public/js/heartbeat.js" defer></script>
+    <script src="/public/js/main.js" defer></script>
+    <script src="/public/js/ticket-verification.js" defer></script>
+    <script src="/public/js/check-ticket.js" defer></script>
+    <script src="/public/js/holiday-alerts.js" defer></script>
   </body>
 </html>
 

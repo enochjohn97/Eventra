@@ -844,6 +844,19 @@ function getBasePath() {
   return "./";
 }
 
+// Origin used for SHARE links (share buttons, /e/{tag} links, QR codes).
+// On the live platform it is simply the current host; on localhost/LAN it
+// switches to the configured live platform URL so a copied link is never
+// http://localhost:8000. Override with window.SHARE_ORIGIN if the platform
+// moves (one place, no code change needed elsewhere).
+function getShareOrigin() {
+  const origin = window.location.origin;
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(origin);
+  if (!isLocal) return origin;
+  const configured = window.SHARE_ORIGIN || "https://eventra-website.liveblog365.com";
+  return configured.replace(/\/$/, "");
+}
+
 function isAuthenticated() {
   if (!window.storage) return false;
   const user = window.storage.getUser();
@@ -862,11 +875,11 @@ function handleAuthRedirect(targetURL) {
     // Use origin-based absolute URLs to avoid broken relative path resolution
     const origin = window.location.origin;
     if (effectiveTarget.includes("/admin/")) {
-      window.location.href = origin + "/admin/pages/adminLogin.html";
+      window.location.href = origin + "/admin/login.html";
     } else if (effectiveTarget.includes("/client/")) {
-      window.location.href = origin + "/client/pages/clientLogin.html";
+      window.location.href = origin + "/client/login.html";
     } else {
-      window.location.href = origin + "/public/pages/index.html?trigger=login";
+      window.location.href = origin + "/index.html?trigger=login";
     }
     return false;
   }
@@ -939,11 +952,11 @@ async function apiFetch(url, options = {}) {
 
         let loginPage;
         if (path.includes("/admin/")) {
-          loginPage = origin + "/admin/pages/adminLogin.html";
+          loginPage = origin + "/admin/login.html";
         } else if (path.includes("/client/")) {
-          loginPage = origin + "/client/pages/clientLogin.html";
+          loginPage = origin + "/client/login.html";
         } else {
-          loginPage = origin + "/public/pages/index.html";
+          loginPage = origin + "/index.html";
         }
 
         // Disabled inappropriate auto-logout on refresh

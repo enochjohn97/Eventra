@@ -41,22 +41,78 @@ if (!isset($data['credential']) || empty($data['credential'])) {
 $jwt = $data['credential'];
 $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($jwt);
 
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+/**
+ * Ask Google to verify the ID token, retrying once on a transport failure.
+ *
+ * The single attempt this replaces turned ANY transient hiccup (DNS blip,
+ * TLS reset, a local PHP without a CA bundle) into the blanket "Invalid Google
+ * token." message — indistinguishable from a genuinely bad token, and the
+ * reason mobile sign-in looked broken while the web app worked.
+ *
+ * Security is unchanged: the credential is accepted only when Google itself
+ * answers HTTP 200 for it.
+ *
+ * @return array{0: ?string, 1: int, 2: string} [body, httpCode, curlError]
+ */
+$fetchTokenInfo = static function (string $url): array {
+    $lastError = '';
+    $lastCode = 0;
 
-if (($_ENV['APP_ENV'] ?? '') === 'local') {
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-}
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        if ($attempt > 0) {
+            usleep(400000); // 0.4s — let a flaky link settle before retrying
+        }
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-// curl_close($ch); is deprecated in PHP 8.4+ and no longer needed.
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
+
+        // Local dev servers routinely have no CA bundle configured (Windows
+        // PHP ships without curl.cainfo), which makes every outbound HTTPS call
+        // fail verification. Relax it for LOCAL requests only, and only when
+        // no CA bundle is configured — live hosts keep full verification.
+        if (($_ENV['APP_ENV'] ?? '') === 'local' && !ini_get('curl.cainfo')) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        }
+
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $lastError = (string) curl_error($ch);
+        // curl_close($ch); is deprecated in PHP 8.4+ and no longer needed.
+
+        if (is_string($body) && $body !== '' && $code === 200) {
+            return [$body, $code, ''];
+        }
+
+        $lastCode = $code;
+        // A real answer from Google (4xx) will not change on a retry.
+        if ($code >= 400 && $code < 500) {
+            break;
+        }
+    }
+
+    return [null, $lastCode, $lastError];
+};
+
+[$response, $httpCode, $curlError] = $fetchTokenInfo($url);
 
 if ($httpCode !== 200 || !$response) {
-    echo json_encode(['success' => false, 'message' => 'Invalid Google token.']);
+    error_log(sprintf(
+        'Google token verification failed (http=%d, curl=%s)',
+        $httpCode,
+        $curlError !== '' ? $curlError : 'none'
+    ));
+
+    // "Could not reach Google" and "Google rejected the token" are different
+    // problems with different fixes — say which one it is.
+    $message = ($httpCode === 0 || $httpCode >= 500)
+        ? 'Could not verify your Google sign-in right now. Check the server\'s internet connection and try again.'
+        : 'Invalid Google token.';
+
+    echo json_encode(['success' => false, 'message' => $message]);
     exit;
 }
 
@@ -347,11 +403,11 @@ try {
     }
 
     // Redirection logic
-    $redirect = 'public/pages/index.html'; // Default for users
+    $redirect = '/index.html'; // Default for users
     if ($userRole === 'admin') {
-        $redirect = 'admin/pages/adminDashboard.html';
+        $redirect = '/admin/dashboard.html';
     } elseif ($userRole === 'client') {
-        $redirect = 'client/pages/clientDashboard.html';
+        $redirect = '/client/dashboard.html';
     }
 
     echo json_encode([

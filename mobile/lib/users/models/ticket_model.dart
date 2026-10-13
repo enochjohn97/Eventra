@@ -56,15 +56,23 @@ class TicketModel {
 
     String? eventImage = json['event_image']?.toString();
     String? absEventImage = json['absolute_event_image']?.toString();
-    if ((absEventImage == null || absEventImage.isEmpty) &&
-        eventImage != null &&
-        baseOrigin != null) {
+    // Re-resolve against the CURRENT API origin (local ↔ live switching) so a
+    // cached ticket never keeps pointing at the previous origin's image.
+    if (eventImage != null &&
+        eventImage.isNotEmpty &&
+        !eventImage.startsWith('http') &&
+        baseOrigin != null &&
+        baseOrigin.isNotEmpty) {
       absEventImage = '$baseOrigin/${eventImage.replaceFirst(RegExp(r'^/'), '')}';
     }
 
     String? qrPath = json['qr_code_path']?.toString();
     String? absQr = json['absolute_qr_url']?.toString();
-    if ((absQr == null || absQr.isEmpty) && qrPath != null && baseOrigin != null) {
+    if (qrPath != null &&
+        qrPath.isNotEmpty &&
+        !qrPath.startsWith('http') &&
+        baseOrigin != null &&
+        baseOrigin.isNotEmpty) {
       absQr = '$baseOrigin/${qrPath.replaceFirst(RegExp(r'^/'), '')}';
     }
 

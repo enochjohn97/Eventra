@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/endpoint_resolver.dart';
 
 class AppConfigService {
   static final Dio _dio = ApiClient().dio;
@@ -17,6 +18,12 @@ class AppConfigService {
     if (data['success'] != true) {
       throw Exception(data['message']?.toString() ?? 'Failed to load app configuration');
     }
+    // The backend reports its own Wi-Fi address here. Remembering it lets the
+    // app move off the USB-only loopback and keep talking to the local PHP
+    // server with the cable unplugged. Never feed `app_url` back in: on local
+    // it is the request host, which would just re-pin loopback.
+    EndpointResolver.rememberLanOrigin(data['lan_url']?.toString());
+
     return (
       googleClientId: data['client_id']?.toString() ?? '',
       mapsApiKey: data['maps_api_key']?.toString() ?? '',
@@ -120,7 +127,16 @@ class HolidayService {
         DateTime.now().difference(_cachedAt!) < _ttl) {
       return cached;
     }
-    final response = await _dio.get('/utils/holiday-alerts.php');
+    late Response<dynamic> response;
+    try {
+      response = await _dio.get('/utils/holiday-alerts.php');
+    } on DioException {
+      // The home screen can be created while endpoint discovery is still
+      // switching from the USB loopback to the laptop LAN address.
+      if (force) rethrow;
+      await EndpointResolver.resolve(force: true);
+      return fetch(force: true);
+    }
     final raw = response.data;
     final data = raw is Map<String, dynamic>
         ? raw

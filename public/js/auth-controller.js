@@ -681,9 +681,9 @@ class AuthController {
     // 1. Resolve Default Target if not provided
     if (!target) {
       const role = this.user ? this.user.role : "user";
-      if (role === "admin") target = "/admin/pages/adminDashboard.html";
-      else if (role === "client") target = "/client/pages/clientDashboard.html";
-      else target = "/public/pages/index.html";
+      if (role === "admin") target = "/admin/dashboard.html";
+      else if (role === "client") target = "/client/dashboard.html";
+      else target = "/index.html";
     }
 
     // 2. Priority: redirect_after_login (if deep/specific)
@@ -752,12 +752,12 @@ class AuthController {
       const role = this.getPortalIntent();
       const origin = window.location.origin;
       if (role === "admin") {
-        window.location.href = origin + "/admin/pages/adminLogin.html";
+        window.location.href = origin + "/admin/login.html";
       } else if (role === "client") {
-        window.location.href = origin + "/client/pages/clientLogin.html";
+        window.location.href = origin + "/client/login.html";
       } else {
         window.location.href =
-          origin + "/public/pages/index.html?trigger=login";
+          origin + "/index.html?trigger=login";
       }
     }
   }

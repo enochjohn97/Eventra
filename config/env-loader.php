@@ -57,7 +57,7 @@ function loadEnv($path = null)
 }
 
 /**
- * Detect local dev server (localhost / 127.0.0.1, any port).
+ * Detect local dev server (localhost / private LAN IPs, any port).
  */
 function isLocalHost(): bool
 {
@@ -66,7 +66,9 @@ function isLocalHost(): bool
     if ($host === '' && PHP_SAPI === 'cli') {
         return in_array($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'local', ['local', 'auto'], true);
     }
-    return (bool) preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/i', $host);
+    return (bool) preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i', $host)
+        || (bool) preg_match('/^(10|192\.168)\.\d{1,3}\.\d{1,3}(:\d+)?$/i', $host)
+        || (bool) preg_match('/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?$/i', $host);
 }
 
 // Handle system environment variables (for production like Render or InfinityFree)
@@ -75,7 +77,7 @@ $envKeys = [
     'APP_URL', 'APP_ENV', 'APP_DEBUG',
     'PAYSTACK_PUBLIC_KEY', 'PAYSTACK_SECRET_KEY', 'PAYSTACK_WEBHOOK_SECRET',
     'MAIL_HOST', 'MAIL_PORT', 'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_ENCRYPTION', 'MAIL_FROM_ADDRESS', 'MAIL_FROM_NAME',
-    'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI', 'GOOGLE_MAPS_API_KEY', 'GOOGLE_CALENDAR_API_KEY', 'GOOGLE_WEBHOOK_SECRET',
+    'GOOGLE_CLIENT_ID', 'GOOGLE_SERVER_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI', 'GOOGLE_MAPS_API_KEY', 'GOOGLE_CALENDAR_API_KEY', 'GOOGLE_WEBHOOK_SECRET',
     'BREVO_API_KEY', 'BREVO_SMS_SENDER',
     'CRON_SECRET', 'UPLOAD_MAX_SIZE', 'QR_SECRET', 'ALLOWED_ORIGINS'
 ];
@@ -122,6 +124,22 @@ function resolveAppUrl(): string
     }
 
     return rtrim($fromEnv !== '' ? $fromEnv : 'http://localhost:8080', '/');
+}
+
+/**
+ * Canonical public base URL used for SHARE links, QR codes and /e/{tag} URLs.
+ *
+ * On a live host this is the host itself (or APP_URL from .env). On
+ * localhost/LAN it switches to PRODUCTION_APP_URL so a link copied while
+ * developing still points at the live platform instead of http://localhost.
+ */
+function resolveShareBaseUrl(): string
+{
+    $prod = trim((string) ($_ENV['PRODUCTION_APP_URL'] ?? getenv('PRODUCTION_APP_URL') ?: ''));
+    if ($prod !== '' && !preg_match('/localhost|127\.0\.0\.1/i', $prod)) {
+        return rtrim($prod, '/');
+    }
+    return resolveAppUrl();
 }
 
 $_ENV['APP_URL'] = resolveAppUrl();

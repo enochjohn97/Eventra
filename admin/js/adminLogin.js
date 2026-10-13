@@ -279,7 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         setTimeout(() => {
           const redirectUrl =
-            result.redirect || "/admin/pages/adminDashboard.html";
+            result.redirect || "/admin/dashboard.html";
           redirectAfterLogin(redirectUrl);
         }, 800);
       } else {

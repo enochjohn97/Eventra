@@ -153,10 +153,8 @@ class GoogleAuthService {
   /// Exchanges a Google ID token for an EventOut session (shared by
   /// interactive and silent sign-in).
   ///
-  /// When the currently-picked API origin refuses connections (e.g. the local
-  /// dev server was adopted at launch and later stopped), we force the
-  /// endpoint resolver to re-probe — which falls back to the live host — and
-  /// retry once, so sign-in never depends on a locally-running server.
+  /// When the current API origin is unreachable or returns a hosting error
+  /// page, re-probe the available origins and retry once if appropriate.
   static Future<UserModel> exchangeTokenWithBackend(
     String idToken, {
     bool retried = false,
@@ -173,9 +171,26 @@ class GoogleAuthService {
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.sendTimeout ||
           error.type == DioExceptionType.receiveTimeout;
-      if (connectionLost && !retried) {
+      final statusCode = error.response?.statusCode;
+      final body = error.response?.data;
+      final contentType = (error.response?.headers.value('content-type') ?? '')
+          .toLowerCase();
+      final isHtml =
+          contentType.contains('text/html') ||
+          (body is String &&
+              RegExp(
+                r'^\s*<(?:!doctype\s+html|html\b)',
+                caseSensitive: false,
+              ).hasMatch(body));
+      final unavailableHtml =
+          isHtml && const [502, 503, 504].contains(statusCode);
+
+      if ((connectionLost || unavailableHtml) && !retried) {
+        final previousBaseUrl = _dio.options.baseUrl;
         final reResolved = await EndpointResolver.resolve(force: true);
-        if (reResolved) {
+        final originChanged = previousBaseUrl != _dio.options.baseUrl;
+        if ((connectionLost && reResolved) ||
+            (unavailableHtml && originChanged)) {
           return exchangeTokenWithBackend(idToken, retried: true);
         }
       }

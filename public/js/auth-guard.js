@@ -9,7 +9,7 @@
     const origin = window.location.origin;
 
     // 1. Skip protection for login, signup, and public pages to prevent redirect loops
-    const publicPages = ['adminLogin.html', 'clientLogin.html', 'signup.html', 'index.html', '/public/pages/'];
+    const publicPages = ['/admin/login.html', '/client/login.html', 'signup.html', 'index.html', '/public/pages/'];
     if (publicPages.some(page => currentPath.endsWith(page) || currentPath === '/')) {
         // ALWAYS skip for explicitly public pages like Login/Signup
         return;
@@ -50,9 +50,9 @@
                 currentPath
             });
             if (requiredRole === 'admin') {
-                window.location.replace(origin + '/admin/pages/adminLogin.html');
+                window.location.replace(origin + '/admin/login.html');
             } else {
-                window.location.replace(origin + '/client/pages/clientLogin.html');
+                window.location.replace(origin + '/client/login.html');
             }
             return;
         } else {
@@ -107,9 +107,9 @@
             }
 
             if (requiredRole === 'admin') {
-                window.location.href = origin + '/admin/pages/adminLogin.html';
+                window.location.href = origin + '/admin/login.html';
             } else {
-                window.location.href = origin + '/client/pages/clientLogin.html';
+                window.location.href = origin + '/client/login.html';
             }
             return;
         }
@@ -143,11 +143,11 @@
         // On critical error OR sync failure, redirect to the role-specific login
         
         if (requiredRole === 'admin') {
-            window.location.replace(origin + '/admin/pages/adminLogin.html' + (window.location.search || '?error=auth_failed'));
+            window.location.replace(origin + '/admin/login.html' + (window.location.search || '?error=auth_failed'));
         } else if (requiredRole === 'client') {
-            window.location.replace(origin + '/client/pages/clientLogin.html' + (window.location.search || '?error=auth_failed'));
+            window.location.replace(origin + '/client/login.html' + (window.location.search || '?error=auth_failed'));
         } else {
-            window.location.replace(origin + '/public/pages/index.html?trigger=login');
+            window.location.replace(origin + '/index.html?trigger=login');
         }
     }
 })();

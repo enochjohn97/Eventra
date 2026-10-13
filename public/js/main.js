@@ -5,7 +5,7 @@ window.openSupportCenter = function () {
   );
   if (typeof window.showSupportCenter === "function")
     return window.showSupportCenter();
-  window.location.assign("/public/pages/tickets.html?support=1");
+  window.location.assign("/index.html?support=1");
 };
 
 let eventsData = {
@@ -1549,9 +1549,9 @@ function shareEvent(
     }
   }
 
-  // Resolve the share base from whatever host actually serves the app, so the
-  // same code works locally (localhost:8000) and on the live platform.
-  const domain = `${window.location.origin}/public/pages/index.html`;
+  // Resolve the share base dynamically: the live host when deployed, the
+  // configured platform URL when browsing localhost — never http://localhost.
+  const domain = `${getShareOrigin()}/index.html`;
   const nameSlug = encodeURIComponent(
     eventName.trim().toLowerCase().replace(/\s+/g, "-"),
   );
@@ -2048,7 +2048,7 @@ function showEventModal(eventId) {
       event.category || event.event_type || "General";
   if (document.getElementById("modalEventShareLink"))
     document.getElementById("modalEventShareLink").value =
-      `${window.location.origin}/public/pages/index.html?event_id=${event.id}`;
+      `${window.location.origin}/index.html?event_id=${event.id}`;
 
   const applyFee = (p) => (p > 0 ? Math.round(p * 1.1) : 0);
   const legacyPrice = parseFloat(event.price || 0);
@@ -2170,7 +2170,7 @@ function showEventModal(eventId) {
           document.querySelector('input[name="selectedTicketType"]:checked')
             ?.value || "regular";
 
-        let url = `/public/pages/checkout.html?id=${event.id}&quantity=${quantity}&ticket_type=${ticketType}`;
+        let url = `/checkout.html?id=${event.id}&quantity=${quantity}&ticket_type=${ticketType}`;
 
         // Pass selected locations if applicable
         if (
@@ -2468,7 +2468,7 @@ function proceedToPayment(e, eventId) {
   // If eventId is provided, proceed with that specific event
   // Otherwise, proceed with the first event in the list (legacy/simple behavior)
   const targetId = eventId || favorites[0].id;
-  window.location.href = `/public/pages/checkout.html?id=${targetId}&quantity=1`;
+  window.location.href = `/checkout.html?id=${targetId}&quantity=1`;
 }
 
 // Make functions global
@@ -2539,7 +2539,7 @@ function copyModalShareLink() {
   let url = linkInput && linkInput.value ? linkInput.value : "";
 
   if (!url && window.currentModalEventId) {
-    url = `${window.location.origin}/public/pages/index.html?event_id=${window.currentModalEventId}`;
+    url = `${window.location.origin}/index.html?event_id=${window.currentModalEventId}`;
   }
 
   if (!url) return;

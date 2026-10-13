@@ -29,6 +29,42 @@
   var UPCOMING_WINDOW_DAYS = 7;
   var INITIAL_DELAY_MS = 1800; // let the page settle first
 
+  // While a holiday is actually close by (today, or within UPCOMING_WINDOW_DAYS)
+  // the notice repeats on an interval instead of showing once per session.
+  // 3 minutes by default — override per page load with ?holiday_interval=2
+  // (or 5). 0 disables repeating; anything else is ignored.
+  var REPEAT_INTERVAL_MINUTES = 3;
+  var REPEAT_ALLOWED_MINUTES = [2, 3, 5];
+  var _repeatTimer = null;
+
+  function resolveRepeatMinutes() {
+    try {
+      var m = /[?&]holiday_interval=(\d+)/.exec(window.location.search);
+      if (m) {
+        var minutes = parseInt(m[1], 10);
+        return REPEAT_ALLOWED_MINUTES.indexOf(minutes) === -1 ? REPEAT_INTERVAL_MINUTES : minutes;
+      }
+    } catch (e) { }
+    return REPEAT_INTERVAL_MINUTES;
+  }
+
+  function scheduleRepeat() {
+    if (_repeatTimer) return;
+    var minutes = resolveRepeatMinutes();
+    if (!(minutes > 0)) return;
+    _repeatTimer = setInterval(function () {
+      // isRepeat pass: skips the once-per-session log and stays silent while
+      // the tab is in the background.
+      run(false, true);
+    }, minutes * 60 * 1000);
+  }
+
+  function stopRepeat() {
+    if (!_repeatTimer) return;
+    clearInterval(_repeatTimer);
+    _repeatTimer = null;
+  }
+
   // ------------------------------------------------------------------
   // Small helpers
   // ------------------------------------------------------------------
@@ -276,8 +312,11 @@
     return null;
   }
 
-  function evaluate(holidays, isForce) {
+  function evaluate(holidays, isForce, isRepeat) {
     if (!Array.isArray(holidays) || holidays.length === 0) return;
+    // Never stack repeat toasts on a backgrounded tab — they fire again as
+    // soon as the user comes back to it.
+    if (isRepeat && document.hidden) return;
 
     var isPreview = previewDate();
     var today = isPreview || localISODate(new Date());
@@ -286,10 +325,10 @@
       .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 
     var todaysHolidays = upcoming.filter(function (h) { return h.date === today; });
-    var log = (isPreview || isForce) ? {} : readShownLog();
-    // Preview runs must never overwrite the real once-per-session dedupe log.
-    function seen(key) { return (isPreview || isForce) ? false : wasShown(log, key); }
-    function remember(key) { if (!isPreview && !isForce) markShown(log, key); }
+    var log = (isPreview || isForce || isRepeat) ? {} : readShownLog();
+    // Preview/repeat runs must never overwrite the real once-per-session log.
+    function seen(key) { return (isPreview || isForce || isRepeat) ? false : wasShown(log, key); }
+    function remember(key) { if (!isPreview && !isForce && !isRepeat) markShown(log, key); }
 
     if (todaysHolidays.length > 0) {
       var key = "today:" + today;
@@ -299,6 +338,7 @@
         window.EventraCelebration.burst(16);
       }
       showToast(buildTodayMessage(todaysHolidays), "success");
+      scheduleRepeat();
       return;
     }
 
@@ -320,13 +360,17 @@
       if (seen(upKey)) return;
       remember(upKey);
       showToast(buildUpcomingMessage(targetHoliday, today), "info");
+      scheduleRepeat();
       return;
     }
+
+    // No holiday close by — stop reminding until there is one again.
+    stopRepeat();
   }
 
-  function run(force) {
+  function run(force, repeat) {
     fetchHolidays(force)
-      .then(function (data) { evaluate(data, force); })
+      .then(function (data) { evaluate(data, force, repeat); })
       .catch(function () { /* silent: holiday alerts are best-effort */ });
   }
 
@@ -347,6 +391,12 @@
   // Public surface (refresh after a manual cache clear, or preview a date).
   window.EventraHolidayAlerts = {
     refresh: function () { run(true); },
+    /** Change the repeat interval at runtime (minutes: 2, 3, 5 or 0 = off). */
+    setIntervalMinutes: function (minutes) {
+      REPEAT_INTERVAL_MINUTES = minutes;
+      stopRepeat();
+    },
+    stop: stopRepeat,
     preview: function (isoDate) {
       fetchHolidays(false)
         .then(function (holidays) {

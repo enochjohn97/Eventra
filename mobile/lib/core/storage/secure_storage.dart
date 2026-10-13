@@ -59,6 +59,33 @@ class SecureStorage {
     }
   }
 
+  static Future<void> savePrivateList(
+    String name,
+    List<Map<String, dynamic>> items,
+  ) async {
+    final userId = (await getUser())?['id']?.toString();
+    if (userId == null || userId.isEmpty || userId == '0') return;
+    await _storage.write(
+      key: 'offline_${name}_$userId',
+      value: jsonEncode(items),
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>?> getPrivateList(String name) async {
+    final userId = (await getUser())?['id']?.toString();
+    if (userId == null || userId.isEmpty || userId == '0') return null;
+    final raw = await _storage.read(key: 'offline_${name}_$userId');
+    if (raw == null) return null;
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      throw const FormatException('Cached account data is invalid.');
+    }
+    return decoded
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
   static Future<void> clearAll() async {
     await _storage.deleteAll();
   }

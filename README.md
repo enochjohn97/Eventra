@@ -35,7 +35,7 @@ services required to run locally.
 
  Daily dev server (used by this project)
 bash
-php -S 127.0.0.1:8099 server/index.php
+php -S 0.0.0.0:8000 server/index.php
 
 Freebuff/restart note: background servers die on restart — just rerun the line above.
 
@@ -48,6 +48,10 @@ template — never put real keys in it. Key groups: `DB_`, `MAIL_`, `PAYSTACK_`,
 - Local vs live: on `localhost`/`127.0.0.1` the app auto-uses the request
   host; other hosts use `APP_URL` and (if set) the `LIVE_DB_` credentials.
 - Email: `config/email.php` maps `MAIL_` → SMTP constants.
+- Paid client events use the client's live Paystack account and a 10% Attoneex
+  subaccount split. Configure the platform's own `PAYSTACK_PLATFORM_SUBACCOUNT_BANK_CODE`
+  and `PAYSTACK_PLATFORM_SETTLEMENT_ACCOUNT_NUMBER`; payment setup fails closed
+  if these are missing.
 - URL shortener: DB-backed (`short_urls` table, auto-created). Codes resolve
   at `/s/{code}` and hide real file paths in emails, share links and payment
   callbacks. Create links with `POST /api/s` (auth required).
@@ -73,5 +77,4 @@ CLI), which throttles itself to one run per 2 minutes and fans out to
 - 30 min before start → admin + client in-app notifications, attendee email/SMS
 - 5 min before start → admin + client "starting in 5 minutes" notifications
 - Auto-publishes scheduled drafts
-
 

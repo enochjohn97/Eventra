@@ -89,7 +89,8 @@ Legacy `.php` endpoints remain for the web app.
 ## Sync architecture (summary)
 
 - **Auth**: opaque Bearer token in `flutter_secure_storage`; no refresh endpoint, so expiry is recovered via silent Google re-auth inside the Dio interceptor (single retry per request, never for `/auth/google` itself).
-- **Events**: first page of each feed variant (API origin + `sort` + `search`) cached in **sqflite** (`eventra_cache.db`, 30-minute TTL) and rendered instantly on launch, with a `LinearProgressIndicator` while the network refresh replaces it. Local and live event caches stay separate; the server remains the source of truth.
+- **Events**: first page of each feed variant (`sort` + `search`) cached in **sqflite** (`eventra_cache.db`) and rendered instantly on launch, with a `LinearProgressIndicator` while the network refresh replaces it. The snapshot survives API-origin changes and remains available offline; the server remains the source of truth whenever reachable.
+- **Favorites and tickets**: the last successful lists are stored in device secure storage per signed-in account and shown if the API cannot be reached. They refresh from the server when connectivity returns and are removed at logout.
 - **Profile**: same `PUT /api/profile` validation as web (11-digit numeric phone cap, email uniqueness on auth_accounts, etc.); failures now surface instead of being silently swallowed.
 - **Payments**: WebView checkout (Paystack hosted page) because the backend builds the Paystack transaction server-side (organizer subaccounts, splits, channels) and has no mobile-SDK integration. Fulfillment is **webhook-driven**; the app polls `POST /payments/verify` (up to ~15s) which reports `success` / `processing` / `failed` and is idempotent against the webhook.
 

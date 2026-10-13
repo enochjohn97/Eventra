@@ -205,27 +205,27 @@ function highlightText(text, query) {
 }
 
 function goToEvent(eventId) {
-    window.location.href = `events.html?highlight=${eventId}`;
+    window.location.href = `/client/events.html?highlight=${eventId}`;
     hideSearchResults();
 }
 
 function goToTickets(ticketId) {
-    window.location.href = `tickets.html?highlight=${ticketId}`;
+    window.location.href = `/client/tickets.html?highlight=${ticketId}`;
     hideSearchResults();
 }
 
 function goToPayments(paymentId) {
-    window.location.href = `payments.html?highlight=${paymentId}`;
+    window.location.href = `/client/payments.html?highlight=${paymentId}`;
     hideSearchResults();
 }
 
 function goToUsers(userId) {
-    window.location.href = `users.html?highlight=${userId}`;
+    window.location.href = `/client/users.html?highlight=${userId}`;
     hideSearchResults();
 }
 
 function goToMedia(id, type) {
-    window.location.href = `media.html?highlight=${id}&type=${type}`;
+    window.location.href = `/client/media.html?highlight=${id}&type=${type}`;
     hideSearchResults();
 }
 

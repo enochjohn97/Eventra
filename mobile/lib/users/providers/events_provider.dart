@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import '../../core/network/api_client.dart';
 import '../models/event_model.dart';
 import '../services/event_cache_service.dart';
 import '../services/user_event_service.dart';
@@ -72,7 +71,6 @@ class EventsProvider extends ChangeNotifier {
   String get _cacheKey => EventCacheService.keyFor(
     sort: filters.sort,
     search: filters.search,
-    origin: ApiClient().baseOrigin,
   );
 
   /// Loads the current page. `refresh` restarts from page 1.

@@ -7,6 +7,7 @@
 header('Content-Type: application/json');
 require_once '../../config/database.php';
 require_once '../../includes/middleware/auth.php';
+require_once '../../config/payment.php';
 
 // Check authentication
 $admin_id = adminMiddleware();
@@ -38,9 +39,8 @@ if ($paystack_key) {
     // Paystack issues test keys until business verification completes in the
     // Paystack dashboard — once verified, switch the dashboard to Live mode
     // (Settings → API Keys & Webhooks) and paste the sk_live_... key here.
-    // A stored test key would never be used for real transactions anyway:
-    // selectPaystackSecretKey() falls back to the platform live key on mode
-    // mismatch, so accepting them only creates a misleading "connected" state.
+    // Only a live client key can create the client-owned checkout and the
+    // platform subaccount under that client's Paystack account.
     if (!preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $paystack_key)) {
         echo json_encode(['success' => false, 'message' => 'Live secret key required. Keys starting with sk_test_ are not accepted — in the Paystack dashboard, complete business verification and switch to Live mode, then copy the sk_live_... secret key here.']);
         exit;
@@ -101,6 +101,29 @@ try {
         exit;
     }
 
+    if ($paystack_key) {
+        $platform = ensurePlatformSubaccount(
+            $pdo,
+            (int)$client_id,
+            $paystack_key,
+            PAYSTACK_PLATFORM_COMMISSION_PERCENT
+        );
+        if (empty($platform['success']) || empty($platform['subaccount_code'])) {
+            http_response_code(422);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Paystack account was not connected because the Attoneex settlement subaccount could not be configured. Check the platform settlement bank details and try again.',
+            ]);
+            exit;
+        }
+    }
+
+    // ensurePlatformSubaccount updates this row's metadata, so read it after
+    // the Paystack call before merging connection settings.
+    $stmt = $pdo->prepare("SELECT metadata FROM clients WHERE id = ?");
+    $stmt->execute([$client_id]);
+    $client = $stmt->fetch(PDO::FETCH_ASSOC);
+
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     
     if ($paystack_key) {
@@ -131,7 +154,9 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => "Client Paystack details updated successfully."
+        'message' => $paystack_key
+            ? 'Client Paystack account connected and the 10% Attoneex settlement subaccount is ready.'
+            : 'Client Paystack details updated successfully.'
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

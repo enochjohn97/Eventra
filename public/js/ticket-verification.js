@@ -204,7 +204,7 @@
   async function verifyById() {
     const input = document.getElementById('ctTicketId');
     const ticketId = ((input && input.value) || '').trim();
-    if (!ticketId) return toast('Enter the ticket ID first — e.g. TKT-20260929-0697', 'warning');
+    if (!ticketId) return toast('Enter the ticket ID first — e.g. TKT-12345678-1234', 'warning');
     const btn = document.getElementById('ctVerifyId');
     btn.disabled = true;
     btn.textContent = 'Verifying…';

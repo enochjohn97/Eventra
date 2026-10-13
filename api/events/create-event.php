@@ -490,12 +490,14 @@ try {
         $tag = $baseTag . '-' . (++$suffix);
     }
 
-    $base_url = $_ENV['APP_URL'] ?? '';
+    // Share links must never point at localhost: use the live platform URL
+    // whenever one is configured (see resolveShareBaseUrl in config/env-loader.php).
+    $base_url = function_exists('resolveShareBaseUrl') ? resolveShareBaseUrl() : ($_ENV['APP_URL'] ?? '');
     if ($base_url === '') {
         $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
     $base_url = rtrim($base_url, '/');
-    $dashboard_link = $base_url . '/client/pages/events.html';
+    $dashboard_link = $base_url . '/client/events.html';
     // Short share URL — clean, hides folder structure, works locally and live
     $external_link = $base_url . '/e/' . $tag;
 

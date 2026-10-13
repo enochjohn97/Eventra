@@ -1098,7 +1098,9 @@ function generateEventTagAndLink() {
 
   // Generate external link — short /e/{tag} form: hides the real page path,
   // works on any domain (matches the server-side shortener target).
-  const baseUrl = window.location.origin;
+  // Live platform origin (never localhost) when available — keeps the
+  // shareable link usable outside the dev machine (see utils.js).
+  const baseUrl = typeof getShareOrigin === "function" ? getShareOrigin() : window.location.origin;
   const externalLink = `${baseUrl}/e/${tag}`;
 
   // Update fields

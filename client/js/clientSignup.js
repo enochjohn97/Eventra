@@ -33,10 +33,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (signupTitle) signupTitle.textContent = "Admin Registration";
     if (signupButton) signupButton.textContent = "Create Admin Account";
-    if (loginLink) loginLink.href = `clientLogin.html?role=admin`;
+    if (loginLink) loginLink.href = `/client/login.html?role=admin`;
   } else {
     if (intent === "user") {
-      window.location.href = "../../public/pages/index.html";
+      window.location.href = "../../index.html";
       return;
     }
     document.title =
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (signupButton)
       signupButton.textContent =
         intent === "client" ? "Create Client Account" : "Sign Up";
-    if (loginLink) loginLink.href = `clientLogin.html?role=${intent}`;
+    if (loginLink) loginLink.href = `/client/login.html?role=${intent}`;
   }
 
   // Handle Business Name Visibility (client only)
@@ -286,8 +286,8 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
           const loginUrl =
             intent === "admin"
-              ? "clientLogin.html?role=admin"
-              : `clientLogin.html?role=${intent}`;
+              ? "/client/login.html?role=admin"
+              : `/client/login.html?role=${intent}`;
           window.location.href = `${loginUrl}?registered=${encodeURIComponent(data.email || emailInput.value)}`;
         }, 500);
       } else {
@@ -386,7 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             setTimeout(() => {
               window.location.href =
-                verifyResult.redirect || "clientDashboard.html";
+                verifyResult.redirect || "/client/dashboard.html";
             }, 2100);
           } else {
             Swal.fire({

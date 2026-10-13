@@ -274,7 +274,7 @@ async function handleBooking(eventId) {
                 text: 'Your tickets have been booked successfully.',
                 icon: 'success'
             }).then(() => {
-                window.location.href = '../../client/pages/tickets.html'; // Or wherever tickets are viewed
+                window.location.href = '/client/tickets.html'; // Or wherever tickets are viewed
             });
         } else {
             showNotification(result.message, 'error');

@@ -143,7 +143,7 @@ if ($intent === 'client_login_otp') {
             'next_step' => 'complete',
             'message' => 'Verification successful',
             'role' => 'client',
-            'redirect' => '/client/pages/clientDashboard.html',
+            'redirect' => '/client/dashboard.html',
             'user' => [
                 'id' => $user['id'],
                 'profile_id' => (int)$user['client_id'],
@@ -296,17 +296,17 @@ try {
                 $stmt = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
                 $stmt->execute([$auth_id]);
                 $_SESSION['client_id'] = $stmt->fetchColumn();
-                $dashboard = '/client/pages/clientDashboard.html';
+                $dashboard = '/client/dashboard.html';
             } elseif ($role === 'admin') {
                 $stmt = $pdo->prepare("SELECT id FROM admins WHERE admin_auth_id = ?");
                 $stmt->execute([$auth_id]);
                 $_SESSION['admin_id'] = $stmt->fetchColumn();
-                $dashboard = '/admin/pages/adminDashboard.html';
+                $dashboard = '/admin/dashboard.html';
             } else {
                 $stmt = $pdo->prepare("SELECT id FROM users WHERE user_auth_id = ?");
                 $stmt->execute([$auth_id]);
                 $_SESSION['user_id'] = $stmt->fetchColumn();
-                $dashboard = '/public/pages/index.html';
+                $dashboard = '/index.html';
             }
 
             // Generate access token
@@ -387,7 +387,7 @@ try {
             echo json_encode([
                 'success' => true,
                 'message' => 'Login verified.',
-                'redirect' => '/client/pages/clientDashboard.html',
+                'redirect' => '/client/dashboard.html',
                 'user' => [
                     'id' => $auth_id,
                     'name' => $client['name'],
