@@ -23,19 +23,20 @@ class Breakpoints {
     return 0.75;
   }
 
-  /// Height one event card needs: a 16:10 image plus the compact text body.
-  /// An explicit extent (rather than an aspect ratio) is what keeps the cards
-  /// from showing a tall empty block under their price row; the text scale is
-  /// respected so larger system fonts still fit.
+  /// Height one event card needs: a 16:10 image plus the compact text body
+  /// (date + price row, optional id/category). The title now sits on the image
+  /// scrim, so the body is shorter than it used to be. An explicit extent
+  /// (rather than an aspect ratio) is what keeps the cards from showing a tall
+  /// empty block under their price row; the text scale is respected so larger
+  /// system fonts still fit.
   static double cardExtent({
     required double gridWidth,
     required int columns,
     required double textScale,
   }) {
-    const spacing = 16.0;
-    final tileWidth = (gridWidth - spacing * (columns - 1)) / columns;
-    final imageHeight = tileWidth * 10 / 16;
-    return imageHeight + 162 * textScale.clamp(1.0, 1.5);
+    // EventCard is a horizontal list card: artwork on the left and the
+    // event's real date, venue, category and price on the right.
+    return 164 * textScale.clamp(1.0, 1.35);
   }
 
   /// Max width for single-column lists (tickets) on large screens.
@@ -60,7 +61,7 @@ class AppTheme {
   static const Color bgPage = Color(0xFFF9FAFC);
   static const Color bgCard = Colors.white;
   static const Color error = Color(0xFFEF4444);
-  static const Color success = Color(0xFF388E3C);
+  static const Color success = Color(0xFF1B5E20);
 
   static ThemeData get lightTheme {
     return ThemeData(

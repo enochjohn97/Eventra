@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../core/network/endpoint_resolver.dart';
 import '../models/event_model.dart';
 import '../services/event_cache_service.dart';
 import '../services/user_event_service.dart';
@@ -102,45 +103,67 @@ class EventsProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    try {
-      final result = await UserEventService.fetchEvents(
-        page: _page,
-        limit: pageSize,
-        search: filters.search.trim().isEmpty ? null : filters.search.trim(),
-        sort: filters.sort,
-        category: filters.category,
-        state: filters.state,
-        priority: filters.priority,
-        freeOnly: filters.freeOnly,
-        priceMin: filters.priceMin,
-        priceMax: filters.priceMax,
-      );
-      // A newer request (keystroke / page change) won the race — drop this one.
-      if (requestId != _requestId) return;
+    // The live host is a shared box that is occasionally still waking up, so an
+    // empty first page retries by itself before surfacing an error. Without
+    // this, opening the app before the host answered left the discovery grid
+    // stuck on its skeleton until the user manually pulled to refresh.
+    const maxAttempts = 4;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Bounded so a host that accepts the connection but never answers
+        // cannot pin the grid on its skeleton — the timeout surfaces as a
+        // failure and the loop retries instead of waiting minutes.
+        final result = await UserEventService.fetchEvents(
+          page: _page,
+          limit: pageSize,
+          search: filters.search.trim().isEmpty ? null : filters.search.trim(),
+          sort: filters.sort,
+          category: filters.category,
+          state: filters.state,
+          priority: filters.priority,
+          freeOnly: filters.freeOnly,
+          priceMin: filters.priceMin,
+          priceMax: filters.priceMax,
+        ).timeout(const Duration(seconds: 22));
+        // A newer request (keystroke / page change) won the race — drop this one.
+        if (requestId != _requestId) return;
 
-      events
-        ..clear()
-        ..addAll(result.events);
-      isRefreshing = false;
-      _total = result.total;
-      _page = _page.clamp(1, totalPages);
-      error = null;
-      // Persist only the unfiltered first page — it's the one the next launch
-      // shows, and cached filter results would be misleading.
-      if (_page == 1 && !filters.hasFilters) {
-        EventCacheService.instance.savePage(_cacheKey, result.events);
-      }
-    } catch (e) {
-      if (requestId == _requestId) {
+        events
+          ..clear()
+          ..addAll(result.events);
+        isRefreshing = false;
+        _total = result.total;
+        _page = _page.clamp(1, totalPages);
+        error = null;
+        // Persist only the unfiltered first page — it's the one the next launch
+        // shows, and cached filter results would be misleading.
+        if (_page == 1 && !filters.hasFilters) {
+          EventCacheService.instance.savePage(_cacheKey, result.events);
+        }
+        break;
+      } catch (e) {
+        if (requestId != _requestId) return;
+        // Keep retrying only while there is nothing on screen to replace it;
+        // a failed page-change or pull-to-refresh reports immediately.
+        final willRetry = attempt < maxAttempts && events.isEmpty;
+        if (willRetry) {
+          // The dev server may have started after the app did (or the phone
+          // just joined the Wi-Fi). Re-run host discovery so the retry can
+          // actually land on it instead of repeating a dead address.
+          await EndpointResolver.resolve(force: true);
+          await Future<void>.delayed(Duration(seconds: attempt * 2));
+          if (requestId != _requestId) return;
+          continue;
+        }
         error = e.toString().replaceFirst('Exception: ', '');
         if (events.isNotEmpty && _page == 1) isRefreshing = false;
       }
-    } finally {
-      if (requestId == _requestId) {
-        isLoading = false;
-        isLoadingMore = false;
-        notifyListeners();
-      }
+    }
+    // Clear the busy flags for this request — success or final failure.
+    if (requestId == _requestId) {
+      isLoading = false;
+      isLoadingMore = false;
+      notifyListeners();
     }
   }
 

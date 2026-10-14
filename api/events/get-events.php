@@ -14,6 +14,28 @@ require_once '../../config/database.php';
 require_once '../../includes/middleware/auth.php';
 
 try {
+    // ── Retire passed events (2 days after the event date) ──────────────────
+    // Runs at most once an hour, on this public feed both the website and the
+    // mobile app read — so a finished event disappears from both at the same
+    // time. Soft-delete (deleted_at) takes it out of every listing while
+    // keeping the tickets/orders/payout rows it is referenced by intact.
+    try {
+        $purgeMarker = __DIR__ . '/../../logs/passed-events-purge.stamp';
+        $lastPurge = is_file($purgeMarker) ? (int) @file_get_contents($purgeMarker) : 0;
+        if (time() - $lastPurge > 3600) {
+            @file_put_contents($purgeMarker, (string) time(), LOCK_EX);
+            $pdo->exec("
+                UPDATE events
+                SET deleted_at = NOW()
+                WHERE deleted_at IS NULL
+                  AND event_date IS NOT NULL
+                  AND event_date < DATE_SUB(CURDATE(), INTERVAL 2 DAY)
+            ");
+        }
+    } catch (Throwable $purgeEx) {
+        error_log('[get-events.php] Passed-event purge skipped: ' . $purgeEx->getMessage());
+    }
+
     $user_id   = checkAuthOptional();
     $client_id = $_GET['client_id'] ?? null;
     $status    = $_GET['status']    ?? null;
@@ -23,6 +45,57 @@ try {
 
     $user_state = trim($_GET['user_state'] ?? '');
 
+    // ── Archive: events that have already taken place ────────────────────────
+    // Powers the admin/client Archive views. Carries the venue, price and the
+    // full sales figures so a passed event stays inspectable after it has been
+    // retired from the live catalogue.
+    if (($_GET['archived'] ?? '') === '1') {
+        $archivedClientId = null;
+        if ($user_role !== 'admin') {
+            $archivedClientId = $client_id ?: ($_SESSION['client_id'] ?? null);
+        } elseif (!empty($client_id)) {
+            $archivedClientId = $client_id;
+        }
+        $where  = 'e.event_date IS NOT NULL AND e.event_date < CURDATE()';
+        $params = [];
+        if ($archivedClientId) {
+            $where .= ' AND e.client_id = ?';
+            $params[] = $archivedClientId;
+        }
+        $aStmt = $pdo->prepare("
+            SELECT e.id, e.custom_id, e.event_name, e.event_date, e.event_time, e.price, e.metadata,
+                   e.state, e.address, e.location, e.category, e.attendee_count, e.max_capacity,
+                   e.status, e.created_at, e.deleted_at, e.image_path,
+                   c.business_name AS organizer_name, c.name AS organizer_contact,
+                   (SELECT COUNT(*) FROM tickets t WHERE t.event_id = e.id) AS tickets_sold,
+                   (SELECT IFNULL(SUM(p.amount), 0) FROM payments p WHERE p.event_id = e.id AND p.status = 'paid') AS revenue
+            FROM events e
+            LEFT JOIN clients c ON e.client_id = c.id
+            WHERE {$where}
+            ORDER BY e.event_date DESC
+            LIMIT 500
+        ");
+        $aStmt->execute($params);
+        $archived = array_map(function ($event) use ($user_role) {
+            if (!empty($event['metadata'])) {
+                $metadata = json_decode($event['metadata'], true);
+                if (is_array($metadata)) $event = array_merge($event, $metadata);
+            }
+            unset($event['metadata']);
+            if (!empty($event['image_path'])) {
+                $image = str_replace('\\', '/', $event['image_path']);
+                if (preg_match('#(/public/.+)$#i', $image, $match)) {
+                    $event['image_path'] = $match[1];
+                } elseif (preg_match('#(public/assets/.+)$#i', $image, $match)) {
+                    $event['image_path'] = '/' . $match[1];
+                }
+            }
+            return $event;
+        }, $aStmt->fetchAll(PDO::FETCH_ASSOC));
+        echo json_encode(['success' => true, 'events' => $archived, 'total' => count($archived)]);
+        exit;
+    }
+
     // Sales-driven merit: weight sales heavily, boost very recent events
     $meritScore = "((IFNULL(e.view_count,0) * 0.2 + IFNULL(e.sales_count,0) * 0.8)
                     * IF(e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY), 1.3, 1.0))";
@@ -31,21 +104,20 @@ try {
     // - Featured  : admin-boosted
     // - Hot       : top 20% by sales_count (high ticket demand)
     // - Trending  : next tier by combined merit
-    // - Nearby    : event date = TODAY and event state matches user's state (any in list)
+    // - Nearby    : event is upcoming and event state matches user's state (any in list)
     // NOTE: literal emoji characters, NOT \uXXXX escapes — MySQL strips the
     // escape sequences from SQL string literals (utf8mb4 has no unicode-escape
     // syntax), which previously produced mangled labels like "ud83dudccd Nearby".
-    $userStateSql = $pdo->quote($user_state);
+    $userStateSql = $pdo->quote(str_replace(' ', '', strtolower($user_state)));
     $priorityLabel = "CASE
         WHEN e.is_boosted = 1 THEN '⭐ Featured'
         WHEN IFNULL(e.sales_count,0) >= 50 THEN '🔥 Hot'
         WHEN $meritScore > 60 THEN '📈 Trending'
-        WHEN e.event_date = CURDATE()
+        WHEN e.event_date >= CURDATE()
              AND $userStateSql != ''
              AND (
-                 FIND_IN_SET($userStateSql, e.state) > 0
-                 OR e.state = 'All States'
-                 OR e.state = 'all'
+                 FIND_IN_SET($userStateSql, LOWER(REPLACE(e.state, ' ', ''))) > 0
+                 OR LOWER(TRIM(e.state)) IN ('all states', 'all')
              ) THEN '📍 Nearby'
         WHEN e.event_date > CURDATE() THEN ''
         ELSE ''

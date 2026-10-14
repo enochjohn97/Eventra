@@ -290,9 +290,10 @@ try {
     $updated_client = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($updated_client) {
-        // Flatten bvn_verified out of the JSON metadata for the frontend badge
+        // Flatten metadata fields for the frontend
         $metaOut = json_decode($updated_client['metadata'] ?? '{}', true) ?: [];
         $updated_client['bvn_verified'] = !empty($metaOut['bvn_verified']) ? 1 : 0;
+        $updated_client['bvn_masked'] = $metaOut['bvn_number_masked'] ?? '';
         $profileId = (int)$updated_client['id'];
         $updated_client['profile_id'] = $profileId;
         $updated_client['client_id'] = $profileId;

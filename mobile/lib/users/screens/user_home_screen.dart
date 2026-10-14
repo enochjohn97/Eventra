@@ -190,7 +190,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const BrandLogo(size: 32),
+        title: const BrandLogo(size: 32, animateEveryMinute: true),
         actions: [
           // Filter entry point (category / state / priority / price).
           Stack(
@@ -335,13 +335,29 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final event = provider.events[index];
-                    return EventCard(
-                      event: event,
-                      onTap: () => _openEvent(context, event),
-                      // Passed events offer no favorite affordance.
-                      onFavorite: EventUtils.isPassed(event)
-                          ? null
-                          : () => _toggleFavorite(context, event),
+                    return TweenAnimationBuilder<double>(
+                      key: ValueKey(event.id),
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 320 + (index % 4) * 65),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) => Opacity(
+                        opacity: value.clamp(0.0, 1.0),
+                        child: Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: Transform.scale(
+                            scale: 0.92 + 0.08 * value,
+                            child: child,
+                          ),
+                        ),
+                      ),
+                      child: EventCard(
+                        event: event,
+                        onTap: () => _openEvent(context, event),
+                        // Passed events offer no favorite affordance.
+                        onFavorite: EventUtils.isPassed(event)
+                            ? null
+                            : () => _toggleFavorite(context, event),
+                      ),
                     );
                   }, childCount: provider.events.length),
                 ),

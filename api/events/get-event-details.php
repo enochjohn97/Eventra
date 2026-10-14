@@ -65,7 +65,14 @@ try {
     }
 
     // Sanitize and enhance event data for checkout
-    $baseUrl = rtrim($_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com', '/');
+    // Never fall back to the retired shared host: derive the origin from the
+    // request itself so image URLs resolve on the local dev server (and on any
+    // future host) with no configuration.
+    $baseUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+    if ($baseUrl === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $baseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
 
     if (!empty($event['image_path'])) {
         // Ensure path starts with a slash

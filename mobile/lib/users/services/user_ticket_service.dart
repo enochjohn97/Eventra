@@ -82,10 +82,15 @@ class UserTicketService {
     ({String dataUri, int scansUsed, int scanLimit, int scansRemaining})
   >
   fetchTicketQr(String ticketId) async {
-    final response = await _dio.get(
-      '/tickets/qr-image.php',
-      queryParameters: {'ticket_id': ticketId},
-    );
+    late final Response<dynamic> response;
+    try {
+      response = await _dio.get(
+        '/tickets/qr-image.php',
+        queryParameters: {'ticket_id': ticketId},
+      );
+    } on DioException catch (error) {
+      throw apiErrorFromDio(error, 'QR code unavailable.');
+    }
     final data = _toMap(response.data);
     if (data['success'] != true) {
       throw Exception(data['message']?.toString() ?? 'QR code unavailable.');

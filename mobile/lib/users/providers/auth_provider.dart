@@ -57,9 +57,7 @@ class AuthProvider extends ChangeNotifier {
             offlineWithCache = true;
           }
         } catch (_) {}
-        status = user!.isProfileComplete
-            ? AuthStatus.authenticated
-            : AuthStatus.profileIncomplete;
+        status = AuthStatus.authenticated;
       } else {
         status = AuthStatus.unauthenticated;
       }
@@ -108,6 +106,12 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String email,
     required String phone,
+    required String address,
+    required String city,
+    required String state,
+    required String country,
+    required String dob,
+    required String gender,
   }) async {
     isLoading = true;
     error = null;
@@ -117,6 +121,12 @@ class AuthProvider extends ChangeNotifier {
         name: name,
         email: email,
         phone: phone,
+        address: address,
+        city: city,
+        state: state,
+        country: country,
+        dob: dob,
+        gender: gender,
       );
       await SecureStorage.saveUser(user!.toJson());
       status = user!.isProfileComplete
@@ -145,6 +155,23 @@ class AuthProvider extends ChangeNotifier {
     sessionExpired = false;
     status = AuthStatus.unauthenticated;
     notifyListeners();
+  }
+
+  /// Re-pulls the profile from the server so edits made on the website show
+  /// up in the app without a restart (web ⇄ mobile sync on the same email).
+  Future<void> refreshProfile() async {
+    if (status == AuthStatus.unauthenticated) return;
+    try {
+      final fresh = await UserProfileService.getProfile();
+      user = fresh;
+      await SecureStorage.saveUser(fresh.toJson());
+      status = fresh.isProfileComplete
+          ? AuthStatus.authenticated
+          : AuthStatus.profileIncomplete;
+      notifyListeners();
+    } catch (_) {
+      // Best-effort: keep showing the last known profile on failure.
+    }
   }
 
   void markProfileComplete(UserModel updated) {

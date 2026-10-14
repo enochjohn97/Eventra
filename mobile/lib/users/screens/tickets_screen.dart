@@ -1,9 +1,9 @@
 // ignore_for_file: unnecessary_string_interpolations
 
-import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
@@ -34,7 +34,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     final provider = context.watch<TicketsProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const BrandLogo(size: 32)),
+      appBar: AppBar(title: const BrandLogo(size: 32, animateEveryMinute: true)),
       body: RefreshIndicator(
         onRefresh: provider.load,
         child: provider.isLoading && provider.tickets.isEmpty
@@ -335,6 +335,11 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
     });
     try {
       final qr = await UserTicketService.fetchTicketQr(ticketId);
+      final imageData = UriData.parse(qr.dataUri);
+      if (!imageData.mimeType.startsWith('image/') ||
+          imageData.contentAsBytes().isEmpty) {
+        throw Exception('The server returned an invalid QR image.');
+      }
       if (!mounted) return;
       setState(() {
         _qrDataUri = qr.dataUri;
@@ -344,7 +349,9 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
       });
     } catch (e) {
       if (!mounted) return;
-      final message = e.toString().replaceFirst('Exception: ', '');
+      final message = e is FormatException
+          ? 'The server returned an invalid QR image.'
+          : e.toString().replaceFirst('Exception: ', '');
       final locked = message.toLowerCase().contains('limit');
       setState(() {
         _qrLocked = locked;
@@ -474,12 +481,7 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
                   child: CircularProgressIndicator(),
                 )
               else if (_qrDataUri != null && _qrDataUri!.isNotEmpty)
-                Image.memory(
-                  base64Decode(_qrDataUri!.split(',').last),
-                  width: 190,
-                  height: 190,
-                  fit: BoxFit.contain,
-                )
+                _qrPreview()
               else
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
@@ -497,7 +499,9 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: _qrLocked ? AppTheme.error : AppTheme.textMuted,
+                          color: _qrLocked
+                              ? AppTheme.error
+                              : AppTheme.textMuted,
                           fontWeight: _qrLocked ? FontWeight.w600 : null,
                         ),
                       ),
@@ -588,8 +592,36 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
                 : const Text('Verify Ticket'),
           ),
         ),
-
       ],
+    );
+  }
+
+  Widget _qrPreview() {
+    final imageData = UriData.parse(_qrDataUri!);
+    final bytes = imageData.contentAsBytes();
+    if (imageData.mimeType == 'image/svg+xml') {
+      return SvgPicture.memory(
+        bytes,
+        width: 190,
+        height: 190,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const Icon(
+          Icons.broken_image_outlined,
+          size: 40,
+          color: AppTheme.textMuted,
+        ),
+      );
+    }
+    return Image.memory(
+      bytes,
+      width: 190,
+      height: 190,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => const Icon(
+        Icons.broken_image_outlined,
+        size: 40,
+        color: AppTheme.textMuted,
+      ),
     );
   }
 

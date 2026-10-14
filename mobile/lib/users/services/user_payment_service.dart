@@ -28,20 +28,25 @@ class UserPaymentService {
     required String ticketType,
     required Map<String, String> contactInfo,
   }) async {
-    final response = await _dio.post(
-      '/payments/initialize',
-      data: {
-        'event_id': eventId,
-        'quantity': quantity,
-        'ticket_type': ticketType,
-        'contact_info': {
-          'fname': contactInfo['fname'],
-          'lname': contactInfo['lname'],
-          'email': contactInfo['email'],
-          'phone': contactInfo['phone'],
+    late final Response<dynamic> response;
+    try {
+      response = await _dio.post(
+        '/payments/initialize',
+        data: {
+          'event_id': eventId,
+          'quantity': quantity,
+          'ticket_type': ticketType,
+          'contact_info': {
+            'fname': contactInfo['fname'],
+            'lname': contactInfo['lname'],
+            'email': contactInfo['email'],
+            'phone': contactInfo['phone'],
+          },
         },
-      },
-    );
+      );
+    } on DioException catch (error) {
+      throw apiErrorFromDio(error, 'Payment initialization failed.');
+    }
     final data = _toMap(response.data);
     if (data['success'] != true) {
       throw Exception(

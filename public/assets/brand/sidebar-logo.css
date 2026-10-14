@@ -1,6 +1,6 @@
 /* ============================================================================
-   Eventra sidebar logo (shared by admin + client dashboards)
-   Expanded:  full wordmark (coral E-mark + "eventra" text, white variant)
+   EventOut sidebar logo (shared by admin + client dashboards)
+   Expanded:  logo mark + "EventOut" text lockup
    Collapsed: mark-only, centered — text disappears with the nav labels
    No borders or rings around the logo image.
    ========================================================================== */
@@ -19,10 +19,11 @@
     -webkit-background-clip: initial !important;
     background-clip: initial !important;
     -webkit-text-fill-color: initial !important;
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .sidebar-logo img {
-    height: 42px;
+    height: 24px;
     width: auto;
     display: block;
     border: none;
@@ -30,6 +31,17 @@
     box-shadow: none;
     border-radius: 0;
     background: none;
+}
+
+.sidebar-logo span {
+    margin-left: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #E53935;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    white-space: nowrap;
+    transition: opacity 0.2s ease;
 }
 
 /* ── Collapsed state (both class conventions) ─────────────────────────────
@@ -43,30 +55,24 @@
     pointer-events: auto;
 }
 
-/* Expanded wordmark fades out; mark-only fades in */
-.sidebar-logo .logo-wordmark {
-    display: block;
-    opacity: 1;
-    transition: opacity 0.2s ease;
-}
-
+/* Logo mark + text visible when expanded; text fades in collapsed */
 .sidebar-logo .logo-mark-only {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.sidebar.sidebar-collapsed .sidebar-logo .logo-wordmark,
-.sidebar.collapsed .sidebar-logo .logo-wordmark {
-    display: none;
-    opacity: 0;
-}
-
-.sidebar.sidebar-collapsed .sidebar-logo .logo-mark-only,
-.sidebar.collapsed .sidebar-logo .logo-mark-only {
     display: block;
     opacity: 1;
-    height: 38px;
+    transition: opacity 0.2s ease;
+    height: 24px;
+}
+
+.sidebar-logo span {
+    opacity: 1;
+}
+
+.sidebar.sidebar-collapsed .sidebar-logo span,
+.sidebar.collapsed .sidebar-logo span {
+    opacity: 0;
+    width: 0;
+    margin-left: 0;
+    overflow: hidden;
 }
 
 /* Legacy inline-style JS sets fontSize:0/padding:0 — neutralize any residue
@@ -79,4 +85,31 @@
 .sidebar.sidebar-collapsed .sidebar-logo img,
 .sidebar.collapsed .sidebar-logo img {
     font-size: 0; /* imgs are unaffected by font-size anyway */
+}
+
+/* Keep the text span readable despite the parent font-size:0 override. */
+.sidebar-logo span {
+    font-size: 1.25rem !important;
+}
+
+/* Logo + text animate together as one lockup. */
+@keyframes brandSidebarCycle {
+  0%, 5%    { transform: translateY(0) scale(1); }
+  9%, 15%   { transform: translateY(-4px) scale(1.04); }
+  19%, 30%  { transform: translateY(0) scale(1); }
+  34%, 40%  { transform: rotate(-3deg) scale(1.03); }
+  44%, 55%  { transform: rotate(0) scale(1); }
+  59%, 65%  { transform: translateX(5px) scale(1.02); }
+  69%, 80%  { transform: translateX(0) scale(1); }
+  84%, 90%  { transform: scale(1.07); }
+  94%, 100% { transform: scale(1); }
+}
+.sidebar-logo .logo-mark-only,
+.sidebar-logo span {
+  transform-origin: center;
+  animation: brandSidebarCycle 20s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-logo .logo-mark-only,
+  .sidebar-logo span { animation: none; }
 }

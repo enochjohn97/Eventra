@@ -12,8 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="icon" type="image/png" href="/public/assets/brand/logo-mark.png" />
+    <link rel="icon" type="image/png" href="/public/assets/brand/logo-mark.png" />
     <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 
     <style>
@@ -58,19 +58,20 @@
             left: 32px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 0;
             z-index: 20;
             color: #111;
             font-size: 1.35rem;
             font-weight: 800;
             letter-spacing: -0.02em;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             text-decoration: none;
             pointer-events: none;
             user-select: none;
         }
         .brand-mark img {
             width: auto;
-            height: 56px;
+            height: 28px;
             border: none;
             outline: none;
             box-shadow: none;
@@ -79,7 +80,12 @@
             object-fit: contain;
         }
         .brand-mark span {
-            display: none;
+            display: inline;
+            color: #E53935;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-left: 0;
         }
 
         /* ── left: login form ── */
@@ -106,7 +112,7 @@
         .login-title {
             font-size: 2rem;
             font-weight: 800;
-            color: #111;
+            color: #ff4d5a;
             letter-spacing: -0.02em;
             line-height: 1.2;
             text-align: center;
@@ -450,7 +456,7 @@
                 font-size: 1.1rem;
             }
             .brand-mark img {
-                height: 46px;
+                height: 22px;
                 width: auto;
             }
             /* Mobile: logo sits over the slider photo — give the wordmark a
@@ -487,7 +493,7 @@
                 font-size: 0.95rem;
             }
             .brand-mark img {
-                height: 40px;
+                height: 20px;
                 width: auto;
             }
             .slider-images {
@@ -544,10 +550,19 @@
                 opacity: 0.8;
             }
         }
-        .brand-mark img {
-            /* logo renders as-is; the legacy pulse is disabled for the wordmark */
-            animation: none;
+        @keyframes brandLoginCycle {
+            0%, 5% { transform: translateY(0) scale(1); }
+            9%, 15% { transform: translateY(-4px) scale(1.04); }
+            19%, 30% { transform: translateY(0) scale(1); }
+            34%, 40% { transform: rotate(-3deg) scale(1.03); }
+            44%, 55% { transform: rotate(0) scale(1); }
+            59%, 65% { transform: translateX(5px) scale(1.02); }
+            69%, 80% { transform: translateX(0) scale(1); }
+            84%, 90% { transform: scale(1.07); }
+            94%, 100% { transform: scale(1); }
         }
+        .brand-mark img { animation: brandLoginCycle 20s ease-in-out infinite; transform-origin: center; }
+        @media (prefers-reduced-motion: reduce) { .brand-mark img { animation: none; } }
 
         /* ── form input autofill override ── */
         .input-wrapper .form-input:-webkit-autofill {
@@ -572,7 +587,8 @@
 
         <!-- ── Brand ── -->
         <div class="brand-mark">
-            <img src="/public/assets/brand/logo-wordmark.svg" alt="EventOut logo" height="56" />
+            <img src="/public/assets/brand/logo-mark.png" alt="EventOut logo" />
+            <span>ventOut</span>
         </div>
 
         <!-- ── LEFT: Login Form ── -->

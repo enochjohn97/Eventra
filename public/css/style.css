@@ -66,6 +66,27 @@ body {
   object-fit: contain;
 }
 
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  color: #E53935;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.brand-lockup-mark {
+  width: 36px !important;
+  height: 36px !important;
+  max-width: none !important;
+  object-fit: contain;
+  flex: 0 0 36px;
+}
+
 .nav-menu {
   display: flex;
   gap: 2rem;
@@ -1476,9 +1497,14 @@ body {
 .modal-header .modal-logo {
   font-size: 1.75rem;
   font-weight: 800;
+  font-family: Georgia, 'Palatino Linotype', serif;
   color: var(--text-dark);
   margin-bottom: 1rem;
   letter-spacing: 2px;
+}
+
+.modal-header .modal-logo .brand-lockup {
+  font-size: 1.75rem;
 }
 
 .modal-header h2 {

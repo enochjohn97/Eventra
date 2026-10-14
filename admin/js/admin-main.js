@@ -1719,3 +1719,151 @@ window.downloadAllKYC = async function (btn, clientName) {
     if (window.lucide) window.lucide.createIcons();
   }
 };
+
+/* ---------------------------------------------------------------------------
+   Passed-events Archive — opens as a MODAL, in place.
+   Previously this pointed at a separate archive page, which 404'd behind the
+   site's URL rewriting and forced an unnecessary navigation. Any link whose
+   href contains "archive" now opens this dialog instead.
+   --------------------------------------------------------------------------- */
+(function () {
+  if (window.__eventoutArchiveBound) return;
+  window.__eventoutArchiveBound = true;
+
+  var modal = null, body = null, cache = null;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function money(v) {
+    var n = effectivePrice(v);
+    return n <= 0 ? 'Free' : '\u20a6' + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  function effectivePrice(event) {
+    if (event && typeof event === 'object') {
+      return Math.max(Number(event.price || 0), Number(event.regular_price || 0), Number(event.vip_price || 0), Number(event.premium_price || 0));
+    }
+    return Number(event || 0);
+  }
+  function imageOf(event) {
+    if (!event || !event.image_path) return '';
+    return typeof getImageUrl === 'function' ? getImageUrl(event.image_path) : '/' + String(event.image_path).replace(/^\/+/, '');
+  }
+  function dateOf(v) {
+    if (!v) return '\u2014';
+    var d = new Date(v);
+    return isNaN(d) ? v : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function closeBtn(id) {
+    return '<button id="' + id + '" style="float:right;border:0;background:#f3f4f6;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:1rem;">\u2715</button>';
+  }
+
+  function ensureModal() {
+    if (modal) return;
+    modal = document.createElement('div');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,12,20,.55);display:none;align-items:center;justify-content:center;padding:1rem;z-index:100000;';
+    body = document.createElement('div');
+    body.style.cssText = 'background:#fff;border-radius:18px;max-width:800px;width:100%;max-height:88vh;overflow:auto;padding:1.4rem;font-family:inherit;color:#111827;';
+    modal.appendChild(body);
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  }
+
+  function close() { if (modal) modal.style.display = 'none'; }
+
+  function fields(e) {
+    return [
+      ['Event name', e.event_name], ['Event ID', e.custom_id || ('#' + e.id)],
+      ['Organizer', e.organizer_name || e.organizer_contact || '\u2014'],
+      ['Date passed / event date', dateOf(e.event_date)], ['Time', e.event_time || '\u2014'],
+      ['Price', money(e)],
+      ['Attendees', (e.attendee_count || 0) + (e.max_capacity ? ' of ' + e.max_capacity : '')],
+      ['Tickets sold', e.tickets_sold || 0], ['Revenue', money(e.revenue)],
+      ['Category', e.category || '\u2014'],
+      ['Venue', [e.location || e.address, e.state].filter(Boolean).join(', ') || '\u2014'],
+      ['Status', e.status || '\u2014'], ['Date created', dateOf(e.created_at)],
+      ['Archived on', e.deleted_at ? dateOf(e.deleted_at) : 'Not yet purged']
+    ];
+  }
+
+  function showDetail(e) {
+    body.innerHTML = closeBtn('archiveBack').replace('\u2715', '\u2190')
+      + '<span style="display:inline-block;padding:.2rem .65rem;border-radius:999px;background:#ff4d5a1a;color:#ff4d5a;font-weight:700;font-size:.72rem;">Passed event</span>'
+      + (imageOf(e) ? '<img src="' + esc(imageOf(e)) + '" alt="" style="width:100%;height:190px;object-fit:cover;border-radius:14px;margin-top:.9rem;display:block;" onerror="this.style.display=\'none\'">' : '')
+      + '<h2 style="margin:.75rem 0 0;font-size:1.3rem;font-weight:800;">' + esc(e.event_name) + '</h2>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem 1.25rem;margin-top:1.1rem;">'
+      + fields(e).map(function (r) {
+          return '<div><div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:700;">' + esc(r[0]) + '</div>'
+            + '<div style="font-size:.95rem;font-weight:600;word-break:break-word;">' + esc(r[1]) + '</div></div>';
+        }).join('')
+      + '</div>';
+    document.getElementById('archiveBack').onclick = showList;
+  }
+
+  function drawRows(q) {
+    q = (q || '').toLowerCase().trim();
+    var evs = (cache || []).filter(function (e) {
+      return !q
+        || (e.event_name || '').toLowerCase().indexOf(q) > -1
+        || (e.state || '').toLowerCase().indexOf(q) > -1;
+    });
+    var host = document.getElementById('archiveRows');
+    if (!host) return;
+    if (!evs.length) {
+      host.innerHTML = '<div style="padding:2.5rem 1rem;text-align:center;color:#6b7280;">No passed events yet.</div>';
+      return;
+    }
+    host.innerHTML = evs.map(function (e, i) {
+      return '<div data-i="' + i + '" style="display:grid;grid-template-columns:2.4fr 1fr 1fr 1fr;gap:.6rem;padding:.7rem .5rem;border-bottom:1px solid #eef0f4;cursor:pointer;">'
+        + '<div style="display:flex;align-items:center;gap:.6rem;"><img src="' + esc(imageOf(e)) + '" alt="" style="width:42px;height:32px;object-fit:cover;border-radius:6px;background:#f3f4f6;" onerror="this.style.display=\'none\'"><strong>' + esc(e.event_name) + '</strong></div>'
+        + '<div style="color:#6b7280;font-size:.85rem;">' + esc(dateOf(e.event_date)) + '</div>'
+        + '<div style="color:#6b7280;font-size:.85rem;">' + esc(money(e)) + '</div>'
+        + '<div style="color:#6b7280;font-size:.85rem;">' + esc(e.tickets_sold || 0) + ' tickets</div></div>';
+    }).join('');
+    Array.prototype.forEach.call(host.querySelectorAll('[data-i]'), function (row) {
+      row.onclick = function () { showDetail(evs[Number(row.getAttribute('data-i'))]); };
+    });
+  }
+
+  function showList() {
+    body.innerHTML = closeBtn('archiveClose')
+      + '<h2 style="margin:.2rem 0 .1rem;font-size:1.35rem;font-weight:800;">Archive</h2>'
+      + '<div style="color:#6b7280;font-size:.85rem;margin-bottom:.9rem;">Every event that has already taken place \u00b7 ' + (cache || []).length + '</div>'
+      + '<input id="archiveSearch" placeholder="Search archived events" style="width:100%;box-sizing:border-box;padding:.6rem .85rem;border:1px solid #e5e7eb;border-radius:10px;font:inherit;margin-bottom:.5rem;">'
+      + '<div id="archiveRows"></div>';
+    document.getElementById('archiveClose').onclick = close;
+    document.getElementById('archiveSearch').oninput = function () { drawRows(this.value); };
+    drawRows('');
+  }
+
+  function open() {
+    ensureModal();
+    modal.style.display = 'flex';
+    if (cache) { showList(); return; }
+    body.innerHTML = '<div style="padding:2.5rem 1rem;text-align:center;color:#6b7280;">Loading archive\u2026</div>';
+    apiFetch('/api/events/get-events.php?archived=1&limit=all')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.success) throw new Error(data.message || 'Could not load the archive.');
+        cache = data.events || [];
+        showList();
+      })
+      .catch(function (err) {
+        body.innerHTML = closeBtn('archiveClose')
+          + '<div style="padding:2.5rem 1rem;text-align:center;color:#b91c1c;">' + esc(err.message) + '</div>';
+        document.getElementById('archiveClose').onclick = close;
+      });
+  }
+
+  document.addEventListener('click', function (ev) {
+    var link = ev.target && ev.target.closest ? ev.target.closest('a[href*="archive"]') : null;
+    if (!link) return;
+    ev.preventDefault();
+    open();
+  });
+})();

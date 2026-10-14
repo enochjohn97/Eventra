@@ -43,10 +43,12 @@ class UserProfileService {
     required String name,
     required String email,
     required String phone,
-    String? address,
-    String? city,
-    String? state,
-    String? country,
+    required String address,
+    required String city,
+    required String state,
+    required String country,
+    required String dob,
+    required String gender,
   }) async {
     late Response<dynamic> response;
     try {
@@ -56,10 +58,12 @@ class UserProfileService {
           'name': name,
           'email': email,
           'phone': phone,
-          'address': ?address,
-          'city': ?city,
-          'state': ?state,
-          'country': ?country,
+          'address': address,
+          'city': city,
+          'state': state,
+          'country': country,
+          'dob': dob,
+          'gender': gender,
         },
         options: Options(receiveTimeout: const Duration(seconds: 20)),
       );
@@ -83,6 +87,17 @@ class UserProfileService {
     }
     // Backend confirmed the update but omitted the user object (legacy web
     // handler shape); rebuild a minimal model from what we sent.
-    return UserModel(name: name, email: email, phone: phone, id: 0);
+    return UserModel(
+      name: name,
+      email: email,
+      phone: phone,
+      address: address,
+      city: city,
+      state: state,
+      country: country,
+      dob: dob,
+      gender: gender,
+      id: 0,
+    );
   }
 }

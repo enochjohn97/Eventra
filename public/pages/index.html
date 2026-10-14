@@ -10,12 +10,12 @@
     <meta property="og:description" content="Find and book amazing events happening near you. Concerts, festivals, conferences and more." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://EventOut-website.liveblog365.com/" />
-    <meta property="og:image" content="/public/assets/brand/logo-mark.png" />
+    <meta property="og:image" content="/public/assets/brand/logo-wordmark.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>EventOut — Discover &amp; Book Events in Nigeria</title>
     <link rel="canonical" href="https://EventOut-website.liveblog365.com/" />
-    <link rel="icon" type="image/svg+xml" href="/public/assets/brand/favicon.svg" />
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+    <link rel="icon" type="image/png" href="/public/assets/brand/logo-mark.png" />
+    <link rel="icon" type="image/png" href="/public/assets/brand/logo-mark.png" />
     <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 
     <link rel="dns-prefetch" href="https://accounts.google.com" />
@@ -43,8 +43,23 @@
       /* Header */
       .header{background-color:#fff;box-shadow:var(--shadow-subtle);position:sticky;top:0;z-index:1000;transition:var(--transition-base);height:var(--header-height);display:flex;align-items:center;border-bottom:1px solid var(--border-light)}
       .nav-container{width:100%;max-width:var(--container-max-width);margin:0 auto;padding:0 var(--container-padding);display:flex;justify-content:space-between;align-items:center}
-      .logo{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:800;color:var(--text-main);text-decoration:none}
-      .logo img{height:64px;width:auto;object-fit:contain}
+      .logo{display:flex;align-items:center;gap:0;font-size:1.35rem;font-weight:800;color:#E53935;text-decoration:none;font-family:'Plus Jakarta Sans',sans-serif}
+      .logo img{height:28px;width:auto;object-fit:contain}
+      .logo img.logo-anim-bounce{animation:brandBounce .9s ease}
+      .logo img.logo-anim-spin{animation:brandSpin .9s ease}
+      .logo img.logo-anim-float{animation:brandFloat .9s ease}
+      .logo img.logo-anim-stretch{animation:brandStretch .9s ease}
+      .logo img.logo-anim-zoom{animation:brandZoom .9s ease}
+      .logo img.logo-anim-curl{animation:brandCurl 1s ease}
+      .logo img.logo-anim-slide{animation:brandSlide .9s ease}
+      @keyframes brandBounce{50%{transform:translateY(-8px) scale(1.08)}}
+      @keyframes brandSpin{50%{transform:rotate(12deg) scale(1.08)}}
+      @keyframes brandFloat{50%{transform:translateY(-6px) rotate(-5deg)}}
+      @keyframes brandStretch{50%{transform:scale(1.14,.9)}}
+      @keyframes brandZoom{50%{transform:scale(1.16)}}
+      @keyframes brandCurl{50%{transform:rotate(-8deg) scale(1.1) skewX(-6deg)}}
+      @keyframes brandSlide{50%{transform:translateX(10px) scale(1.05)}}
+      @media(prefers-reduced-motion:reduce){.logo img[class*="logo-anim-"]{animation:none}}
       .nav-menu{display:flex;gap:2rem;list-style:none;align-items:center}
       .nav-menu a{text-decoration:none;color:var(--text-muted);font-weight:600;font-size:1.1rem;transition:var(--transition-base);position:relative;padding:8px 0}
       .nav-menu a:hover,.nav-menu li.active a{color:var(--danger-color)}
@@ -122,7 +137,7 @@
       "@type": "Organization",
       "name": "EventOut",
       "url": "https://EventOut-website.liveblog365.com",
-      "logo": "/public/assets/brand/logo-mark.png",
+      "logo": "/public/assets/brand/logo-wordmark.png",
       "description": "Nigeria's premier event discovery and ticketing platform.",
       "sameAs": []
     }
@@ -134,7 +149,10 @@
     <header class="header">
       <nav class="nav-container">
         <a href="/index.html" class="logo" aria-label="EventOut home">
-          <img src="/public/assets/brand/logo-wordmark.svg" alt="EventOut" height="56" />
+          <span class="brand-lockup">
+            <img class="brand-lockup-mark" src="/public/assets/brand/logo-mark.png" alt="" />
+            <span>ventOut</span>
+          </span>
         </a>
 
         <ul class="nav-menu">
@@ -696,7 +714,12 @@
       <div class="modal-card glass-effect">
         <button class="close-modal" id="closeLoginModal">&times;</button>
         <div class="modal-header">
-          <div class="modal-logo">EventOut</div>
+          <div class="modal-logo">
+            <span class="brand-lockup" style="gap:0;font-size:1.35rem;color:#E53935;font-family:'Plus Jakarta Sans',sans-serif">
+              <img class="brand-lockup-mark" src="/public/assets/brand/logo-mark.png" alt="" style="height:28px;width:auto" />
+              <span>ventOut</span>
+            </span>
+          </div>
           <h2>Welcome</h2>
           <p>Sign in to discover and manage amazing experiences</p>
         </div>
@@ -1074,6 +1097,27 @@
     <script src="/public/js/ticket-verification.js" defer></script>
     <script src="/public/js/check-ticket.js" defer></script>
     <script src="/public/js/holiday-alerts.js" defer></script>
+    <script>
+      // Brand logo: replay a different catchy animation (bounce / curl / float /
+      // zoom) every 30 seconds so the header mark keeps catching the eye.
+      // Claims the logo so the shared driver in main.js does not fight it.
+      (function () {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (window.__eventoutLogoBound) return;
+        var img = document.querySelector('.logo img');
+        if (!img) return;
+        window.__eventoutLogoBound = true;
+        var variants = ['logo-anim-bounce', 'logo-anim-spin', 'logo-anim-float', 'logo-anim-stretch', 'logo-anim-zoom', 'logo-anim-curl', 'logo-anim-slide'];
+        var i = 0;
+        function play() {
+          for (var v = 0; v < variants.length; v++) img.classList.remove(variants[v]);
+          void img.offsetWidth; // restart the CSS animation
+          img.classList.add(variants[i % variants.length]);
+          i++;
+        }
+        setTimeout(play, 700);
+        setInterval(play, 30000);
+      })();
+    </script>
   </body>
 </html>
-

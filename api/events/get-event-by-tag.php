@@ -25,7 +25,13 @@ try {
 
     if ($event) {
         // Sanitize and enhance event data
-        $baseUrl = rtrim($_ENV['APP_URL'] ?? 'https://eventra-website.liveblog365.com', '/');
+        // Derive the origin from the request when unconfigured, so the retired
+        // shared host is never baked into image URLs again.
+        $baseUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+        if ($baseUrl === '') {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $baseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        }
         if (!$authenticatedUser) {
             $event['image_path'] = null;
             $event['absolute_image_url'] = null;

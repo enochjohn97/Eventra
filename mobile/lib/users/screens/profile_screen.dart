@@ -20,6 +20,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _phoneCtrl;
+  late TextEditingController _dobCtrl;
+  late TextEditingController _genderCtrl;
+  late TextEditingController _countryCtrl;
+  late TextEditingController _stateCtrl;
+  late TextEditingController _cityCtrl;
+  late TextEditingController _addressCtrl;
   bool _initialized = false;
 
   /// false = read-only profile summary (avatar, name, email, Edit Profile,
@@ -30,6 +36,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameCtrl.text = user?.name ?? '';
     _emailCtrl.text = user?.email ?? '';
     _phoneCtrl.text = user?.phone ?? '';
+    _dobCtrl.text = user?.dob ?? '';
+    _genderCtrl.text = user?.gender ?? '';
+    _countryCtrl.text = user?.country ?? '';
+    _stateCtrl.text = user?.state ?? '';
+    _cityCtrl.text = user?.city ?? '';
+    _addressCtrl.text = user?.address ?? '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Pull the latest profile from the server so profile changes made on the
+    // website appear here automatically, without restarting the app.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      await auth.refreshProfile();
+      if (!mounted) return;
+      setState(() => _syncControllers(auth.user));
+    });
   }
 
   @override
@@ -40,6 +66,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _nameCtrl = TextEditingController(text: user?.name ?? '');
       _emailCtrl = TextEditingController(text: user?.email ?? '');
       _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+      _dobCtrl = TextEditingController(text: user?.dob ?? '');
+      _genderCtrl = TextEditingController(text: user?.gender ?? '');
+      _countryCtrl = TextEditingController(text: user?.country ?? '');
+      _stateCtrl = TextEditingController(text: user?.state ?? '');
+      _cityCtrl = TextEditingController(text: user?.city ?? '');
+      _addressCtrl = TextEditingController(text: user?.address ?? '');
       // Start in edit mode only when required details are still missing.
       _editing = !(user?.isProfileComplete ?? false);
       _initialized = true;
@@ -51,6 +83,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
+    _dobCtrl.dispose();
+    _genderCtrl.dispose();
+    _countryCtrl.dispose();
+    _stateCtrl.dispose();
+    _cityCtrl.dispose();
+    _addressCtrl.dispose();
     super.dispose();
   }
 
@@ -64,12 +102,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       name: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
       phone: _phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+      dob: _dobCtrl.text.trim(),
+      gender: _genderCtrl.text.trim(),
+      country: _countryCtrl.text.trim(),
+      state: _stateCtrl.text.trim(),
+      city: _cityCtrl.text.trim(),
+      address: _addressCtrl.text.trim(),
     );
     if (!mounted) return;
     if (ok) {
       _syncControllers(auth.user);
       setState(() => _editing = false);
-      _toast('Profile updated and synced.', Colors.green);
+      _toast('Profile updated and synced.', AppTheme.success);
     } else {
       _toast(auth.error ?? 'Could not sync your profile.', Colors.red);
     }
@@ -85,7 +129,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String label,
     TextEditingController controller,
   ) {
-    final color = controller.text.trim().isEmpty ? Colors.amber : Colors.green;
+    final color = controller.text.trim().isEmpty
+        ? Colors.amber
+        : AppTheme.success;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: color, width: 1.5),
@@ -124,7 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.user;
 
     return Scaffold(
-      appBar: AppBar(title: const BrandLogo(size: 32)),
+      appBar: AppBar(title: const BrandLogo(size: 32, animateEveryMinute: true)),
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -171,6 +217,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(color: AppTheme.textMuted),
           textAlign: TextAlign.center,
         ),
+        if ([user?.city, user?.state].whereType<String>().any((v) => v.isNotEmpty)) ...[
+          const SizedBox(height: 4),
+          Text(
+            [user?.city, user?.state].whereType<String>().where((v) => v.isNotEmpty).join(', '),
+            style: const TextStyle(color: AppTheme.textMuted),
+            textAlign: TextAlign.center,
+          ),
+        ],
         if (user?.customId != null) ...[
           const SizedBox(height: 6),
           Text(user!.customId!, style: const TextStyle(color: Colors.grey)),
@@ -267,6 +321,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return null;
             },
           ),
+          const SizedBox(height: 16),
+          _requiredField(
+            'Date of Birth *',
+            _dobCtrl,
+            hintText: 'YYYY-MM-DD',
+            dateOnly: true,
+          ),
+          const SizedBox(height: 16),
+          _requiredField('Gender *', _genderCtrl, lettersOnly: true),
+          const SizedBox(height: 16),
+          _requiredField('Country *', _countryCtrl, lettersOnly: true),
+          const SizedBox(height: 16),
+          _requiredField('State *', _stateCtrl, lettersOnly: true),
+          const SizedBox(height: 16),
+          _requiredField('City *', _cityCtrl, lettersOnly: true),
+          const SizedBox(height: 16),
+          _requiredField('Address *', _addressCtrl, maxLines: 3),
           const SizedBox(height: 28),
           SizedBox(
             width: double.infinity,
@@ -296,6 +367,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _requiredField(
+    String label,
+    TextEditingController controller, {
+    String? hintText,
+    int maxLines = 1,
+    bool lettersOnly = false,
+    bool dateOnly = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      decoration: _fieldDecoration(label, controller).copyWith(hintText: hintText),
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      onChanged: (_) => setState(() {}),
+      validator: (value) {
+        final text = value?.trim() ?? '';
+        if (text.isEmpty) return 'Required';
+        if (lettersOnly &&
+            !RegExp(r"^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'. -]*$")
+                .hasMatch(text)) {
+          return 'Letters only';
+        }
+        if (dateOnly &&
+            (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text) ||
+                DateTime.tryParse(text) == null)) {
+          return 'Enter a date as YYYY-MM-DD';
+        }
+        return null;
+      },
     );
   }
 }

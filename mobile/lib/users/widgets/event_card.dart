@@ -5,6 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/event_utils.dart';
 import '../models/event_model.dart';
 
+/// Compact discovery card. Every visible value comes from the event returned
+/// by the API; no ratings, amenities or placeholder venue details are invented.
 class EventCard extends StatelessWidget {
   final EventModel event;
   final VoidCallback onTap;
@@ -19,213 +21,158 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Resolve the stored path against the CURRENT origin every build: the app
-    // can be pointed at the local dev server or the live platform, and a URL
-    // baked in while the other one was adopted renders as a broken image.
     final path = event.imagePath;
-    final imageUrl = (path != null && path.isNotEmpty)
+    final imageUrl = path != null && path.isNotEmpty
         ? ApiClient().absoluteUrl(path)
         : (event.absoluteImageUrl ?? '');
-    // Passed events offer no favorite affordance (sold-out ones still do).
-    final canFavorite = onFavorite != null && !EventUtils.isPassed(event);
+    final passed = EventUtils.isPassed(event);
 
-    // Aligned to the top so the card hugs its content instead of stretching to
-    // the grid tile — this is what left the tall empty white block the card
-    // used to show below the price row.
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Card(
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AspectRatio(
-              aspectRatio: 16 / 10,
+            SizedBox(
+              width: 132,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (imageUrl.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(color: Colors.grey.shade200),
-                      errorWidget: (_, _, _) => _fallbackImage(),
-                    )
-                  else
-                    _fallbackImage(),
-                  // Priority tag (⭐ Featured / 🔥 Hot / 📈 Trending / 📍 Nearby) —
-                  // server-authoritative, identical to the web card badge.
+                  imageUrl.isEmpty
+                      ? _fallbackImage()
+                      : CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(color: Colors.grey.shade200),
+                          errorWidget: (_, _, _) => _fallbackImage(),
+                        ),
                   if (EventUtils.priorityBadge(event) != null)
                     Positioned(
-                      top: 12,
-                      left: 12,
+                      top: 9,
+                      left: 9,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryDark,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                          color: AppTheme.primary,
+                          borderRadius: BorderRadius.circular(7),
                         ),
                         child: Text(
                           EventUtils.priorityBadge(event)!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  // Status badge (Upcoming / Sold Out / Passed) — bottom-left,
-                  // same labels and colors as the web app.
-                  Positioned(
-                    bottom: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Color(EventUtils.statusBadge(event).colorValue),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            EventUtils.statusBadge(event).label,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (canFavorite)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Material(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        shape: const CircleBorder(),
-                        child: IconButton(
-                          icon: Icon(
-                            event.isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: event.isFavorite ? Colors.red : AppTheme.textMuted,
-                          ),
-                          onPressed: onFavorite,
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (event.customId != null)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 11, 10, 11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            event.eventName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, height: 1.15),
+                          ),
+                        ),
+                        if (onFavorite != null)
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                            iconSize: 19,
+                            onPressed: onFavorite,
+                            icon: Icon(event.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: event.isFavorite ? Colors.red : AppTheme.textMuted),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
                     Text(
-                      event.customId!,
+                      EventUtils.venueLine(event),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 11.5),
                     ),
-                  Text(
-                    event.eventName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, height: 1.25, fontWeight: FontWeight.w700, color: AppTheme.textMain),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 14, color: AppTheme.textMuted),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          EventUtils.formatDate(event.eventDate),
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                        ),
+                    if (event.organizerName != null && event.organizerName!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        event.organizerName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 10.5),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.textMuted),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          EventUtils.venueLine(event),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              EventUtils.formatPrice(event),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: EventUtils.isFree(event) ? AppTheme.success : AppTheme.primary,
-                              ),
-                            ),
-                            Text(
-                              '(${EventUtils.tierLabel(event)})',
-                              style: const TextStyle(fontSize: 10.5, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (event.category != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 4,
+                      children: [
+                        _detail(Icons.calendar_today_outlined, EventUtils.formatDate(event.eventDate)),
+                        if (event.eventTime != null && event.eventTime!.isNotEmpty)
+                          _detail(Icons.schedule_outlined, event.eventTime!.substring(0, event.eventTime!.length < 5 ? event.eventTime!.length : 5)),
+                        if (event.category != null && event.category!.isNotEmpty)
+                          _detail(Icons.sell_outlined, event.category!),
+                      ],
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            EventUtils.formatPrice(event),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800,
+                                color: EventUtils.isFree(event) ? AppTheme.success : AppTheme.primary),
                           ),
-                          child: Text(event.category!, style: const TextStyle(fontSize: 11, color: AppTheme.primary)),
                         ),
-                    ],
-                  ),
-                ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                          decoration: BoxDecoration(color: passed ? Colors.grey.shade200 : AppTheme.primary,
+                              borderRadius: BorderRadius.circular(10)),
+                          child: Text(passed ? 'Ended' : 'View details',
+                              style: TextStyle(color: passed ? AppTheme.textMuted : Colors.white,
+                                  fontSize: 11, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-      ),
     );
   }
 
-  Widget _fallbackImage() {
-    return Container(
-      color: const Color(0xFFEDE9FE),
-      child: const Center(child: Icon(Icons.event, size: 48, color: AppTheme.primary)),
-    );
-  }
+  Widget _detail(IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppTheme.textMuted),
+          const SizedBox(width: 3),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 110),
+            child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10.5)),
+          ),
+        ],
+      );
+
+  Widget _fallbackImage() => Container(
+        color: const Color(0xFFEDE9FE),
+        alignment: Alignment.center,
+        child: const Icon(Icons.event, size: 38, color: AppTheme.primary),
+      );
 }

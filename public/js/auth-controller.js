@@ -732,7 +732,7 @@ class AuthController {
     const normalizedTarget = target.replace(/^\//, "");
     const finalUrl = target.includes("://")
       ? target
-      : basePath + normalizedTarget;
+      : window.location.origin + "/" + normalizedTarget;
 
     window.location.href = finalUrl;
   }

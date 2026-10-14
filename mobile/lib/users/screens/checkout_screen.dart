@@ -9,6 +9,7 @@ import '../../core/widgets/brand_logo.dart';
 import '../models/event_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/user_payment_service.dart';
+import '../utils/checkout_navigation.dart';
 import 'payment_webview_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -76,8 +77,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
-    if (auth.user?.isProfileComplete != true) {
-      context.go('/profile-complete');
+    // Checkout collects the contact details it needs, so only an actual
+    // sign-out blocks payment — an incomplete profile must not divert users
+    // away from the Paystack page.
+    if (auth.status == AuthStatus.unauthenticated) {
+      PendingCheckout.event = widget.event;
+      context.go('/login');
       return;
     }
 
@@ -210,7 +215,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final formWidth = Breakpoints.formMaxWidth(MediaQuery.sizeOf(context).width);
 
     return Scaffold(
-      appBar: AppBar(title: const BrandLogo(size: 32)),
+      appBar: AppBar(title: const BrandLogo(size: 32, animateEveryMinute: true)),
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: formWidth),

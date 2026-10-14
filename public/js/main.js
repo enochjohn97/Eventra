@@ -20,6 +20,7 @@ let eventsData = {
 
 let allEvents = []; // Store all events for filtering
 let swiperInstances = {}; // Store Swiper instances
+let lastLogoAnimation = -1;
 
 // Pagination state
 let currentPage = 1;
@@ -61,6 +62,32 @@ function getItemsPerPage() {
 let itemsPerPage = getItemsPerPage();
 let filteredDiscoveryEvents = [];
 
+function initLogoAnimation() {
+  // A page-level driver (homepage) may already own the logo; only one timer
+  // may animate it, otherwise the classes cancel each other out.
+  if (window.__eventoutLogoBound) return;
+  const logo = document.querySelector(".header .logo img");
+  if (!logo || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  window.__eventoutLogoBound = true;
+
+  const animations = [
+    "logo-anim-bounce",
+    "logo-anim-spin",
+    "logo-anim-float",
+    "logo-anim-stretch",
+  ];
+  setInterval(() => {
+    const choices = animations
+      .map((_, index) => index)
+      .filter((index) => index !== lastLogoAnimation);
+    const next = choices[Math.floor(Math.random() * choices.length)];
+    lastLogoAnimation = next;
+    logo.classList.remove(...animations);
+    void logo.offsetWidth;
+    logo.classList.add(animations[next]);
+  }, 30000);
+}
+
 // Load events from API
 async function loadEvents() {
   const globalSearch = document.getElementById("globalSearch");
@@ -72,7 +99,25 @@ async function loadEvents() {
     const user = window.storage
       ? window.storage.get(keys.user) || window.storage.get("user")
       : null;
-    const userState = (user?.state || "").toLowerCase().trim();
+    let userState = (user?.state || "").toLowerCase().trim();
+    if (
+      user &&
+      (!window._homepageProfileStateSyncedAt ||
+        Date.now() - window._homepageProfileStateSyncedAt >= 60000)
+    ) {
+      try {
+        const profileResponse = await apiFetch("/api/profile");
+        const profileResult = await profileResponse.json();
+        if (profileResult.success && profileResult.user) {
+          userState = (profileResult.user.state || "").toLowerCase().trim();
+          user.state = profileResult.user.state || "";
+          if (window.storage) window.storage.set(keys.user, user);
+          window._homepageProfileStateSyncedAt = Date.now();
+        }
+      } catch (_) {
+        // Keep using the last synchronized profile state if the profile API is unavailable.
+      }
+    }
 
     const stateParam = userState
       ? `&user_state=${encodeURIComponent(userState)}`
@@ -114,7 +159,7 @@ async function loadEvents() {
       const todayStr = new Date().toISOString().split("T")[0];
 
       // User location for Nearby
-      const userState = (user?.state || "").toLowerCase().trim();
+      userState = (user?.state || userState || "").toLowerCase().trim();
 
       const now = new Date();
 
@@ -153,12 +198,12 @@ async function loadEvents() {
       // All Events: sorted by creation date
       eventsData.all = sortByCreation([...publishedEvents]);
 
-      // Nearby: events on TODAY whose state matches user's state(s)
+      // Nearby: upcoming events whose state matches the user's saved profile state
       // Supports both single-state and multi-state events
       eventsData.nearby = sortByCreation(
         publishedEvents.filter((e) => {
           const eventDateStr = e.event_date ? e.event_date.split("T")[0] : "";
-          if (eventDateStr !== todayStr) return false; // must be today
+          if (!eventDateStr || eventDateStr < todayStr) return false;
           if (!userState) {
             // No user state: fall back to server label
             return (e.priority_label || e.priority || "")
@@ -288,14 +333,14 @@ function initSwiper(selector, uniqueId) {
 function renderAllCategories(data = eventsData) {
   window.homepageSeenIds = new Set();
 
-  const renderCategory = (events, gridId, sectionId, swiperSelector) => {
+  const renderCategory = (events, gridId, sectionId, swiperSelector, allowDuplicates = false) => {
     const container = document.getElementById(gridId);
     const section = document.getElementById(sectionId);
     if (!container || !section) return;
 
-    const uniqueToCategory = events.filter(
-      (e) => !window.homepageSeenIds.has(e.id),
-    );
+    const uniqueToCategory = allowDuplicates
+      ? events
+      : events.filter((e) => !window.homepageSeenIds.has(e.id));
 
     if (uniqueToCategory.length > 0) {
       section.style.display = "block";
@@ -341,6 +386,7 @@ function renderAllCategories(data = eventsData) {
     "nearby-events-grid",
     "nearbySection",
     ".nearby-swiper",
+    true,
   );
 }
 
@@ -1004,6 +1050,7 @@ function createEventCard(event, index) {
   let priorityBadge = "";
   const eventPriorityText = event.priority_label || event.priority || "";
   if (
+    status !== "passed" &&
     eventPriorityText &&
     !eventPriorityText.toLowerCase().includes("upcoming")
   ) {
@@ -1758,6 +1805,7 @@ function initSmoothScroll() {
 // Initialize all functions
 async function init() {
   startHomeCelebration();
+  initLogoAnimation();
   // Events are public content and must not wait for the session handshake.
   const eventsPromise = loadEvents().then(() => {
     initializeSlider("hot-events-grid");
@@ -2121,10 +2169,15 @@ function showEventModal(eventId) {
     }
   }
 
+  // Fix: Force local time to avoid UTC midnight timezone shift on isPassed check
+  const isPassed =
+    new Date(event.event_date + "T00:00:00") <
+    new Date(new Date().setHours(0, 0, 0, 0));
+
   // Priority badge
   const priorityBadge = document.getElementById("modalPriorityBadge");
   const modalPriorityVal = event.priority_label || event.priority || "";
-  if (modalPriorityVal) {
+  if (modalPriorityVal && !isPassed) {
     priorityBadge.textContent = modalPriorityVal.toUpperCase();
     priorityBadge.style.display = "flex";
     const pv = modalPriorityVal.toLowerCase();
@@ -2147,11 +2200,6 @@ function showEventModal(eventId) {
 
   // Buy ticket button logic
   const buyTicketBtn = document.getElementById("bookNowBtn");
-  // Fix: Force local time to avoid UTC midnight timezone shift on isPassed check
-  const isPassed =
-    new Date(event.event_date + "T00:00:00") <
-    new Date(new Date().setHours(0, 0, 0, 0));
-
   if (buyTicketBtn) {
     if (isPassed) {
       buyTicketBtn.textContent = "Event Ended";
@@ -2373,10 +2421,14 @@ function updateCartUI() {
     // Clear and render items
     cartItemsContainer.innerHTML = favorites
       .map((event) => {
-        const price =
+        const legacyFavoritePrice =
           !event.price || parseFloat(event.price) === 0
             ? "Free"
             : `₦${parseFloat(event.price).toLocaleString()}`;
+        const favoritePrices = [event.price, event.regular_price, event.vip_price, event.premium_price]
+          .map((value) => parseFloat(value || 0) || 0);
+        const favoritePrice = Math.max(...favoritePrices);
+        const price = favoritePrice <= 0 ? "Free" : `₦${favoritePrice.toLocaleString()}`;
         const eventImage =
           typeof getImageUrl === "function"
             ? getImageUrl(event.image_path)

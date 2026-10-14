@@ -34,21 +34,20 @@ if (!$paystack_key && !$statusOnly) {
 }
 
 if ($paystack_key) {
-    // Basic format validation: secret keys only.
-    // LIVE-ONLY policy (2026-09-25): test keys (sk_test_...) are rejected.
-    // Paystack issues test keys until business verification completes in the
-    // Paystack dashboard — once verified, switch the dashboard to Live mode
-    // (Settings → API Keys & Webhooks) and paste the sk_live_... key here.
-    // Only a live client key can create the client-owned checkout and the
-    // platform subaccount under that client's Paystack account.
-    if (!preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $paystack_key)) {
-        echo json_encode(['success' => false, 'message' => 'Live secret key required. Keys starting with sk_test_ are not accepted — in the Paystack dashboard, complete business verification and switch to Live mode, then copy the sk_live_... secret key here.']);
+    $isLiveKey = (bool) preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $paystack_key);
+    $isLocalDevelopment = isLocalHost() && ($_ENV['APP_ENV'] ?? '') === 'local';
+    $isLocalTestKey = $isLocalDevelopment
+        && (bool) preg_match('/^sk_test_[A-Za-z0-9]{8,}$/', $paystack_key);
+    if (!$isLiveKey && !$isLocalTestKey) {
+        $message = $isLocalDevelopment
+            ? 'A valid live secret key is required, or a test key may be used on a local development server.'
+            : 'A valid live secret key is required. Test keys are only accepted on a local development server.';
+        echo json_encode(['success' => false, 'message' => $message]);
         exit;
     }
 }
 
-// Determine environment from prefix (only 'live' passes validation now)
-$env = $paystack_key ? (strpos($paystack_key, 'sk_live_') === 0 ? 'live' : null) : null;
+$env = $paystack_key ? (str_starts_with($paystack_key, 'sk_live_') ? 'live' : 'test') : null;
 
 try {
     if ($paystack_key) {

@@ -5,30 +5,93 @@ class EventUtils {
   /// Filter vocabularies — identical to the web app (public/js/utils.js) so a
   /// filter chosen in the app matches the same events the website returns.
   static const List<String> nigeriaStates = [
-    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue',
-    'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe',
-    'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
-    'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau',
-    'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT',
+    'Abia',
+    'Adamawa',
+    'Akwa Ibom',
+    'Anambra',
+    'Bauchi',
+    'Bayelsa',
+    'Benue',
+    'Borno',
+    'Cross River',
+    'Delta',
+    'Ebonyi',
+    'Edo',
+    'Ekiti',
+    'Enugu',
+    'Gombe',
+    'Imo',
+    'Jigawa',
+    'Kaduna',
+    'Kano',
+    'Katsina',
+    'Kebbi',
+    'Kogi',
+    'Kwara',
+    'Lagos',
+    'Nasarawa',
+    'Niger',
+    'Ogun',
+    'Ondo',
+    'Osun',
+    'Oyo',
+    'Plateau',
+    'Rivers',
+    'Sokoto',
+    'Taraba',
+    'Yobe',
+    'Zamfara',
+    'FCT',
   ];
 
   static const List<String> eventCategories = [
-    'Conference', 'Workshop', 'Seminar', 'Entertainment', 'Sport & Fitness',
-    'Exhibition', 'Networking', 'Festival', 'Concert', 'Business', 'Education',
-    'Social', 'Personal', 'Community', 'Religion', 'Cultural', 'Technology',
-    'Art', 'Health', 'Food', 'Agriculture', 'Tourism', 'Fashion',
-    'Real Estate', 'Awards', 'Charity', 'Finance', 'Gaming', 'Political',
-    'Creative', 'Entrepreneurship & Innovation', 'Other',
+    'Conference',
+    'Workshop',
+    'Seminar',
+    'Entertainment',
+    'Sport & Fitness',
+    'Exhibition',
+    'Networking',
+    'Festival',
+    'Concert',
+    'Business',
+    'Education',
+    'Social',
+    'Personal',
+    'Community',
+    'Religion',
+    'Cultural',
+    'Technology',
+    'Art',
+    'Health',
+    'Food',
+    'Agriculture',
+    'Tourism',
+    'Fashion',
+    'Real Estate',
+    'Awards',
+    'Charity',
+    'Finance',
+    'Gaming',
+    'Political',
+    'Creative',
+    'Entrepreneurship & Innovation',
+    'Other',
   ];
 
   /// Priority tags exactly as the web offers them.
   static const List<String> priorityTags = [
-    'Featured', 'Hot', 'Trending', 'Nearby', 'Upcoming',
+    'Featured',
+    'Hot',
+    'Trending',
+    'Nearby',
+    'Upcoming',
   ];
 
   /// Price buckets used by the app's filter sheet. Values are the backend
   /// contract: free / price_max / price_min+price_max.
-  static const List<({String label, bool free, int? min, int? max})> priceBuckets = [
+  static const List<({String label, bool free, int? min, int? max})>
+  priceBuckets = [
     (label: 'Free', free: true, min: null, max: null),
     (label: 'Under ₦5,000', free: false, min: null, max: 5000),
     (label: '₦5,000 – ₦20,000', free: false, min: 5000, max: 20000),
@@ -64,7 +127,8 @@ class EventUtils {
 
   /// EventOut platform fee applied to every base price so the app shows the
   /// same amount the buyer is charged (identical to the web app's math).
-  static double applyPlatformFee(double base) => base > 0 ? (base * 1.1).roundToDouble() : 0;
+  static double applyPlatformFee(double base) =>
+      base > 0 ? (base * 1.1).roundToDouble() : 0;
 
   /// Active ticket tiers for an event, in display order.
   static List<String> activeTiers(EventModel event) {
@@ -122,11 +186,12 @@ class EventUtils {
       if (withFee > 0) return '₦${_comma(withFee)}';
     }
 
-    final prices = tiers
-        .map((t) => applyPlatformFee(basePriceForTier(event, t)))
-        .where((p) => p > 0)
-        .toList()
-      ..sort();
+    final prices =
+        tiers
+            .map((t) => applyPlatformFee(basePriceForTier(event, t)))
+            .where((p) => p > 0)
+            .toList()
+          ..sort();
 
     if (prices.isEmpty) {
       // Tiers exist but every active tier is priced 0 — fall back to the
@@ -151,7 +216,8 @@ class EventUtils {
   }
 
   /// True when the event's date is already behind today (same rule as the web).
-  static bool isPassed(EventModel event) => statusBadge(event).label == 'Passed';
+  static bool isPassed(EventModel event) =>
+      statusBadge(event).label == 'Passed';
 
   /// Passed events cannot be bought into and offer no share/favorite affordances.
   static bool canBuyTickets(EventModel event) =>
@@ -190,6 +256,7 @@ class EventUtils {
   /// Priority tag exactly as the web renders it: server label is
   /// authoritative; "upcoming" is never shown as a badge; icons match.
   static String? priorityBadge(EventModel event) {
+    if (isPassed(event)) return null;
     final raw = (event.priorityLabel ?? '').trim();
     if (raw.isEmpty) return null;
     if (raw.toLowerCase().contains('upcoming')) return null;

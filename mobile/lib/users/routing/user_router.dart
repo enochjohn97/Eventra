@@ -4,12 +4,10 @@ import '../models/event_model.dart';
 import '../providers/auth_provider.dart';
 import '../screens/checkout_screen.dart';
 import '../screens/login_screen.dart';
-import '../screens/onboarding_screen.dart';
 import '../screens/payment_success_screen.dart';
 import '../screens/profile_complete_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/user_shell_screen.dart';
-import '../screens/welcome_screen.dart';
 
 final GlobalKey<NavigatorState> userNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -48,14 +46,34 @@ GoRouter createUserRouter(AuthProvider authProvider) {
     },
     routes: [
       GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
-      GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
-      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/welcome', redirect: (_, _) => '/login'),
+      GoRoute(path: '/onboarding', redirect: (_, _) => '/login'),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(
         path: '/profile-complete',
         builder: (_, _) => const ProfileCompleteScreen(),
       ),
-      GoRoute(path: '/home', builder: (_, _) => const UserShellScreen()),
+      GoRoute(
+        path: '/home',
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 550),
+          child: const UserShellScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final transition = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            );
+            return FadeTransition(
+              opacity: transition,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 1.16, end: 1).animate(transition),
+                child: child,
+              ),
+            );
+          },
+        ),
+      ),
       GoRoute(
         path: '/checkout',
         builder: (context, state) {

@@ -38,13 +38,15 @@ class EndpointResolver {
   /// Lets a re-hosted backend be added without touching this file.
   static const _extraOrigins = String.fromEnvironment('API_BASE_URLS');
 
-  /// Live platform origin. The deployed host is the default so the app always
-  /// has a real endpoint to fall back to — including a release build, and a
-  /// phone with the USB cable unplugged. Override at build time when the
-  /// backend moves: `--dart-define=PRODUCTION_API_BASE_URL=https://host/api`.
+  /// Optional remote origin, EMPTY on purpose: the project no longer uses the
+  /// old shared host (`eventra-website.liveblog365.com`), and leaving it as a
+  /// fallback made the app adopt a server whose API no longer answers — the
+  /// "could not load events" wall. The local dev server is the only endpoint
+  /// until a new backend is deployed; add it at build time with
+  /// `--dart-define=PRODUCTION_API_BASE_URL=https://host/api`.
   static const _production = String.fromEnvironment(
     'PRODUCTION_API_BASE_URL',
-    defaultValue: 'https://eventra-website.liveblog365.com/api',
+    defaultValue: '',
   );
 
   /// Local dev-server hosts, comma separated `host[:port]`:
@@ -111,7 +113,14 @@ class EndpointResolver {
 
   static Future<bool> _doResolve() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_prefsKey);
+    var saved = prefs.getString(_prefsKey);
+    // Purge an origin remembered from a previous backend: a stale remote host
+    // must not win the fast path and re-break the app after the switch to the
+    // local server.
+    if (saved != null && !_isLocalOrigin(saved)) {
+      await prefs.remove(_prefsKey);
+      saved = null;
+    }
 
     final local = <String>[];
     final remote = <String>[];
@@ -132,8 +141,13 @@ class EndpointResolver {
     }
     // The Wi-Fi origin the backend reported for itself goes first: it is the
     // only local address that keeps answering after the USB cable is pulled.
-    _lanOrigin ??= prefs.getString(_lanKey);
-    add(local, _lanOrigin);
+    var lanOrigin = _lanOrigin ?? prefs.getString(_lanKey);
+    if (lanOrigin != null && !_isLocalOrigin(lanOrigin)) {
+      await prefs.remove(_lanKey);
+      lanOrigin = null;
+    }
+    _lanOrigin = lanOrigin;
+    add(local, lanOrigin);
 
     // Last known-good origin keeps the fast path, in its own group.
     if (saved != null) add(_isLocalOrigin(saved) ? local : remote, saved);
@@ -173,12 +187,15 @@ class EndpointResolver {
 
     if (winner != null) return _adopt(prefs, winner);
 
-    // Nothing answered. Pin the live platform so the app keeps working when the
-    // phone is unplugged from the laptop (or no dev server is running) instead
-    // of retrying a loopback address that only exists while the cable is in.
+    // Nothing answered. Use the fallback origin so the app is never left
+    // without an endpoint — but do NOT treat this as settled. A dev server
+    // that starts a few seconds after the app would otherwise stay invisible
+    // for the whole session, so the resolver stays unlocked and the next
+    // resolve() probes again.
     if (_production.isNotEmpty) {
       await _adopt(prefs, _production);
     }
+    _resolved = false;
     _inflight = null;
     return false;
   }
@@ -238,8 +255,11 @@ class EndpointResolver {
   /// Skipped in release builds (a shipped app must not port-scan a user's
   /// network) and when the phone is not on a private IPv4 network.
   static Future<String?> _discoverLanOrigin() async {
-    if (kReleaseMode) return null;
-
+    // Runs in release too: on a real handset a release build is often the only
+    // thing being tested against the laptop's dev server, and without this the
+    // app could only ever reach it over USB loopback — so unplugging the cable
+    // killed the feed. The sweep is bounded (a /24 in batches) and only
+    // private networks are touched.
     final List<NetworkInterface> interfaces;
     try {
       interfaces = await NetworkInterface.list(

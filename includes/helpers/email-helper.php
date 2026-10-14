@@ -43,6 +43,14 @@ class EmailHelper
     // real embedded (CID) attachment to display reliably.
     const BRAND_LOGO_CID = 'eventout_logo';
 
+    // Full lockup (mark joined to the calligraphy wordmark) as one image. Used
+    // for the email header so the brand renders identically everywhere — email
+    // clients strip @font-face, so calligraphy CANNOT be done with live text.
+    const BRAND_LOCKUP_CID = 'eventout_lockup';
+
+    // Coral lockup used consistently across email backgrounds and templates.
+    const BRAND_LOCKUP_LIGHT_CID = 'eventout_lockup_red';
+
     public static function sendEmail(
         string $to,
         string $subject,
@@ -63,6 +71,34 @@ class EmailHelper
             }
             if ($logoPath !== '' && !$logoAttached) {
                 $embeddedImages[] = ['path' => $logoPath, 'cid' => self::BRAND_LOGO_CID, 'name' => 'logo-mark.png'];
+            }
+        }
+
+        // ── Auto-embed the full lockup whenever the body references it ────────
+        if (str_contains((string) $body, 'cid:' . self::BRAND_LOCKUP_CID)) {
+            $lockupPath = self::brandLockupPath();
+            $lockupAttached = false;
+            foreach ($embeddedImages as $_img) {
+                if (($_img['cid'] ?? '') === self::BRAND_LOCKUP_CID) {
+                    $lockupAttached = true;
+                    break;
+                }
+            }
+            if ($lockupPath !== '' && !$lockupAttached) {
+                $embeddedImages[] = ['path' => $lockupPath, 'cid' => self::BRAND_LOCKUP_CID, 'name' => 'logo-wordmark-white.png'];
+            }
+        }
+        if (str_contains((string) $body, 'cid:' . self::BRAND_LOCKUP_LIGHT_CID)) {
+            $lightPath = self::brandLockupPath(false);
+            $lightAttached = false;
+            foreach ($embeddedImages as $_img) {
+                if (($_img['cid'] ?? '') === self::BRAND_LOCKUP_LIGHT_CID) {
+                    $lightAttached = true;
+                    break;
+                }
+            }
+            if ($lightPath !== '' && !$lightAttached) {
+                $embeddedImages[] = ['path' => $lightPath, 'cid' => self::BRAND_LOCKUP_LIGHT_CID, 'name' => 'logo-wordmark.png'];
             }
         }
 
@@ -88,6 +124,12 @@ class EmailHelper
             // data URI so the logo still renders in this degraded path.
             if (str_contains($body, 'cid:' . self::BRAND_LOGO_CID)) {
                 $body = str_replace('cid:' . self::BRAND_LOGO_CID, self::brandMarkDataUri(), $body);
+            }
+            if (str_contains($body, 'cid:' . self::BRAND_LOCKUP_CID)) {
+                $body = str_replace('cid:' . self::BRAND_LOCKUP_CID, self::brandLockupDataUri(), $body);
+            }
+            if (str_contains($body, 'cid:' . self::BRAND_LOCKUP_LIGHT_CID)) {
+                $body = str_replace('cid:' . self::BRAND_LOCKUP_LIGHT_CID, self::brandLockupDataUri(false), $body);
             }
             $sent = @mail($to, $subject, $body, $headers);
             if ($sent) {
@@ -175,10 +217,12 @@ class EmailHelper
         $safeEvent = htmlspecialchars($cleanEvent, ENT_QUOTES, 'UTF-8');
         $safeBarcode = htmlspecialchars($barcode, ENT_QUOTES, 'UTF-8');
         $year = date('Y');
+        $brandHeader = self::brandHeaderLightHtml('22px');
 
         $body = <<<HTML
         <span style="display:none !important; visibility:hidden; mso-hide:all; font-size:1px; color:#ffffff; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">Your ticket confirmation for {$safeEvent}.</span>
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;">
+            {$brandHeader}
             <h2 style="color:#2ecc71;">Ticket Confirmation</h2>
             <p>Hi <strong>{$safeUser}</strong>,</p>
             <p>Thank you for your purchase! Your ticket for <strong>{$safeEvent}</strong> is ready.</p>
@@ -248,6 +292,51 @@ class EmailHelper
     }
 
     /**
+     * Absolute path to the calligraphy lockup PNG, or ''. $white=true is the
+     * white-wordmark variant for dark backgrounds; false is the coral one for
+     * light backgrounds.
+     */
+    private static function brandLockupPath(bool $white = true): string
+    {
+        // Primary: the full wordmark PNG (mark + text baked in).
+        $file = $white ? 'logo-wordmark-white.png' : 'logo-wordmark.png';
+        $path = self::normalisePath(__DIR__ . '/../../public/assets/brand/' . $file);
+        if (file_exists($path) && filesize($path) > 0) {
+            return $path;
+        }
+        // Fallback: the available logo mark PNG (mark only).
+        $fallback = self::normalisePath(__DIR__ . '/../../public/assets/brand/logo-mark.png');
+        return (file_exists($fallback) && filesize($fallback) > 0) ? $fallback : '';
+    }
+
+    /** Inline data-URI of the lockup (PDF/HTML renderers that cannot do cid:). */
+    private static function brandLockupDataUri(bool $white = true): string
+    {
+        static $cached = [];
+        $k = $white ? 'w' : 'r';
+        if (array_key_exists($k, $cached)) {
+            return $cached[$k];
+        }
+        $path = self::brandLockupPath($white);
+        $cached[$k] = $path === ''
+            ? ''
+            : 'data:image/png;base64,' . base64_encode((string) file_get_contents($path));
+        return $cached[$k];
+    }
+
+    /** Lockup source: cid: for emails, data-URI for PDF/HTML. '' if missing. */
+    private static function brandLockupSrc(bool $useCid = true, bool $white = true): string
+    {
+        if (self::brandLockupPath($white) === '') {
+            return '';
+        }
+        if (!$useCid) {
+            return self::brandLockupDataUri($white);
+        }
+        return 'cid:' . ($white ? self::BRAND_LOCKUP_CID : self::BRAND_LOCKUP_LIGHT_CID);
+    }
+
+    /**
      * Logo image source: a cid: reference (embedded by sendEmail) for emails,
      * or the inline data-URI for PDF/HTML renderers that cannot resolve cid:.
      * Returns '' when the logo asset is missing (header degrades to text only).
@@ -262,46 +351,29 @@ class EmailHelper
 
     private static function brandHeaderHtml(string $fontSize = '15px', bool $useCid = true): string
     {
-        $mark = self::brandLogoSrc($useCid);
-        $imgHtml = $mark !== ''
-            ? '<img src="' . $mark . '" width="30" height="30" alt="EventOut" style="width:30px;height:30px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
-            : '';
-        return '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin-bottom:14px;">'
-            . '<tr>'
-            . '<td style="vertical-align:middle;padding-right:9px;">' . $imgHtml . '</td>'
-            . '<td style="vertical-align:middle;">'
-            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#ffffff;line-height:1;">EventOut</span>'
-            . '</td>'
-            . '</tr>'
-            . '</table>';
+        $mark = self::brandLockupSrc($useCid, false);
+        return $mark === '' ? '' : '<div style="margin-bottom:14px;text-align:left;">'
+            . '<img src="' . $mark . '" width="176" height="32" alt="EventOut" style="width:176px;height:32px;max-width:100%;display:block;border:none;" />'
+            . '</div>';
     }
 
     /**
-     * Brand header for light-background emails (OTP, password reset, reminders,
-     * receipts): the coral E-monogram logo mark + a dark "EventOut" wordmark.
-     * Kept table-based so it renders in Outlook/Gmail.
+     * Full coral wordmark for email templates; the transparent PNG keeps its
+     * lettering together and renders consistently in Outlook and Gmail.
      */
     private static function brandHeaderLightHtml(string $fontSize = '22px', bool $useCid = true): string
     {
-        $mark = self::brandLogoSrc($useCid);
-        $imgHtml = $mark !== ''
-            ? '<img src="' . $mark . '" width="34" height="34" alt="EventOut" style="width:34px;height:34px;display:inline-block;vertical-align:middle;border:none;border-radius:8px;" />'
-            : '';
-        return '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;margin:0 auto 24px auto;">'
-            . '<tr>'
-            . '<td style="vertical-align:middle;padding-right:10px;">' . $imgHtml . '</td>'
-            . '<td style="vertical-align:middle;">'
-            . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:' . $fontSize . ';font-weight:800;letter-spacing:-0.5px;color:#1e293b;line-height:1;">EventOut</span>'
-            . '</td>'
-            . '</tr>'
-            . '</table>';
+        $mark = self::brandLockupSrc($useCid, false);
+        return $mark === '' ? '' : '<div style="text-align:center;margin:0 auto 24px auto;">'
+            . '<img src="' . $mark . '" width="176" height="32" alt="EventOut" style="width:176px;height:32px;max-width:100%;display:inline-block;border:none;" />'
+            . '</div>';
     }
 
     /**
      * Public brand header for ad-hoc email templates (client approval/decline,
      * support acknowledgment, broadcast notifications) that build their own
      * HTML bodies but must still carry the EventOut logo. Light-background
-     * variant: coral E-monogram PNG data-URI + dark "EventOut" wordmark.
+     * variant: the coral transparent wordmark PNG.
      */
     public static function brandEmailHeaderHtml(string $fontSize = '20px'): string
     {

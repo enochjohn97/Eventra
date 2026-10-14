@@ -288,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
             intent === "admin"
               ? "/client/login.html?role=admin"
               : `/client/login.html?role=${intent}`;
-          window.location.href = `${loginUrl}?registered=${encodeURIComponent(data.email || emailInput.value)}`;
+          window.location.href = loginUrl;
         }, 500);
       } else {
         // Backend returned success: false – show the exact error

@@ -35,7 +35,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const BrandLogo(size: 32),
+        title: const BrandLogo(size: 32, animateEveryMinute: true),
         actions: [
           if (provider.favorites.isNotEmpty)
             TextButton(

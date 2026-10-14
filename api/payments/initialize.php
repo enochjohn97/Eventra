@@ -343,11 +343,17 @@ try {
     // to the platform account makes the hosted checkout display the platform
     // merchant and risks charging without the organizer's expected split.
     $activePaystackKey = trim((string)$event['paystack_auth_token']);
-    if (!str_starts_with($activePaystackKey, 'sk_live_')) {
+    $isLivePaystackKey = (bool) preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $activePaystackKey);
+    $isLocalDevelopment = isLocalHost() && ($_ENV['APP_ENV'] ?? '') === 'local';
+    $isLocalTestPaystackKey = $isLocalDevelopment
+        && (bool) preg_match('/^sk_test_[A-Za-z0-9]{8,}$/', $activePaystackKey);
+    if (!$isLivePaystackKey && !$isLocalTestPaystackKey) {
         http_response_code(409);
         echo json_encode([
             'success' => false,
-            'message' => 'The organizer Paystack account is not configured for live payments.',
+            'message' => $isLocalDevelopment
+                ? 'The organizer Paystack account must use a valid live key, or a test key while using a local development server.'
+                : 'The organizer Paystack account is not configured for live payments.',
         ]);
         exit;
     }

@@ -38,6 +38,8 @@ class UserEventService {
     int? priceMin,
     int? priceMax,
   }) async {
+    final savedUser = await SecureStorage.getUser();
+    final userState = savedUser?['state']?.toString().trim() ?? '';
     final params = <String, dynamic>{
       'page': page,
       'limit': limit,
@@ -48,6 +50,7 @@ class UserEventService {
       if (category != null && category.isNotEmpty) 'category': category,
       if (state != null && state.isNotEmpty) 'state': state,
       if (priority != null && priority.isNotEmpty) 'priority': priority,
+      if (userState.isNotEmpty) 'user_state': userState,
       if (freeOnly) 'free': '1',
       'price_min': ?priceMin,
       'price_max': ?priceMax,
