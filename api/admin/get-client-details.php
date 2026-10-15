@@ -35,11 +35,19 @@ try {
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     // Never expose any stored Paystack secret key to the UI.
     $client['paystack_key'] = '';
+    $client['has_paystack_key'] = !empty($client['paystack_auth_token'])
+        || !empty($meta['paystack_auth_token'])
+        || !empty($meta['paystack_key']);
+    unset($client['paystack_auth_token']);
     $client['bank_code'] = $client['settlement_bank_code'] ?? $meta['bank_code'] ?? '';
     $client['bank_name'] = $client['settlement_bank_name'] ?? $meta['bank_name'] ?? '';
     $client['account_number'] = $client['settlement_account_number'] ?? $meta['account_number'] ?? '';
     $client['account_name'] = $client['settlement_account_name'] ?? $meta['account_name'] ?? '';
     $client['paystack_account_status'] = $meta['paystack_account_status'] ?? 'not_created';
+    $client['paystack_account_reason'] = $meta['paystack_account_reason'] ?? '';
+    $client['paystack_account_reviewed_at'] = $meta['paystack_account_reviewed_at'] ?? null;
+    $platformSubaccount = $meta['paystack_platform_subaccount'] ?? [];
+    $client['paystack_platform_subaccount_code'] = $platformSubaccount['code'] ?? '';
     // Stable modal contract. Keep flat fields too for existing dashboard code.
     $client['settlement_account'] = [
         'bank_name' => $client['bank_name'],

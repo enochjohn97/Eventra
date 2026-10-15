@@ -223,7 +223,10 @@ try {
             $stmt = $pdo->prepare("
                 INSERT INTO users (user_auth_id, custom_id, name, profile_pic) 
                 VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE user_auth_id = VALUES(user_auth_id), name = VALUES(name), profile_pic = VALUES(profile_pic)
+                ON DUPLICATE KEY UPDATE
+                    user_auth_id = VALUES(user_auth_id),
+                    name = IF(name IS NULL OR name = '', VALUES(name), name),
+                    profile_pic = IF(profile_pic IS NULL OR profile_pic = '', VALUES(profile_pic), profile_pic)
             ");
             // Check if custom_id already exists for this user (UPSERT case)
             $existingStmt = $pdo->prepare("SELECT custom_id FROM users WHERE user_auth_id = ?");

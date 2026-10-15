@@ -172,9 +172,11 @@ try {
     foreach ($kycFiles as $field) {
         if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) continue;
         $file = $_FILES[$field];
-        if ($file['error'] !== UPLOAD_ERR_OK) continue;
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('The KYC document upload did not complete. Please choose it again.');
+        }
         if ($file['size'] > 5 * 1024 * 1024) {
-            throw new RuntimeException('Each KYC document must be under 5 MB.');
+            throw new RuntimeException('Each KYC document must be 5 MB or smaller.');
         }
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         

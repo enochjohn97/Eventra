@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 /// adjacent `ventOut` text completes the name with no visual gap.
 class BrandLogo extends StatefulWidget {
   final double size;
+  final double? markSize;
   final bool showWordmark;
   final bool white;
   final bool animateEveryMinute;
@@ -15,6 +16,7 @@ class BrandLogo extends StatefulWidget {
   const BrandLogo({
     super.key,
     this.size = 34,
+    this.markSize,
     this.showWordmark = true,
     this.white = false,
     this.animateEveryMinute = true,
@@ -104,17 +106,21 @@ class _BrandLogoState extends State<BrandLogo>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _mark(widget.size),
-                Text(
-                  'ventOut',
-                  style: TextStyle(
-                    color: widget.white
-                        ? Colors.white
-                        : const Color(0xFFF64B54),
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontWeight: FontWeight.w700,
-                    fontSize: widget.size * 0.58,
-                    height: 1.0,
+                _mark(widget.markSize ?? widget.size),
+                Transform.translate(
+                  offset: const Offset(-2, 0),
+                  child: Text(
+                    'ventOut',
+                    style: TextStyle(
+                      color: widget.white
+                          ? Colors.white
+                          : const Color(0xFFF64B54),
+                      fontFamily: 'PlusJakartaSans',
+                      fontWeight: FontWeight.w700,
+                      fontSize: widget.size * 0.85,
+                      height: 1.0,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
               ],

@@ -18,6 +18,9 @@ $client_id = $data['client_id'] ?? null;
 $paystack_key = trim($data['paystack_key'] ?? $data['paystack_auth_token'] ?? '');
 $paystack_connection_status = $data['paystack_connection_status'] ?? null;
 $paystack_account_status = $data['paystack_account_status'] ?? null;
+$paystack_account_reason = trim(strip_tags((string)($data['paystack_account_reason'] ?? '')));
+$paystack_account_reason = mb_substr($paystack_account_reason, 0, 500);
+$platform_subaccount_code = trim((string)($data['platform_subaccount_code'] ?? ''));
 $paystack_public_key = trim($data['paystack_public_key'] ?? '');
 $paystack_merchant_id = trim($data['paystack_merchant_id'] ?? '');
 
@@ -26,10 +29,33 @@ if (!$client_id) {
     exit;
 }
 
-$statusOnly = !$paystack_key && ($paystack_connection_status !== null || $paystack_account_status !== null || $paystack_public_key !== '' || $paystack_merchant_id !== '');
+$statusOnly = !$paystack_key && (
+    $paystack_connection_status !== null
+    || $paystack_account_status !== null
+    || $paystack_public_key !== ''
+    || $paystack_merchant_id !== ''
+    || $platform_subaccount_code !== ''
+);
 
 if (!$paystack_key && !$statusOnly) {
     echo json_encode(['success' => false, 'message' => 'Paystack Key is required']);
+    exit;
+}
+
+if ($paystack_account_status !== null
+    && !in_array($paystack_account_status, ['not_created', 'pending', 'approved', 'declined'], true)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Choose a valid Paystack account review status.']);
+    exit;
+}
+if ($paystack_account_status === 'declined' && $paystack_account_reason === '') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Add the reason the Paystack account was declined.']);
+    exit;
+}
+if ($platform_subaccount_code !== '' && !preg_match('/^ACCT_[A-Za-z0-9]+$/', $platform_subaccount_code)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Enter a valid Attoneex subaccount code (ACCT_...).']);
     exit;
 }
 
@@ -91,7 +117,7 @@ try {
     }
 
     // Fetch existing metadata
-    $stmt = $pdo->prepare("SELECT metadata FROM clients WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT metadata, paystack_auth_token FROM clients WHERE id = ?");
     $stmt->execute([$client_id]);
     $client = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -100,18 +126,29 @@ try {
         exit;
     }
 
-    if ($paystack_key) {
+    $storedMeta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+    $effectivePaystackKey = $paystack_key ?: trim((string)($client['paystack_auth_token'] ?? $storedMeta['paystack_auth_token'] ?? ''));
+    if ($paystack_key || $platform_subaccount_code !== '') {
+        if ($effectivePaystackKey === '') {
+            http_response_code(422);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Save the client Paystack secret key before adding an Attoneex subaccount code.',
+            ]);
+            exit;
+        }
         $platform = ensurePlatformSubaccount(
             $pdo,
             (int)$client_id,
-            $paystack_key,
-            PAYSTACK_PLATFORM_COMMISSION_PERCENT
+            $effectivePaystackKey,
+            PAYSTACK_PLATFORM_COMMISSION_PERCENT,
+            $platform_subaccount_code !== '' ? $platform_subaccount_code : null
         );
         if (empty($platform['success']) || empty($platform['subaccount_code'])) {
             http_response_code(422);
             echo json_encode([
                 'success' => false,
-                'message' => 'Paystack account was not connected because the Attoneex settlement subaccount could not be configured. Check the platform settlement bank details and try again.',
+                'message' => $platform['message'] ?? 'The Attoneex settlement subaccount could not be configured. Check the code and settlement details, then try again.',
             ]);
             exit;
         }
@@ -124,6 +161,7 @@ try {
     $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
+    $previousAccountStatus = (string)($meta['paystack_account_status'] ?? 'not_created');
     
     if ($paystack_key) {
         $meta['paystack_key'] = $paystack_key;
@@ -134,7 +172,13 @@ try {
     if ($paystack_public_key !== '') $meta['paystack_public_key'] = $paystack_public_key;
     if ($paystack_merchant_id !== '') $meta['paystack_merchant_id'] = $paystack_merchant_id;
     if ($paystack_connection_status !== null) $meta['paystack_connection_status'] = $paystack_connection_status;
-    if ($paystack_account_status !== null) $meta['paystack_account_status'] = $paystack_account_status;
+    if ($paystack_account_status !== null) {
+        $meta['paystack_account_status'] = $paystack_account_status;
+        $meta['paystack_account_reason'] = $paystack_account_status === 'declined' ? $paystack_account_reason : null;
+        $meta['paystack_account_reviewed_at'] = in_array($paystack_account_status, ['approved', 'declined'], true)
+            ? date('Y-m-d H:i:s')
+            : null;
+    }
 
     $updated_metadata = json_encode($meta);
     $sets = ['metadata = ?', 'updated_at = NOW()'];
@@ -148,14 +192,56 @@ try {
     $updateStmt = $pdo->prepare("UPDATE clients SET " . implode(', ', $sets) . " WHERE id = ?");
     $updateStmt->execute($params);
 
+    // Account decisions are useful to every admin, including the admin who
+    // made the update. The notification metadata powers the review modal.
+    $isAccountDecision = in_array($paystack_account_status, ['approved', 'declined'], true);
+    if ($isAccountDecision && $previousAccountStatus !== $paystack_account_status) {
+        require_once '../../api/utils/notification-helper.php';
+        $detailsStmt = $pdo->prepare("SELECT c.client_auth_id, c.name, c.business_name, c.company, c.phone, a.email FROM clients c JOIN auth_accounts a ON c.client_auth_id = a.id WHERE c.id = ? AND c.deleted_at IS NULL");
+        $detailsStmt->execute([$client_id]);
+        $business = $detailsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $businessName = (string)(($business['business_name'] ?? '') ?: ($business['company'] ?? '') ?: ($business['name'] ?? '') ?: 'Client');
+        $message = $paystack_account_status === 'approved'
+            ? "Paystack account approved for {$businessName}."
+            : "Paystack account declined for {$businessName}. Reason: {$paystack_account_reason}";
+        $reviewData = [
+            'client_id' => (int)$client_id,
+            'business_name' => $businessName,
+            'client_name' => (string)($business['name'] ?? ''),
+            'company' => (string)($business['company'] ?? ''),
+            'email' => (string)($business['email'] ?? ''),
+            'phone' => (string)($business['phone'] ?? ''),
+            'status' => $paystack_account_status,
+            'reason' => $paystack_account_status === 'declined' ? $paystack_account_reason : '',
+            'reviewed_at' => $meta['paystack_account_reviewed_at'],
+        ];
+        $recipients = $pdo->query("SELECT DISTINCT admin_auth_id FROM admins WHERE admin_auth_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
+        $senderAuthId = (int)getAuthId();
+        foreach ($recipients as $recipientAuthId) {
+            createNotification(
+                (int)$recipientAuthId,
+                $message,
+                'paystack_account_review',
+                $senderAuthId,
+                'admin',
+                'admin',
+                $reviewData
+            );
+        }
+    }
+
     require_once '../../includes/helpers/entity-resolver.php';
     logSecurityEvent($admin_id, 'admin@EventOut.local', 'admin_action', 'local', "Client ID $client_id: Paystack key updated");
 
     echo json_encode([
         'success' => true,
-        'message' => $paystack_key
-            ? 'Client Paystack account connected and the 10% Attoneex settlement subaccount is ready.'
-            : 'Client Paystack details updated successfully.'
+        'message' => $platform_subaccount_code !== ''
+            ? 'Attoneex subaccount verified and the platform split is ready.'
+            : ($paystack_key
+                ? 'Client Paystack account connected and the 10% Attoneex settlement split is ready.'
+                : ($paystack_account_status !== null
+                    ? 'Paystack account review status updated successfully.'
+                    : 'Client Paystack details updated successfully.'))
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

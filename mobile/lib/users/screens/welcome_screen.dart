@@ -34,7 +34,7 @@ class WelcomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const BrandLogo(size: 44, white: true),
+                  const BrandLogo(size: 27, markSize: 23, white: true),
                   const Spacer(),
                   const Text(
                     'Discover Africa\'s\nBest Events',

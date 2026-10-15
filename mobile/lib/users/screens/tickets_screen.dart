@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_string_interpolations
+// ignore_for_file: unnecessary_underscores, unnecessary_string_interpolations
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +34,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
     final provider = context.watch<TicketsProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const BrandLogo(size: 32, animateEveryMinute: true)),
+      appBar: AppBar(
+        title: const BrandLogo(
+          size: 27,
+          markSize: 23,
+          animateEveryMinute: true,
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: provider.load,
         child: provider.isLoading && provider.tickets.isEmpty
@@ -109,8 +115,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       final ticket = provider.tickets[index];
                       return Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
+                          padding: const EdgeInsets.all(16),                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ClipRRect(
@@ -122,6 +127,21 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                       ? CachedNetworkImage(
                                           imageUrl: ticket.absoluteEventImage!,
                                           fit: BoxFit.cover,
+                                          placeholder: (_, __) => Container(
+                                            color: AppTheme.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: AppTheme.primary,
+                                            ),
+                                          ),
+                                          errorWidget: (_, __, ___) => Container(
+                                            color: AppTheme.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            child: const Icon(Icons.event),
+                                          ),
                                         )
                                       : Container(
                                           color: AppTheme.primary.withValues(
@@ -668,7 +688,19 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
               height: 160,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorWidget: (_, _, _) => const SizedBox.shrink(),
+              placeholder: (_, __) => Container(
+                color: AppTheme.primary.withValues(alpha: 0.08),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                height: 160,
+                color: AppTheme.primary.withValues(alpha: 0.08),
+              ),
             ),
           ),
         const SizedBox(height: 12),

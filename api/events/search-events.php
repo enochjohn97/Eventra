@@ -6,6 +6,9 @@
  */
 
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 require_once '../../config/database.php';
 require_once '../../includes/middleware/auth.php';
 
@@ -20,6 +23,9 @@ try {
     $priority = strtolower(trim((string) ($_GET['priority'] ?? '')));
     $category = $_GET['category'] ?? null;
     $state    = trim((string) ($_GET['state'] ?? ''));
+    $user_state = trim((string) ($_GET['user_state'] ?? ($_SESSION['user_state'] ?? '')));
+    $userStateSql = $pdo->quote(str_replace(' ', '', strtolower($user_state)));
+    $sameUserState = "($userStateSql != '' AND FIND_IN_SET($userStateSql, LOWER(REPLACE(e.state, ' ', ''))) > 0)";
 
     // ── Filter helpers (shared with the mobile discovery sheet) ────────────
     // Merit score drives the trending tag and the `merit` sort.
@@ -98,7 +104,7 @@ try {
                 $where_clauses[] = "($meritScore) > 60";
                 break;
             case 'nearby':
-                $where_clauses[] = "e.event_date = CURDATE()";
+                $where_clauses[] = "e.event_date >= CURDATE() AND $sameUserState";
                 break;
             case 'upcoming':
                 $where_clauses[] = "e.event_date >= CURDATE()";
@@ -165,19 +171,12 @@ try {
 
     // Dynamic priority label — same CASE as get-events.php so search results
     // carry identical ⭐/🔥/📈/📍 tags for the mobile app.
-    $user_state = $_SESSION['user_state'] ?? '';
-    $userStateSql = $pdo->quote($user_state);
     $priorityLabel = "CASE
         WHEN e.is_boosted = 1 THEN '⭐ Featured'
         WHEN IFNULL(e.sales_count,0) >= 50 THEN '🔥 Hot'
         WHEN $meritScore > 60 THEN '📈 Trending'
-        WHEN e.event_date = CURDATE()
-             AND $userStateSql != ''
-             AND (
-                 FIND_IN_SET($userStateSql, e.state) > 0
-                 OR e.state = 'All States'
-                 OR e.state = 'all'
-             ) THEN '📍 Nearby'
+        WHEN e.event_date >= CURDATE()
+             AND $sameUserState THEN '📍 Nearby'
         ELSE ''
     END";
 

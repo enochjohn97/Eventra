@@ -13,14 +13,9 @@ import 'host_challenge.dart';
 /// origin. The winner is persisted, so subsequent launches go straight to it.
 ///
 /// Candidate order:
-///   1. `--dart-define=API_BASE_URL` (explicit override always wins when set
-///      *and* reachable — a release build hard-pins production this way)
-///   2. Last known-good origin from SharedPreferences (fast path)
-///   3. The LAN address the backend reported for itself (`lan_url`) — the one
-///      local origin that survives unplugging the USB cable
-///   4. Local dev candidates (USB `adb reverse`, emulator, `LOCAL_API_HOSTS`)
-///   5. A sweep of the phone's own subnet for a dev server (dev builds only)
-///   6. Production default (also the last-resort fallback)
+///   1. `--dart-define=API_BASE_URL` when reachable
+///   2. A reachable local dev server (USB, emulator, or LAN)
+///   3. Production and other remote origins as fallbacks
 class EndpointResolver {
   EndpointResolver._();
 
@@ -38,15 +33,11 @@ class EndpointResolver {
   /// Lets a re-hosted backend be added without touching this file.
   static const _extraOrigins = String.fromEnvironment('API_BASE_URLS');
 
-  /// Optional remote origin, EMPTY on purpose: the project no longer uses the
-  /// old shared host (`eventra-website.liveblog365.com`), and leaving it as a
-  /// fallback made the app adopt a server whose API no longer answers — the
-  /// "could not load events" wall. The local dev server is the only endpoint
-  /// until a new backend is deployed; add it at build time with
+  /// Live API default. Override for a different deployment with
   /// `--dart-define=PRODUCTION_API_BASE_URL=https://host/api`.
   static const _production = String.fromEnvironment(
     'PRODUCTION_API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://eventra-website.liveblog365.com/api',
   );
 
   /// Local dev-server hosts, comma separated `host[:port]`:
@@ -173,10 +164,9 @@ class EndpointResolver {
       return _adopt(prefs, explicitOverride);
     }
 
-    // Probe both groups, but prefer the local dev server when it answers:
-    // the live host is not being used right now (broken assets), and localhost
-    // via USB `adb reverse` or LAN is the working origin. Remote/production
-    // stays the fallback so the app still works with no laptop anywhere.
+    // Prefer a reachable local server so a phone on the developer's Wi-Fi uses
+    // the running PHP app and its database. Keep remote probes in parallel;
+    // production remains the fallback when no local server answers.
     final localProbe = () async {
       final configured = await _probeLocal(local);
       if (configured != null) return configured;
@@ -260,7 +250,7 @@ class EndpointResolver {
     // app could only ever reach it over USB loopback — so unplugging the cable
     // killed the feed. The sweep is bounded (a /24 in batches) and only
     // private networks are touched.
-    final List<NetworkInterface> interfaces;
+    List<NetworkInterface> interfaces;
     try {
       interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
@@ -269,6 +259,30 @@ class EndpointResolver {
     } catch (_) {
       return null;
     }
+
+    // Cellular interfaces often get private 10.x addresses too, but cannot
+    // reach a PHP server running on the developer's Wi-Fi. Skip those ranges
+    // and check Wi-Fi before any remaining private interfaces.
+    interfaces =
+        interfaces
+            .where(
+              (iface) => !RegExp(
+                r'(ccmni|rmnet|pdp|wwan)',
+                caseSensitive: false,
+              ).hasMatch(iface.name),
+            )
+            .toList()
+          ..sort((a, b) {
+            final aWifi = RegExp(
+              r'(wlan|wifi)',
+              caseSensitive: false,
+            ).hasMatch(a.name);
+            final bWifi = RegExp(
+              r'(wlan|wifi)',
+              caseSensitive: false,
+            ).hasMatch(b.name);
+            return (aWifi ? 0 : 1).compareTo(bWifi ? 0 : 1);
+          });
 
     final candidates = <String>[];
     for (final iface in interfaces) {

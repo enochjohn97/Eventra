@@ -49,7 +49,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const BrandLogo(size: 40),
+              const BrandLogo(size: 27, markSize: 23),
               const Spacer(),
               Container(
                 width: 88,

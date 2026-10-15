@@ -190,7 +190,11 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const BrandLogo(size: 32, animateEveryMinute: true),
+        title: const BrandLogo(
+          size: 27,
+          markSize: 23,
+          animateEveryMinute: true,
+        ),
         actions: [
           // Filter entry point (category / state / priority / price).
           Stack(

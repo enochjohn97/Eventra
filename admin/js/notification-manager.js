@@ -163,7 +163,7 @@ class NotificationManager {
   createNotificationElement(notif) {
     const notifItem = document.createElement("div");
     notifItem.className = "notif-item";
-    if (!notif.is_read) {
+    if (!Number(notif.is_read)) {
       notifItem.classList.add("unread");
     }
 
@@ -185,6 +185,7 @@ class NotificationManager {
       success: "✓",
       warning: "⚠",
       error: "✕",
+      paystack_account_review: "💳",
     };
 
     notifItem.innerHTML = `
@@ -198,17 +199,77 @@ class NotificationManager {
             </div>
         `;
 
-    // Add click event to mark as read
-    if (!notif.is_read) {
-      notifItem.style.cursor = "pointer";
-      notifItem.addEventListener("click", () => {
+    notifItem.style.cursor = "pointer";
+    notifItem.addEventListener("click", () => {
+      if (!Number(notif.is_read)) {
         this.markAsRead(notif.id);
         notifItem.classList.remove("unread");
-        notifItem.style.cursor = "default";
-      });
-    }
+        notif.is_read = 1;
+      }
+      if (notif.type === "paystack_account_review") {
+        this.showPaystackAccountReview(notif);
+      }
+    });
 
     return notifItem;
+  }
+
+  showPaystackAccountReview(notif) {
+    let details = notif.metadata || notif.data || {};
+    if (typeof details === "string") {
+      try {
+        details = JSON.parse(details);
+      } catch (_) {
+        details = {};
+      }
+    }
+
+    const status = details.status === "declined" ? "declined" : "approved";
+    const businessName = details.business_name || "Client";
+    const escape = (value) =>
+      String(value || "—").replace(/[&<>"']/g, (character) => {
+        const entities = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        };
+        return entities[character];
+      });
+    const rows = [
+      ["Business name", businessName],
+      ["Client contact", details.client_name],
+      ["Email", details.email],
+      ["Phone", details.phone],
+      ["Decision", status === "approved" ? "Approved" : "Declined"],
+      ["Reviewed", details.reviewed_at],
+    ];
+    const rowHtml = rows
+      .filter(([, value]) => String(value || "").trim() !== "")
+      .map(
+        ([label, value]) =>
+          `<div style="display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #e2e8f0;text-align:left;"><strong style="color:#64748b;">${escape(label)}</strong><span style="color:#1e293b;">${escape(value)}</span></div>`,
+      )
+      .join("");
+    const decisionMessage =
+      status === "approved"
+        ? `The Paystack account for ${businessName} has been approved.`
+        : `The Paystack account for ${businessName} was declined.`;
+    const reasonHtml =
+      status === "declined"
+        ? `<div style="margin-top:14px;padding:12px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;text-align:left;"><strong style="display:block;color:#be123c;margin-bottom:5px;">Decline reason</strong><span style="color:#334155;">${escape(details.reason || "No reason was supplied.")}</span></div>`
+        : "";
+
+    if (window.Swal) {
+      window.Swal.fire({
+        title: status === "approved" ? "Paystack account approved" : "Paystack account declined",
+        icon: status === "approved" ? "success" : "error",
+        html: `<div style="color:#334155;"><p style="margin:0 0 12px;text-align:left;">${escape(decisionMessage)}</p>${rowHtml}${reasonHtml}</div>`,
+        confirmButtonText: "Close",
+        confirmButtonColor: status === "approved" ? "#15803d" : "#be123c",
+      });
+    }
   }
 
   async markAsRead(notificationId = null) {

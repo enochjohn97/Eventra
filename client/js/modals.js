@@ -651,7 +651,7 @@ async function showProfileEditModal() {
                                         <span>NIN Document</span>
                                         ${user.kyc_nin_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
                                     </label>
-                                    <input type="file" name="kyc_nin_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    <input type="file" name="kyc_nin_file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style="font-size: 0.8rem; width: 100%;">
                                     ${
                                       user.kyc_nin_file
                                         ? `
@@ -670,7 +670,7 @@ async function showProfileEditModal() {
                                         <span>Voter's Card</span>
                                         ${user.kyc_voter_card_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
                                     </label>
-                                    <input type="file" name="kyc_voter_card_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    <input type="file" name="kyc_voter_card_file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style="font-size: 0.8rem; width: 100%;">
                                     ${
                                       user.kyc_voter_card_file
                                         ? `
@@ -689,7 +689,7 @@ async function showProfileEditModal() {
                                         <span>Driver's License</span>
                                         ${user.kyc_driver_license_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
                                     </label>
-                                    <input type="file" name="kyc_driver_license_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    <input type="file" name="kyc_driver_license_file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style="font-size: 0.8rem; width: 100%;">
                                     ${
                                       user.kyc_driver_license_file
                                         ? `
@@ -708,7 +708,7 @@ async function showProfileEditModal() {
                                         <span>CAC Certificate</span>
                                         ${user.kyc_cac_file ? '<span style="color: #2ecc71; font-weight: bold; font-size: 0.75rem;">✓ Uploaded</span>' : '<span style="color: #64748b; font-size: 0.75rem;">Missing</span>'}
                                     </label>
-                                    <input type="file" name="kyc_cac_file" accept=".pdf,image/*" style="font-size: 0.8rem; width: 100%;">
+                                    <input type="file" name="kyc_cac_file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" style="font-size: 0.8rem; width: 100%;">
                                     ${
                                       user.kyc_cac_file
                                         ? `
@@ -829,6 +829,86 @@ async function showProfileEditModal() {
  * application state. Object URLs are revoked when replaced or when the card is
  * cleared, preventing leaked browser memory in a long-lived dashboard.
  */
+async function validateKycDocument(file) {
+  const maxBytes = 5 * 1024 * 1024;
+  if (file.size < 4 * 1024) return "This file is too small to read. Upload a clear scan or photo.";
+  if (file.size > maxBytes) return "Each KYC document must be 5 MB or smaller.";
+
+  const extension = file.name.split(".").pop().toLowerCase();
+  const formats = {
+    pdf: { mime: "application/pdf" },
+    jpg: { mime: "image/jpeg" },
+    jpeg: { mime: "image/jpeg" },
+    png: { mime: "image/png" },
+    webp: { mime: "image/webp" },
+  };
+  const format = formats[extension];
+  if (!format) return "Use a PDF, JPG, PNG, or WebP document.";
+  if (file.type && file.type !== format.mime) {
+    return "The selected file type does not match its file extension.";
+  }
+
+  const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const isPdf = String.fromCharCode(...header.slice(0, 5)) === "%PDF-";
+  const isJpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+  const isPng =
+    header[0] === 0x89 &&
+    header[1] === 0x50 &&
+    header[2] === 0x4e &&
+    header[3] === 0x47 &&
+    header[4] === 0x0d &&
+    header[5] === 0x0a &&
+    header[6] === 0x1a &&
+    header[7] === 0x0a;
+  const isWebp =
+    String.fromCharCode(...header.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...header.slice(8, 12)) === "WEBP";
+  const signatureMatches =
+    extension === "pdf"
+      ? isPdf
+      : extension === "jpg" || extension === "jpeg"
+        ? isJpeg
+        : extension === "png"
+          ? isPng
+          : isWebp;
+  if (!signatureMatches) return "This file is unreadable or does not match its format.";
+
+  if (extension !== "pdf") {
+    let width = 0;
+    let height = 0;
+    if (typeof createImageBitmap === "function") {
+      try {
+        const bitmap = await createImageBitmap(file);
+        width = bitmap.width;
+        height = bitmap.height;
+        bitmap.close();
+      } catch (_) {
+        return "This image could not be opened. Choose a different file.";
+      }
+    } else {
+      const previewUrl = URL.createObjectURL(file);
+      try {
+        const dimensions = await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+          image.onerror = () => reject(new Error("Image could not be opened."));
+          image.src = previewUrl;
+        });
+        width = dimensions.width;
+        height = dimensions.height;
+      } catch (_) {
+        return "This image could not be opened. Choose a different file.";
+      } finally {
+        URL.revokeObjectURL(previewUrl);
+      }
+    }
+    if (Math.min(width, height) < 240 || Math.max(width, height) < 400) {
+      return "Image is too small to review. Use a clear photo at least 400 × 240 pixels.";
+    }
+  }
+  return "";
+}
+
 function initKycUploadPreviews(form) {
   if (!form) return;
 
@@ -850,7 +930,10 @@ function initKycUploadPreviews(form) {
     const preview = document.createElement("div");
     preview.style.cssText =
       "display:none;align-items:center;gap:9px;padding:8px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;min-width:0;";
-    card.append(picker, preview);
+    const validationMessage = document.createElement("div");
+    validationMessage.setAttribute("role", "alert");
+    validationMessage.style.cssText = "display:none;color:#b91c1c;font-size:.7rem;line-height:1.4;";
+    card.append(picker, preview, validationMessage);
 
     let objectUrl = null;
     const clear = () => {
@@ -859,11 +942,27 @@ function initKycUploadPreviews(form) {
       input.value = "";
       preview.style.display = "none";
       preview.replaceChildren();
+      validationMessage.textContent = "";
+      validationMessage.style.display = "none";
       picker.style.display = "";
     };
-    input.addEventListener("change", () => {
+    input.addEventListener("change", async () => {
       const file = input.files && input.files[0];
       if (!file) return clear();
+      const validationError = await validateKycDocument(file);
+      if (validationError) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+        input.value = "";
+        preview.replaceChildren();
+        preview.style.display = "none";
+        picker.style.display = "";
+        validationMessage.textContent = validationError;
+        validationMessage.style.display = "block";
+        return;
+      }
+      validationMessage.textContent = "";
+      validationMessage.style.display = "none";
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(file);
       const isImage = /^image\//.test(file.type);

@@ -60,7 +60,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
     if (_event.absoluteImageUrl != null && _event.absoluteImageUrl!.startsWith('http')) {
       return _event.absoluteImageUrl!;
     }
-    if (_event.imagePath != null) {
+    if (_event.imagePath != null && _event.imagePath!.isNotEmpty) {
       return ApiClient().absoluteUrl(_event.imagePath);
     }
     return '';
@@ -132,7 +132,12 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                     height: isWide ? 300 : 240,
                     width: double.infinity,
                     child: _imageUrl.isNotEmpty
-                        ? CachedNetworkImage(imageUrl: _imageUrl, fit: BoxFit.cover)
+                        ? CachedNetworkImage(
+                            imageUrl: _imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: Colors.grey.shade200),
+                            errorWidget: (_, __, ___) => Container(color: const Color(0xFFEDE9FE)),
+                          )
                         : Container(color: const Color(0xFFEDE9FE)),
                   ),
                   // Priority tag — same as web (server label).

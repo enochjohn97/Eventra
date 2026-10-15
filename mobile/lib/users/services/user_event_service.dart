@@ -72,6 +72,7 @@ class UserEventService {
           (e) => EventModel.fromJson(
             Map<String, dynamic>.from(e as Map),
             baseOrigin: _origin,
+            userState: userState,
           ),
         )
         .toList();
@@ -80,7 +81,12 @@ class UserEventService {
   }
 
   static Future<EventModel> fetchEventDetails(int id) async {
-    final response = await _dio.get('/events/$id');
+    final savedUser = await SecureStorage.getUser();
+    final userState = savedUser?['state']?.toString().trim() ?? '';
+    final response = await _dio.get(
+      '/events/$id',
+      queryParameters: userState.isEmpty ? null : {'user_state': userState},
+    );
     final data = _toMap(response.data);
     if (data['success'] != true || data['event'] == null) {
       throw Exception(data['message']?.toString() ?? 'Event not found');
@@ -88,6 +94,7 @@ class UserEventService {
     return EventModel.fromJson(
       Map<String, dynamic>.from(data['event'] as Map),
       baseOrigin: _origin,
+      userState: userState,
     );
   }
 
@@ -120,6 +127,8 @@ class UserEventService {
     int page = 1,
     int limit = 50,
   }) async {
+    final savedUser = await SecureStorage.getUser();
+    final userState = savedUser?['state']?.toString().trim() ?? '';
     try {
       final response = await _dio.get(
         '/favorites',
@@ -136,7 +145,13 @@ class UserEventService {
           .toList();
       await SecureStorage.savePrivateList('favorites', records);
       return records
-          .map((event) => EventModel.fromJson(event, baseOrigin: _origin))
+          .map(
+            (event) => EventModel.fromJson(
+              event,
+              baseOrigin: _origin,
+              userState: userState,
+            ),
+          )
           .toList();
     } on DioException catch (error) {
       if (!_isOffline(error)) {
@@ -147,7 +162,13 @@ class UserEventService {
         throw Exception(error.message ?? 'Failed to load favorites');
       }
       return cached
-          .map((event) => EventModel.fromJson(event, baseOrigin: _origin))
+          .map(
+            (event) => EventModel.fromJson(
+              event,
+              baseOrigin: _origin,
+              userState: userState,
+            ),
+          )
           .toList();
     }
   }

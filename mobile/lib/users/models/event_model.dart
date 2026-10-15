@@ -67,7 +67,11 @@ class EventModel {
     this.isSoldOut = false,
   });
 
-  factory EventModel.fromJson(Map<String, dynamic> json, {String? baseOrigin}) {
+  factory EventModel.fromJson(
+    Map<String, dynamic> json, {
+    String? baseOrigin,
+    String? userState,
+  }) {
     double toDouble(dynamic v) {
       if (v == null) return 0;
       if (v is num) return v.toDouble();
@@ -125,8 +129,11 @@ class EventModel {
       organizerName:
           json['organizer_name']?.toString() ?? json['client_name']?.toString(),
       clientName: json['client_name']?.toString(),
-      priorityLabel:
-          json['priority_label']?.toString() ?? json['priority']?.toString(),
+      priorityLabel: _validatedPriorityLabel(
+        json['priority_label'],
+        json['state']?.toString(),
+        userState,
+      ),
       salesCount: int.tryParse(json['sales_count']?.toString() ?? '') ?? 0,
       attendeeCount:
           int.tryParse(json['attendee_count']?.toString() ?? '') ?? 0,
@@ -225,4 +232,27 @@ class EventModel {
       isSoldOut: isSoldOut,
     );
   }
+}
+
+String? _validatedPriorityLabel(
+  dynamic value,
+  String? eventState,
+  String? userState,
+) {
+  final label = value?.toString().trim();
+  if (label == null || label.isEmpty) return null;
+  final normalizedLabel = label.toLowerCase();
+  // The database enum is a legacy value that defaults to "nearby". A valid
+  // server-computed nearby tag includes its icon and must match this user.
+  if (normalizedLabel == 'nearby') return null;
+  if (normalizedLabel.contains('nearby')) {
+    String normalize(String state) =>
+        state.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    final currentState = normalize(userState?.trim() ?? '');
+    final eventStates = (eventState ?? '').split(',').map(normalize);
+    if (currentState.isEmpty || !eventStates.contains(currentState)) {
+      return null;
+    }
+  }
+  return label;
 }

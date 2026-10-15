@@ -259,6 +259,9 @@ class EventUtils {
     if (isPassed(event)) return null;
     final raw = (event.priorityLabel ?? '').trim();
     if (raw.isEmpty) return null;
+    // Old local caches may contain the legacy enum value, which defaulted to
+    // "nearby" for every event instead of representing a computed badge.
+    if (raw.toLowerCase() == 'nearby') return null;
     if (raw.toLowerCase().contains('upcoming')) return null;
     return raw;
   }

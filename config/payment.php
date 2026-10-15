@@ -151,6 +151,38 @@ function ensureSubaccount($pdo, $client_auth_id, $bank_code, $account_number, $b
     return ['success' => true, 'subaccount_code' => $code, 'subaccount_id' => $id];
 }
 
+/** Reactivate a verified platform subaccount and confirm its intended split. */
+function activatePlatformSubaccount(string $code, string $secretKey, float $mainAccountPercent): array
+{
+    $updated = paystackRequest(
+        'PUT',
+        '/subaccount/' . rawurlencode($code),
+        ['active' => true, 'percentage_charge' => $mainAccountPercent],
+        $secretKey
+    );
+    if (!$updated['ok']) {
+        return ['success' => false, 'message' => $updated['body']['message'] ?? $updated['error'] ?? 'Could not activate the Attoneex subaccount'];
+    }
+
+    $details = $updated['body']['data'] ?? [];
+    if (!array_key_exists('active', $details) || !array_key_exists('percentage_charge', $details)) {
+        $check = paystackRequest('GET', '/subaccount/' . rawurlencode($code), [], $secretKey);
+        if (!$check['ok'] || empty($check['body']['data'])) {
+            return ['success' => false, 'message' => 'Paystack could not confirm the Attoneex subaccount activation'];
+        }
+        $details = $check['body']['data'];
+    }
+
+    if (!filter_var($details['active'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        return ['success' => false, 'message' => 'Paystack did not activate the Attoneex subaccount'];
+    }
+    if (abs((float)($details['percentage_charge'] ?? -1) - $mainAccountPercent) > 0.01) {
+        return ['success' => false, 'message' => 'Paystack did not apply the requested platform split'];
+    }
+
+    return ['success' => true, 'data' => $details];
+}
+
 /**
  * Ensures a "platform" subaccount (Attoneex Tech-Solutions Nig. Ltd) exists
  * under a CLIENT's own Paystack account and returns its code, so the
@@ -158,16 +190,19 @@ function ensureSubaccount($pdo, $client_auth_id, $bank_code, $account_number, $b
  * whenever a transaction runs on the client's integration.
  *
  * Cached as metadata.paystack_platform_subaccount on the clients row so the
- * Paystack API is only hit once per client. The client's OWN subaccount_code
- * (used for the opposite flow — platform-key charges) is never touched.
+ * subaccount is created once and revalidated before checkout. The client's
+ * OWN subaccount_code (used for platform-key charges) is never touched.
  *
  * @return array ['success' => bool, 'subaccount_code' => ?string, 'percentage_charge' => float, 'message' => string]
  */
-function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey, ?float $commissionPercent = null): array
+function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey, ?float $commissionPercent = null, ?string $manualSubaccountCode = null): array
 {
     $commission = $commissionPercent ?? PAYSTACK_PLATFORM_COMMISSION_PERCENT;
     if ($commission < 0) $commission = 0.0;
     if ($commission > 100) $commission = 100.0;
+    // Paystack's percentage_charge is the share paid to the main account.
+    // Here the organizer is the main account and Attoneex is the subaccount.
+    $mainAccountPercent = round(100 - $commission, 2);
 
     // 1. Cached?
     $stmt = $pdo->prepare('SELECT metadata FROM clients WHERE id = ? LIMIT 1');
@@ -180,19 +215,128 @@ function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey,
     $keyFingerprint = substr(sha1($clientSecretKey), 0, 16);
     $cachedPlatform = $meta['paystack_platform_subaccount'] ?? [];
     $cachedCode = (string)($cachedPlatform['code'] ?? '');
+    $manualCode = trim((string)$manualSubaccountCode);
+    if ($manualCode === '' && ($cachedPlatform['source'] ?? '') === 'manual') {
+        $manualCode = $cachedCode;
+    }
     $sameIntegration = $cachedCode !== ''
         && ($cachedPlatform['key_fingerprint'] ?? '') === $keyFingerprint;
     $cachedBankIsPlatform = empty($cachedPlatform['degraded_bank_details']);
 
+    // A manually-created code is usable without platform bank variables as
+    // long as Paystack confirms it belongs to the platform and has the right
+    // split. Cache it per integration so the read-only check is done once.
+    if ($manualCode !== '') {
+        if (!preg_match('/^ACCT_[A-Za-z0-9]+$/', $manualCode)) {
+            return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => 'The Attoneex subaccount code is invalid'];
+        }
+        $manual = paystackRequest('GET', '/subaccount/' . rawurlencode($manualCode), [], $clientSecretKey);
+        if (!$manual['ok'] || empty($manual['body']['data'])) {
+            $msg = $manual['body']['message'] ?? $manual['error'] ?? 'Paystack could not find this subaccount under the client account';
+            return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => $msg];
+        }
+        $details = $manual['body']['data'];
+        $actualName = strtolower(trim((string)($details['business_name'] ?? '')));
+        $expectedName = strtolower(trim(PAYSTACK_PLATFORM_BUSINESS_NAME));
+        $nameMatches = $actualName !== '' && (
+            $actualName === $expectedName
+            || str_contains($actualName, $expectedName)
+            || str_contains($expectedName, $actualName)
+            || (str_contains($expectedName, 'attoneex') && str_contains($actualName, 'attoneex'))
+        );
+        if (!$nameMatches) {
+            return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => 'That subaccount is not named for the Attoneex platform'];
+        }
+        if (PAYSTACK_PLATFORM_ACCOUNT_NUMBER !== ''
+            && preg_replace('/\D/', '', (string)($details['account_number'] ?? '')) !== preg_replace('/\D/', '', PAYSTACK_PLATFORM_ACCOUNT_NUMBER)) {
+            return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => 'The Attoneex subaccount settlement account does not match the configured platform account'];
+        }
+
+        if (!filter_var($details['active'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            || abs((float)($details['percentage_charge'] ?? -1) - $mainAccountPercent) > 0.01) {
+            $enabled = activatePlatformSubaccount($manualCode, $clientSecretKey, $mainAccountPercent);
+            if (empty($enabled['success'])) {
+                return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => $enabled['message'] ?? 'Could not activate the Attoneex subaccount'];
+            }
+            $details = $enabled['data'];
+        }
+
+        $storedMainPercent = (float)($details['percentage_charge'] ?? -1);
+        if (abs($storedMainPercent - $mainAccountPercent) > 0.01) {
+            $updated = paystackRequest(
+                'PUT',
+                '/subaccount/' . rawurlencode($manualCode),
+                ['percentage_charge' => $mainAccountPercent],
+                $clientSecretKey
+            );
+            if (!$updated['ok']) {
+                $msg = $updated['body']['message'] ?? $updated['error'] ?? 'Could not configure the platform split on the Attoneex subaccount';
+                return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => $msg];
+            }
+            $updatedData = $updated['body']['data'] ?? [];
+            if (isset($updatedData['percentage_charge'])
+                && abs((float)$updatedData['percentage_charge'] - $mainAccountPercent) > 0.01) {
+                return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => 'Paystack did not apply the requested platform split'];
+            }
+        }
+
+        $meta['paystack_platform_subaccount'] = [
+            'code' => $manualCode,
+            'business_name' => $details['business_name'] ?? PAYSTACK_PLATFORM_BUSINESS_NAME,
+            'percentage_charge' => $commission,
+            'main_account_percentage_charge' => $mainAccountPercent,
+            'key_fingerprint' => $keyFingerprint,
+            'degraded_bank_details' => false,
+            'source' => 'manual',
+            'created_at' => $cachedPlatform['created_at'] ?? date('c'),
+        ];
+        $upd = $pdo->prepare('UPDATE clients SET metadata = ?, updated_at = NOW() WHERE id = ?');
+        $upd->execute([json_encode($meta), $client_id]);
+
+        return ['success' => true, 'subaccount_code' => $manualCode, 'percentage_charge' => $commission, 'message' => 'manual subaccount verified'];
+    }
+
     if ($sameIntegration
         && $cachedBankIsPlatform
-        && (float)($cachedPlatform['percentage_charge'] ?? -1) === $commission) {
-        return [
-            'success' => true,
-            'subaccount_code' => $cachedCode,
-            'percentage_charge' => $commission,
-            'message' => 'cached',
-        ];
+        && ($cachedPlatform['source'] ?? 'automatic') !== 'manual'
+        && (float)($cachedPlatform['percentage_charge'] ?? -1) === $commission
+        && (float)($cachedPlatform['main_account_percentage_charge'] ?? -1) === $mainAccountPercent) {
+        $cached = paystackRequest('GET', '/subaccount/' . rawurlencode($cachedCode), [], $clientSecretKey);
+        if ($cached['ok'] && !empty($cached['body']['data'])) {
+            $details = $cached['body']['data'];
+            $name = strtolower(trim((string)($details['business_name'] ?? '')));
+            if (!str_contains($name, 'attoneex')) {
+                return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => 'The saved platform subaccount does not belong to Attoneex'];
+            }
+            if (PAYSTACK_PLATFORM_ACCOUNT_NUMBER !== ''
+                && preg_replace('/\D/', '', (string)($details['account_number'] ?? '')) !== preg_replace('/\D/', '', PAYSTACK_PLATFORM_ACCOUNT_NUMBER)) {
+                return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => 'The saved Attoneex subaccount settlement account does not match the configured platform account'];
+            }
+            if (!filter_var($details['active'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                || abs((float)($details['percentage_charge'] ?? -1) - $mainAccountPercent) > 0.01) {
+                $enabled = activatePlatformSubaccount($cachedCode, $clientSecretKey, $mainAccountPercent);
+                if (empty($enabled['success'])) {
+                    return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => $enabled['message'] ?? 'Could not activate the Attoneex subaccount'];
+                }
+                $details = $enabled['data'];
+            }
+            return ['success' => true, 'subaccount_code' => $cachedCode, 'percentage_charge' => $commission, 'message' => 'cached and active'];
+        }
+
+        $lookupMessage = (string)($cached['body']['message'] ?? $cached['error'] ?? 'Could not verify the saved Attoneex subaccount');
+        $staleCode = in_array((int)($cached['code'] ?? 0), [400, 404], true)
+            && (bool)preg_match('/invalid.*subaccount|subaccount.*(not found|does not exist)/i', $lookupMessage);
+        if (!$staleCode) {
+            return ['success' => false, 'subaccount_code' => null, 'percentage_charge' => $commission, 'message' => $lookupMessage];
+        }
+
+        error_log("[ensurePlatformSubaccount] client #{$client_id}: cached Attoneex subaccount is invalid; creating a replacement.");
+        unset($meta['paystack_platform_subaccount']);
+        $stmt = $pdo->prepare('UPDATE clients SET metadata = ?, updated_at = NOW() WHERE id = ?');
+        $stmt->execute([json_encode($meta), $client_id]);
+        $cachedCode = '';
+        $sameIntegration = false;
+        $cachedBankIsPlatform = false;
     }
     // A cached code from a different integration cannot be reused. A code
     // created with a client's bank details or a stale commission must be
@@ -210,11 +354,14 @@ function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey,
         'business_name' => PAYSTACK_PLATFORM_BUSINESS_NAME,
         'settlement_bank' => $bankCode,
         'account_number' => $accountNumber,
-        'percentage_charge' => $commission,
+        'percentage_charge' => $mainAccountPercent,
     ];
-    $res = $sameIntegration
-        ? paystackRequest('PUT', '/subaccount/' . rawurlencode($cachedCode), $payload, $clientSecretKey)
-        : paystackRequest('POST', '/subaccount', $payload, $clientSecretKey);
+    if ($sameIntegration) {
+        $payload['active'] = true;
+        $res = paystackRequest('PUT', '/subaccount/' . rawurlencode($cachedCode), $payload, $clientSecretKey);
+    } else {
+        $res = paystackRequest('POST', '/subaccount', $payload, $clientSecretKey);
+    }
 
     if (!$res['ok']) {
         $msg = $res['body']['message'] ?? $res['error'] ?? 'Unknown Paystack error';
@@ -234,8 +381,10 @@ function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey,
         'code' => $code,
         'business_name' => PAYSTACK_PLATFORM_BUSINESS_NAME,
         'percentage_charge' => $commission,
+        'main_account_percentage_charge' => $mainAccountPercent,
         'key_fingerprint' => $keyFingerprint,
         'degraded_bank_details' => false,
+        'source' => 'automatic',
         'created_at' => date('c'),
     ];
     $upd = $pdo->prepare('UPDATE clients SET metadata = ?, updated_at = NOW() WHERE id = ?');

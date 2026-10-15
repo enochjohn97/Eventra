@@ -6,6 +6,9 @@
  */
 
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 require_once '../../config/database.php';
 require_once '../../includes/middleware/auth.php';
 
@@ -95,6 +98,37 @@ try {
             $event = array_merge($event, $meta);
         }
     }
+
+    // The legacy `priority` column defaults to "nearby" for every event. Never
+    // use it as a badge; compute the public label against the viewer's state.
+    $userState = strtolower(preg_replace('/\s+/', '', trim((string) (
+        $_GET['user_state'] ?? ($_SESSION['user_state'] ?? '')
+    ))));
+    $eventStates = array_map(
+        static fn($state) => strtolower(preg_replace('/\s+/', '', trim($state))),
+        explode(',', (string) ($event['state'] ?? ''))
+    );
+    $today = (string) $pdo->query('SELECT CURDATE()')->fetchColumn();
+    $eventDate = substr((string) ($event['event_date'] ?? ''), 0, 10);
+    $createdAt = strtotime((string) ($event['created_at'] ?? ''));
+    $recentMultiplier = $createdAt !== false && $createdAt >= strtotime('-7 days') ? 1.3 : 1.0;
+    $meritScore = ((float) ($event['view_count'] ?? 0) * 0.2 + (float) ($event['sales_count'] ?? 0) * 0.8)
+        * $recentMultiplier;
+    $event['priority_label'] = '';
+    if (!empty($event['is_boosted'])) {
+        $event['priority_label'] = '⭐ Featured';
+    } elseif ((int) ($event['sales_count'] ?? 0) >= 50) {
+        $event['priority_label'] = '🔥 Hot';
+    } elseif ($meritScore > 60) {
+        $event['priority_label'] = '📈 Trending';
+    } elseif (
+        $userState !== '' &&
+        $eventDate >= $today &&
+        in_array($userState, $eventStates, true)
+    ) {
+        $event['priority_label'] = '📍 Nearby';
+    }
+    unset($event['priority']);
 
     // Calculate a mock end_datetime if not present (default 4 hours after start)
     $event['event_start_datetime'] = $event['event_date'] . ' ' . ($event['event_time'] ?: '00:00:00');

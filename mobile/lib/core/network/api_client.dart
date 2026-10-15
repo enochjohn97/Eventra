@@ -20,23 +20,16 @@ class ApiClient {
   // which matters on flaky mobile connections that truncate the challenge HTML.
   static const _retryDelays = [2, 3, 5];
 
-  /// Starting origin. `--dart-define=API_BASE_URL` overrides it;
-  /// [EndpointResolver] then switches it at runtime to whichever origin
-  /// actually answers (local dev server, or the live host when one exists).
-  ///
-  /// No live deployment is hardcoded here on purpose: the app must never be
-  /// pinned to a host that may be gone. On a fresh live host, build with
-  /// `--dart-define=API_BASE_URLS=https://your-host/api`.
+  /// Start on the live API so Google sign-in works before discovery finishes
+  /// and when no local PHP server is running. `API_BASE_URL` remains the
+  /// explicit override for local development.
+  static const _productionBaseUrl = String.fromEnvironment(
+    'PRODUCTION_API_BASE_URL',
+    defaultValue: 'https://eventra-website.liveblog365.com/api',
+  );
   static const _defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: _localBaseUrl,
-  );
-
-  /// Local dev server — the only environment that exists right now
-  /// (`php -S 0.0.0.0:8000` + `adb reverse tcp:8000 tcp:8000`).
-  static const _localBaseUrl = String.fromEnvironment(
-    'LOCAL_API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000/api',
+    defaultValue: _productionBaseUrl,
   );
 
   ApiClient._internal() {

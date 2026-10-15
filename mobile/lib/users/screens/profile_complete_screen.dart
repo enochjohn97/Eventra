@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../utils/checkout_navigation.dart';
@@ -164,7 +165,22 @@ class _ProfileCompleteScreenState extends State<ProfileCompleteScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Complete Your Profile')),
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BrandLogo(size: 27, markSize: 23, animateEveryMinute: true),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Complete Your Profile',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),

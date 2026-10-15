@@ -265,16 +265,15 @@ class EmailHelper
         if ($cached !== null) {
             return $cached;
         }
-        $brandDir = self::normalisePath(__DIR__ . '/../../public/assets/brand/');
-        // PNG first (universally supported), SVG as fallback.
-        foreach ([
-            [$brandDir . 'logo-mark.png', 'image/png'],
-            [$brandDir . 'logo-mark-only.svg', 'image/svg+xml'],
-        ] as [$assetPath, $mime]) {
-            if (file_exists($assetPath) && filesize($assetPath) > 0) {
-                $cached = 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($assetPath));
-                return $cached;
-            }
+        $logoPath = self::brandLogoPath();
+        if ($logoPath !== '') {
+            $cached = 'data:image/png;base64,' . base64_encode((string) file_get_contents($logoPath));
+            return $cached;
+        }
+        $svgPath = self::normalisePath(__DIR__ . '/../../public/assets/brand/logo-mark-only.svg');
+        if (file_exists($svgPath) && filesize($svgPath) > 0) {
+            $cached = 'data:image/svg+xml;base64,' . base64_encode((string) file_get_contents($svgPath));
+            return $cached;
         }
         $cached = '';
         return $cached;
@@ -287,8 +286,16 @@ class EmailHelper
     /** Absolute path to the brand logo PNG, or '' when unavailable. */
     private static function brandLogoPath(): string
     {
-        $path = self::normalisePath(__DIR__ . '/../../public/assets/brand/logo-mark.png');
-        return (file_exists($path) && filesize($path) > 0) ? $path : '';
+        foreach ([
+            __DIR__ . '/../../mobile/assets/images/logo.png',
+            __DIR__ . '/../../public/assets/brand/logo-mark.png',
+        ] as $candidate) {
+            $path = self::normalisePath($candidate);
+            if (file_exists($path) && filesize($path) > 0) {
+                return $path;
+            }
+        }
+        return '';
     }
 
     /**
@@ -349,31 +356,48 @@ class EmailHelper
         return $useCid ? 'cid:' . self::BRAND_LOGO_CID : self::brandMarkDataUri();
     }
 
-    private static function brandHeaderHtml(string $fontSize = '15px', bool $useCid = true): string
+    private static function brandLockupHtml(string $fontSize, bool $useCid, bool $center): string
     {
-        $mark = self::brandLockupSrc($useCid, false);
-        return $mark === '' ? '' : '<div style="margin-bottom:14px;text-align:left;">'
-            . '<img src="' . $mark . '" width="176" height="32" alt="EventOut" style="width:176px;height:32px;max-width:100%;display:block;border:none;" />'
-            . '</div>';
+        $mark = self::brandLogoSrc($useCid);
+        if ($mark === '') {
+            return '';
+        }
+        preg_match('/[0-9.]+/', $fontSize, $fontMatch);
+        $fontValue = (float) ($fontMatch[0] ?? 20);
+        if (str_contains(strtolower($fontSize), 'pt')) {
+            $fontValue *= 4 / 3;
+        }
+        $markWidth = (int) max(20, min(30, round($fontValue * 1.12)));
+        $markHeight = (int) round($markWidth * 1024 / 995);
+        $align = $center ? 'center' : 'left';
+        $margin = $center ? '0 auto 24px auto' : '0 0 14px 0';
+        $safeMark = self::esc($mark);
+
+        return '<div style="margin:' . $margin . ';text-align:' . $align . ';">'
+            . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="' . $align . '" style="border-collapse:collapse;">'
+            . '<tr><td valign="middle" style="padding:0 1px 0 0;line-height:0;">'
+            . '<img src="' . $safeMark . '" width="' . $markWidth . '" height="' . $markHeight . '" alt="" style="display:block;width:' . $markWidth . 'px;height:' . $markHeight . 'px;border:0;outline:none;text-decoration:none;" />'
+            . '</td><td valign="middle" style="padding:0;">'
+            . '<span style="display:inline-block;color:#F64B54;font-family:\'Plus Jakarta Sans\',Arial,sans-serif;font-size:' . $fontSize . ';font-weight:700;line-height:1;letter-spacing:-0.5px;">ventOut</span>'
+            . '</td></tr></table></div>';
     }
 
-    /**
-     * Full coral wordmark for email templates; the transparent PNG keeps its
-     * lettering together and renders consistently in Outlook and Gmail.
-     */
+    private static function brandHeaderHtml(string $fontSize = '15px', bool $useCid = true): string
+    {
+        return self::brandLockupHtml($fontSize, $useCid, false);
+    }
+
+    /** Splash-style coral mark and wordmark for light-background emails. */
     private static function brandHeaderLightHtml(string $fontSize = '22px', bool $useCid = true): string
     {
-        $mark = self::brandLockupSrc($useCid, false);
-        return $mark === '' ? '' : '<div style="text-align:center;margin:0 auto 24px auto;">'
-            . '<img src="' . $mark . '" width="176" height="32" alt="EventOut" style="width:176px;height:32px;max-width:100%;display:inline-block;border:none;" />'
-            . '</div>';
+        return self::brandLockupHtml($fontSize, $useCid, true);
     }
 
     /**
      * Public brand header for ad-hoc email templates (client approval/decline,
      * support acknowledgment, broadcast notifications) that build their own
      * HTML bodies but must still carry the EventOut logo. Light-background
-     * variant: the coral transparent wordmark PNG.
+     * variant: the coral splash-screen mark and wordmark.
      */
     public static function brandEmailHeaderHtml(string $fontSize = '20px'): string
     {

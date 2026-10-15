@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import '../../core/widgets/brand_logo.dart';
 
 class PaymentWebViewScreen extends StatefulWidget {
   final String authorizationUrl;
@@ -47,7 +48,20 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Paystack Checkout'),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BrandLogo(size: 27, markSize: 23, animateEveryMinute: true),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Paystack Checkout',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context, false),

@@ -82,7 +82,7 @@ try {
     $eStmt = $pdo->prepare("
         SELECT e.id, e.event_name, e.price, e.status, e.max_capacity, e.attendee_count,
                e.event_date, e.event_time, e.state, e.address, e.location, e.image_path,
-               e.metadata, e.client_id AS organizer_id,
+               e.metadata, c.metadata AS organizer_metadata, e.client_id AS organizer_id,
                c.subaccount_code, c.verification_status, c.business_name AS organizer_business_name, c.name AS organizer_name,
                c.paystack_connection_status, c.paystack_auth_token, c.paystack_public_key,
                c.paystack_merchant_id, c.platform_commission_percent, c.admin_status AS organizer_admin_status,
@@ -100,15 +100,29 @@ try {
             $event = array_merge($event, $meta);
         }
     }
-
     if (!$event) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Event not found.']);
         exit;
     }
 
+    $organizerMetadata = json_decode($event['organizer_metadata'] ?? '{}', true);
+    $event['paystack_account_status'] = is_array($organizerMetadata)
+        ? ($organizerMetadata['paystack_account_status'] ?? '')
+        : '';
+
     if ($event['status'] !== 'published') {
         echo json_encode(['success' => false, 'message' => 'This event is not available for booking.']);
+        exit;
+    }
+
+    $paystackAccountStatus = strtolower(trim((string)($event['paystack_account_status'] ?? '')));
+    if (in_array($paystackAccountStatus, ['pending', 'declined'], true)) {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'message' => 'This organizer’s Paystack account is not approved for payments yet. Please contact the organizer.',
+        ]);
         exit;
     }
 
@@ -495,7 +509,7 @@ try {
     ];
 
     // This subaccount belongs to Attoneex under the organizer's own Paystack
-    // account. A fixed percentage_charge of 10 leaves 90% with the organizer.
+    // account. A 90% main-account charge leaves 10% with the platform subaccount.
     $paystackPayload['subaccount'] = $platformSubaccountCode;
 
     $ch = curl_init('https://api.paystack.co/transaction/initialize');

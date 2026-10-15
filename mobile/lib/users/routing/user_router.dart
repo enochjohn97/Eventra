@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import '../models/event_model.dart';
 import '../providers/auth_provider.dart';
 import '../screens/checkout_screen.dart';
-import '../screens/login_screen.dart';
 import '../screens/payment_success_screen.dart';
 import '../screens/profile_complete_screen.dart';
 import '../screens/splash_screen.dart';
@@ -48,7 +47,7 @@ GoRouter createUserRouter(AuthProvider authProvider) {
       GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/welcome', redirect: (_, _) => '/login'),
       GoRoute(path: '/onboarding', redirect: (_, _) => '/login'),
-      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/login', builder: (_, _) => const SplashScreen()),
       GoRoute(
         path: '/profile-complete',
         builder: (_, _) => const ProfileCompleteScreen(),

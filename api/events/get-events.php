@@ -115,10 +115,8 @@ try {
         WHEN $meritScore > 60 THEN '📈 Trending'
         WHEN e.event_date >= CURDATE()
              AND $userStateSql != ''
-             AND (
-                 FIND_IN_SET($userStateSql, LOWER(REPLACE(e.state, ' ', ''))) > 0
-                 OR LOWER(TRIM(e.state)) IN ('all states', 'all')
-             ) THEN '📍 Nearby'
+             AND FIND_IN_SET($userStateSql, LOWER(REPLACE(e.state, ' ', ''))) > 0
+             THEN '📍 Nearby'
         WHEN e.event_date > CURDATE() THEN ''
         ELSE ''
     END";

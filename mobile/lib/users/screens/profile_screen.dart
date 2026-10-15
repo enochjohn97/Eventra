@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
@@ -101,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final ok = await auth.updateProfile(
       name: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
-      phone: _phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+      phone: _phoneCtrl.text.trim(),
       dob: _dobCtrl.text.trim(),
       gender: _genderCtrl.text.trim(),
       country: _countryCtrl.text.trim(),
@@ -170,7 +171,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.user;
 
     return Scaffold(
-      appBar: AppBar(title: const BrandLogo(size: 32, animateEveryMinute: true)),
+      appBar: AppBar(
+        title: const BrandLogo(
+          size: 27,
+          markSize: 23,
+          animateEveryMinute: true,
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -217,10 +224,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(color: AppTheme.textMuted),
           textAlign: TextAlign.center,
         ),
-        if ([user?.city, user?.state].whereType<String>().any((v) => v.isNotEmpty)) ...[
+        if ([
+          user?.city,
+          user?.state,
+        ].whereType<String>().any((v) => v.isNotEmpty)) ...[
           const SizedBox(height: 4),
           Text(
-            [user?.city, user?.state].whereType<String>().where((v) => v.isNotEmpty).join(', '),
+            [
+              user?.city,
+              user?.state,
+            ].whereType<String>().where((v) => v.isNotEmpty).join(', '),
             style: const TextStyle(color: AppTheme.textMuted),
             textAlign: TextAlign.center,
           ),
@@ -280,12 +293,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextFormField(
             controller: _nameCtrl,
             decoration: _fieldDecoration('Full Name *', _nameCtrl),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-zÀ-ÖØ-öø-ÿ ]')),
+            ],
             autovalidateMode: AutovalidateMode.onUserInteraction,
             onChanged: (_) => setState(() {}),
             validator: (v) {
               final value = v?.trim() ?? '';
               if (value.isEmpty) return 'Required';
-              if (value.length < 2) return 'Enter your full name';
+              if (!RegExp(
+                r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(?: +[A-Za-zÀ-ÖØ-öø-ÿ]+)*$",
+              ).hasMatch(value)) {
+                return 'Use letters and spaces only';
+              }
+              if (value.split(RegExp(r'\s+')).length < 2) {
+                return 'Enter your first and last name';
+              }
               return null;
             },
           ),
@@ -298,8 +321,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onChanged: (_) => setState(() {}),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Required';
-              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
-                return 'Invalid email';
+              if (!_isValidEmail(v.trim())) {
+                return 'Enter a valid email address';
               }
               return null;
             },
@@ -308,16 +331,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextFormField(
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(11),
+            ],
             decoration: _fieldDecoration('Phone *', _phoneCtrl),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             onChanged: (_) => setState(() {}),
             validator: (v) {
               final value = v?.trim() ?? '';
               if (value.isEmpty) return 'Required';
-              final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-              if (digits.length < 10 || digits.length > 11) {
-                return 'Invalid phone number';
-              }
+              if (!RegExp(r'^\d+$').hasMatch(value)) return 'Digits only';
+              if (value.length != 11) return 'Enter exactly 11 digits';
               return null;
             },
           ),
@@ -381,25 +406,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      decoration: _fieldDecoration(label, controller).copyWith(hintText: hintText),
+      decoration: _fieldDecoration(
+        label,
+        controller,
+      ).copyWith(hintText: hintText),
+      keyboardType: dateOnly ? TextInputType.datetime : TextInputType.text,
+      inputFormatters: dateOnly
+          ? [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+              LengthLimitingTextInputFormatter(10),
+            ]
+          : lettersOnly
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-zÀ-ÖØ-öø-ÿ ]'))]
+          : null,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       onChanged: (_) => setState(() {}),
       validator: (value) {
         final text = value?.trim() ?? '';
         if (text.isEmpty) return 'Required';
         if (lettersOnly &&
-            !RegExp(r"^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'. -]*$")
-                .hasMatch(text)) {
-          return 'Letters only';
+            !RegExp(
+              r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(?: +[A-Za-zÀ-ÖØ-öø-ÿ]+)*$",
+            ).hasMatch(text)) {
+          return 'Use letters and spaces only';
         }
-        if (dateOnly &&
-            (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text) ||
-                DateTime.tryParse(text) == null)) {
+        if (dateOnly && !_isValidDate(text)) {
           return 'Enter a date as YYYY-MM-DD';
         }
         return null;
       },
     );
+  }
+
+  bool _isValidEmail(String value) => RegExp(
+    r"^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,63}$",
+    caseSensitive: false,
+  ).hasMatch(value);
+
+  bool _isValidDate(String value) {
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
+    if (match == null) return false;
+    final year = int.parse(match.group(1)!);
+    final month = int.parse(match.group(2)!);
+    final day = int.parse(match.group(3)!);
+    final date = DateTime.tryParse(value);
+    return date != null &&
+        date.year == year &&
+        date.month == month &&
+        date.day == day;
   }
 }
 

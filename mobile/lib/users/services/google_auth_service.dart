@@ -9,6 +9,7 @@ import '../../core/network/api_exception.dart';
 import '../../core/network/endpoint_resolver.dart';
 import '../../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
+import 'user_profile_service.dart';
 
 /// Google Sign-In → backend session exchange.
 ///
@@ -216,8 +217,13 @@ class GoogleAuthService {
     }
 
     await SecureStorage.saveToken(serverToken);
-    await SecureStorage.saveUser(userJson);
-    return UserModel.fromJson(userJson);
+    try {
+      final profile = await UserProfileService.getProfile();
+      await SecureStorage.saveUser(profile.toJson());
+      return profile;
+    } on DioException catch (error) {
+      throw apiErrorFromDio(error, 'Could not load your saved profile.');
+    }
   }
 
   /// Silent Google re-auth + token exchange. Used by the API client's 401/403
