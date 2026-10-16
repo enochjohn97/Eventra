@@ -334,12 +334,58 @@ try {
     $stmt->execute();
     $events = $stmt->fetchAll();
 
+    // Per-tier capacity for the events on this page. Two bulk queries keep the
+    // list endpoint free of N+1 lookups; the checkout screen shows the live
+    // remaining count per tier (regular / vip / premium).
+    $tierCounts = [];
+    $eventIds = array_values(array_filter(array_map(fn($e) => (int) ($e['id'] ?? 0), $events)));
+    if (!empty($eventIds)) {
+        $in = implode(',', array_fill(0, count($eventIds), '?'));
+        $soldStmt = $pdo->prepare("
+            SELECT event_id, LOWER(ticket_type) AS tier, COUNT(*) AS sold
+            FROM tickets
+            WHERE event_id IN ($in) AND status <> 'cancelled'
+            GROUP BY event_id, tier
+        ");
+        $soldStmt->execute($eventIds);
+        foreach ($soldStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $tierCounts[(int) $row['event_id']][$row['tier']] = (int) $row['sold'];
+        }
+        $reservedStmt = $pdo->prepare("
+            SELECT event_id,
+                   LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.ticket_type')), 'regular')) AS tier,
+                   COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.quantity')) AS UNSIGNED)), 0) AS reserved
+            FROM orders
+            WHERE event_id IN ($in) AND payment_status = 'pending'
+              AND created_at >= NOW() - INTERVAL 30 MINUTE
+            GROUP BY event_id, tier
+        ");
+        $reservedStmt->execute($eventIds);
+        foreach ($reservedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $eid = (int) $row['event_id'];
+            $tier = strtolower((string) $row['tier']);
+            $tierCounts[$eid][$tier] = ($tierCounts[$eid][$tier] ?? 0) + (int) $row['reserved'];
+        }
+    }
+
     // Process events: parse metadata and strip admin-only fields
-    $events = array_map(function($ev) use ($user_role) {
+    $events = array_map(function($ev) use ($user_role, $tierCounts) {
         if (!empty($ev['metadata'])) {
             $meta = json_decode($ev['metadata'], true);
             if (is_array($meta)) $ev = array_merge($ev, $meta);
         }
+        $capacity = [];
+        $remaining = [];
+        $used = $tierCounts[(int) ($ev['id'] ?? 0)] ?? [];
+        foreach (['regular', 'vip', 'premium'] as $tier) {
+            $qty = $ev[$tier . '_quantity'] ?? null;
+            $capacity[$tier] = ($qty === null || $qty === '') ? null : (int) $qty;
+            $remaining[$tier] = $capacity[$tier] === null
+                ? null
+                : max(0, $capacity[$tier] - ($used[$tier] ?? 0));
+        }
+        $ev['tier_capacity'] = $capacity;
+        $ev['tier_remaining'] = $remaining;
         if ($user_role !== 'admin') {
             unset($ev['is_boosted']);
             unset($ev['priority']); // legacy

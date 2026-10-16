@@ -229,13 +229,21 @@ try {
         $customId = generateClientId($pdo);
     }
 
-    // ── Metadata merge (bvn_verified flag only — full number never persisted) ──
+    // ── Metadata merge (masked number + verified flag only — raw never persisted) ──
+    // The masked copy is written even when the client only SAVED the number
+    // without a successful registry check, otherwise the admin KYC panel had
+    // nothing to display after a save.
     $metaUpdate = null;
-    if ($bvnVerified !== null) {
+    if ($bvnVerified !== null || $bvnNumber !== '') {
         $meta = json_decode($existing['metadata'] ?? '{}', true) ?: [];
-        $meta['bvn_verified'] = (bool)$bvnVerified;
-        if ($bvnVerified === 1) {
-            $meta['bvn_verified_at'] = date('Y-m-d H:i:s');
+        if ($bvnNumber !== '') {
+            $meta['bvn_number_masked'] = substr($bvnNumber, 0, 3) . '*****' . substr($bvnNumber, -3);
+        }
+        if ($bvnVerified !== null) {
+            $meta['bvn_verified'] = (bool)$bvnVerified;
+            if ($bvnVerified === 1) {
+                $meta['bvn_verified_at'] = date('Y-m-d H:i:s');
+            }
         }
         $metaUpdate = json_encode($meta);
     }

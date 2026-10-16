@@ -96,10 +96,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (paystackResult.success && paystackResult.public_key) {
       paystackPublicKey = paystackResult.public_key;
-      if (paystackResult.is_test_mode) {
+
+      const mode = paystackResult.mode || (paystackResult.is_test_mode ? 'test' : 'live');
+
+      if (mode === 'test') {
         document
           .getElementById("paystackTestCard")
           ?.style.setProperty("display", "block");
+
+        const tagline = document.getElementById("siteTagline");
+        if (tagline) {
+          tagline.style.color = "#92400e";
+          tagline.style.background = "#fef3c7";
+          tagline.style.border = "1px solid #f59e0b";
+          tagline.style.padding = "0.75rem 1rem";
+          tagline.style.borderRadius = "0.5rem";
+          tagline.style.display = "block";
+          tagline.textContent =
+            "This checkout page is using a Paystack test key on the platform. Card payments here are test transactions, not live payments.";
+        }
+      } else if (mode === 'live') {
+        const scope =
+          (paystackResult.mode_scope || "").toString().toLowerCase();
+        if (scope === "platform") {
+          const tagline = document.getElementById("siteTagline");
+          if (tagline) {
+            tagline.style.color = "#2563eb";
+            tagline.textContent =
+              "Discover & book amazing events across Nigeria.";
+          }
+        }
+      } else if (mode === 'unconfigured') {
+        showNotification("Payment is not configured yet", "error");
+        document.getElementById("paystackBtn").disabled = true;
       }
     } else {
       showNotification("Payment system is currently unavailable", "error");
@@ -240,6 +269,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           },
         };
         sessionStorage.setItem("pending_order", JSON.stringify(orderData));
+
+        const isFree =
+          result.is_free == true ||
+          (result.amount != null && Number(result.amount) <= 0);
+
+        if (isFree) {
+          window.location.href = result.authorization_url;
+          return;
+        }
+
+        // Organizer live (or unknown) — proceed to Paystack as a fully live checkout.
         window.location.href = result.authorization_url;
       } else {
         Swal.fire(

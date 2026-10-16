@@ -139,7 +139,43 @@ try {
                 'admin',
                 ['admin_notes' => $admin_notes, 'decision' => $verification_status]
             );
-            
+
+            // Every admin gets an in-app notice of the decision. Clicking it in
+            // the dashboard opens the review summary (Approved, or Declined with
+            // the reason and the information still needed).
+            $missingInfo = '';
+            if (!$status && trim((string) $admin_notes) === '') {
+                $missingInfo = 'No decline reason was recorded. Confirm the client’s NIN, BVN, business details and settlement (bank) account are complete and accurate.';
+            }
+            $adminReviewData = [
+                'client_id' => (int) $client_id,
+                'business_name' => (string) $display_name,
+                'client_name' => (string) ($client['name'] ?? ''),
+                'company' => (string) ($client['business_name'] ?? ''),
+                'email' => (string) ($client['email'] ?? ''),
+                'phone' => '',
+                'status' => $status ? 'approved' : 'declined',
+                'reason' => !$status ? (string) $admin_notes : '',
+                'missing' => $missingInfo,
+                'reviewed_at' => date('Y-m-d H:i:s'),
+            ];
+            $adminMessage = $status
+                ? "Client account approved: {$display_name}."
+                : "Client account declined: {$display_name}."
+                    . ($admin_notes ? " Reason: {$admin_notes}" : '');
+            $adminRecipients = $pdo->query("SELECT DISTINCT admin_auth_id FROM admins WHERE admin_auth_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($adminRecipients as $adminRecipientAuthId) {
+                createNotification(
+                    (int) $adminRecipientAuthId,
+                    $adminMessage,
+                    'client_account_review',
+                    $admin_auth_id,
+                    'admin',
+                    'admin',
+                    $adminReviewData
+                );
+            }
+
             // Send email notification
             EmailHelper::sendEmail($client['email'], $status ? 'Account Approved' : 'Account Declined', $msg_html);
         }

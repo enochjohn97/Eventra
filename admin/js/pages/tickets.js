@@ -298,21 +298,30 @@ function openAdminTicketModal(ticket) {
             </div>
             <!-- Details -->
             <div style="padding:1.5rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-                    <span style="font-family:monospace;font-size:.85rem;color:#6366f1;font-weight:700;">${escapeHtml(ticket.custom_id || ticket.id)}</span>
-                </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Buyer</div><div style="font-weight:600;">${escapeHtml(ticket.user_name || '—')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Price</div><div style="font-weight:700;">${price}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Category</div><div style="font-weight:600;">${escapeHtml(ticket.category || 'General')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Date Purchased</div><div style="font-weight:600;">${ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '—'}</div></div>
-                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div><div style="font-weight:600;text-transform:capitalize;color:#6366f1;">${escapeHtml(typeLabel)}</div></div>
                 </div>
-                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1.25rem 0;text-align:center;">
+                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1.25rem 0 0;text-align:center;">
+                    <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Scan QR Code</div>
+                    <div id="adminTicketQrContainer"></div>
+                </div>
+                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1rem 0 0;text-align:center;">
                     <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Barcode</div>
                     <svg id="ticketBarcode" style="margin:0 auto;height:60px;"></svg>
                     <div style="font-family:monospace;font-size:.75rem;color:#475569;margin-top:0.75rem;word-break:break-all;">${escapeHtml(ticket.barcode || '—')}</div>
-                    <div id="adminTicketQrContainer" style="margin-top:12px;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:.75rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                    <div style="min-width:0;">
+                        <div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket ID</div>
+                        <span style="font-family:monospace;font-size:.85rem;color:#6366f1;font-weight:700;word-break:break-all;">${escapeHtml(ticket.custom_id || ticket.id)}</span>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div>
+                        <div style="font-weight:700;text-transform:capitalize;color:#6366f1;font-size:.85rem;">${escapeHtml(typeLabel)}</div>
+                    </div>
                 </div>
                 <button onclick="document.getElementById('adminTicketModal').remove()" style="margin-top:1.5rem;width:100%;padding:.75rem;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>
             </div>

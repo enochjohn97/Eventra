@@ -361,20 +361,30 @@ window.showTicketPreviewModal = function(ticket) {
                 </div>
             </div>
             <div style="padding:1.5rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-                    <span style="font-family:monospace;font-size:.85rem;color:#722f37;font-weight:700;">${escapeHtml(ticket.custom_id || ticket.id)}</span>
-                </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Buyer</div><div style="font-weight:600;">${escapeHtml(ticket.buyer_name || ticket.user_name || '—')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Price</div><div style="font-weight:700;">${price}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Category</div><div style="font-weight:600;text-transform:capitalize;">${escapeHtml(ticket.event_category || ticket.category || 'General')}</div></div>
                     <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Date Purchased</div><div style="font-weight:600;">${ticket.purchase_date || (ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '—')}</div></div>
-                    <div><div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div><div style="font-weight:600;text-transform:capitalize;color:#722f37;">${escapeHtml(typeLabel)}</div></div>
                 </div>
-                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1.25rem 0;text-align:center;">
+                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1.25rem 0 0;text-align:center;">
+                    <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Scan QR Code</div>
+                    <div id="clientTicketQrContainer" style="display:flex;align-items:center;justify-content:center;"></div>
+                </div>
+                <div style="background:#f8fafc;padding:1.25rem;border-radius:10px;margin:1rem 0 0;text-align:center;">
                     <div style="font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:1rem;">Barcode</div>
                     <svg id="clientTicketBarcode" style="margin:0 auto;height:60px;"></svg>
                     <div style="font-family:monospace;font-size:.75rem;color:#475569;margin-top:0.75rem;word-break:break-all;">${escapeHtml(ticket.barcode || '—')}</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:.75rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                    <div style="min-width:0;">
+                        <div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket ID</div>
+                        <span style="font-family:monospace;font-size:.85rem;color:#722f37;font-weight:700;word-break:break-all;">${escapeHtml(ticket.custom_id || ticket.id)}</span>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px;">Ticket Type</div>
+                        <div style="font-weight:700;text-transform:capitalize;color:#722f37;font-size:.85rem;">${escapeHtml(typeLabel)}</div>
+                    </div>
                 </div>
                 <button onclick="document.getElementById('clientTicketModal').remove()" style="margin-top:1.5rem;width:100%;padding:.75rem;background:#722f37;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;">Close</button>
             </div>
@@ -391,6 +401,30 @@ window.showTicketPreviewModal = function(ticket) {
             JsBarcode("#clientTicketBarcode", barcodeData, {
                 format: "CODE128", width: 2, height: 60, displayValue: false, margin: 0, background: "transparent", lineColor: "#1e293b"
             });
+        } catch (e) {}
+    }
+
+    // QR on top of the barcode, same payload the scanner endpoint validates
+    const qrContainer = document.getElementById('clientTicketQrContainer');
+    const qrBarcode = ticket.barcode || ticket.custom_id || (ticket.id ? ticket.id.toString() : '');
+    if (qrContainer && qrBarcode && typeof QRCode !== 'undefined') {
+        try {
+            const qrWrap = document.createElement('div');
+            qrWrap.style.cssText = 'background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;display:inline-block;';
+            qrContainer.appendChild(qrWrap);
+            new QRCode(qrWrap, {
+                text: `${window.location.origin}/api/tickets/validate-ticket.php?barcode=${encodeURIComponent(qrBarcode)}`,
+                width: 160,
+                height: 160,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.L
+            });
+        } catch (e) {}
+    } else if (qrContainer && ticket.qr_path) {
+        try {
+            const src = typeof getImageUrl === 'function' ? getImageUrl(ticket.qr_path) : ticket.qr_path;
+            qrContainer.innerHTML = `<div style="background:#fff;padding:10px;border-radius:1rem;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);border:1px solid #e2e8f0;display:inline-block;"><img src="${src.replace(/"/g, '&quot;')}" alt="QR Code" width="160" height="160" style="display:block;width:160px;height:160px;border-radius:4px;"></div>`;
         } catch (e) {}
     }
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { document.getElementById('clientTicketModal')?.remove(); document.removeEventListener('keydown', esc); } });

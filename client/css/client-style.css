@@ -34,8 +34,8 @@
   --glass-shadow: 0 8px 32px 0 rgba(114, 47, 55, 0.07);
 
   /* Dimensions & Spacing */
-  --client-sidebar-width: 190px;
-  --client-sidebar-collapsed-width: 60px;
+  --client-sidebar-width: 168px;
+  --client-sidebar-collapsed-width: 56px;
   --client-header-height: 64px;
   --client-radius: 14px;
   --client-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -995,7 +995,7 @@ td {
 /* Large TV Screens */
 @media (min-width: 1921px) {
   :root {
-    --client-sidebar-width: 350px;
+    --client-sidebar-width: 230px;
   }
   body {
     font-size: 18px;
@@ -1021,7 +1021,7 @@ td {
 /* Tablets & Small Laptops */
 @media (max-width: 1024px) {
   :root {
-    --client-sidebar-width: 240px;
+    --client-sidebar-width: 190px;
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -2724,7 +2724,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* ─── TABLET: 768px - 1023px ─────────────────────────────────────────── */
 @media (min-width: 768px) and (max-width: 1023px) {
   :root {
-    --client-sidebar-width: 200px;
+    --client-sidebar-width: 176px;
   }
 
   .sidebar {
@@ -2807,7 +2807,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* ─── DESKTOP: 1024px - 1919px ──────────────────────────────────────── */
 @media (min-width: 1024px) and (max-width: 1919px) {
   :root {
-    --client-sidebar-width: 280px;
+    --client-sidebar-width: 208px;
   }
 
   .sidebar {
@@ -2850,7 +2850,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* ─── LARGE/TV: 1920px+ ──────────────────────────────────────────────── */
 @media (min-width: 1920px) {
   :root {
-    --client-sidebar-width: 300px;
+    --client-sidebar-width: 230px;
     --client-header-height: 90px;
     font-size: 18px;
   }

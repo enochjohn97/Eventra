@@ -88,16 +88,27 @@ try {
 
     $pdo->beginTransaction();
 
+    // Atomically claim the order. The status check above is a read; two
+    // concurrent requests could both pass it and insert two refund requests
+    // for the same order. refund_requests has no unique key on order_id, so
+    // this conditional UPDATE is the only real duplicate guard.
+    $claim = $pdo->prepare("
+        UPDATE orders SET refund_status = 'requested', updated_at = NOW()
+        WHERE id = ? AND refund_status = 'none'
+    ");
+    $claim->execute([$order_id]);
+
+    if ($claim->rowCount() === 0) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'message' => 'A refund request already exists for this order.']);
+        exit;
+    }
+
     // Insert refund request
     $pdo->prepare("
         INSERT INTO refund_requests (order_id, user_id, reason, status)
         VALUES (?, ?, ?, 'pending')
     ")->execute([$order_id, $user['id'], $reason]);
-
-    // Update order refund status
-    $pdo->prepare("
-        UPDATE orders SET refund_status = 'requested', updated_at = NOW() WHERE id = ?
-    ")->execute([$order_id]);
 
     $pdo->commit();
 

@@ -389,6 +389,10 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
         Navigator.pop(context);
         openCheckoutForEvent(context, event);
       },
+      onGiftTicket: () {
+        Navigator.pop(context);
+        openCheckoutForEvent(context, event, gift: true);
+      },
     );
   }
 

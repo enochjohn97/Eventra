@@ -186,6 +186,7 @@ class NotificationManager {
       warning: "⚠",
       error: "✕",
       paystack_account_review: "💳",
+      client_account_review: "✅",
     };
 
     notifItem.innerHTML = `
@@ -206,7 +207,10 @@ class NotificationManager {
         notifItem.classList.remove("unread");
         notif.is_read = 1;
       }
-      if (notif.type === "paystack_account_review") {
+      if (
+        notif.type === "paystack_account_review" ||
+        notif.type === "client_account_review"
+      ) {
         this.showPaystackAccountReview(notif);
       }
     });
@@ -226,6 +230,12 @@ class NotificationManager {
 
     const status = details.status === "declined" ? "declined" : "approved";
     const businessName = details.business_name || "Client";
+    // Client account decisions share this review modal with Paystack account
+    // decisions; only the wording differs.
+    const isClientAccount =
+      (notif && notif.type === "client_account_review") ||
+      !!details.missing;
+    const subject = isClientAccount ? "Client account" : "Paystack account";
     const escape = (value) =>
       String(value || "—").replace(/[&<>"']/g, (character) => {
         const entities = {
@@ -254,18 +264,22 @@ class NotificationManager {
       .join("");
     const decisionMessage =
       status === "approved"
-        ? `The Paystack account for ${businessName} has been approved.`
-        : `The Paystack account for ${businessName} was declined.`;
+        ? `The ${subject.toLowerCase()} for ${businessName} has been approved.`
+        : `The ${subject.toLowerCase()} for ${businessName} was declined.`;
     const reasonHtml =
       status === "declined"
         ? `<div style="margin-top:14px;padding:12px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;text-align:left;"><strong style="display:block;color:#be123c;margin-bottom:5px;">Decline reason</strong><span style="color:#334155;">${escape(details.reason || "No reason was supplied.")}</span></div>`
         : "";
+    const missingHtml =
+      status === "declined"
+        ? `<div style="margin-top:10px;padding:12px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;text-align:left;"><strong style="display:block;color:#b45309;margin-bottom:5px;">Missing / needed information</strong><span style="color:#334155;">${escape(details.missing || "No additional information was listed.")}</span></div>`
+        : "";
 
     if (window.Swal) {
       window.Swal.fire({
-        title: status === "approved" ? "Paystack account approved" : "Paystack account declined",
+        title: status === "approved" ? `${subject} approved` : `${subject} declined`,
         icon: status === "approved" ? "success" : "error",
-        html: `<div style="color:#334155;"><p style="margin:0 0 12px;text-align:left;">${escape(decisionMessage)}</p>${rowHtml}${reasonHtml}</div>`,
+        html: `<div style="color:#334155;"><p style="margin:0 0 12px;text-align:left;">${escape(decisionMessage)}</p>${rowHtml}${reasonHtml}${missingHtml}</div>`,
         confirmButtonText: "Close",
         confirmButtonColor: status === "approved" ? "#15803d" : "#be123c",
       });

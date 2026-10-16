@@ -19,6 +19,20 @@ $quantity      = max(1, (int)($body['quantity']    ?? $_POST['quantity']    ?? 1
 $ticket_type   = $body['ticket_type'] ?? $_POST['ticket_type'] ?? 'regular';
 $otp_reference = $body['otp_reference'] ?? $_POST['otp_reference'] ?? null;
 $selected_locs = $body['selected_locs'] ?? $_POST['selected_locs'] ?? null;
+// "Get for someone else": the buyer pays, the recipient owns the ticket.
+$gift_recipient_email = strtolower(trim((string)($body['gift_recipient_email'] ?? '')));
+
+/**
+ * Store links returned when a gift recipient has no EventOut account yet, so
+ * the app can send them to the right store and verification can be retried.
+ */
+function giftStoreLinks(): array
+{
+    return [
+        'android' => $_ENV['PLAY_STORE_URL'] ?? 'https://play.google.com/store/apps/details?id=com.example.eventra_mobile',
+        'ios' => $_ENV['APP_STORE_URL'] ?? 'https://apps.apple.com/search?term=EventOut',
+    ];
+}
 
 if (!$event_id) {
     http_response_code(400);
@@ -68,6 +82,45 @@ try {
     $user_id = $user['user_id'];
     $user_email = $user['email'];
     $user_name = $user['name'];
+
+    // ── Gift recipient resolution ────────────────────────────────────────────
+    // A gift MUST be delivered to an existing EventOut account: that account
+    // is what receives the ticket (and its copy in the app). When no account
+    // uses the address we stop before any Paystack work and hand the app the
+    // store links so the recipient can register first.
+    $giftRecipient = null;
+    if ($gift_recipient_email !== '') {
+        if (!filter_var($gift_recipient_email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Enter a valid recipient email address.']);
+            exit;
+        }
+        if ($gift_recipient_email === strtolower((string) $user_email)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'That is your own email — use “Get Ticket” to buy for yourself.']);
+            exit;
+        }
+        $gStmt = $pdo->prepare("
+            SELECT u.id AS user_id, u.name, u.phone, a.id AS auth_id, a.email
+            FROM users u
+            JOIN auth_accounts a ON u.user_auth_id = a.id
+            WHERE LOWER(a.email) = ?
+            LIMIT 1
+        ");
+        $gStmt->execute([$gift_recipient_email]);
+        $giftRecipient = $gStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if (!$giftRecipient) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'recipient_not_registered' => true,
+                'message' => 'No EventOut account uses that email address yet. Ask them to install the app and sign up, then try again.',
+                'store_links' => giftStoreLinks(),
+            ]);
+            exit;
+        }
+    }
 
     // Checkout edits are durable profile changes, not one-request metadata.
     $contactInfo = is_array($body['contact_info'] ?? null) ? $body['contact_info'] : [];
@@ -205,6 +258,9 @@ try {
 
             $tickets = [];
             $allFreeTicketData = [];
+            // A gift ticket belongs to the recipient account, so both the ticket
+            // row and the confirmation email follow the recipient — not the buyer.
+            $ticketOwnerId = $giftRecipient ? (int) $giftRecipient['user_id'] : $user_id;
             for ($i = 0; $i < $quantity; $i++) {
                 $ticketCustomId = generateTicketId($pdo);
                 // Generate consistent TKT- barcode even for free events
@@ -213,7 +269,7 @@ try {
                 $pdo->prepare("
                     INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'valid')
-                ")->execute([$user_id, $event_id, $payment_id, $order_id, $ticketCustomId, $barcode]);
+                ")->execute([$ticketOwnerId, $event_id, $payment_id, $order_id, $ticketCustomId, $barcode]);
                 $ticket_id = $pdo->lastInsertId();
 
                 $contactInfo = $body['contact_info'] ?? [];
@@ -221,13 +277,17 @@ try {
                     ? trim(($contactInfo['fname'] ?? '') . ' ' . ($contactInfo['lname'] ?? ''))
                     : $user_name;
                 $buyerEmail  = !empty($contactInfo['email']) ? $contactInfo['email'] : $user_email;
+                if ($giftRecipient) {
+                    $buyerName = $giftRecipient['name'] ?: $buyerName;
+                    $buyerEmail = $giftRecipient['email'];
+                }
 
                 $ticketData = [
                     'barcode'        => $barcode,
                     'ticket_id'      => $ticketCustomId,
                     'custom_id'      => $ticketCustomId,
                     'event_id'       => $event_id,
-                    'user_id'        => $user_id,
+                    'user_id'        => $ticketOwnerId,
                     'order_id'       => $order_id,
                     'event_name'     => $event['event_name'],
                     'event_date'     => $event['event_date'],
@@ -311,7 +371,7 @@ try {
             require_once '../../includes/helpers/response-helper.php';
             finishResponseThen($freePayload, function () use (
                 $freeEmailData, $freeEmailRecipient,
-                $auth_id, $event, $tickets, $organizer_auth_id, $user_name
+                $auth_id, $event, $tickets, $organizer_auth_id, $user_name, $giftRecipient
             ) {
                 if ($freeEmailData !== null) {
                     try {
@@ -320,8 +380,11 @@ try {
                         error_log('[initialize.php] Free ticket email failed (post-response): ' . $mailEx->getMessage());
                     }
                 }
+                // The ticket-issued notice follows the ticket's owner, so a gift
+                // lands in the recipient's notification feed.
+                $ticketNoticeAuthId = $giftRecipient ? (int) $giftRecipient['auth_id'] : $auth_id;
                 createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
-                createTicketIssuedNotification($auth_id, $event['event_name'], $tickets[0]['barcode']);
+                createTicketIssuedNotification($ticketNoticeAuthId, $event['event_name'], $tickets[0]['barcode']);
                 if ($organizer_auth_id) {
                     createNewSaleNotification($organizer_auth_id, $user_name, $event['event_name'], 0, $auth_id);
                 }
@@ -398,6 +461,51 @@ try {
     $platformSubaccountCode = (string)$platform['subaccount_code'];
     $pdo->beginTransaction();
 
+    // ── Per-tier capacity enforcement ────────────────────────────────────────
+    // The organizer's regular/vip/premium limits live in events.metadata. Lock
+    // the event row first so two concurrent checkouts for the last ticket
+    // serialize here instead of both reading the same remaining count.
+    $tierName = in_array($ticket_type, ['regular', 'vip', 'premium'], true) ? $ticket_type : 'regular';
+    $tierCapacity = $event[$tierName . '_quantity'] ?? null;
+    if ($tierCapacity !== null && $tierCapacity !== '' && (int) $tierCapacity > 0) {
+        $tierCapacity = (int) $tierCapacity;
+        $pdo->prepare('SELECT id FROM events WHERE id = ? FOR UPDATE')->execute([$event_id]);
+
+        // Issued tickets for this tier (never cancelled) …
+        $soldStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM tickets
+            WHERE event_id = ? AND status <> 'cancelled' AND LOWER(ticket_type) = ?
+        ");
+        $soldStmt->execute([$event_id, $tierName]);
+        $tierUsed = (int) $soldStmt->fetchColumn();
+
+        // … plus checkouts still holding a reservation. Pending orders older
+        // than 30 minutes are abandoned Paystack sessions and stop reserving.
+        $reservedStmt = $pdo->prepare("
+            SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.quantity')) AS UNSIGNED)), 0)
+            FROM orders
+            WHERE event_id = ? AND payment_status = 'pending'
+              AND created_at >= NOW() - INTERVAL 30 MINUTE
+              AND LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.ticket_type')), 'regular')) = ?
+        ");
+        $reservedStmt->execute([$event_id, $tierName]);
+        $tierUsed += (int) $reservedStmt->fetchColumn();
+
+        if ($tierUsed + $quantity > $tierCapacity) {
+            $pdo->rollBack();
+            $remaining = max(0, $tierCapacity - $tierUsed);
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'message' => $remaining === 0
+                    ? ucfirst($tierName) . ' tickets for this event are sold out.'
+                    : 'Only ' . $remaining . ' ' . $tierName . ' ticket(s) left for this event.',
+                'tickets_remaining' => $remaining,
+            ]);
+            exit;
+        }
+    }
+
     // Define metadata for the order
     $order_metadata = [
         'event_id'   => $event_id,
@@ -409,6 +517,14 @@ try {
         'selected_locs' => $selected_locs,
         'contact_info' => $body['contact_info'] ?? null
     ];
+    if ($giftRecipient) {
+        // Read back at fulfilment time so the ticket is issued to the recipient
+        // even though the buyer is the one who paid.
+        $order_metadata['gift_recipient_user_id'] = (int) $giftRecipient['user_id'];
+        $order_metadata['gift_recipient_auth_id'] = (int) $giftRecipient['auth_id'];
+        $order_metadata['gift_recipient_email'] = (string) $giftRecipient['email'];
+        $order_metadata['gift_recipient_name'] = (string) $giftRecipient['name'];
+    }
 
     // ── Insert pending order ─────────────────────────────────────────────────
     $oStmt = $pdo->prepare("
@@ -503,6 +619,8 @@ try {
             'buyer_email'     => $buyerEmail,
             'contact_info'    => $body['contact_info'] ?? null,
             'selected_locs'   => $selected_locs,
+            'gift_recipient_email' => $giftRecipient['email'] ?? null,
+            'is_gift'         => $giftRecipient ? true : false,
             // Organizer display name shown on Paystack checkout page
             'organizer_name'  => $event['organizer_business_name'] ?: $event['organizer_name'] ?: 'Event Organizer',
         ],
@@ -560,11 +678,12 @@ try {
     $pdo->commit();
 
     echo json_encode([
-        'success'           => true,
-        'authorization_url' => $psResult['data']['authorization_url'],
-        'reference'         => $reference,
-        'order_id'          => (int)$order_id,
-        'amount'            => $total,
+        'success'                 => true,
+        'authorization_url'       => $psResult['data']['authorization_url'],
+        'reference'               => $reference,
+        'order_id'                => (int)$order_id,
+        'amount'                  => $total,
+        'organizer_paystack_mode' => $isLivePaystackKey ? 'live' : 'test',
     ]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {

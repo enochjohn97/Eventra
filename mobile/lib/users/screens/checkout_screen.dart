@@ -1,7 +1,10 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
@@ -16,7 +19,16 @@ import 'payment_webview_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final EventModel event;
-  const CheckoutScreen({super.key, required this.event});
+
+  /// "Get for someone else": the buyer pays, the recipient owns the ticket.
+  /// Only the recipient's email is collected under Contact Information.
+  final bool giftMode;
+
+  const CheckoutScreen({
+    super.key,
+    required this.event,
+    this.giftMode = false,
+  });
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -29,6 +41,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   late TextEditingController _lnameCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _phoneCtrl;
+  final TextEditingController _giftEmailCtrl = TextEditingController();
   int _quantity = 1;
   late String _ticketType;
   bool _processing = false;
@@ -68,8 +81,14 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     _lnameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
+    _giftEmailCtrl.dispose();
     super.dispose();
   }
+
+  /// Recipient address for a gift purchase, or null for a normal checkout.
+  String? get _giftRecipientEmail => widget.giftMode
+      ? _giftEmailCtrl.text.trim()
+      : null;
 
   /// Base tier price (before fee) — exactly what the backend charges for.
   /// Falls back to the legacy `price` for events whose tier columns are empty
@@ -83,6 +102,28 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   double get _subtotal => _unitPrice * _quantity;
   double get _surcharge => _subtotal * 0.10;
   double get _total => _subtotal + _surcharge;
+
+  /// Tickets left for the selected tier, straight from the organizer's limit.
+  /// `null` means the organizer set no limit for this tier.
+  int? get _remainingForTier => widget.event.remainingForTier(_ticketType);
+
+  /// Capacity the organizer set for the selected tier.
+  int? get _capacityForTier => widget.event.capacityForTier(_ticketType);
+
+  bool _tierSoldOut(String tier) {
+    final remaining = widget.event.remainingForTier(tier);
+    return remaining != null && remaining <= 0;
+  }
+
+  /// Keeps the quantity inside the selected tier's remaining stock. Changing
+  /// tier never leaves a stale quantity that the organizer's limit rejects.
+  void _clampQuantity() {
+    final remaining = widget.event.remainingForTier(_ticketType);
+    if (remaining != null && remaining > 0 && _quantity > remaining) {
+      _quantity = remaining;
+    }
+    if (_quantity < 1) _quantity = 1;
+  }
 
   Future<void> _pay() async {
     if (!_formKey.currentState!.validate()) return;
@@ -99,35 +140,35 @@ class _CheckoutScreenState extends State<CheckoutScreen>
 
     setState(() => _processing = true);
     try {
-      final result = await UserPaymentService.initializePayment(
+      final initResult = await UserPaymentService.initializePayment(
         eventId: widget.event.id,
         quantity: _quantity,
         ticketType: _ticketType,
+        // A gift collects only the recipient's email in the UI; the buyer's own
+        // profile details still travel as the Paystack contact information.
         contactInfo: {
           'fname': _fnameCtrl.text.trim(),
           'lname': _lnameCtrl.text.trim(),
           'email': _emailCtrl.text.trim(),
           'phone': _phoneCtrl.text.trim(),
         },
+        giftRecipientEmail: _giftRecipientEmail,
       );
 
-      final reference = result['reference']?.toString() ?? '';
-      final isFree =
-          result['is_free'] == true ||
-          (result['amount'] is num && (result['amount'] as num) <= 0);
+      final reference = initResult.reference;
 
       if (!mounted) return;
 
-      if (isFree) {
+      if (initResult.isFree) {
         // Free tickets are issued synchronously inside initialize; a verify
         // call confirms the order row landed (and catches rare failures).
         final outcome = await _verifyWithRetry(reference);
-        _showPaymentOutcome(reference, result, outcome);
+        _showPaymentOutcome(reference, initResult.raw, outcome);
         return;
       }
 
-      final authUrl = result['authorization_url']?.toString();
-      if (authUrl == null || authUrl.isEmpty) {
+      final authUrl = initResult.authorizationUrl;
+      if (authUrl.isEmpty) {
         throw Exception('Payment URL missing from server.');
       }
 
@@ -147,7 +188,11 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       // is fulfilled by the backend's Paystack webhook; verify-payment
       // returns "processing" while that is still in flight. Poll it.
       final outcome = await _verifyWithRetry(reference);
-      _showPaymentOutcome(reference, result, outcome);
+      _showPaymentOutcome(reference, initResult.raw, outcome);
+    } on GiftRecipientNotRegisteredException catch (e) {
+      // No account uses that address yet — offer the store so they can install
+      // EventOut, then the buyer can retry the same checkout.
+      if (mounted) await _showRecipientNotRegistered(e);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -187,6 +232,51 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       }
     }
     return _PaymentOutcome.pending;
+  }
+
+  /// Shown when a gift recipient has no EventOut account: hands the buyer the
+  /// Google Play / App Store link so the recipient can install the app and
+  /// register, after which the same checkout can be retried.
+  Future<void> _showRecipientNotRegistered(
+    GiftRecipientNotRegisteredException error,
+  ) async {
+    final email = _giftEmailCtrl.text.trim();
+    Future<void> openStore(String url) async {
+      final uri = Uri.tryParse(url);
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('No EventOut account yet'),
+        content: Text(
+          '$email is not registered on EventOut. Send them the ${Theme.of(context).platform == TargetPlatform.iOS ? 'App Store' : 'Google Play'} link to install the app and create the account, then verify the address again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              openStore(error.storeLinks.android);
+            },
+            child: const Text('Google Play'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              openStore(error.storeLinks.ios);
+            },
+            child: const Text('App Store'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showPaymentOutcome(
@@ -258,11 +348,16 @@ class _CheckoutScreenState extends State<CheckoutScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const BrandLogo(
-          size: 27,
-          markSize: 23,
-          animateEveryMinute: true,
-        ),
+        title: widget.giftMode
+            ? const Text(
+                'Get for someone else',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              )
+            : const BrandLogo(
+                size: 27,
+                markSize: 23,
+                animateEveryMinute: true,
+              ),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -326,11 +421,30 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Contact Information',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  Text(
+                    widget.giftMode
+                        ? 'Recipient Information'
+                        : 'Contact Information',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 12),
+                  if (widget.giftMode) ...[
+                    // "Get for someone else" asks for the recipient's email only.
+                    TextFormField(
+                      controller: _giftEmailCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Recipient Email *',
+                        helperText:
+                            'The ticket is issued to their EventOut account.',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: _email,
+                    ),
+                  ] else ...[
                   Row(
                     children: [
                       Expanded(
@@ -383,6 +497,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: _phone,
                   ),
+                  ],
                   const SizedBox(height: 20),
                   // Ticket tier picker — only the tiers the organizer enabled
                   // (mode "all" is a single legacy price, exactly like the web),
@@ -422,13 +537,34 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                             ),
                           ),
                           IconButton(
-                            onPressed: () => setState(() => _quantity++),
+                            // Never let the buyer step past the organizer's
+                            // remaining stock for the selected tier.
+                            onPressed:
+                                (_remainingForTier == null ||
+                                    _quantity < _remainingForTier!)
+                                ? () => setState(() {
+                                    _quantity++;
+                                    _clampQuantity();
+                                  })
+                                : null,
                             icon: const Icon(Icons.add_circle_outline),
                           ),
                         ],
                       ),
                     ],
                   ),
+                  if (_capacityForTier != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Ticket capacity: $_capacityForTier total · '
+                      '${_remainingForTier ?? 0} left for '
+                      '${EventUtils.tierName(_ticketType)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   _priceRow(
                     'Subtotal (${_ticketType[0].toUpperCase()}${_ticketType.substring(1)} × $_quantity)',
@@ -452,9 +588,13 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                               ),
                             )
                           : Text(
-                              _total <= 0
-                                  ? 'Get Free Ticket'
-                                  : 'Pay with Paystack',
+                              widget.giftMode
+                                  ? (_total <= 0
+                                        ? 'Send Free Ticket'
+                                        : 'Pay & Send Ticket')
+                                  : (_total <= 0
+                                        ? 'Get Free Ticket'
+                                        : 'Pay with Paystack'),
                             ),
                     ),
                   ),
@@ -479,6 +619,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
           Builder(
             builder: (context) {
               final selected = tier == _ticketType;
+              final soldOut = _tierSoldOut(tier);
               return Material(
                 color: selected ? AppTheme.primary : Colors.white,
                 shape: RoundedRectangleBorder(
@@ -492,8 +633,15 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
-                  onTap: () => setState(() => _ticketType = tier),
-                  child: Padding(
+                  onTap: soldOut
+                      ? null
+                      : () => setState(() {
+                          _ticketType = tier;
+                          _clampQuantity();
+                        }),
+                  child: Opacity(
+                    opacity: soldOut ? 0.45 : 1,
+                    child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 9,
@@ -532,9 +680,27 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                                     : AppTheme.textMuted,
                               ),
                             ),
+                            // The organizer's ticket capacity/limit for this tier,
+                            // so buyers see stock before they reach Paystack.
+                            if (widget.event.capacityForTier(tier) != null)
+                              Text(
+                                soldOut
+                                    ? 'Sold out'
+                                    : '${widget.event.remainingForTier(tier)} of ${widget.event.capacityForTier(tier)} left',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: selected
+                                      ? Colors.white70
+                                      : (soldOut
+                                          ? const Color(0xFFDC2626)
+                                          : AppTheme.textMuted),
+                                ),
+                              ),
                           ],
                         ),
                       ],
+                    ),
                     ),
                   ),
                 ),

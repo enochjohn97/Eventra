@@ -705,86 +705,23 @@ window.adminRenderKycRow = function (label, filePath) {
     </div>`;
 };
 
-// BVN is verified as an 11-digit number (no document upload since 2026-09-23),
-// so the row shows the verification state + masked number from metadata
-// instead of the file-based "Not uploaded".
+// BVN is captured as an 11-digit number (no document upload since 2026-09-23).
+// The row always shows the masked number the client saved — no "Not verified"
+// placeholder, since the number itself is the data the reviewer needs.
 window.adminRenderBvnRow = function (client) {
   const doc = client.kyc_documents?.bvn || {};
-  const verified =
-    client.bvn_verified == 1 || doc.verified === true || doc.status === "verified";
   const masked = client.bvn_masked || doc.masked || "";
 
-  if (verified) {
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
-            <div style="width:40px;height:40px;border-radius:6px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="badge-check" style="width:18px;height:18px;color:#10b981;"></i></div>
-            <div style="min-width:0;flex:1;">
-                <div style="font-size:0.72rem;font-weight:700;color:#334155;">BVN</div>
-                <div style="font-size:0.65rem;color:#10b981;font-weight:600;" title="Verified through the central registry">Verified${masked ? ` &middot; ${escapeHTML(masked)}` : ""}</div>
-            </div>
-        </div>`;
-  }
-  if (client.kyc_bvn_file || doc.url) {
+  if (!masked && (client.kyc_bvn_file || doc.url)) {
     return adminRenderKycRow("BVN", doc.url || client.kyc_bvn_file);
   }
-  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#94a3b8;font-size:0.76rem;"><i data-lucide="file-x" style="width:14px;height:14px;flex-shrink:0;"></i><span style="flex:1;">BVN</span><span>Not verified</span></div>`;
-};
-
-window.adminSavePaystackAccountStatus = async function (clientId, btn) {
-  const statusInput = document.getElementById(`paystackAccountStatus_${clientId}`);
-  const reasonInput = document.getElementById(`paystackAccountReason_${clientId}`);
-  const statusEl = document.getElementById(`paystackAccountReviewResult_${clientId}`);
-  const status = statusInput?.value || "";
-  const reason = reasonInput?.value.trim() || "";
-  if (!status) return;
-  if (status === "declined" && !reason) {
-    if (statusEl) {
-      statusEl.textContent = "Add the decline reason before saving.";
-      statusEl.style.color = "#ef4444";
-    }
-    return;
-  }
-
-  const originalText = btn?.textContent || "Save review status";
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Saving...";
-  }
-  try {
-    const res = await apiFetch("/api/admin/update-client-paystack.php", {
-      method: "POST",
-      body: JSON.stringify({
-        client_id: clientId,
-        paystack_account_status: status,
-        paystack_account_reason: reason,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      if (statusEl) {
-        statusEl.textContent = data.message || "Paystack account status updated.";
-        statusEl.style.color = "#15803d";
-      }
-      if (window.showToast) window.showToast(data.message, "success");
-      if (window.notificationManager) window.notificationManager.fetchNotifications();
-    } else {
-      if (statusEl) {
-        statusEl.textContent = data.message || "Update failed.";
-        statusEl.style.color = "#ef4444";
-      }
-      if (window.showToast) window.showToast(data.message || "Update failed", "error");
-    }
-  } catch (e) {
-    if (statusEl) {
-      statusEl.textContent = "Connection error. Try again.";
-      statusEl.style.color = "#ef4444";
-    }
-    if (window.showToast) window.showToast("Connection error", "error");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = originalText;
-    }
-  }
+  return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="width:40px;height:40px;border-radius:6px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="shield-check" style="width:18px;height:18px;color:#6366f1;"></i></div>
+        <div style="min-width:0;flex:1;">
+            <div style="font-size:0.72rem;font-weight:700;color:#334155;">BVN</div>
+            <div style="font-size:0.7rem;color:#475569;font-family:monospace;letter-spacing:0.03em;">${escapeHTML(masked) || "—"}</div>
+        </div>
+    </div>`;
 };
 
 // Global toggle for Paystack secret key visibility in the client profile modal
@@ -889,17 +826,6 @@ window.initPreviews = function () {
                 0,
               );
               const isVerified = client.verification_status === "verified";
-              const paystackAccountStatus = [
-                "not_created",
-                "pending",
-                "approved",
-                "declined",
-              ].includes(client.paystack_account_status)
-                ? client.paystack_account_status
-                : "not_created";
-              const paystackAccountReason = client.paystack_account_reason || "";
-              const platformSubaccountCode =
-                client.paystack_platform_subaccount_code || "";
               content.innerHTML = `
                                 <div class="profile-preview modernized-preview">
                                     <div class="profile-preview-header">
@@ -1032,28 +958,8 @@ window.initPreviews = function () {
                                                         </button>
                                                     </div>
                                                     <button onclick="adminSavePaystackKey(${client.id}, this)" style="background:#3b82f6;color:#fff;border:none;padding:0.6rem;border-radius:8px;font-weight:700;font-size:0.75rem;cursor:pointer;">Validate & Save</button>
-                                                    <label for="platformSubaccountCode_${client.id}" style="font-size:0.68rem;font-weight:700;color:#475569;">Attoneex subaccount code (optional)</label>
-                                                    <input type="text" id="platformSubaccountCode_${client.id}" value="${escapeHTML(platformSubaccountCode)}" placeholder="ACCT_..." autocomplete="off" style="width:100%;padding:0.6rem;border:1px solid #e2e8f0;border-radius:8px;font-size:0.78rem;font-family:monospace;box-sizing:border-box;">
-                                                    <div style="font-size:0.65rem;color:#64748b;">Paste a code created manually under this client’s Paystack account. It is checked and configured before use.</div>
+                                                    <div style="font-size:0.65rem;color:#64748b;">The Attoneex settlement subaccount and the platform split are created automatically under this client’s Paystack account — no manual code needed.</div>
                                                     <div id="paystackKeyStatus_${client.id}" style="font-size:0.7rem;margin-top:2px;"></div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Paystack account decision -->
-                                            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;">
-                                                <div style="font-size:0.63rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
-                                                    <i data-lucide="badge-check" style="width:11px;height:11px;"></i> Paystack Account Review
-                                                </div>
-                                                <div style="display:flex;flex-direction:column;gap:8px;">
-                                                    <select id="paystackAccountStatus_${client.id}" class="form-control" aria-label="Paystack account review status" style="width:100%;padding:0.6rem;border:1px solid #e2e8f0;border-radius:8px;font-size:0.78rem;">
-                                                        <option value="not_created" ${paystackAccountStatus === "not_created" ? "selected" : ""}>Not created</option>
-                                                        <option value="pending" ${paystackAccountStatus === "pending" ? "selected" : ""}>Pending review</option>
-                                                        <option value="approved" ${paystackAccountStatus === "approved" ? "selected" : ""}>Approved</option>
-                                                        <option value="declined" ${paystackAccountStatus === "declined" ? "selected" : ""}>Declined</option>
-                                                    </select>
-                                                    <textarea id="paystackAccountReason_${client.id}" rows="2" maxlength="500" placeholder="Required when declined: add the reason" style="width:100%;padding:0.6rem;border:1px solid #e2e8f0;border-radius:8px;font-size:0.76rem;resize:vertical;box-sizing:border-box;">${escapeHTML(paystackAccountReason)}</textarea>
-                                                    <button type="button" onclick="adminSavePaystackAccountStatus(${client.id}, this)" style="background:#0f766e;color:#fff;border:none;padding:0.6rem;border-radius:8px;font-weight:700;font-size:0.75rem;cursor:pointer;">Save review status</button>
-                                                    <div id="paystackAccountReviewResult_${client.id}" style="font-size:0.68rem;color:#64748b;">${paystackAccountStatus === "approved" || paystackAccountStatus === "declined" ? `Last reviewed ${escapeHTML(client.paystack_account_reviewed_at || "")}` : "Admins receive an in-app notice when this account is approved or declined."}</div>
                                                 </div>
                                             </div>
 
@@ -1306,17 +1212,13 @@ window.initPreviews = function () {
 
 window.adminSavePaystackKey = async function (clientId, btn) {
   const input = document.getElementById(`paystackKeyInput_${clientId}`);
-  const platformCodeInput = document.getElementById(
-    `platformSubaccountCode_${clientId}`,
-  );
   const statusEl = document.getElementById(`paystackKeyStatus_${clientId}`);
   const key = input ? input.value.trim() : "";
-  const platformCode = platformCodeInput ? platformCodeInput.value.trim() : "";
 
-  if (!key && !platformCode) {
+  if (!key) {
     if (statusEl)
       statusEl.innerHTML =
-        '<span style="color:#ef4444;">Enter a Paystack key or an Attoneex subaccount code.</span>';
+        '<span style="color:#ef4444;">Enter the client Paystack secret key.</span>';
     return;
   }
 
@@ -1328,9 +1230,7 @@ window.adminSavePaystackKey = async function (clientId, btn) {
       '<span style="color:#64748b;">Checking Paystack account and split settings...</span>';
 
   try {
-    const payload = { client_id: clientId };
-    if (key) payload.paystack_key = key;
-    if (platformCode) payload.platform_subaccount_code = platformCode;
+    const payload = { client_id: clientId, paystack_key: key };
     const response = await apiFetch("/api/admin/update-client-paystack.php", {
       method: "POST",
       body: JSON.stringify(payload),

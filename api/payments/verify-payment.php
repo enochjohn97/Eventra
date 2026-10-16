@@ -288,6 +288,19 @@ try {
         $dbMeta = json_decode($order['metadata'] ?? '{}', true) ?? [];
         $ticket_user_name = $metadata['user_name'] ?? $dbMeta['user_name'] ?? $order['user_name'] ?? 'Guest';
 
+        // Gift purchases ("Get for someone else") belong to the recipient: the
+        // buyer's payment row is untouched for reconciliation, but the ticket
+        // row and its confirmation email are issued to the recipient account so
+        // the ticket appears in THAT user's app.
+        $giftRecipientUserId = (int) ($dbMeta['gift_recipient_user_id'] ?? 0);
+        $giftRecipientAuthId = (int) ($dbMeta['gift_recipient_auth_id'] ?? 0);
+        $giftRecipientEmail = trim((string) ($dbMeta['gift_recipient_email'] ?? ''));
+        $isGift = $giftRecipientUserId > 0 && filter_var($giftRecipientEmail, FILTER_VALIDATE_EMAIL);
+        $ticketOwnerId = $isGift ? $giftRecipientUserId : (int) $order['user_id'];
+        if ($isGift) {
+            $ticket_user_name = $dbMeta['gift_recipient_name'] ?? $ticket_user_name;
+        }
+
         // 1. Update order status (now 'processing' from the claim)
         $pdo->prepare("
             UPDATE orders SET payment_status = 'success', payment_method = ?, updated_at = NOW()
@@ -363,8 +376,8 @@ try {
                 $pdo->prepare("
                     INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'valid')
-                ")->execute([
-                    $order['user_id'],
+                "                )->execute([
+                    $ticketOwnerId,
                     $order['event_id'],
                     $payment_id,
                     $order['id'],
@@ -378,7 +391,7 @@ try {
 
             $ticketData = [
                 'event_id'       => $order['event_id'],
-                'user_id'        => $order['user_id'],
+                'user_id'        => $ticketOwnerId,
                 'order_id'       => $order['id'],
                 'event_name'     => $order['event_name'],
                 'event_date'     => $order['event_date'],
@@ -405,9 +418,13 @@ try {
                 'barcodes' => $barcodes,
                 'ticket_ids' => $ticket_ids,
                 'ticket_data' => $ticketData,
-                'user_email' => $metadata['buyer_email'] ?? $order['user_email'],
+                'user_email' => $isGift
+                    ? $giftRecipientEmail
+                    : ($metadata['buyer_email'] ?? $order['user_email']),
                 'user_phone' => $order['user_phone'],
-                'user_auth_accounts_id' => $order['user_auth_accounts_id'],
+                'user_auth_accounts_id' => $isGift && $giftRecipientAuthId > 0
+                    ? $giftRecipientAuthId
+                    : $order['user_auth_accounts_id'],
                 'organizer_auth_id' => $order['organizer_auth_id'] ?? null,
                 'quantity' => $quantity
             ];

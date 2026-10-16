@@ -153,6 +153,44 @@ try {
             }
         }
 
+        // 2c. Attendee "10 minutes before" in-app reminder (mobile app ticket
+        //     screen). Own metadata flag so it never collides with the 30-minute
+        //     email pass below (which consumes the per-ticket reminder_sent flag).
+        $tenMinNotified = isset($metadata['event_reminder_10min_sent']);
+        if (!$tenMinNotified && $earliestDiff <= 11 && $earliestDiff >= 4) {
+            try {
+                $attendeeStmt = $pdo->prepare("
+                    SELECT DISTINCT aa.id AS auth_id
+                    FROM tickets t
+                    JOIN users u ON t.user_id = u.id
+                    JOIN auth_accounts aa ON u.user_auth_id = aa.id
+                    WHERE t.event_id = ? AND t.status = 'valid'
+                ");
+                $attendeeStmt->execute([$eventId]);
+                $attendeeAuthIds = $attendeeStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                $tenMinMessage = "Your event '{$eventName}' starts in 10 minutes!";
+                foreach ($attendeeAuthIds as $attendeeAuthId) {
+                    createNotification(
+                        (int) $attendeeAuthId,
+                        $tenMinMessage,
+                        'event_reminder',
+                        null,
+                        'user',
+                        'system',
+                        ['event_id' => $eventId, 'window' => '10min']
+                    );
+                }
+
+                $metadata['event_reminder_10min_sent'] = true;
+                $pdo->prepare("UPDATE events SET metadata = ? WHERE id = ?")
+                    ->execute([json_encode($metadata), $eventId]);
+                echo "Sent 10-minute reminders to " . count($attendeeAuthIds) . " attendee(s) for '{$eventName}'\n";
+            } catch (Throwable $tenMinEx) {
+                error_log("[Cron Reminder] 10-min attendee reminder failed for event {$eventId}: " . $tenMinEx->getMessage());
+            }
+        }
+
         // 3. Fetch attendees for 30m reminder — per-ticket dedupe prevents
         //    double-sends across cron runs and multi-location events.
         if (empty($event['user_reminder_sent'])) {

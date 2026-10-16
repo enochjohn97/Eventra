@@ -248,6 +248,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     color: Color(0xFF9CA3AF),
                                     fontSize: 14.5,
                                     height: 1.4,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
@@ -327,7 +328,7 @@ class _EventOutLockup extends StatelessWidget {
   final double size;
   const _EventOutLockup({required this.size});
 
-  static const _brandRed = Color(0xFFF64B54);
+  static const _brandRed = Color(0xFFB91C1C);
 
   @override
   Widget build(BuildContext context) {
@@ -442,7 +443,11 @@ class _GoogleSuccessOverlayState extends State<_GoogleSuccessOverlay>
                 Text(
                   'You\u2019re signed in. Let\u2019s find your next event.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13.5),
+                  style: TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),

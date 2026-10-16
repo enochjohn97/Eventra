@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import '../../core/widgets/brand_logo.dart';
+import '../providers/app_config_provider.dart';
 
 class PaymentWebViewScreen extends StatefulWidget {
   final String authorizationUrl;
@@ -46,22 +47,12 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final config = context.watch<AppConfigProvider>();
+    final modeBanner = _buildModeBanner(config);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            BrandLogo(size: 27, markSize: 23, animateEveryMinute: true),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'Paystack Checkout',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+        title: const Text('Paystack Checkout'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context, false),
@@ -71,8 +62,67 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         children: [
           WebViewWidget(controller: _controller),
           if (_loading) const LinearProgressIndicator(minHeight: 3),
+          if (modeBanner != null) Positioned.fill(
+            child: Container(
+              color: Colors.transparent,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: kToolbarHeight + 12),
+                  child: modeBanner,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget? _buildModeBanner(AppConfigProvider config) {
+    if (!config.isLoaded || config.paystackMode.isEmpty) return null;
+
+    final isTest =
+        config.paystackMode.toLowerCase() == 'test' || config.paystackIsTestMode;
+    final isUnconfigured =
+        config.paystackMode.toLowerCase() == 'unconfigured';
+
+    if (isUnconfigured || !isTest) return null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F6FF),
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFF0066FF).withValues(alpha: 0.18),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 18,
+            color: Color(0xFF0066FF),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Paystack test key — payments here are test transactions, not live payments.',
+              style: const TextStyle(
+                color: Color(0xFF0066FF),
+                fontSize: 12.5,
+                height: 1.25,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
   }
 }
+

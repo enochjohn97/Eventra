@@ -247,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
+              backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
             ),
             onPressed: () {

@@ -197,15 +197,43 @@ if (!isLocalHost()) {
     // Dynamic Paystack swap when running in production/live host
     $livePk = $_ENV['LIVE_PAYSTACK_PUBLIC_KEY'] ?? getenv('LIVE_PAYSTACK_PUBLIC_KEY') ?: '';
     $liveSk = $_ENV['LIVE_PAYSTACK_SECRET_KEY'] ?? getenv('LIVE_PAYSTACK_SECRET_KEY') ?: '';
-    
+
+    // Prefer live Paystack keys when they are available. This prevents the
+    // platform from accidentally running on a test key just because a local
+    // override or a hosting-level variable injected one.
+    $currentPk = $_ENV['PAYSTACK_PUBLIC_KEY'] ?? '';
+    $isCurrentLive = str_starts_with($currentPk, 'pk_live_');
+    $isCurrentTest = str_starts_with($currentPk, 'pk_test_');
+
     if ($livePk !== '' && $liveSk !== '') {
+        // If the live host provides explicit live keys, use them.
         $_ENV['PAYSTACK_PUBLIC_KEY'] = $livePk;
         $_ENV['PAYSTACK_SECRET_KEY'] = $liveSk;
-        
         $_SERVER['PAYSTACK_PUBLIC_KEY'] = $livePk;
         $_SERVER['PAYSTACK_SECRET_KEY'] = $liveSk;
-        
         putenv('PAYSTACK_PUBLIC_KEY=' . $livePk);
         putenv('PAYSTACK_SECRET_KEY=' . $liveSk);
+    } elseif ($isCurrentTest && $livePk !== '' && str_starts_with($livePk, 'pk_live_')) {
+        // Fallback: if .env / hosting injected a test public key but a live
+        // public key is also available, upgrade to the live key. The secret
+        // key is left as-is unless a matching live secret is also present.
+        $_ENV['PAYSTACK_PUBLIC_KEY'] = $livePk;
+        $_SERVER['PAYSTACK_PUBLIC_KEY'] = $livePk;
+        putenv('PAYSTACK_PUBLIC_KEY=' . $livePk);
+    }
+
+    // Final safety net: if both a live and a test key are present in the
+    // loaded environment, the live key should win regardless of which one
+    // was set last.
+    $finalPk = $_ENV['PAYSTACK_PUBLIC_KEY'] ?? '';
+    $finalSk = $_ENV['PAYSTACK_SECRET_KEY'] ?? '';
+
+    if (str_starts_with($finalPk, 'pk_live_') && str_starts_with($finalSk, 'sk_test_')) {
+        // Live public key with a test secret key is an inconsistent state.
+        // Keep the live public key and clear the obviously-wrong test secret
+        // rather than letting Paystack calls fail with a mismatched pair.
+        $_ENV['PAYSTACK_SECRET_KEY'] = '';
+        $_SERVER['PAYSTACK_SECRET_KEY'] = '';
+        putenv('PAYSTACK_SECRET_KEY=');
     }
 }

@@ -53,11 +53,16 @@ function detectLanUrl(): string
 }
 
 try {
+    $publicKey = $_ENV['PAYSTACK_PUBLIC_KEY'] ?? '';
+    $isTestMode = str_starts_with($publicKey, 'pk_test_');
+
     $googleConfig = [
         'success' => true,
         'client_id' => getGoogleClientId(),
         'maps_api_key' => $_ENV['GOOGLE_MAPS_API_KEY'] ?? '',
-        'paystack_public_key' => $_ENV['PAYSTACK_PUBLIC_KEY'] ?? '',
+        'paystack_public_key' => $publicKey,
+        'paystack_is_test_mode' => $isTestMode,
+        'paystack_mode' => $isTestMode ? 'test' : (str_starts_with($publicKey, 'pk_live_') ? 'live' : 'unconfigured'),
         'app_url' => rtrim($_ENV['APP_URL'] ?? '', '/'),
         'lan_url' => detectLanUrl(),
     ];

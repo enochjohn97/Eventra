@@ -127,6 +127,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         Navigator.pop(context);
                         openCheckoutForEvent(context, event);
                       },
+                      onGiftTicket: () {
+                        Navigator.pop(context);
+                        openCheckoutForEvent(context, event, gift: true);
+                      },
                     ),
                     // Passed events show no heart here either.
                     onFavorite: EventUtils.isPassed(event)

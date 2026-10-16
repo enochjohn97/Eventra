@@ -76,8 +76,17 @@ GoRouter createUserRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/checkout',
         builder: (context, state) {
-          final event = state.extra as EventModel;
-          return CheckoutScreen(event: event);
+          // "Get Ticket" pushes the event itself; "Get for someone else" pushes
+          // a payload carrying the gift flag so checkout asks only for the
+          // recipient's email.
+          final extra = state.extra;
+          if (extra is Map) {
+            return CheckoutScreen(
+              event: extra['event'] as EventModel,
+              giftMode: extra['gift'] == true,
+            );
+          }
+          return CheckoutScreen(event: extra as EventModel);
         },
       ),
       GoRoute(

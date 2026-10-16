@@ -181,12 +181,34 @@ try {
     }
 
     $updated_metadata = json_encode($meta);
+
     $sets = ['metadata = ?', 'updated_at = NOW()'];
     $params = [$updated_metadata];
     if ($paystack_connection_status !== null) { $sets[] = 'paystack_connection_status = ?'; $params[] = $paystack_connection_status; }
     if ($paystack_public_key !== '') { $sets[] = 'paystack_public_key = ?'; $params[] = $paystack_public_key; }
     if ($paystack_merchant_id !== '') { $sets[] = 'paystack_merchant_id = ?'; $params[] = $paystack_merchant_id; }
-    if ($paystack_key) { $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key; $sets[] = "settlement_verification_status = 'verified'"; $sets[] = "paystack_connection_status = 'connected'"; }
+    if ($paystack_key) {
+        $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key;
+        $sets[] = "settlement_verification_status = 'verified'";
+        $sets[] = "paystack_connection_status = 'connected'";
+        // These four columns were never written by any code path, which is why
+        // a "connected" client still showed NULL for its connection stamps.
+        // connected_at keeps the FIRST successful connection; last_sync_at
+        // moves on every validated save.
+        $sets[] = 'paystack_connected_at = COALESCE(paystack_connected_at, NOW())';
+        $sets[] = 'paystack_last_sync_at = NOW()';
+        // Paystack has no API to derive a public key from a secret key, so it is
+        // only stored when the caller supplies one; the platform key is reused
+        // when the client is running on the platform integration.
+        if ($paystack_public_key === '' && $paystack_key === PAYSTACK_SECRET_KEY && PAYSTACK_PUBLIC_KEY !== '') {
+            $sets[] = 'paystack_public_key = ?'; $params[] = PAYSTACK_PUBLIC_KEY;
+            $meta['paystack_public_key'] = PAYSTACK_PUBLIC_KEY;
+        }
+        $meta['paystack_synced_at'] = date('Y-m-d H:i:s');
+        // $updated_metadata was encoded before this block — refresh the value
+        // bound to the metadata column so the sync stamps are persisted too.
+        $params[0] = json_encode($meta);
+    }
     $params[] = $client_id;
 
     $updateStmt = $pdo->prepare("UPDATE clients SET " . implode(', ', $sets) . " WHERE id = ?");

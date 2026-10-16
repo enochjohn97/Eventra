@@ -39,11 +39,11 @@
       }
 
       .checkout-logo {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--primary-color);
         text-decoration: none;
-        letter-spacing: -0.5px;
+      }
+
+      .checkout-logo.brand-lockup {
+        color: #B91C1C;
       }
 
       .back-btn {
@@ -221,7 +221,7 @@
       }
 
       .pay-btn:hover {
-        background: #16a34a;
+        background: var(--primary-color);
       }
 
       .pay-btn:active {
@@ -318,7 +318,10 @@
         </svg>
         Back
       </a>
-      <a href="index.html" class="checkout-logo">EventOut</a>
+      <a href="index.html" class="checkout-logo brand-lockup" aria-label="EventOut home">
+        <img class="brand-lockup-mark" src="/public/assets/brand/logo-mark.png" alt="" />
+        <span>ventOut</span>
+      </a>
       <div style="width: 70px"></div>
       <!-- Spacer for flex alignment -->
     </header>
@@ -370,6 +373,8 @@
               All transactions are secure and encrypted.
             </p>
 
+
+
             <button type="button" class="pay-btn" id="paystackBtn">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -387,6 +392,10 @@
               </svg>
               Checkout <span id="btnPayAmount">₦0</span>
             </button>
+
+            <div id="siteTagline" style="margin-top: 1rem; text-align: center; color: #2563eb; font-size: 0.8rem; font-weight: 600;">
+              Discover &amp; book amazing events across Nigeria.
+            </div>
 
             <div class="secure-badge">
               <svg

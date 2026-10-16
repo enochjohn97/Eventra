@@ -9,6 +9,8 @@ class AppConfigProvider extends ChangeNotifier {
   String googleClientId = '';
   String mapsApiKey = '';
   String paystackPublicKey = '';
+  String paystackMode = '';
+  bool paystackIsTestMode = false;
   String appUrl = '';
 
   Future<void> load({bool force = false}) async {
@@ -22,6 +24,8 @@ class AppConfigProvider extends ChangeNotifier {
       googleClientId = config.googleClientId;
       mapsApiKey = config.mapsApiKey;
       paystackPublicKey = config.paystackPublicKey;
+      paystackMode = config.paystackMode;
+      paystackIsTestMode = config.paystackIsTestMode;
       appUrl = config.appUrl;
       if (googleClientId.isEmpty) {
         // We no longer rely on the server's googleClientId for mobile sign-in.

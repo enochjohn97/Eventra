@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_underscores
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,13 +18,18 @@ Future<void> showEventDetailSheet(
   BuildContext context, {
   required EventModel event,
   VoidCallback? onGetTicket,
+  VoidCallback? onGiftTicket,
 }) async {
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _EventDetailSheet(event: event, onGetTicket: onGetTicket),
+    builder: (ctx) => _EventDetailSheet(
+      event: event,
+      onGetTicket: onGetTicket,
+      onGiftTicket: onGiftTicket,
+    ),
   );
 }
 
@@ -30,7 +37,14 @@ class _EventDetailSheet extends StatefulWidget {
   final EventModel event;
   final VoidCallback? onGetTicket;
 
-  const _EventDetailSheet({required this.event, this.onGetTicket});
+  /// "Get for someone else" — opens checkout in gift mode below Get Ticket.
+  final VoidCallback? onGiftTicket;
+
+  const _EventDetailSheet({
+    required this.event,
+    this.onGetTicket,
+    this.onGiftTicket,
+  });
 
   @override
   State<_EventDetailSheet> createState() => _EventDetailSheetState();
@@ -245,6 +259,17 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                         child: Text(buyLabel),
                       ),
                     ),
+                    if (widget.onGiftTicket != null) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: canBuy ? widget.onGiftTicket : null,
+                          icon: const Icon(Icons.card_giftcard, size: 18),
+                          label: const Text('Get for someone else'),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                   ],
                 ),

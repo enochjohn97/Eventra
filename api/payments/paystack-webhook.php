@@ -126,6 +126,21 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         $buyerEmail   = !empty($contactInfo['email']) ? $contactInfo['email']
             : ($metadata['buyer_email'] ?? $order['user_email']);
 
+        // Gift purchases ("Get for someone else") belong to the recipient. The
+        // payment row stays attributed to the payer, but the tickets and the
+        // confirmation email follow the recipient account — mirroring the
+        // verify-payment fulfilment path so both workers behave identically.
+        $orderMeta = json_decode($order['metadata'] ?? '{}', true) ?: [];
+        $giftRecipientUserId  = (int) ($orderMeta['gift_recipient_user_id'] ?? 0);
+        $giftRecipientAuthId  = (int) ($orderMeta['gift_recipient_auth_id'] ?? 0);
+        $giftRecipientEmail   = trim((string) ($orderMeta['gift_recipient_email'] ?? ''));
+        $isGift = $giftRecipientUserId > 0 && filter_var($giftRecipientEmail, FILTER_VALIDATE_EMAIL);
+        $ticketOwnerId = $isGift ? $giftRecipientUserId : (int) $order['user_id'];
+        if ($isGift) {
+            $buyerEmail = $giftRecipientEmail;
+            $buyerName  = $orderMeta['gift_recipient_name'] ?? $buyerName;
+        }
+
         // Increment event attendee count and sales count, decrement stock atomically
         $stmtStock = $pdo->prepare("
             UPDATE events 
@@ -196,7 +211,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'valid')
                 ")->execute([
-                    $order['user_id'],
+                    $ticketOwnerId,
                     $order['event_id'],
                     $payment_id,
                     $order['id'],
@@ -210,7 +225,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     'ticket_id'      => $ticketCustomId,
                     'custom_id'      => $ticketCustomId,
                     'event_id'       => $order['event_id'],
-                    'user_id'        => $order['user_id'],
+                    'user_id'        => $ticketOwnerId,
                     'order_id'       => $order['id'],
                     'event_name'     => $order['event_name'],
                     'event_date'     => $order['event_date'],
@@ -266,7 +281,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         // ── Post-commit: notifications + email/SMS run AFTER the transaction commits ──
         // Captured in a closure so the DB transaction can commit instantly and the
         // buyer's ticket data is durable before any slow network I/O happens.
-        $GLOBALS['_webhook_post_commit'] = function () use ($barcodes, $ticketDataMap, $buyerName, $buyerEmail, $order) {
+        $GLOBALS['_webhook_post_commit'] = function () use ($barcodes, $ticketDataMap, $buyerName, $buyerEmail, $order, $isGift, $giftRecipientAuthId, $giftRecipientEmail) {
             // One consolidated, attachment-free email per purchase: the QR is
             // embedded in the HTML body; PDFs are never emailed.
             $emailData = null;
@@ -306,9 +321,25 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                 );
             }
 
-            // In-app: buyer
+            // In-app: the ticket holder. For a gift that is the recipient, so the
+            // ticket notice lands in the recipient's notification feed.
+            $ticketNoticeAuthId = $isGift && $giftRecipientAuthId > 0
+                ? $giftRecipientAuthId
+                : (int) $order['user_auth_id'];
             createPaymentSuccessNotification($order['user_auth_id'], $order['event_name'], $order['amount']);
-            createTicketIssuedNotification($order['user_auth_id'], $order['event_name'], $barcodes[0] ?? '');
+            createTicketIssuedNotification($ticketNoticeAuthId, $order['event_name'], $barcodes[0] ?? '');
+            if ($isGift) {
+                // Let the recipient know who sent it.
+                @createNotification(
+                    $ticketNoticeAuthId,
+                    "You received a ticket for {$order['event_name']} from {$order['user_name']}.",
+                    'ticket_issued',
+                    (int) $order['user_auth_id'],
+                    'user',
+                    'user',
+                    ['event_id' => (int) $order['event_id'], 'gift' => true]
+                );
+            }
 
             // In-app: organizer (new sale alert)
             createNewSaleNotification($order['organizer_auth_id'], $order['user_name'], $order['event_name'], $order['amount'], $order['user_auth_id']);

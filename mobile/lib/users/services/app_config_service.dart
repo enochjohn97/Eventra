@@ -7,7 +7,9 @@ import '../../core/network/endpoint_resolver.dart';
 class AppConfigService {
   static final Dio _dio = ApiClient().dio;
 
-  static Future<({String googleClientId, String mapsApiKey, String paystackPublicKey, String appUrl})> load() async {
+  static Future<({String googleClientId, String mapsApiKey,
+      String paystackPublicKey, String paystackMode, bool paystackIsTestMode,
+      String appUrl})> load() async {
     final response = await _dio.get('/config/app');
     final raw = response.data;
     final data = raw is Map<String, dynamic>
@@ -28,6 +30,8 @@ class AppConfigService {
       googleClientId: data['client_id']?.toString() ?? '',
       mapsApiKey: data['maps_api_key']?.toString() ?? '',
       paystackPublicKey: data['paystack_public_key']?.toString() ?? '',
+      paystackMode: data['paystack_mode']?.toString() ?? '',
+      paystackIsTestMode: (data['paystack_is_test_mode'] ?? false) == true,
       appUrl: data['app_url']?.toString() ?? ApiClient().baseOrigin ?? '',
     );
   }

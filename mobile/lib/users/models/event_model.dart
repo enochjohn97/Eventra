@@ -32,6 +32,13 @@ class EventModel {
   final int? maxCapacity;
   final bool isSoldOut;
 
+  /// Organizer-set ticket limit per tier (null = unlimited for that tier).
+  final Map<String, int?> tierCapacity;
+
+  /// Live remaining count per tier, computed server-side from issued tickets
+  /// plus checkouts still holding a reservation.
+  final Map<String, int?> tierRemaining;
+
   const EventModel({
     required this.id,
     this.customId,
@@ -65,7 +72,18 @@ class EventModel {
     this.ticketCount,
     this.maxCapacity,
     this.isSoldOut = false,
+    this.tierCapacity = const {},
+    this.tierRemaining = const {},
   });
+
+  /// Remaining tickets for [tier] (regular / vip / premium).
+  /// Returns null when the organizer set no limit for that tier.
+  int? remainingForTier(String tier) =>
+      tierRemaining[tier.trim().toLowerCase()];
+
+  /// Capacity the organizer set for [tier]; null when unlimited.
+  int? capacityForTier(String tier) =>
+      tierCapacity[tier.trim().toLowerCase()];
 
   factory EventModel.fromJson(
     Map<String, dynamic> json, {
@@ -155,6 +173,8 @@ class EventModel {
           json['sold_out'] == true ||
           (json['sold_out'] is int && json['sold_out'] > 0) ||
           json['sold_out']?.toString() == '1',
+      tierCapacity: _toTierMap(json['tier_capacity']),
+      tierRemaining: _toTierMap(json['tier_remaining']),
     );
   }
 
@@ -194,6 +214,8 @@ class EventModel {
     'ticket_count': ticketCount,
     'max_capacity': maxCapacity,
     'sold_out': isSoldOut ? 1 : 0,
+    'tier_capacity': tierCapacity,
+    'tier_remaining': tierRemaining,
   };
 
   EventModel copyWith({bool? isFavorite}) {
@@ -230,8 +252,23 @@ class EventModel {
       ticketCount: ticketCount,
       maxCapacity: maxCapacity,
       isSoldOut: isSoldOut,
+      tierCapacity: tierCapacity,
+      tierRemaining: tierRemaining,
     );
   }
+}
+
+/// Parses the server's `{regular, vip, premium}` tier maps. Values may arrive
+/// as numbers or numeric strings, and a null value means "no limit".
+Map<String, int?> _toTierMap(dynamic raw) {
+  if (raw is! Map) return const {};
+  return raw.map((key, value) {
+    final tier = key.toString().trim().toLowerCase();
+    if (value == null || value.toString().trim().isEmpty) {
+      return MapEntry(tier, null);
+    }
+    return MapEntry(tier, int.tryParse(value.toString()));
+  });
 }
 
 String? _validatedPriorityLabel(

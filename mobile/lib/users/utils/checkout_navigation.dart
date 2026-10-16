@@ -10,15 +10,22 @@ import '../providers/auth_provider.dart';
 class PendingCheckout {
   static EventModel? event;
 
-  static void clear() => event = null;
+  /// True when the remembered intent was "Get for someone else".
+  static bool gift = false;
+
+  static void clear() {
+    event = null;
+    gift = false;
+  }
 
   /// Continues a previously requested checkout, if one is waiting. Returns
   /// true when it navigated, so callers can skip their own default redirect.
   static bool resume(BuildContext context) {
     final pending = event;
     if (pending == null) return false;
-    event = null;
-    context.push('/checkout', extra: pending);
+    final wasGift = gift;
+    clear();
+    context.push('/checkout', extra: checkoutRouteExtra(pending, gift: wasGift));
     return true;
   }
 }
@@ -30,18 +37,28 @@ class PendingCheckout {
 /// resumed, so the user always ends up on the checkout page (never stranded on
 /// login or the profile form). Profile fields (name/phone/…) are collected on
 /// the checkout form itself, so an incomplete profile must not block checkout.
-void openCheckoutForEvent(BuildContext context, EventModel event) {
+/// Extra payload for the `/checkout` route. A gift keeps its flag so the
+/// checkout screen knows to ask only for the recipient's email.
+Map<String, dynamic> checkoutRouteExtra(EventModel event, {bool gift = false}) =>
+    {'event': event, 'gift': gift};
+
+void openCheckoutForEvent(
+  BuildContext context,
+  EventModel event, {
+  bool gift = false,
+}) {
   final auth = context.read<AuthProvider>();
 
   // Already signed in → straight to the Paystack checkout.
   if (auth.status == AuthStatus.authenticated ||
       auth.status == AuthStatus.profileIncomplete) {
     PendingCheckout.clear();
-    context.push('/checkout', extra: event);
+    context.push('/checkout', extra: checkoutRouteExtra(event, gift: gift));
     return;
   }
 
   // Signed out → sign in first, then resume this checkout automatically.
   PendingCheckout.event = event;
+  PendingCheckout.gift = gift;
   context.go('/login');
 }
