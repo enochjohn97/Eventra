@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../core/network/api_exception.dart';
@@ -6,6 +8,8 @@ import '../models/user_model.dart';
 import '../services/event_cache_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/user_profile_service.dart';
+import '../../core/utils/app_crypto.dart';
+import '../../core/network/api_client.dart';
 
 enum AuthStatus { unknown, unauthenticated, authenticated, profileIncomplete }
 
@@ -128,6 +132,9 @@ class AuthProvider extends ChangeNotifier {
         dob: dob,
         gender: gender,
       );
+      // Persist the refreshed profile only into the secure store so PII never
+      // lands in a plaintext mirror. The API service already decrypted any
+      // sensitive fields before building the model.
       await SecureStorage.saveUser(user!.toJson());
       status = user!.isProfileComplete
           ? AuthStatus.authenticated

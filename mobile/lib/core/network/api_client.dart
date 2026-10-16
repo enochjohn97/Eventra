@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
 import '../storage/secure_storage.dart';
+import '../utils/app_crypto.dart';
 import 'api_exception.dart';
 import 'endpoint_resolver.dart';
 import 'host_challenge.dart';
@@ -12,6 +14,10 @@ class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late Dio dio;
   String? baseOrigin;
+
+  /// Payload encryption singleton, initialized once the platform secure store
+  /// is ready. Services call [ensureCrypto] before encrypting/decrypting.
+  static AppCrypto? _crypto;
 
   factory ApiClient() => _instance;
 
@@ -50,7 +56,25 @@ class ApiClient {
     // Let EndpointResolver switch this client to whichever origin (live or
     // local) actually serves the API.
     EndpointResolver.registerAdopter(setBaseUrl);
+
+    // Prepare payload crypto in the background; in-flight requests just skip
+    // encryption until it is ready so startup does not stall on a cold device.
+    unawaited(_initCrypto());
   }
+
+  Future<void> _initCrypto() async {
+    try {
+      _crypto = await AppCrypto.create();
+    } catch (_) {
+      // Crypto is a defense-in-depth layer, not a startup gate.
+    }
+  }
+
+  /// Resolve the crypto instance. Callers should guard with [isCryptoReady]
+  /// or just skip encryption when it is still null.
+  static AppCrypto? get crypto => _crypto;
+
+  static bool get isCryptoReady => _crypto != null && _crypto!.ready;
 
   void _createDio(String url) {
     dio = Dio(
@@ -94,6 +118,13 @@ class ApiClient {
           final token = await SecureStorage.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
+          }
+          // Some request payloads carry sensitive fields (e.g. phone during
+          // registration, tokens in diagnostic/debug flows). Encrypt those in
+          // the body before it leaves the device so a compromised payload never
+          // exposes them in plaintext outside the secure storage layer.
+          if (isCryptoReady) {
+            _encryptRequestPayloadIfNeeded(options);
           }
           // Track retry count via extra map
           options.extra['_retryCount'] ??= 0;
@@ -176,6 +207,13 @@ class ApiClient {
                     'Server is starting up. Please wait a moment and try again.',
               ),
             );
+          }
+          // Some API responses that the app persists (e.g. profile, tickets)
+          // may contain sensitive fields. If the body is a JSON map we decrypt
+          // the sensitive leaf values in place so callers never see the raw
+          // values outside secure storage and memory.
+          if (isCryptoReady) {
+            _decryptResponsePayloadIfNeeded(response);
           }
           return handler.next(response);
         },
@@ -461,6 +499,90 @@ class ApiClient {
   void setBypassCookie(String cookie) {
     _bypassCookie = cookie;
     dio.options.headers['Cookie'] = cookie;
+  }
+
+  /// Encrypt sensitive leaf values inside a JSON request body, in place.
+  ///
+  /// Public endpoints still speak plain JSON for filtering/search params, so
+  /// only the fields in [sensitiveFieldNames] are touched. Non-sensitive
+  /// bodies (e.g. list query params) remain unchanged.
+  void _encryptRequestPayloadIfNeeded(RequestOptions options) {
+    final body = options.data;
+    if (body is! Map) return;
+    final updated = _encryptMap(body as Map<String, dynamic>);
+    options.data = updated;
+  }
+
+  Map<String, dynamic> _encryptMap(Map<String, dynamic> map) {
+    final out = <String, dynamic>{};
+    for (final entry in map.entries) {
+      final key = entry.key.toString();
+      final value = entry.value;
+      if (isSensitiveField(key) && value is String && value.isNotEmpty) {
+        out[key] = crypto!.encryptString(value);
+      } else if (value is Map) {
+        out[key] = _encryptMap(Map<String, dynamic>.from(value));
+      } else if (value is List) {
+        out[key] = _encryptList(value);
+      } else {
+        out[key] = value;
+      }
+    }
+    return out;
+  }
+
+  List<dynamic> _encryptList(List list) {
+    return list
+        .map((item) {
+          if (item is Map) return _encryptMap(Map<String, dynamic>.from(item));
+          if (item is List) return _encryptList(item);
+          return item;
+        })
+        .toList();
+  }
+
+  /// Decrypt sensitive leaf values inside a JSON response body, in place.
+  ///
+  /// Only JSON map responses that the app may persist are processed; any
+  /// single encrypted value that fails to decrypt is left as-is so a transient
+  /// mismatch never breaks the whole request.
+  void _decryptResponsePayloadIfNeeded(Response<dynamic> response) {
+    final body = response.data;
+    if (body is! Map && body is! List) return;
+    if (body is Map) {
+      response.data = _decryptMap(body as Map<String, dynamic>);
+    } else {
+      response.data = _decryptList(body as List);
+    }
+  }
+
+  Map<String, dynamic> _decryptMap(Map<String, dynamic> map) {
+    final out = <String, dynamic>{};
+    for (final entry in map.entries) {
+      final key = entry.key.toString();
+      final value = entry.value;
+      if (isSensitiveField(key) && value is String && value.isNotEmpty) {
+        final decrypted = crypto!.decryptString(value);
+        out[key] = decrypted ?? value;
+      } else if (value is Map) {
+        out[key] = _decryptMap(Map<String, dynamic>.from(value));
+      } else if (value is List) {
+        out[key] = _decryptList(value);
+      } else {
+        out[key] = value;
+      }
+    }
+    return out;
+  }
+
+  List<dynamic> _decryptList(List list) {
+    return list
+        .map((item) {
+          if (item is Map) return _decryptMap(Map<String, dynamic>.from(item));
+          if (item is List) return _decryptList(item);
+          return item;
+        })
+        .toList();
   }
 
   /// Switch the API origin at runtime (used by [EndpointResolver] after it

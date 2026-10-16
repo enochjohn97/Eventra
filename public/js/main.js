@@ -238,13 +238,17 @@ async function loadEvents() {
       // Categorized Rendering with Cross-Category Deduplication
       renderAllCategories();
 
-      // Update cart with favorites
-      if (typeof updateCartUI === "function") {
-        updateCartUI();
+      // Update cart with favorites + hero background. Both are cosmetic: a
+      // failure inside them must never abort the feed, or the homepage
+      // scrambles (sections visible, 0 events found) right after login.
+      try {
+        if (typeof updateCartUI === "function") {
+          updateCartUI();
+        }
+        initHeroBackground();
+      } catch (panelEx) {
+        console.error("Homepage panel update failed:", panelEx);
       }
-
-      // Initialize Hero Background with a random event
-      initHeroBackground();
 
       // Finally apply filters for the "All Discovery Results" grid
       applyFilters();
@@ -1073,7 +1077,7 @@ function createEventCard(event, index) {
       pBg = "#00b894";
     }
 
-    priorityBadge = `<div class="event-status-badge" style="color: #ffffff; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pBg}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-left: 0.5rem;">
+    priorityBadge = `<div class="event-status-badge" style="color: #ffffff; background-color: ${pBg}; font-weight: bold; border: 1px solid ${pBg}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
       ${displayPriority}
     </div>`;
   }
@@ -2433,6 +2437,10 @@ function updateCartUI() {
           typeof getImageUrl === "function"
             ? getImageUrl(event.image_path)
             : event.absolute_image_url || (event.image_path ? '/' + event.image_path.replace(/^\/+/, '') : '');
+        // Broken-thumbnail fallback (was referencing an undefined `fallback`,
+        // which threw while rendering the favorites list).
+        const fallbackImage =
+          "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1920&h=1080&fit=crop";
 
         let eventDate = "Date TBA";
         if (event.event_date) {
@@ -2447,7 +2455,7 @@ function updateCartUI() {
 
         return `
                 <div class="favorite-card" onclick="event.stopPropagation(); showEventModal(${event.id})">
-                    <img src="${eventImage}" alt="${escapeHTML(event.event_name)}" class="favorite-card-img" onerror="this.src='${fallback}'">
+                    <img src="${eventImage}" alt="${escapeHTML(event.event_name)}" class="favorite-card-img" onerror="this.onerror=null;this.src='${fallbackImage}'">
                     <div class="favorite-card-body">
                         <div class="favorite-card-title">${escapeHTML(event.event_name.replace(/\s*#\d+$/, ""))}</div>
                         <div class="favorite-card-meta">${eventDate} · ${escapeHTML(event.city || event.state || "Nigeria")}</div>

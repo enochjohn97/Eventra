@@ -886,6 +886,107 @@ function handleAuthRedirect(targetURL) {
   return true;
 }
 
+// Payload encryption helpers (defense in depth)
+const WEB_SENSITIVE = new Set([
+  'token', 'refresh_token', 'access_token', 'phone', 'dob', 'address', 'custom_id',
+  'profile_pic', 'profile_image', 'otp', 'verification_code', 'code', 'password',
+  'new_password', 'current_password', 'card_number', 'card_token', 'card_cvv', 'card_expiry',
+  'bank_account', 'bank_code', 'bvn', 'nin', 'last_four', 'pin', 'secret', 'private_key',
+  'recovery_code', 'reset_token', 'auth_id', 'session_token', 'session_id'
+]);
+
+function webIsSensitiveField(name) {
+  if (!name) return false;
+  if (WEB_SENSITIVE.has(name)) return true;
+  for (const p of WEB_SENSITIVE) {
+    if (p.endsWith('.*') && name.startsWith(p.slice(0, -1))) return true;
+  }
+  return false;
+}
+
+async function webEncString(s) {
+  if (!s) return s;
+  if (typeof s !== 'string') s = String(s);
+  if (typeof crypto === 'undefined' || !crypto.subtle) return s;
+  try {
+    const keyName = 'storage_enc_key';
+    let rawKey;
+    const stored = localStorage.getItem(keyName);
+    if (stored) {
+      rawKey = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+    } else {
+      rawKey = crypto.getRandomValues(new Uint8Array(32));
+      localStorage.setItem(keyName, btoa(String.fromCharCode.apply(null, Array.from(rawKey))));
+    }
+    const key = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt']);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(s));
+    const out = new Uint8Array(iv.length + ct.byteLength);
+    out.set(iv, 0); out.set(new Uint8Array(ct), iv.length);
+    return '__we:v1:' + btoa(String.fromCharCode.apply(null, Array.from(out)));
+  } catch (_) { return s; }
+}
+
+async function webDecString(env) {
+  if (typeof env !== 'string' || !env.startsWith('__we:v1:')) return env;
+  try {
+    const keyName = 'storage_enc_key';
+    const stored = localStorage.getItem(keyName);
+    if (!stored) return env;
+    const rawKey = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['decrypt']);
+    const b64 = env.slice('__we:v1:'.length);
+    const data = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const iv = data.slice(0, 12), ct = data.slice(12);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch (_) { return env; }
+}
+
+async function webEncObj(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    const res = [];
+    for (let i=0; i<obj.length; i++) res[i] = await webEncObj(obj[i]);
+    return res;
+  }
+  const out = {};
+  for (const k in obj) {
+    if (!obj.hasOwnProperty(k)) continue;
+    const v = obj[k];
+    if (webIsSensitiveField(k) && typeof v === 'string' && v) {
+      out[k] = await webEncString(v);
+    } else if (v && typeof v === 'object') {
+      out[k] = await webEncObj(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+async function webDecObj(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    const res = [];
+    for (let i=0; i<obj.length; i++) res[i] = await webDecObj(obj[i]);
+    return res;
+  }
+  const out = {};
+  for (const k in obj) {
+    if (!obj.hasOwnProperty(k)) continue;
+    const v = obj[k];
+    if (webIsSensitiveField(k) && typeof v === 'string' && v.startsWith('__we:v1:')) {
+      out[k] = await webDecString(v);
+    } else if (v && typeof v === 'object') {
+      out[k] = await webDecObj(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 // Centralized API Wrapper
 async function apiFetch(url, options = {}) {
   // Ensure credentials are included by default for session support
@@ -927,6 +1028,29 @@ async function apiFetch(url, options = {}) {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
     headers["X-Access-Token"] = token;
+  }
+
+  // Encrypt sensitive fields in JSON body
+  if (options.body && typeof options.body === 'string') {
+    try {
+      if (options.body.trim().startsWith('{') || options.body.trim().startsWith('[')) {
+        const parsed = JSON.parse(options.body);
+        const enc = await webEncObj(parsed);
+        // If changed meaningfully, send encrypted body
+        options.body = JSON.stringify(enc);
+        if (!headers['Content-Type'] && !headers['content-type']) {
+          headers['Content-Type'] = 'application/json';
+        }
+      }
+    } catch (_) {}
+  } else if (options.body && typeof options.body === 'object') {
+    try {
+      const enc = await webEncObj(options.body);
+      options.body = JSON.stringify(enc);
+      if (!headers['Content-Type'] && !headers['content-type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+    } catch (_) {}
   }
 
   options.headers = headers;

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/utils/app_crypto.dart';
 import '../models/ticket_model.dart';
 
 Map<String, dynamic> _toMap(dynamic raw) {
@@ -33,7 +34,16 @@ class UserTicketService {
         );
       }
       final records = (data['tickets'] as List? ?? [])
-          .map((ticket) => Map<String, dynamic>.from(ticket as Map))
+          .map((ticket) {
+            final map = Map<String, dynamic>.from(ticket as Map);
+            // Decrypt sensitive ticket fields so the secure-store mirror
+            // and the in-memory models only ever hold plaintext inside
+            // protected memory.
+            if (ApiClient.isCryptoReady) {
+              _decryptSensitiveTicketFields(map);
+            }
+            return map;
+          })
           .toList();
       await SecureStorage.savePrivateList('tickets', records);
       return records
@@ -47,9 +57,32 @@ class UserTicketService {
       if (cached == null) {
         throw Exception(error.message ?? 'Failed to load tickets');
       }
-      return cached
+      // The cached mirror was written from already-decrypted records, so it
+      // is safe to read as-is. If the server ever starts returning encrypted
+      // tickets for offline consumers, decrypt them here too.
+      final decryptedCached =
+          cached.map((ticket) {
+            final map = Map<String, dynamic>.from(ticket);
+            if (ApiClient.isCryptoReady) {
+              _decryptSensitiveTicketFields(map);
+            }
+            return map;
+          });
+      return decryptedCached
           .map((ticket) => TicketModel.fromJson(ticket, baseOrigin: _origin))
           .toList();
+    }
+  }
+
+  static void _decryptSensitiveTicketFields(Map<String, dynamic> ticket) {
+    for (final field in sensitiveFieldNames) {
+      if (ticket.containsKey(field)) {
+        final value = ticket[field];
+        if (value is String && value.isNotEmpty) {
+          final plain = ApiClient.crypto?.decryptString(value);
+          if (plain != null) ticket[field] = plain;
+        }
+      }
     }
   }
 

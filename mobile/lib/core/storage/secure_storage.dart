@@ -4,10 +4,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorage {
   static const _storage = FlutterSecureStorage();
 
+  static const encodeUser = true;
+
   static const _keyToken = 'auth_token';
   static const _keyUser = 'auth_user';
   static const _keyRefreshToken = 'refresh_token';
 
+  /// Save the session token. Tokens are sensitive credentials and must never
+  /// be persisted as plaintext outside the encrypted platform keystore.
   static Future<void> saveToken(String token) async {
     await _storage.write(key: _keyToken, value: token);
   }
@@ -24,8 +28,39 @@ class SecureStorage {
     return _storage.read(key: _keyRefreshToken);
   }
 
+  /// Persist the current user profile. Profile data is sensitive PII and is
+  /// stored only in the platform secure store (encrypted at rest), not in any
+  /// world-readable mirror like SharedPreferences or plain files.
   static Future<void> saveUser(Map<String, dynamic> user) async {
-    await _storage.write(key: _keyUser, value: jsonEncode(user));
+    // Keep only the fields the app needs locally; strip anything that would
+    // otherwise get re-serialized into a less-protected store.
+    final safe = Map<String, dynamic>.fromEntries(
+      user.entries.where((entry) => _allowedUserField(entry.key)),
+    );
+    await _storage.write(key: _keyUser, value: jsonEncode(safe));
+  }
+
+  static bool _allowedUserField(String key) {
+    const allowed = <String>{
+      'id',
+      'name',
+      'email',
+      'phone',
+      'dob',
+      'gender',
+      'country',
+      'state',
+      'city',
+      'address',
+      'custom_id',
+      'profile_pic',
+      'profile_image',
+      'role',
+      'status',
+      'created_at',
+      'updated_at',
+    };
+    return allowed.contains(key);
   }
 
   static Future<Map<String, dynamic>?> getUser() async {
@@ -86,7 +121,25 @@ class SecureStorage {
         .toList();
   }
 
+  /// Wipe session material (token, user, refresh token). Used on logout or
+  /// when a token is rejected so a dead credential cannot linger in secure
+  /// storage.
   static Future<void> clearAll() async {
     await _storage.deleteAll();
+  }
+
+  /// Read or write arbitrary sensitive app state under a namespaced key.
+  /// Use this for things that should not land in plain-text localStorage/
+  /// SharedPreferences mirrors.
+  static Future<void> setPrivate(String key, String value) async {
+    await _storage.write(key: 'private.$key', value: value);
+  }
+
+  static Future<String?> getPrivate(String key) async {
+    return _storage.read(key: 'private.$key');
+  }
+
+  static Future<void> deletePrivate(String key) async {
+    await _storage.delete(key: 'private.$key');
   }
 }

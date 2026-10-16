@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/utils/app_crypto.dart';
 import '../models/user_model.dart';
 
 Map<String, dynamic> _toMap(dynamic raw) {
@@ -34,9 +35,25 @@ class UserProfileService {
         statusCode: response.statusCode,
       );
     }
-    return UserModel.fromJson(
-      Map<String, dynamic>.from(data['user'] as Map),
-    );
+    final userMap = Map<String, dynamic>.from(data['user'] as Map);
+    // Decrypt any sensitive fields the server returned, so the in-memory
+    // model and the secure store hold real values only inside protected memory.
+    if (ApiClient.isCryptoReady) {
+      _decryptSensitiveUserFields(userMap);
+    }
+    return UserModel.fromJson(userMap);
+  }
+
+  static void _decryptSensitiveUserFields(Map<String, dynamic> user) {
+    for (final field in sensitiveFieldNames) {
+      if (user.containsKey(field)) {
+        final value = user[field];
+        if (value is String && value.isNotEmpty && field != 'id') {
+          final plain = ApiClient.crypto?.decryptString(value);
+          if (plain != null) user[field] = plain;
+        }
+      }
+    }
   }
 
   static Future<UserModel> updateProfile({
@@ -65,6 +82,9 @@ class UserProfileService {
           'dob': dob,
           'gender': gender,
         },
+        // Do not re-encrypt encrypted values from the in-memory model.
+        // Sensitive fields in the request body are encrypted at the Dio
+        // interceptor level for this call, so keep the body as normal strings.
         options: Options(receiveTimeout: const Duration(seconds: 20)),
       );
     } on DioException catch (error) {
@@ -81,9 +101,11 @@ class UserProfileService {
       );
     }
     if (data['user'] is Map) {
-      return UserModel.fromJson(
-        Map<String, dynamic>.from(data['user'] as Map),
-      );
+      final next = Map<String, dynamic>.from(data['user'] as Map);
+      if (ApiClient.isCryptoReady) {
+        _decryptSensitiveUserFields(next);
+      }
+      return UserModel.fromJson(next);
     }
     // Backend confirmed the update but omitted the user object (legacy web
     // handler shape); rebuild a minimal model from what we sent.

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/utils/app_crypto.dart';
 import '../models/event_model.dart';
 
 Map<String, dynamic> _toMap(dynamic raw) {
@@ -141,7 +142,15 @@ class UserEventService {
         );
       }
       final records = (data['events'] as List? ?? [])
-          .map((event) => Map<String, dynamic>.from(event as Map))
+          .map((event) {
+            final map = Map<String, dynamic>.from(event as Map);
+            // Favorites can carry user-identifying fields once rendered; keep
+            // them decrypted in memory and in the secure-store mirror.
+            if (ApiClient.isCryptoReady) {
+              _decryptSensitiveEventFields(map);
+            }
+            return map;
+          })
           .toList();
       await SecureStorage.savePrivateList('favorites', records);
       return records
@@ -161,7 +170,18 @@ class UserEventService {
       if (cached == null) {
         throw Exception(error.message ?? 'Failed to load favorites');
       }
-      return cached
+      // Cached favorites were saved after field-level decryption, so read
+      // them as-is. If the server ever returns encrypted favorites, decrypt
+      // them here too.
+      final decryptedCached =
+          cached.map((event) {
+            final map = Map<String, dynamic>.from(event);
+            if (ApiClient.isCryptoReady) {
+              _decryptSensitiveEventFields(map);
+            }
+            return map;
+          });
+      return decryptedCached
           .map(
             (event) => EventModel.fromJson(
               event,
@@ -170,6 +190,18 @@ class UserEventService {
             ),
           )
           .toList();
+    }
+  }
+
+  static void _decryptSensitiveEventFields(Map<String, dynamic> event) {
+    for (final field in sensitiveFieldNames) {
+      if (event.containsKey(field)) {
+        final value = event[field];
+        if (value is String && value.isNotEmpty) {
+          final plain = ApiClient.crypto?.decryptString(value);
+          if (plain != null) event[field] = plain;
+        }
+      }
     }
   }
 

@@ -44,9 +44,83 @@
 })();
 
 if (typeof window.storage === "undefined" || !window.storage) {
+  const SENSITIVE_KEYS = ['auth_token', 'admin_auth_token', 'client_auth_token', 'token', 'refresh_token', 'access_token', 'password', 'secret', 'session_token', 'otp', 'code', 'verification_code'];
+  const ENCRYPT_PREFIX = '__enc:v1:';
+  let _encKey = null;
+  let _encKeyPromise = null;
+
+  async function getEncKey() {
+    if (_encKey) return _encKey;
+    if (_encKeyPromise) return _encKeyPromise;
+    _encKeyPromise = (async () => {
+      const keyName = 'storage_enc_key';
+      const stored = localStorage.getItem(keyName);
+      if (stored) {
+        try {
+          const raw = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+          _encKey = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+          return _encKey;
+        } catch (_) {}
+      }
+      const raw = crypto.getRandomValues(new Uint8Array(32));
+      const exported = btoa(String.fromCharCode.apply(null, Array.from(raw)));
+      localStorage.setItem(keyName, exported);
+      _encKey = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+      return _encKey;
+    })();
+    _encKey = await _encKeyPromise;
+    return _encKey;
+  }
+
+  async function enc(text) {
+    if (typeof text !== 'string') text = JSON.stringify(text);
+    const key = await getEncKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(text);
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    const out = new Uint8Array(iv.length + ct.byteLength);
+    out.set(iv, 0);
+    out.set(new Uint8Array(ct), iv.length);
+    return ENCRYPT_PREFIX + btoa(String.fromCharCode.apply(null, Array.from(out)));
+  }
+
+  async function dec(envelope) {
+    if (typeof envelope !== 'string' || !envelope.startsWith(ENCRYPT_PREFIX)) return envelope;
+    try {
+      const b64 = envelope.slice(ENCRYPT_PREFIX.length);
+      const data = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      if (data.length < 13) return envelope;
+      const iv = data.slice(0, 12);
+      const ct = data.slice(12);
+      const key = await getEncKey();
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+      return new TextDecoder().decode(pt);
+    } catch (_) { return envelope; }
+  }
+
+  function isSensitiveKey(k) {
+    if (!k) return false;
+    const kk = k.toLowerCase();
+    if (SENSITIVE_KEYS.some(s => kk.includes(s))) return true;
+    if (kk.indexOf('token') !== -1 || kk.indexOf('secret') !== -1 || kk.indexOf('password') !== -1) return true;
+    return false;
+  }
+
+  const _mem = {};
   window.storage = {
     set: function (key, value) {
       try {
+        if (isSensitiveKey(key)) {
+          _mem[key] = value;
+          if (typeof crypto !== 'undefined' && crypto.subtle) {
+            enc(value).then(v => {
+              localStorage.setItem(key, v);
+            }).catch(e => {
+              localStorage.setItem(key, '__mem__' + JSON.stringify(value));
+            });
+            return true;
+          }
+        }
         localStorage.setItem(key, JSON.stringify(value));
         return true;
       } catch (error) {
@@ -56,12 +130,34 @@ if (typeof window.storage === "undefined" || !window.storage) {
 
     get: function (key) {
       try {
+        if (isSensitiveKey(key) && _mem.hasOwnProperty(key)) {
+          return _mem[key];
+        }
         const item = localStorage.getItem(key);
         if (!item) return null;
+        if (typeof item === 'string' && item.startsWith('__mem__')) {
+          const v = JSON.parse(item.slice(6));
+          if (isSensitiveKey(key)) _mem[key] = v;
+          return v;
+        }
+        if (typeof item === 'string' && item.startsWith(ENCRYPT_PREFIX)) {
+          // Decrypt async and update mem; return null first time if mem empty? But we also stored mem on set.
+          // Try to parse as JSON if someone stored differently? No. For current session mem should exist if just set.
+          dec(item).then(pt => {
+            try {
+              const v = JSON.parse(pt);
+              _mem[key] = v;
+            } catch (_) {
+              _mem[key] = pt;
+            }
+          }).catch(() => {});
+          return _mem.hasOwnProperty(key) ? _mem[key] : null;
+        }
         try {
-          return JSON.parse(item);
+          const v = JSON.parse(item);
+          if (isSensitiveKey(key)) _mem[key] = v;
+          return v;
         } catch (e) {
-          // If it's not JSON, return the raw value (e.g. "mock-token")
           return item;
         }
       } catch (error) {
@@ -84,6 +180,9 @@ if (typeof window.storage === "undefined" || !window.storage) {
         this.remove(keys.user);
         this.remove(keys.token);
         this.remove("redirect_after_login");
+        for (const k in _mem) {
+          if (_mem.hasOwnProperty(k)) delete _mem[k];
+        }
         return true;
       } catch (error) {
         return false;
@@ -130,6 +229,9 @@ if (typeof window.storage === "undefined" || !window.storage) {
       this.remove(keys.user);
       this.remove(keys.token);
       localStorage.removeItem("login_timestamp");
+      for (const k in _mem) {
+        if (_mem.hasOwnProperty(k)) delete _mem[k];
+      }
     },
   };
 }

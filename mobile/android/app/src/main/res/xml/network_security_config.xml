@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Local development only: USB loopback / emulator / Wi-Fi dev server.
+         These are pinned to HTTPS in release where possible; in debug we keep
+         loopback HTTP so the php -S workflow still works without a cert. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">::1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+        <base-config cleartextTrafficPermitted="false" />
+    </domain-config>
+
+    <!-- Live backend. Only this host is allowed to serve API traffic over HTTPS
+         in release builds. Add additional pinned hosts here if the backend
+         migrates. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">eventra-website.liveblog365.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

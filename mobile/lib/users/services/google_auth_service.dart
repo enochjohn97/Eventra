@@ -226,6 +226,20 @@ class GoogleAuthService {
     }
   }
 
+  /// Keep the Google ID token out of any world-readable mirror. It is a
+  /// credential and should live only in secure storage when cached.
+  static Future<void> cacheGoogleToken(String idToken) async {
+    await SecureStorage.setPrivate('google_id_token', idToken);
+  }
+
+  static Future<String?> getCachedGoogleToken() async {
+    return SecureStorage.getPrivate('google_id_token');
+  }
+
+  static Future<void> clearGoogleCachedToken() async {
+    await SecureStorage.deletePrivate('google_id_token');
+  }
+
   /// Silent Google re-auth + token exchange. Used by the API client's 401/403
   /// recovery interceptor when the 2h backend token expires mid-session.
   /// Returns false when the user must sign in manually (no cached Google
