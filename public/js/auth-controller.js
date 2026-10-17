@@ -114,13 +114,8 @@ class AuthController {
       });
 
       if (!response) {
-        // No response - trust local auth if still within the session window
-        const loginTs = parseInt(
-          localStorage.getItem("login_timestamp") || "0",
-          10,
-        );
-        const withinWindow = Date.now() - loginTs < 2 * 60 * 60 * 1000;
-        if (window.storage?.getToken() && withinWindow) {
+        // A network failure is not proof that the server session has expired.
+        if (window.storage?.getToken()) {
           this.setState(this.states.AUTHENTICATED);
         } else {
           this.clearLocalState();
@@ -145,40 +140,11 @@ class AuthController {
         );
       } else {
         // Server says not authenticated.
-        const justLoggedIn = sessionStorage.getItem("just_logged_in");
-        const loginTs = parseInt(
-          localStorage.getItem("login_timestamp") || "0",
-          10,
-        );
-        const withinWindow = Date.now() - loginTs < 2 * 60 * 60 * 1000;
-
-        if (
-          this.state !== this.states.UNAUTHENTICATED &&
-          this.state !== this.states.INITIALIZING
-        ) {
-          // Keep session alive if we have a local token within the 1-hour window
-          if (justLoggedIn || (window.storage?.getToken() && withinWindow)) {
-            this.setState(this.states.AUTHENTICATED);
-          } else {
-            this.clearLocalState();
-          }
-        } else if (this.state === this.states.INITIALIZING) {
-          if (window.storage?.getToken() && withinWindow) {
-            this.setState(this.states.AUTHENTICATED);
-          } else {
-            this.setState(this.states.UNAUTHENTICATED);
-          }
-        }
+        this.clearLocalState();
       }
     } catch (error) {
-      // On hard failure, trust local auth if still within the session window
-      const justLoggedIn = sessionStorage.getItem("just_logged_in");
-      const loginTs = parseInt(
-        localStorage.getItem("login_timestamp") || "0",
-        10,
-      );
-      const withinWindow = Date.now() - loginTs < 2 * 60 * 60 * 1000;
-      if (justLoggedIn || (window.storage?.getToken() && withinWindow)) {
+      // A network failure is not proof that the server session has expired.
+      if (window.storage?.getToken()) {
         this.setState(this.states.AUTHENTICATED);
       } else {
         this.clearLocalState();

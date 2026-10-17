@@ -257,14 +257,17 @@ document.addEventListener("DOMContentLoaded", () => {
           otpModal.style.display = "flex";
           otpCodeInput.inputMode = "numeric";
           otpCodeInput.setAttribute("pattern", "[0-9]{6}");
-          otpCodeInput.addEventListener("input", () => {
+          otpForm.reset();
+          let verificationInProgress = false;
+          otpCodeInput.oninput = () => {
             otpCodeInput.value = otpCodeInput.value
               .replace(/\D/g, "")
               .slice(0, 6);
-          });
+            otpError.style.display = "none";
+            if (otpCodeInput.value.length === 6) otpForm.requestSubmit();
+          };
           otpCodeInput.focus();
           otpError.style.display = "none";
-          otpForm.reset();
 
           // Handle Cancellation
           cancelBtn.onclick = () => {
@@ -350,8 +353,7 @@ document.addEventListener("DOMContentLoaded", () => {
           // Handle Submission
           otpForm.onsubmit = async (e) => {
             e.preventDefault();
-            const verifyBtn = document.getElementById("verifyOtpButton");
-            const originalVerifyText = verifyBtn.innerHTML;
+            if (verificationInProgress) return;
 
             if (!/^\d{6}$/.test(otpCodeInput.value)) {
               otpError.textContent = "Please enter all 6 digits.";
@@ -359,8 +361,8 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
 
-            verifyBtn.disabled = true;
-            verifyBtn.innerHTML = '<span class="spinner"></span> Verifying...';
+            verificationInProgress = true;
+            otpCodeInput.disabled = true;
             otpError.style.display = "none";
 
             try {
@@ -389,14 +391,14 @@ document.addEventListener("DOMContentLoaded", () => {
               } else {
                 otpError.textContent = verifyResult.message || "Invalid code.";
                 otpError.style.display = "block";
-                verifyBtn.disabled = false;
-                verifyBtn.innerHTML = originalVerifyText;
+                verificationInProgress = false;
+                otpCodeInput.disabled = false;
               }
             } catch (err) {
               otpError.textContent = "Verification failed. Try again.";
               otpError.style.display = "block";
-              verifyBtn.disabled = false;
-              verifyBtn.innerHTML = originalVerifyText;
+              verificationInProgress = false;
+              otpCodeInput.disabled = false;
             }
           };
         }

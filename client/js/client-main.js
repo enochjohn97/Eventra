@@ -76,7 +76,7 @@ document.addEventListener("click", function (e) {
 
 function initInactivityMonitor() {
   const SESSION_TIMEOUT = 2 * 60 * 60 * 1000;
-  const WARNING_TIME = 110 * 60 * 1000;
+  const WARNING_TIME = SESSION_TIMEOUT - 2 * 60 * 1000;
   let inactivityTimer;
   let warningTimer;
   let isWarningShown = false;
@@ -85,7 +85,11 @@ function initInactivityMonitor() {
   const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   function resetTimers() {
-    if (isWarningShown) return;
+    if (isWarningShown) {
+      isWarningShown = false;
+      window.__eventraInactivityWarningShown = false;
+      if (typeof Swal !== "undefined" && Swal.isVisible()) Swal.close();
+    }
 
     clearTimeout(inactivityTimer);
     clearTimeout(warningTimer);
@@ -157,7 +161,7 @@ function initInactivityMonitor() {
     });
   }
 
-  ["mousedown", "keydown", "scroll", "touchstart"].forEach((evt) => {
+  ["mousedown", "mousemove", "keydown", "scroll", "wheel", "touchstart"].forEach((evt) => {
     window.addEventListener(evt, resetTimers, { passive: true });
   });
 

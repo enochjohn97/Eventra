@@ -55,6 +55,13 @@ try {
     $pdo = getPDO();
     $stmt = $pdo->prepare("UPDATE auth_accounts SET last_seen = NOW(), is_online = 1 WHERE id = ?");
     $stmt->execute([$auth_id]);
+    $pdo->prepare("
+        UPDATE auth_tokens t
+        JOIN auth_accounts a ON a.id = t.auth_id
+        SET t.expires_at = DATE_ADD(NOW(), INTERVAL 2 HOUR)
+        WHERE t.auth_id = ? AND t.type = 'access' AND t.revoked = 0
+            AND LOWER(a.role) IN ('admin', 'client')
+    ")->execute([$auth_id]);
 
     // Rate-limit global cron triggering to 5 minutes
     $cron_lock_file = sys_get_temp_dir() . '/eventra_cron_last_run.txt';

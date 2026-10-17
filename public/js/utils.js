@@ -1030,29 +1030,6 @@ async function apiFetch(url, options = {}) {
     headers["X-Access-Token"] = token;
   }
 
-  // Encrypt sensitive fields in JSON body
-  if (options.body && typeof options.body === 'string') {
-    try {
-      if (options.body.trim().startsWith('{') || options.body.trim().startsWith('[')) {
-        const parsed = JSON.parse(options.body);
-        const enc = await webEncObj(parsed);
-        // If changed meaningfully, send encrypted body
-        options.body = JSON.stringify(enc);
-        if (!headers['Content-Type'] && !headers['content-type']) {
-          headers['Content-Type'] = 'application/json';
-        }
-      }
-    } catch (_) {}
-  } else if (options.body && typeof options.body === 'object') {
-    try {
-      const enc = await webEncObj(options.body);
-      options.body = JSON.stringify(enc);
-      if (!headers['Content-Type'] && !headers['content-type']) {
-        headers['Content-Type'] = 'application/json';
-      }
-    } catch (_) {}
-  }
-
   options.headers = headers;
 
   try {

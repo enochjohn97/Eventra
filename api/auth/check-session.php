@@ -201,5 +201,7 @@ try {
         ]
     ]);
 } catch (PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'Server error']);
+    error_log('[check-session.php] Database error: ' . $e->getMessage());
+    http_response_code(503);
+    echo json_encode(['success' => false, 'message' => 'Service temporarily unavailable']);
 }

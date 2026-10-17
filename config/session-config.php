@@ -39,7 +39,14 @@ ini_set('session.gc_maxlifetime', $timeout_duration);
 if (session_status() === PHP_SESSION_NONE) {
     // Session name should be set by the caller (Router or LoginController)
     // If not set, use a fallback that detects the portal context
-    if (!session_name() || session_name() === 'PHPSESSID' || session_name() === 'EVENTRA_GUEST_SESS') {
+    $currentSessionName = session_name();
+    if ($currentSessionName === 'EVENTRA_ADMIN_SESS') {
+        $portal = 'admin';
+    } elseif ($currentSessionName === 'EVENTRA_CLIENT_SESS') {
+        $portal = 'client';
+    } elseif ($currentSessionName === 'EVENTRA_USER_SESS') {
+        $portal = 'user';
+    } elseif (!$currentSessionName || $currentSessionName === 'PHPSESSID' || $currentSessionName === 'EVENTRA_GUEST_SESS') {
         $headers = function_exists('getallheaders') ? getallheaders() : [];
         $portal = $_SERVER['HTTP_X_EVENTRA_PORTAL'] ?? $headers['X-Eventra-Portal'] ?? $headers['x-eventra-portal'] ?? null;
         
@@ -66,14 +73,14 @@ if (session_status() === PHP_SESSION_NONE) {
                 $portal = 'user';
             }
         }
-    }
 
-    if ($portal === 'admin') {
-        session_name('EVENTRA_ADMIN_SESS');
-    } elseif ($portal === 'client') {
-        session_name('EVENTRA_CLIENT_SESS');
-    } else {
-        session_name('EVENTRA_USER_SESS');
+        if ($portal === 'admin') {
+            session_name('EVENTRA_ADMIN_SESS');
+        } elseif ($portal === 'client') {
+            session_name('EVENTRA_CLIENT_SESS');
+        } else {
+            session_name('EVENTRA_USER_SESS');
+        }
     }
 }
 
@@ -112,5 +119,19 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
         session_unset();
         session_destroy();
     }
+} else {
+    // Make the browser cookie expire two hours after the latest request, not login.
+    $cookieParams = session_get_cookie_params();
+    $cookieOptions = [
+        'expires' => time() + $timeout_duration,
+        'path' => $cookieParams['path'],
+        'secure' => $cookieParams['secure'],
+        'httponly' => $cookieParams['httponly'],
+        'samesite' => $cookieParams['samesite'] ?? 'Strict'
+    ];
+    if ($cookieParams['domain'] !== '') {
+        $cookieOptions['domain'] = $cookieParams['domain'];
+    }
+    setcookie(session_name(), session_id(), $cookieOptions);
+    $_SESSION['last_activity'] = time();
 }
-$_SESSION['last_activity'] = time();
