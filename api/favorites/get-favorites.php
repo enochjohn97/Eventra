@@ -67,7 +67,12 @@ try {
     $stmt->execute();
     $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $events = array_map(static function ($ev) {
+    $baseUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+    if ($baseUrl === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $baseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+    $events = array_map(static function ($ev) use ($baseUrl) {
         if (!empty($ev['metadata'])) {
             $meta = json_decode($ev['metadata'], true);
             if (is_array($meta)) {
@@ -82,6 +87,7 @@ try {
             } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
                 $ev['image_path'] = '/' . $m[1];
             }
+            $ev['absolute_image_url'] = $baseUrl . $ev['image_path'];
         }
         return $ev;
     }, $events);

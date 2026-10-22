@@ -207,13 +207,18 @@ try {
     $meta[$type . '_verified_at'] = date('Y-m-d H:i:s');
     $meta[$type . '_provider'] = $verification['provider'];
 
+    $bvnSql = ($type === 'bvn') ? ', kyc_bvn = ?' : '';
     $updateStmt = $pdo->prepare("
         UPDATE clients 
         SET metadata = ?,
-            updated_at = NOW() 
+            updated_at = NOW()
+            {$bvnSql}
         WHERE id = ?
     ");
-    $updateStmt->execute([json_encode($meta), $client_id]);
+    $updateParams = ($type === 'bvn')
+        ? [json_encode($meta), $number, $client_id]
+        : [json_encode($meta), $client_id];
+    $updateStmt->execute($updateParams);
 
     $pdo->commit();
 

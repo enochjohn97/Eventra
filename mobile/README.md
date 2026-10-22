@@ -46,7 +46,7 @@ stops accepting connections mid-session.
    - Android emulator: `--dart-define=API_BASE_URL=http://10.0.2.2:8000/api`
    - iOS simulator: `--dart-define=API_BASE_URL=http://127.0.0.1:8000/api`
    - Flutter web in a local browser: `--dart-define=API_BASE_URL=http://localhost:8000/api`
-   - Physical device: use your machine's LAN IP, e.g. `http://192.168.1.5:8000/api` (a phone's `localhost` points to the phone, not your computer)
+   - Physical device: use your computer's current Wi-Fi IPv4 address, e.g. `http://192.168.1.43:8000/api` (not the router address such as `192.168.1.1`; a phone's `localhost` points to the phone). If the override is omitted or stale, the app searches the phone's private Wi-Fi subnet for the PHP API.
    - Production: `https://eventra-website.liveblog365.com/api` (default)
    - Add `GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID` for the native
      OAuth clients, plus `GOOGLE_SERVER_CLIENT_ID` for the backend web client

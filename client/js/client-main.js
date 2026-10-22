@@ -173,23 +173,17 @@ function initInactivityMonitor() {
  */
 async function loadGlobalProfile() {
   try {
-    const user = storage.getUser();
-    if (user) {
-      updateGlobalAvatar(user);
-      updateClientNameDisplay(user);
-      syncVerificationBanner(user);
+    // Render cached data immediately for faster UI (avatar / name only — not the
+    // verification banner, since cached status may be stale after admin approval)
+    const cachedUser = storage.getUser();
+    if (cachedUser) {
+      updateGlobalAvatar(cachedUser);
+      updateClientNameDisplay(cachedUser);
     }
 
-    // If auth controller is already synced, we don't need to fetch again immediately
-    if (
-      window.authController &&
-      window.authController.settled &&
-      window.authController.state === "authenticated"
-    ) {
-      return;
-    }
-
-    // Fetch fresh data if not settled or on explicit request
+    // Always fetch fresh profile so verification_status is never stale.
+    // This ensures the Create Event button is correctly enabled/disabled
+    // immediately after an admin approves the client.
     const response = await apiFetch("/api/users/get-profile.php");
     const result = await response.json();
 
@@ -263,10 +257,11 @@ async function logout() {
     window.clearAllIntervals();
   }
 
-  // Stop notification polling immediately
+  // Reset notification manager (wipes per-client state: lastId, sessionClientId, drawer)
   if (window.notificationManager) {
-    window.notificationManager.stopPolling();
+    window.notificationManager.reset();
   }
+  document.dispatchEvent(new Event("auth:logout"));
 
   // Clear stateManager in-memory state
   if (window.stateManager && typeof window.stateManager.clear === "function") {

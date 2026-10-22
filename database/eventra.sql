@@ -157,6 +157,7 @@ CREATE TABLE clients (
 
     -- Uploaded KYC evidence (verification provider results remain in metadata)
     kyc_nin_file                VARCHAR(255) DEFAULT NULL,
+    kyc_bvn                     VARCHAR(20) DEFAULT NULL,
     kyc_bvn_file                VARCHAR(255) DEFAULT NULL,
     kyc_voter_card_file         VARCHAR(255) DEFAULT NULL,
     kyc_driver_license_file     VARCHAR(255) DEFAULT NULL,
@@ -454,6 +455,8 @@ CREATE TABLE tickets (
     used            TINYINT(1) DEFAULT 0,
     used_at         DATETIME DEFAULT NULL,
     reminder_sent   TINYINT(1) DEFAULT 0,
+    qr_scan_count   INT DEFAULT 0,
+    qr_scan_locked  TINYINT(1) DEFAULT 0,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (id),
@@ -476,6 +479,25 @@ CREATE TABLE tickets (
     CONSTRAINT fk_ticket_order 
         FOREIGN KEY (order_id) REFERENCES orders (id) 
         ON DELETE SET NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 6.3 Temporary Recipients Audit (Get for someone else)
+CREATE TABLE IF NOT EXISTS user_temporary_recipients (
+    id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    creator_user_id     BIGINT UNSIGNED NOT NULL,
+    name                VARCHAR(150) NOT NULL,
+    email               VARCHAR(191) NOT NULL,
+    phone               VARCHAR(20) DEFAULT NULL,
+    recipient_user_id   BIGINT UNSIGNED DEFAULT NULL,
+    recipient_auth_id   BIGINT UNSIGNED DEFAULT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (id),
+    KEY idx_temp_recipients_creator (creator_user_id),
+    KEY idx_temp_recipients_email (email),
+    CONSTRAINT fk_temp_recipient_creator
+        FOREIGN KEY (creator_user_id) REFERENCES users (id)
+        ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- =============================================================================

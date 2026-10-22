@@ -207,8 +207,14 @@ try {
             $events = $s->fetchAll();
         }
 
-        // Process events: parse metadata and strip admin-only fields
-        $events = array_map(function($ev) use ($user_role) {
+        // Process events: parse metadata, strip admin-only fields, and build
+        // absolute image URLs (same normalisation as the standard feed).
+        $waterfallBaseUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+        if ($waterfallBaseUrl === '') {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $waterfallBaseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        }
+        $events = array_map(function($ev) use ($user_role, $waterfallBaseUrl) {
             if (!empty($ev['metadata'])) {
                 $meta = json_decode($ev['metadata'], true);
                 if (is_array($meta)) $ev = array_merge($ev, $meta);
@@ -228,6 +234,7 @@ try {
                 } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
                     $ev['image_path'] = '/' . $m[1];
                 }
+                $ev['absolute_image_url'] = $waterfallBaseUrl . $ev['image_path'];
             }
             return $ev;
         }, $events);
@@ -368,8 +375,14 @@ try {
         }
     }
 
-    // Process events: parse metadata and strip admin-only fields
-    $events = array_map(function($ev) use ($user_role, $tierCounts) {
+    // Process events: parse metadata, tiers, strip admin-only fields,
+    // and build absolute image URLs.
+    $baseUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+    if ($baseUrl === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $baseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+    $events = array_map(function($ev) use ($user_role, $tierCounts, $baseUrl) {
         if (!empty($ev['metadata'])) {
             $meta = json_decode($ev['metadata'], true);
             if (is_array($meta)) $ev = array_merge($ev, $meta);
@@ -395,7 +408,10 @@ try {
             unset($ev['metadata']);
             unset($ev['client_profile_pic']);
         }
-        // Normalize image_path to a root-relative web path
+        // Normalize image_path to a root-relative web path and build absolute URL.
+        // The .htaccess on Apache strips /public/ from static file URLs, and the
+        // PHP built-in server serves them directly — so /public/assets/... works
+        // on both. absolute_image_url is the full resolvable URL for clients.
         if (!empty($ev['image_path'])) {
             $img = str_replace('\\', '/', $ev['image_path']);
             if (preg_match('#(/public/.+)$#i', $img, $m)) {
@@ -403,6 +419,7 @@ try {
             } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
                 $ev['image_path'] = '/' . $m[1];
             }
+            $ev['absolute_image_url'] = $baseUrl . $ev['image_path'];
         }
         return $ev;
     }, $events);

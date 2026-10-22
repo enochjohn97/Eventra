@@ -155,6 +155,9 @@ function displayAdminStatsCards(stats) {
     const unverifiedClientsEl = document.getElementById('clientsUnverifiedCount');
     if (unverifiedClientsEl) unverifiedClientsEl.textContent = stats.clients_unverified || 0;
 
+    const verifiedClientsStatEl = document.getElementById('clientsVerifiedStatCount');
+    if (verifiedClientsStatEl) verifiedClientsStatEl.textContent = stats.clients_verified || 0;
+
     const totalRevenueEl = document.getElementById('totalRevenue');
     if (totalRevenueEl) totalRevenueEl.textContent = '₦' + parseFloat(stats.total_revenue || 0).toLocaleString();
 

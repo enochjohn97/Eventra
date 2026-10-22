@@ -710,20 +710,25 @@ window.adminRenderKycRow = function (label, filePath) {
 };
 
 // BVN is captured as an 11-digit number (no document upload since 2026-09-23).
-// The row always shows the masked number the client saved — no "Not verified"
-// placeholder, since the number itself is the data the reviewer needs.
+// The row displays the 11-digit BVN (or masked copy) and verification badge.
 window.adminRenderBvnRow = function (client) {
   const doc = client.kyc_documents?.bvn || {};
-  const masked = client.bvn_masked || doc.masked || "";
+  const bvnVal = client.kyc_bvn || doc.number || client.bvn_masked || doc.masked || "";
 
-  if (!masked && (client.kyc_bvn_file || doc.url)) {
+  if (!bvnVal && (client.kyc_bvn_file || doc.url)) {
     return adminRenderKycRow("BVN", doc.url || client.kyc_bvn_file);
   }
+  const isVerified = client.bvn_verified || doc.verified || client.verification_status === "verified";
   return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
-        <div style="width:40px;height:40px;border-radius:6px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="shield-check" style="width:18px;height:18px;color:#6366f1;"></i></div>
+        <div style="width:40px;height:40px;border-radius:6px;background:${isVerified ? "#f0fdf4" : "#eef2ff"};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i data-lucide="${isVerified ? "check-circle" : "shield-check"}" style="width:18px;height:18px;color:${isVerified ? "#16a34a" : "#6366f1"};"></i>
+        </div>
         <div style="min-width:0;flex:1;">
-            <div style="font-size:0.72rem;font-weight:700;color:#334155;">BVN</div>
-            <div style="font-size:0.7rem;color:#475569;font-family:monospace;letter-spacing:0.03em;">${escapeHTML(masked) || "—"}</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:0.72rem;font-weight:700;color:#334155;">BVN (11 Digits)</span>
+                ${isVerified ? '<span style="font-size:0.6rem;font-weight:700;color:#16a34a;background:#dcfce7;padding:1px 5px;border-radius:4px;">Verified</span>' : ''}
+            </div>
+            <div style="font-size:0.74rem;color:#1e293b;font-family:monospace;letter-spacing:0.04em;font-weight:600;">${escapeHTML(bvnVal) || "—"}</div>
         </div>
     </div>`;
 };
@@ -962,7 +967,22 @@ window.initPreviews = function () {
                                                         </button>
                                                     </div>
                                                     <button onclick="adminSavePaystackKey(${client.id}, this)" style="background:#3b82f6;color:#fff;border:none;padding:0.6rem;border-radius:8px;font-weight:700;font-size:0.75rem;cursor:pointer;">Validate & Save</button>
-                                                    <div style="font-size:0.65rem;color:#64748b;">The Attoneex settlement subaccount and the platform split are created automatically under this client’s Paystack account — no manual code needed.</div>
+                                                    <div style="font-size:0.65rem;color:#64748b;">The Attoneex settlement subaccount and the platform split are created automatically under this client’s Paystack account.</div>
+                                                    <div style="margin-top:4px; display:flex; flex-direction:column; gap:4px; background:#f8fafc; padding:8px 10px; border-radius:8px; border:1px solid #f1f5f9; font-size:0.7rem;">
+                                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                            <span style="color:#64748b;">Attoneex Subaccount:</span>
+                                                            <span style="font-family:monospace; font-weight:700; color:#0f172a;">${escapeHTML(client.paystack_platform_subaccount_code || client.subaccount_code || "Not generated")}</span>
+                                                        </div>
+                                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                            <span style="color:#64748b;">Status:</span>
+                                                            <span style="font-weight:700; text-transform:capitalize; color:${client.paystack_connection_status === 'connected' ? '#16a34a' : '#94a3b8'};">${escapeHTML(client.paystack_connection_status || 'disconnected')}</span>
+                                                        </div>
+                                                        ${client.paystack_last_sync_at ? `
+                                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                            <span style="color:#64748b;">Last Synced:</span>
+                                                            <span style="color:#475569;">${new Date(client.paystack_last_sync_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>` : ''}
+                                                    </div>
                                                     <div id="paystackKeyStatus_${client.id}" style="font-size:0.7rem;margin-top:2px;"></div>
                                                 </div>
                                             </div>

@@ -239,8 +239,13 @@ try {
     $stmt->execute();
     $events = $stmt->fetchAll();
 
-    // Normalize image_path exactly like get-events.php
-    $events = array_map(function ($ev) use ($user_role) {
+    // Normalize image_path and build absolute_image_url (same as get-events.php).
+    $baseUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
+    if ($baseUrl === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $baseUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+    $events = array_map(function ($ev) use ($user_role, $baseUrl) {
         if (!empty($ev['metadata'])) {
             $meta = json_decode($ev['metadata'], true);
             if (is_array($meta)) $ev = array_merge($ev, $meta);
@@ -260,6 +265,7 @@ try {
             } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
                 $ev['image_path'] = '/' . $m[1];
             }
+            $ev['absolute_image_url'] = $baseUrl . $ev['image_path'];
         }
         return $ev;
     }, $events);

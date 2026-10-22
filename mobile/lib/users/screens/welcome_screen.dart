@@ -5,45 +5,38 @@ import '../../core/widgets/brand_logo.dart';
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
-  static const _images = [
-    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&h=800&fit=crop',
-    ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFFFFF),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          PageView.builder(
-            itemCount: _images.length,
-            itemBuilder: (_, i) => Image.network(_images[i], fit: BoxFit.cover),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.black.withValues(alpha: 0.2), Colors.black.withValues(alpha: 0.85)],
-              ),
-            ),
-          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const BrandLogo(size: 27, markSize: 23, white: true),
+                  const BrandLogo(size: 27, markSize: 23),
                   const Spacer(),
                   const Text(
                     'Discover Africa\'s\nBest Events',
-                    style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800, height: 1.1),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Concerts, festivals, conferences and more — all in one beautiful app.',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16, height: 1.4),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 28),
                   SizedBox(
@@ -59,8 +52,8 @@ class WelcomeScreen extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => context.go('/login'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white),
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(color: Colors.black),
                       ),
                       child: const Text('I already have an account'),
                     ),

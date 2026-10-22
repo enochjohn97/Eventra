@@ -38,25 +38,21 @@
     const user = window.storage ? window.storage.getUser() : null;
     const token = window.storage ? window.storage.getToken() : null;
     const hasLocalAuth = !!(user && token);
+    const justLoggedIn = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('just_logged_in') === 'true');
     
     // If we have no local auth AND we are not in the middle of a login flow redirect
-    if (!hasLocalAuth) {
-        // Check if we just logged in (session storage flag can be used if we set it in login.js)
-        const justLoggedIn = sessionStorage.getItem('just_logged_in');
-        if (!justLoggedIn) {
-            // Debugging auth failure
-            console.debug('Auth Guard Redirect:', {
-                requiredRole,
-                currentPath
-            });
-            if (requiredRole === 'admin') {
-                window.location.replace(origin + '/admin/login.html');
-            } else {
-                window.location.replace(origin + '/client/login.html');
-            }
-            return;
+    if (!hasLocalAuth && !justLoggedIn) {
+        // Debugging auth failure
+        console.debug('Auth Guard Redirect:', {
+            requiredRole,
+            currentPath
+        });
+        if (requiredRole === 'admin') {
+            window.location.replace(origin + '/admin/login.html');
         } else {
+            window.location.replace(origin + '/client/login.html');
         }
+        return;
     }
 
     // 2. Visual loading overlay removed so users can proceed to dashboards instantly.
@@ -87,18 +83,11 @@
         if (authState === 'unauthenticated' || (user && user.role !== requiredRole)) {
             // Check if we have a valid local session to fall back on during slow syncs
             const localUser = window.storage ? window.storage.getUser() : null;
-            const isRoleValid = localUser && localUser.role === requiredRole;
+            const isRoleValid = (localUser && localUser.role === requiredRole) || (user && user.role === requiredRole);
 
-            // If we have local auth and it timed out, allow it (be patient with shared hosting)
-            if (hasLocalAuth && isRoleValid && authState === 'timeout') {
-                console.warn('Auth sync timed out, but local session is valid. Proceeding...');
-                return;
-            }
-
-            // If we just logged in, handle specifically
-            const justLoggedIn = sessionStorage.getItem('just_logged_in');
-            if (hasLocalAuth && justLoggedIn && (authState === 'timeout' || authState === 'unauthenticated')) {
-                // Keep the flag for a bit longer if we are still struggling to sync
+            // If we have local auth or fresh login, allow proceeding
+            if ((isRoleValid || justLoggedIn) && (hasLocalAuth || justLoggedIn || authState === 'timeout')) {
+                console.warn('Auth sync timed out or pending, but local session is valid. Proceeding...');
                 return;
             }
 
@@ -133,10 +122,8 @@
             setTimeout(() => loadingOverlay.remove(), 600);
         }
 
-        // Check if we have local auth and just logged in before redirecting
-        const justLoggedIn = sessionStorage.getItem('just_logged_in');
-        if (hasLocalAuth && justLoggedIn) {
-            sessionStorage.removeItem('just_logged_in');
+        // Check if we have local auth or just logged in before redirecting
+        if (hasLocalAuth || justLoggedIn) {
             return;
         }
 

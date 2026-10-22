@@ -2178,6 +2178,11 @@ function showEventModal(eventId) {
     new Date(event.event_date + "T00:00:00") <
     new Date(new Date().setHours(0, 0, 0, 0));
 
+  const quantitySection = document.querySelector(".event-quantity-section");
+  if (quantitySection) {
+    quantitySection.style.display = isPassed ? "none" : "flex";
+  }
+
   // Priority badge
   const priorityBadge = document.getElementById("modalPriorityBadge");
   const modalPriorityVal = event.priority_label || event.priority || "";

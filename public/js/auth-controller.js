@@ -107,7 +107,7 @@ class AuthController {
       }
 
       const role = this.getPortalIntent();
-      const endpoint = `${basePath}api/auth/check-session.php?portal=${role}`; // Use centralized endpoint directly
+      const endpoint = `/api/auth/check-session.php?portal=${encodeURIComponent(role)}`; // Use absolute path to avoid <base href> issues
 
       const response = await apiFetch(endpoint, {
         cache: "no-store",
@@ -118,8 +118,11 @@ class AuthController {
         if (window.storage?.getToken()) {
           this.setState(this.states.AUTHENTICATED);
         } else {
-          this.clearLocalState();
-          this.setState(this.states.UNAUTHENTICATED);
+          const justLoggedIn = typeof sessionStorage !== "undefined" && sessionStorage.getItem("just_logged_in");
+          if (!justLoggedIn) {
+            this.clearLocalState();
+            this.setState(this.states.UNAUTHENTICATED);
+          }
         }
         return;
       }
@@ -139,15 +142,21 @@ class AuthController {
           }),
         );
       } else {
-        // Server says not authenticated.
-        this.clearLocalState();
+        // Server says not authenticated. Only clear local state if not immediately after fresh login
+        const justLoggedIn = typeof sessionStorage !== "undefined" && sessionStorage.getItem("just_logged_in");
+        if (!justLoggedIn) {
+          this.clearLocalState();
+        }
       }
     } catch (error) {
       // A network failure is not proof that the server session has expired.
       if (window.storage?.getToken()) {
         this.setState(this.states.AUTHENTICATED);
       } else {
-        this.clearLocalState();
+        const justLoggedIn = typeof sessionStorage !== "undefined" && sessionStorage.getItem("just_logged_in");
+        if (!justLoggedIn) {
+          this.clearLocalState();
+        }
       }
     }
   }

@@ -421,6 +421,9 @@ try {
                 'user_email' => $isGift
                     ? $giftRecipientEmail
                     : ($metadata['buyer_email'] ?? $order['user_email']),
+                'ticket_emails' => $isGift
+                    ? [$order['user_email'], $giftRecipientEmail]
+                    : [$metadata['buyer_email'] ?? $order['user_email']],
                 'user_phone' => $order['user_phone'],
                 'user_auth_accounts_id' => $isGift && $giftRecipientAuthId > 0
                     ? $giftRecipientAuthId

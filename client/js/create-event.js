@@ -137,7 +137,7 @@ function showCreateEventModal(eventToEdit = null) {
                                 </div>
 
                                 <!-- Date & Time Row -->
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                <div id="singleEventDateTimeRow" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Date <span style="color: #ef4444">*</span></label>
                                         <div style="position: relative;">
@@ -168,7 +168,7 @@ function showCreateEventModal(eventToEdit = null) {
                                     <div class="form-group">
                                         <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Time <span style="color: #ef4444">*</span></label>
                                         <div id="eventTimePickerContainer" class="time-picker-container" style="position: relative;">
-                                            <button type="button" class="time-picker-display" aria-haspopup="listbox" onclick="toggleTimePicker('eventTimePickerDropdown')" style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #1f2937; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                                            <button type="button" class="time-picker-display" id="eventTimeDisplayBtn" aria-haspopup="listbox" onclick="toggleTimePicker('eventTimePickerDropdown')" style="width: 100%; padding: 1rem 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: white; color: #1f2937; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: left; display: flex; justify-content: space-between; align-items: center;">
                                                 <span id="eventTimeDisplay">Select time...</span>
                                                 <span>🕒</span>
                                             </button>
@@ -271,7 +271,7 @@ function showCreateEventModal(eventToEdit = null) {
 
                                 <!-- Ticket Type Configuration -->
                                 <div id="ticketTypeConfigSection" style="background: white; padding: 1.5rem; border-radius: 12px; border: 2px solid #e5e7eb; margin-bottom: 1.5rem;">
-                                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
+                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
                                         <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s;" class="ticket-type-label">
                                             <input type="checkbox" name="ticket_type_mode[]" value="regular" class="ticket-type-checkbox" style="accent-color: #2563eb;">
                                             <span style="font-weight: 700; font-size: 0.85rem;">Regular</span>
@@ -283,10 +283,6 @@ function showCreateEventModal(eventToEdit = null) {
                                         <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s;" class="ticket-type-label">
                                             <input type="checkbox" name="ticket_type_mode[]" value="premium" class="ticket-type-checkbox" style="accent-color: #2563eb;">
                                             <span style="font-weight: 700; font-size: 0.85rem;">Premium</span>
-                                        </label>
-                                        <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; transition: all 0.2s;" class="ticket-type-label">
-                                            <input type="checkbox" name="ticket_type_mode[]" value="all" class="ticket-type-checkbox" style="accent-color: #2563eb;">
-                                            <span style="font-weight: 700; font-size: 0.85rem;">All</span>
                                         </label>
                                     </div>
 
@@ -315,12 +311,6 @@ function showCreateEventModal(eventToEdit = null) {
                                         <input type="number" name="premium_quantity" placeholder="No limit" min="1" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 10px;">
                                     </div>
 
-                                    <div id="allConfig" class="ticket-price-section" style="display: block;">
-                                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase;">All Ticket Price (₦)</label>
-                                        <input type="text" inputmode="numeric" name="price" id="allPriceInput" placeholder="0.00" style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #2563eb; border-radius: 10px; background: #f8fafc;">
-                                        <div id="allPriceError" style="color:#ef4444;font-size:0.75rem;margin-top:0.25rem;display:none;">Price must be a valid number and cannot exceed 10 digits.</div>
-                                        <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">One price for all ticket tiers (Regular, VIP, Premium).</p>
-                                    </div>
                                 </div>
 
                                 <div class="form-group">
@@ -609,7 +599,6 @@ function showCreateEventModal(eventToEdit = null) {
     if (metadata.ticket_type_mode) {
       const modes = metadata.ticket_type_mode.toLowerCase();
       document.querySelectorAll(".ticket-type-checkbox").forEach((cb) => {
-        if (modes.includes("all") && cb.value === "all") cb.checked = true;
         if (modes.includes("regular") && cb.value === "regular")
           cb.checked = true;
         if (modes.includes("vip") && cb.value === "vip") cb.checked = true;
@@ -627,8 +616,6 @@ function showCreateEventModal(eventToEdit = null) {
     if (document.getElementById("premiumPriceInput") && metadata.premium_price)
       document.getElementById("premiumPriceInput").value =
         metadata.premium_price;
-    if (document.getElementById("allPriceInput") && eventToEdit.price)
-      document.getElementById("allPriceInput").value = eventToEdit.price;
 
     // Ticket quantities
     const regularQtyInput = createEventForm.querySelector(
@@ -811,7 +798,6 @@ function showCreateEventModal(eventToEdit = null) {
     "regularPriceInput",
     "vipPriceInput",
     "premiumPriceInput",
-    "allPriceInput",
   ];
 
   function _setFreeMode(isFree) {
@@ -878,56 +864,24 @@ function showCreateEventModal(eventToEdit = null) {
   const regularPriceSection = document.getElementById("regularPriceSection");
   const vipPriceSection = document.getElementById("vipPriceSection");
   const premiumPriceSection = document.getElementById("premiumPriceSection");
-  const allPriceSection = document.getElementById("allPriceSection");
-
   const regularPriceInput = document.getElementById("regularPriceInput");
   const vipPriceInput = document.getElementById("vipPriceInput");
   const premiumPriceInput = document.getElementById("premiumPriceInput");
-  const allPriceInput = document.getElementById("allPriceInput");
 
   function updateTicketTypeSections() {
     // Collect ALL currently-checked ticket type checkboxes
     const checkedBoxes = document.querySelectorAll(
       ".ticket-type-checkbox:checked",
     );
-    const selectedModes = Array.from(checkedBoxes).map((cb) => cb.value);
-
-    // ── Fix: When "All" is checked, auto-select regular/vip/premium ──────
-    const allCb = document.querySelector('.ticket-type-checkbox[value="all"]');
-    const individualTypes = ["regular", "vip", "premium"];
-    if (allCb && allCb.checked) {
-      // Force-check the three individual checkboxes
-      individualTypes.forEach((type) => {
-        const cb = document.querySelector(
-          `.ticket-type-checkbox[value="${type}"]`,
-        );
-        if (cb && !cb.checked) cb.checked = true;
-      });
-      // Hide the "allConfig" panel — we show the three individual panels instead
-      const allPanel = document.getElementById("allConfig");
-      if (allPanel) allPanel.style.display = "none";
-    } else if (allCb && !allCb.checked) {
-      // When "All" is unchecked, uncheck and hide the individual types only if
-      // they were selected solely because of "All" (i.e. no independent reason)
-      // We do nothing here — user may have individually selected them
-    }
-
-    // Re-collect after possible auto-check above
-    const finalCheckedBoxes = document.querySelectorAll(
-      ".ticket-type-checkbox:checked",
-    );
-    const finalModes = Array.from(finalCheckedBoxes).map((cb) => cb.value);
+    const finalModes = Array.from(checkedBoxes).map((cb) => cb.value);
 
     // Show / hide each price config panel based on final selection
     const sections = {
       regular: document.getElementById("regularConfig"),
       vip: document.getElementById("vipConfig"),
       premium: document.getElementById("premiumConfig"),
-      all: document.getElementById("allConfig"),
     };
 
-    // Always hide allConfig — individual panels used instead
-    if (sections["all"]) sections["all"].style.display = "none";
     ["regular", "vip", "premium"].forEach((key) => {
       if (sections[key]) {
         sections[key].style.display = finalModes.includes(key)
@@ -952,12 +906,9 @@ function showCreateEventModal(eventToEdit = null) {
     const rpi = document.getElementById("regularPriceInput");
     const vpi = document.getElementById("vipPriceInput");
     const ppi = document.getElementById("premiumPriceInput");
-    const api = document.getElementById("allPriceInput");
-
     if (rpi) rpi.required = finalModes.includes("regular");
     if (vpi) vpi.required = finalModes.includes("vip");
     if (ppi) ppi.required = finalModes.includes("premium");
-    if (api) api.required = false; // allConfig is hidden, never required
   }
 
   ticketTypeCheckboxes.forEach((checkbox) => {
@@ -971,8 +922,6 @@ function showCreateEventModal(eventToEdit = null) {
     vipPriceInput.addEventListener("change", updateTicketTypeSections);
   if (premiumPriceInput)
     premiumPriceInput.addEventListener("change", updateTicketTypeSections);
-  if (allPriceInput)
-    allPriceInput.addEventListener("change", updateTicketTypeSections);
 
   // Initial render
   updateTicketTypeSections();
@@ -1015,7 +964,6 @@ function showCreateEventModal(eventToEdit = null) {
   attachPriceGuard("regularPriceInput", "regularPriceError");
   attachPriceGuard("vipPriceInput", "vipPriceError");
   attachPriceGuard("premiumPriceInput", "premiumPriceError");
-  attachPriceGuard("allPriceInput", "allPriceError");
 
   // ── Date change → restrict time picker to future times if today is selected
   document
@@ -1377,11 +1325,25 @@ async function handleCreateEventSubmit(e) {
     "#perStateAddressContainer textarea[data-state]",
   );
   if (perStateTextareas.length > 0) {
+    const customizeDates =
+      document.getElementById("customizeDatesPerStateCheckbox")?.checked ||
+      false;
     const locations = Array.from(perStateTextareas)
-      .map((ta) => ({
-        state: ta.dataset.state,
-        address: ta.value.trim(),
-      }))
+      .map((ta) => {
+        const state = ta.dataset.state;
+        const loc = { state, address: ta.value.trim() };
+        if (customizeDates) {
+          const dateInput = document.querySelector(
+            `#perStateAddressContainer input[data-date-state="${state}"]`,
+          );
+          const timeInput = document.querySelector(
+            `#perStateAddressContainer input[data-time-state="${state}"]`,
+          );
+          if (dateInput && dateInput.value) loc.date = dateInput.value;
+          if (timeInput && timeInput.value) loc.time = timeInput.value;
+        }
+        return loc;
+      })
       .filter((l) => l.state);
 
     if (locations.length > 0) {
@@ -1392,6 +1354,31 @@ async function handleCreateEventSubmit(e) {
           "error",
         );
         return;
+      }
+      if (customizeDates) {
+        const missingDates = locations.filter((l) => !l.date);
+        if (missingDates.length > 0) {
+          showNotification(
+            `Please enter the date for: ${missingDates.map((l) => l.state).join(", ")}`,
+            "error",
+          );
+          return;
+        }
+        const missingTimes = locations.filter((l) => !l.time);
+        if (missingTimes.length > 0) {
+          showNotification(
+            `Please enter the time for: ${missingTimes.map((l) => l.state).join(", ")}`,
+            "error",
+          );
+          return;
+        }
+        const sorted = [...locations].sort((a, b) => {
+          const da = new Date(`${a.date}T${a.time || "00:00"}`);
+          const db = new Date(`${b.date}T${b.time || "00:00"}`);
+          return da - db;
+        });
+        formData.set("event_date", sorted[0].date);
+        if (sorted[0].time) formData.set("event_time", sorted[0].time);
       }
       formData.set("locations_json", JSON.stringify(locations));
       if (locations[0] && !formData.get("address")) {
@@ -1472,8 +1459,15 @@ window.mdpToday = new Date();
 window.mdpToday.setHours(0, 0, 0, 0);
 
 function openMaterialDatePicker() {
-  const dp = document.getElementById("materialDatePicker");
   const display = document.getElementById("customDateDisplay");
+  if (
+    display &&
+    (display.disabled ||
+      display.closest("#singleEventDateTimeRow")?.style.display === "none")
+  ) {
+    return;
+  }
+  const dp = document.getElementById("materialDatePicker");
   if (!dp) return;
   dp.classList.add("active");
   if (display) display.setAttribute("aria-expanded", "true");
@@ -1650,6 +1644,16 @@ window.confirmMaterialDatePicker = confirmMaterialDatePicker;
 
 // ── Time Picker Functions ────────────────────────────────────────────────────
 function toggleTimePicker(dropdownId) {
+  if (dropdownId === "eventTimePickerDropdown") {
+    const btn = document.getElementById("eventTimeDisplayBtn");
+    if (
+      btn &&
+      (btn.disabled ||
+        btn.closest("#singleEventDateTimeRow")?.style.display === "none")
+    ) {
+      return;
+    }
+  }
   const dropdown = document.getElementById(dropdownId);
   if (!dropdown) return;
   const isOpen = dropdown.classList.contains("active");
@@ -1808,25 +1812,22 @@ function updateSelectedStates() {
   hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
 
   // ── Address textarea enable / disable logic ───────────────────────────────
-  // Enable  : no selection, exactly 1 state, or "All States" is chosen.
-  // Disable : 2+ individual states are selected (per-state fields are used instead).
+  // Keep address textarea accessible at all times; make it optional if multiple individual
+  // states are selected since per-state address fields are provided below.
   const mainAddressTextarea = document.querySelector(
     '#createEventForm textarea[name="address"]',
   );
   if (mainAddressTextarea) {
     const hasMultipleIndividual =
       selectedValues.length > 1 && !selectedValues.includes("All States");
-    mainAddressTextarea.disabled = hasMultipleIndividual;
-    mainAddressTextarea.style.background = hasMultipleIndividual
-      ? "#f3f4f6"
-      : "white";
-    mainAddressTextarea.style.cursor = hasMultipleIndividual
-      ? "not-allowed"
-      : "text";
-    mainAddressTextarea.style.opacity = hasMultipleIndividual ? "0.6" : "1";
+    mainAddressTextarea.disabled = false;
+    mainAddressTextarea.style.background = "white";
+    mainAddressTextarea.style.cursor = "text";
+    mainAddressTextarea.style.opacity = "1";
     mainAddressTextarea.placeholder = hasMultipleIndividual
-      ? "Using per-state addresses below…"
+      ? "Street address, landmarks… (optional if per-state addresses are entered below)"
       : "Street address, landmarks…";
+    mainAddressTextarea.required = !hasMultipleIndividual;
   }
 
   // Inject per-state address fields if multiple states are selected
@@ -1845,6 +1846,7 @@ function renderPerStateAddressFields(states) {
   if (!states || states.length <= 1) {
     container.innerHTML = "";
     container.style.display = "none";
+    togglePerStateDateTimeFields();
     return;
   }
 
@@ -1997,6 +1999,9 @@ function renderPerStateAddressFields(states) {
         });
     }
   });
+
+  // Ensure global Date/Time syncs with customizeDatesPerStateCheckbox state
+  togglePerStateDateTimeFields();
 }
 
 function openPerStateDatePicker(sid) {
@@ -2112,70 +2117,33 @@ function togglePerStateDateTimeFields() {
     f.style.display = show ? "grid" : "none";
   });
 
-  // When per-state dates are active, the global date/time fields should be
-  // inaccessible (disabled + visually greyed out) to avoid confusion.
-  const globalDateInput = document.getElementById("customDateDisplay");
+  // When per-state dates are active, hide and disable the single event date/time fields.
+  // When unchecked (or single state), keep them fully accessible and visible.
+  const dateTimeRow = document.getElementById("singleEventDateTimeRow");
+  const globalDateDisplay = document.getElementById("customDateDisplay");
+  const globalDateHidden = document.getElementById("eventDateInput");
   const globalTimeInput = document.getElementById("eventTimeInput");
-  const globalTimeBtn = document.getElementById("eventTimeDisplayBtn");
+  const globalTimeBtn =
+    document.getElementById("eventTimeDisplayBtn") ||
+    document.querySelector("#eventTimePickerContainer .time-picker-display");
 
-  if (globalDateInput) {
-    if (show) {
-      globalDateInput.style.backgroundColor = "#f3f4f6";
-      globalDateInput.style.cursor = "not-allowed";
-      globalDateInput.style.opacity = "0.5";
-      globalDateInput.style.pointerEvents = "none";
-      globalDateInput.disabled = true;
-    } else {
-      globalDateInput.style.backgroundColor = "white";
-      globalDateInput.style.cursor = "";
-      globalDateInput.style.opacity = "";
-      globalDateInput.style.pointerEvents = "";
-      globalDateInput.disabled = false;
-    }
+  if (dateTimeRow) {
+    dateTimeRow.style.display = show ? "none" : "grid";
+  }
+  if (globalDateDisplay) {
+    globalDateDisplay.disabled = show;
+    globalDateDisplay.required = !show;
+  }
+  if (globalDateHidden) {
+    globalDateHidden.disabled = show;
+    globalDateHidden.required = !show;
   }
   if (globalTimeInput) {
-    if (show) {
-      globalTimeInput.style.backgroundColor = "#f3f4f6";
-      globalTimeInput.style.cursor = "not-allowed";
-      globalTimeInput.style.opacity = "0.5";
-      globalTimeInput.style.pointerEvents = "none";
-      globalTimeInput.disabled = true;
-    } else {
-      globalTimeInput.style.backgroundColor = "white";
-      globalTimeInput.style.cursor = "";
-      globalTimeInput.style.opacity = "";
-      globalTimeInput.style.pointerEvents = "";
-      globalTimeInput.disabled = false;
-    }
+    globalTimeInput.disabled = show;
+    globalTimeInput.required = !show;
   }
   if (globalTimeBtn) {
-    if (show) {
-      globalTimeBtn.style.backgroundColor = "#f3f4f6";
-      globalTimeBtn.style.cursor = "not-allowed";
-      globalTimeBtn.style.opacity = "0.5";
-      globalTimeBtn.style.pointerEvents = "none";
-    } else {
-      globalTimeBtn.style.backgroundColor = "white";
-      globalTimeBtn.style.cursor = "pointer";
-      globalTimeBtn.style.opacity = "";
-      globalTimeBtn.style.pointerEvents = "";
-    }
     globalTimeBtn.disabled = show;
-  }
-  if (globalDateInput) globalDateInput.required = !show;
-  if (globalTimeInput) {
-    globalTimeInput.required = !show;
-    if (show) {
-      globalTimeInput.style.backgroundColor = "#f3f4f6";
-      globalTimeInput.style.cursor = "not-allowed";
-      globalTimeInput.style.opacity = "0.5";
-      globalTimeInput.style.pointerEvents = "none";
-    } else {
-      globalTimeInput.style.backgroundColor = "";
-      globalTimeInput.style.cursor = "";
-      globalTimeInput.style.opacity = "";
-      globalTimeInput.style.pointerEvents = "";
-    }
   }
 }
 

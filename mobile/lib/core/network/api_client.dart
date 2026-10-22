@@ -26,17 +26,9 @@ class ApiClient {
   // which matters on flaky mobile connections that truncate the challenge HTML.
   static const _retryDelays = [2, 3, 5];
 
-  /// Start on the live API so Google sign-in works before discovery finishes
-  /// and when no local PHP server is running. `API_BASE_URL` remains the
-  /// explicit override for local development.
-  static const _productionBaseUrl = String.fromEnvironment(
-    'PRODUCTION_API_BASE_URL',
-    defaultValue: 'https://eventra-website.liveblog365.com/api',
-  );
-  static const _defaultBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: _productionBaseUrl,
-  );
+  /// Start on the Android emulator's host loopback until local discovery
+  /// selects the running PHP server.
+  static const _defaultBaseUrl = 'http://10.0.2.2:8000/api';
 
   ApiClient._internal() {
     final parsedBaseUrl = Uri.tryParse(_defaultBaseUrl);
@@ -53,8 +45,7 @@ class ApiClient {
     // instance must never be replaced — [setBaseUrl] mutates its options.
     _createDio(_defaultBaseUrl);
 
-    // Let EndpointResolver switch this client to whichever origin (live or
-    // local) actually serves the API.
+    // Let EndpointResolver switch this client to a reachable local API.
     EndpointResolver.registerAdopter(setBaseUrl);
 
     // Prepare payload crypto in the background; in-flight requests just skip
@@ -119,13 +110,8 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          // Some request payloads carry sensitive fields (e.g. phone during
-          // registration, tokens in diagnostic/debug flows). Encrypt those in
-          // the body before it leaves the device so a compromised payload never
-          // exposes them in plaintext outside the secure storage layer.
-          if (isCryptoReady) {
-            _encryptRequestPayloadIfNeeded(options);
-          }
+          // Outbound requests send plaintext over TLS; client-side device key
+          // encryption cannot be decrypted by the backend server.
           // Track retry count via extra map
           options.extra['_retryCount'] ??= 0;
           return handler.next(options);
@@ -159,12 +145,14 @@ class ApiClient {
               if (retryResponse != null) {
                 return handler.resolve(retryResponse);
               }
-            } catch (e) {
-              return handler.reject(
-                e is DioException
-                    ? e
-                    : DioException(requestOptions: opts, error: e),
-              );
+            } on DioException catch (e) {
+              return handler.reject(e);
+            }
+            try {
+              final recovered = await _retryAfterEndpointRecovery(opts);
+              if (recovered != null) return handler.resolve(recovered);
+            } on DioException catch (e) {
+              return handler.reject(e);
             }
             return handler.reject(
               DioException(
@@ -191,12 +179,14 @@ class ApiClient {
               if (retryResponse != null) {
                 return handler.resolve(retryResponse);
               }
-            } catch (e) {
-              return handler.reject(
-                e is DioException
-                    ? e
-                    : DioException(requestOptions: opts, error: e),
-              );
+            } on DioException catch (e) {
+              return handler.reject(e);
+            }
+            try {
+              final recovered = await _retryAfterEndpointRecovery(opts);
+              if (recovered != null) return handler.resolve(recovered);
+            } on DioException catch (e) {
+              return handler.reject(e);
             }
             return handler.reject(
               DioException(
@@ -277,12 +267,14 @@ class ApiClient {
                 if (retryResponse != null) {
                   return handler.resolve(retryResponse);
                 }
-              } catch (e) {
-                return handler.next(
-                  e is DioException
-                      ? e
-                      : DioException(requestOptions: opts, error: e),
-                );
+              } on DioException catch (e) {
+                return handler.next(e);
+              }
+              try {
+                final recovered = await _retryAfterEndpointRecovery(opts);
+                if (recovered != null) return handler.resolve(recovered);
+              } on DioException catch (e) {
+                return handler.next(e);
               }
               return handler.next(
                 DioException(
@@ -301,12 +293,14 @@ class ApiClient {
                 if (retryResponse != null) {
                   return handler.resolve(retryResponse);
                 }
-              } catch (e) {
-                return handler.next(
-                  e is DioException
-                      ? e
-                      : DioException(requestOptions: opts, error: e),
-                );
+              } on DioException catch (e) {
+                return handler.next(e);
+              }
+              try {
+                final recovered = await _retryAfterEndpointRecovery(opts);
+                if (recovered != null) return handler.resolve(recovered);
+              } on DioException catch (e) {
+                return handler.next(e);
               }
               return handler.next(
                 DioException(
@@ -366,19 +360,11 @@ class ApiClient {
             // dev server was started after boot / moved to another port).
             // Re-discover once, so the app heals itself into whichever origin
             // actually serves the API instead of failing every screen.
-            final alreadyRecovered =
-                (opts.extra['_endpointRecovered'] as bool?) == true;
-            if (!alreadyRecovered) {
-              final moved = await EndpointResolver.recover();
-              if (moved) {
-                opts.extra['_endpointRecovered'] = true;
-                try {
-                  final retry = await _recoveryDio.fetch(opts);
-                  return handler.resolve(retry);
-                } catch (_) {
-                  // Fall through to the friendly transport error below.
-                }
-              }
+            try {
+              final retry = await _retryAfterEndpointRecovery(opts);
+              if (retry != null) return handler.resolve(retry);
+            } on DioException catch (retryError) {
+              return handler.next(retryError);
             }
             return handler.next(
               DioException(
@@ -391,7 +377,7 @@ class ApiClient {
           }
           return handler.next(error);
         },
-      ),
+      ),  
     );
   }
 
@@ -472,6 +458,15 @@ class ApiClient {
   /// never recurse back into the recovery logic.
   Dio get _recoveryDio => Dio(dio.options);
 
+  Future<Response<dynamic>?> _retryAfterEndpointRecovery(
+    RequestOptions options,
+  ) async {
+    if (options.extra['_endpointRecovered'] == true) return null;
+    if (!await EndpointResolver.recover()) return null;
+    options.extra['_endpointRecovered'] = true;
+    return _recoveryDio.fetch(options.copyWith(baseUrl: dio.options.baseUrl));
+  }
+
   /// Attempts a silent Google re-authentication and returns true if a fresh
   /// backend token was stored. Kept as a late-bound hook to avoid a static
   /// import cycle: GoogleAuthService registers itself at startup via
@@ -501,45 +496,7 @@ class ApiClient {
     dio.options.headers['Cookie'] = cookie;
   }
 
-  /// Encrypt sensitive leaf values inside a JSON request body, in place.
-  ///
-  /// Public endpoints still speak plain JSON for filtering/search params, so
-  /// only the fields in [sensitiveFieldNames] are touched. Non-sensitive
-  /// bodies (e.g. list query params) remain unchanged.
-  void _encryptRequestPayloadIfNeeded(RequestOptions options) {
-    final body = options.data;
-    if (body is! Map) return;
-    final updated = _encryptMap(body as Map<String, dynamic>);
-    options.data = updated;
-  }
 
-  Map<String, dynamic> _encryptMap(Map<String, dynamic> map) {
-    final out = <String, dynamic>{};
-    for (final entry in map.entries) {
-      final key = entry.key.toString();
-      final value = entry.value;
-      if (isSensitiveField(key) && value is String && value.isNotEmpty) {
-        out[key] = crypto!.encryptString(value);
-      } else if (value is Map) {
-        out[key] = _encryptMap(Map<String, dynamic>.from(value));
-      } else if (value is List) {
-        out[key] = _encryptList(value);
-      } else {
-        out[key] = value;
-      }
-    }
-    return out;
-  }
-
-  List<dynamic> _encryptList(List list) {
-    return list
-        .map((item) {
-          if (item is Map) return _encryptMap(Map<String, dynamic>.from(item));
-          if (item is List) return _encryptList(item);
-          return item;
-        })
-        .toList();
-  }
 
   /// Decrypt sensitive leaf values inside a JSON response body, in place.
   ///
@@ -576,13 +533,11 @@ class ApiClient {
   }
 
   List<dynamic> _decryptList(List list) {
-    return list
-        .map((item) {
-          if (item is Map) return _decryptMap(Map<String, dynamic>.from(item));
-          if (item is List) return _decryptList(item);
-          return item;
-        })
-        .toList();
+    return list.map((item) {
+      if (item is Map) return _decryptMap(Map<String, dynamic>.from(item));
+      if (item is List) return _decryptList(item);
+      return item;
+    }).toList();
   }
 
   /// Switch the API origin at runtime (used by [EndpointResolver] after it
@@ -613,9 +568,16 @@ class ApiClient {
 
   String absoluteUrl(String? path) {
     if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http')) return path;
+    final trimmed = path.trim();
+    final stripped = trimmed.replaceFirst(RegExp(r'^/+'), '');
+    if (stripped.startsWith('http://') || stripped.startsWith('https://')) {
+      return stripped;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
     final origin = baseOrigin ?? '';
-    return '$origin/${path.replaceFirst(RegExp(r'^/'), '')}';
+    return '$origin/$stripped';
   }
 }
 

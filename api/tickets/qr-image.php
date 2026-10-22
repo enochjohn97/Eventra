@@ -34,12 +34,26 @@ try {
     }
 
     $pdo = getPDO();
+
+    // Ensure qr_scan_count and qr_scan_locked columns exist in tickets table
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM tickets LIKE 'qr_scan_count'")->fetchAll();
+        if (empty($cols)) {
+            $pdo->exec("ALTER TABLE tickets ADD COLUMN qr_scan_count INT DEFAULT 0");
+        }
+        $colsLock = $pdo->query("SHOW COLUMNS FROM tickets LIKE 'qr_scan_locked'")->fetchAll();
+        if (empty($colsLock)) {
+            $pdo->exec("ALTER TABLE tickets ADD COLUMN qr_scan_locked TINYINT(1) DEFAULT 0");
+        }
+    } catch (\Throwable $colEx) {
+        // Fall back gracefully if ALTER is prohibited
+    }
+
     $stmt = $pdo->prepare("
-        SELECT t.id, t.barcode, t.qr_code_path, t.qr_code_data, t.qr_scan_count, t.qr_scan_locked,
-               p.status AS payment_status
+        SELECT t.*, p.status AS payment_status
         FROM tickets t
         JOIN payments p ON t.payment_id = p.id
-        WHERE t.barcode = ? OR t.custom_id = ?
+        WHERE t.barcode = ? OR (t.custom_id IS NOT NULL AND t.custom_id = ?)
         LIMIT 1
     ");
     $stmt->execute([$ticketId, $ticketId]);
@@ -56,9 +70,14 @@ try {
         exit;
     }
 
+    $scanCount = isset($t['qr_scan_count']) ? (int)$t['qr_scan_count'] : 0;
+    $isLocked = isset($t['qr_scan_locked']) && (int)$t['qr_scan_locked'] === 1;
+
     // Enforce the QR lock: an exhausted QR must not be shown/scannable.
-    if ((int)$t['qr_scan_locked'] === 1 || (int)$t['qr_scan_count'] >= QR_SCAN_LIMIT) {
-        $pdo->prepare("UPDATE tickets SET qr_scan_locked = 1 WHERE id = ?")->execute([$t['id']]);
+    if ($isLocked || $scanCount >= QR_SCAN_LIMIT) {
+        try {
+            $pdo->prepare("UPDATE tickets SET qr_scan_locked = 1 WHERE id = ?")->execute([$t['id']]);
+        } catch (\Throwable $ignored) {}
         http_response_code(429);
         echo json_encode([
             'success' => false,
@@ -89,16 +108,26 @@ try {
     }
 
     // No stored file? Regenerate the exact signed-payload QR on the fly
-    // (same payload builder the ticket used, so it scans identically).
+    require_once __DIR__ . '/../../includes/helpers/ticket-helper.php';
     if ($dataUri === '') {
-        $row = $pdo->prepare("SELECT t.*, p.status AS payment_status FROM tickets t JOIN payments p ON t.payment_id = p.id WHERE t.id = ?");
-        $row->execute([$t['id']]);
-        $ticketData = $row->fetch(PDO::FETCH_ASSOC) ?: [];
-        require_once __DIR__ . '/../../includes/helpers/ticket-helper.php';
-        $path = generateTicketQRCode($ticketData);
+        $path = generateTicketQRCode($t);
         if ($path !== '' && is_file($path)) {
             $mime = str_ends_with(strtolower($path), '.svg') ? 'image/svg+xml' : 'image/png';
             $dataUri = 'data:' . $mime . ';base64,' . base64_encode((string)file_get_contents($path));
+        } else {
+            // Direct fallback generation via QR API if disk write failed
+            $baseAppUrl = defined('APP_URL') ? rtrim(APP_URL, '/') : rtrim(($_ENV['APP_URL'] ?? ''), '/');
+            if (empty($baseAppUrl)) {
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $baseAppUrl = $scheme . '://' . $host;
+            }
+            $verificationUrl = $baseAppUrl . '/api/tickets/validate-ticket.php?barcode=' . urlencode($t['barcode'] ?? '');
+            $fallbackUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($verificationUrl);
+            $bin = @file_get_contents($fallbackUrl);
+            if ($bin !== false && !empty($bin)) {
+                $dataUri = 'data:image/png;base64,' . base64_encode($bin);
+            }
         }
     }
 
@@ -108,18 +137,8 @@ try {
         exit;
     }
 
-    // Also return the signed payload — exactly what a camera scan reads from
-    // this image — so the UI's "Verify this QR" button behaves like a scan.
-    $payload = '';
-    $row = $pdo->prepare("SELECT t.*, p.status AS payment_status FROM tickets t JOIN payments p ON t.payment_id = p.id WHERE t.id = ?");
-    $row->execute([$t['id']]);
-    $ticketData = $row->fetch(PDO::FETCH_ASSOC) ?: [];
-    if ($ticketData) {
-        require_once __DIR__ . '/../../includes/helpers/ticket-helper.php';
-        $payload = buildSecureQRPayload($ticketData);
-    }
-
-    $used = (int)$t['qr_scan_count'];
+    $payload = buildSecureQRPayload($t);
+    $used = $scanCount;
     echo json_encode([
         'success' => true,
         'data_uri' => $dataUri,
@@ -132,5 +151,5 @@ try {
 } catch (Throwable $e) {
     error_log('[qr-image] ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error. Please try again.']);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
 }

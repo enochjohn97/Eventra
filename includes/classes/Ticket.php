@@ -244,13 +244,13 @@ class Ticket
         // Event image as an absolute URL when possible
         $img = '';
         if (!empty($t['event_image'])) {
-            $imgPath = $t['event_image'];
-            if (preg_match('#^https?://#', $imgPath)) {
+            $imgPath = str_replace('\\', '/', trim((string)$t['event_image']));
+            if (preg_match('#^(https?:)//#i', $imgPath)) {
                 $img = $imgPath;
             } else {
                 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? 80) == 443 ? 'https' : 'http';
                 $host = $_SERVER['HTTP_HOST'] ?? '';
-                $img = $host !== '' ? $protocol . '://' . $host . '/' . ltrim(str_replace('\\', '/', $imgPath), '/') : '/' . ltrim($imgPath, '/');
+                $img = $host !== '' ? $protocol . '://' . $host . '/' . ltrim($imgPath, '/') : '/' . ltrim($imgPath, '/');
             }
         }
 

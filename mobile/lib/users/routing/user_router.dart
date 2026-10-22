@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import '../../core/network/api_client.dart';
 import '../models/event_model.dart';
 import '../providers/auth_provider.dart';
 import '../screens/checkout_screen.dart';
@@ -96,6 +98,62 @@ GoRouter createUserRouter(AuthProvider authProvider) {
           return PaymentSuccessScreen(payload: payload);
         },
       ),
+      // Legal & policy pages — hosted on the server, rendered in-app via WebView.
+      GoRoute(
+        path: '/terms',
+        builder: (_, _) => const _LegalPage(title: 'Terms & Conditions', path: '/terms.html'),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (_, _) => const _LegalPage(title: 'Privacy Policy', path: '/privacy.html'),
+      ),
+      GoRoute(
+        path: '/cookies',
+        builder: (_, _) => const _LegalPage(title: 'Cookie Policy', path: '/cookies.html'),
+      ),
+      GoRoute(
+        path: '/delete-data',
+        builder: (_, _) => const _LegalPage(title: 'Delete your data', path: '/delete-data.html'),
+      ),
     ],
   );
+}
+
+/// Renders a server-hosted legal page inside the app using a WebView.
+class _LegalPage extends StatefulWidget {
+  final String title;
+  final String path;
+  const _LegalPage({required this.title, required this.path});
+
+  @override
+  State<_LegalPage> createState() => _LegalPageState();
+}
+
+class _LegalPageState extends State<_LegalPage> {
+  late WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {},
+          onPageFinished: (_) {},
+          onWebResourceError: (_) {},
+        ),
+      )
+      ..loadRequest(Uri.parse(
+        '${ApiClient().baseOrigin}/${widget.path.replaceFirst(RegExp(r'^/+'), '')}',
+      ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: WebViewWidget(controller: _controller),
+    );
+  }
 }

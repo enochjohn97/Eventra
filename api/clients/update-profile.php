@@ -268,6 +268,10 @@ try {
         $query   .= ', metadata = ?';
         $params[] = $metaUpdate;
     }
+    if ($bvnNumber !== '') {
+        $query   .= ', kyc_bvn = ?';
+        $params[] = $bvnNumber;
+    }
     foreach ($kycUpdates as $column => $path) {
         $query .= ", {$column} = ?";
         $params[] = $path;

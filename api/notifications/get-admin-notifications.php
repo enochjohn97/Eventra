@@ -75,14 +75,10 @@ try {
     $stmt->execute([$admin_auth_id]);
     $notifications = [];
     $seenNotificationIds = [];
-    $seenNotificationContent = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $notification) {
         $notificationId = (int) ($notification['id'] ?? 0);
         if ($notificationId && isset($seenNotificationIds[$notificationId])) continue;
-        $contentKey = ($notification['type'] ?? '') . '|' . ($notification['title'] ?? '') . '|' . ($notification['message'] ?? '');
-        if (isset($seenNotificationContent[$contentKey])) continue;
         if ($notificationId) $seenNotificationIds[$notificationId] = true;
-        $seenNotificationContent[$contentKey] = true;
         $notifications[] = $notification;
     }
 

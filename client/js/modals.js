@@ -629,6 +629,13 @@ async function showProfileEditModal() {
 
                         <!-- STEP 3: KYC Verification Documents -->
                         <div id="wizardStep3" class="wizard-step" style="display: none;">
+                            <!-- KYC Warning Notice -->
+                            <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px 14px; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px;">
+                                <span style="font-size: 1.2rem; line-height: 1.3;">⚠️</span>
+                                <p style="margin: 0; font-size: 0.85rem; color: #92400e; line-height: 1.5;">
+                                    <strong>Important:</strong> All uploaded documents must be <strong>originals</strong> (no photocopies or edited files) and must <strong>match the name registered on this account</strong>. Mismatched or altered documents will result in rejection and may flag your account for further review.
+                                </p>
+                            </div>
                             <!-- BVN (Bank Verification Number) -->
                             <div class="form-group" style="margin-bottom: 1.5rem;">
                                 <label for="bvnNumberInput" style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
@@ -1346,9 +1353,8 @@ window.verifyBvnNumber = async function () {
   }
 };
 
-// Real-time Account Resolution — Pure client-side (no external API calls)
-function resolveAccount() {
-  // console.log("resolveAccount called");
+// Real-time Account Resolution — calls live Paystack resolution endpoint
+async function resolveAccount() {
   const bankSelect = document.getElementById("bankSelect");
   const bankCode = bankSelect ? bankSelect.value : "";
   const accountInput = document.getElementById("accountNumberInput");
@@ -1381,11 +1387,42 @@ function resolveAccount() {
     return;
   }
 
-  // ✓ Valid — populate with test name instantly (no API call)
+  // Need both bank and account to resolve
+  if (!bankCode) {
+    if (statusDiv)
+      statusDiv.innerHTML =
+        '<span style="color:#f59e0b; font-weight: bold;">Select a bank to resolve account</span>';
+    return;
+  }
+
+  // Show loading state
   if (statusDiv)
     statusDiv.innerHTML =
-      '<span style="color:#722f37; font-weight: bold;">✓ Verified</span>';
-  if (nameInput) nameInput.value = "Test Account";
+      '<span style="color:#64748b; font-weight: bold;">⏳ Resolving…</span>';
+  if (nameInput) nameInput.value = "";
+
+  try {
+    const res = await apiFetch(
+      `/api/clients/bank-details.php?bank_code=${encodeURIComponent(bankCode)}&account_number=${encodeURIComponent(accountNumber)}`
+    );
+    const result = await res.json();
+
+    if (result.success && result.account_name) {
+      if (statusDiv)
+        statusDiv.innerHTML =
+          '<span style="color:#722f37; font-weight: bold;">✓ Verified</span>';
+      if (nameInput) nameInput.value = result.account_name;
+    } else {
+      if (statusDiv)
+        statusDiv.innerHTML = `<span style="color:#ef4444; font-weight: bold;">${result.message || "Could not resolve account"}</span>`;
+      if (nameInput) nameInput.value = "";
+    }
+  } catch (err) {
+    if (statusDiv)
+      statusDiv.innerHTML =
+        '<span style="color:#ef4444; font-weight: bold;">Connection error — try again</span>';
+    if (nameInput) nameInput.value = "";
+  }
 }
 
 // Dynamic Field Verification Logic

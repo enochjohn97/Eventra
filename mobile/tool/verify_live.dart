@@ -21,7 +21,7 @@ Future<void> main() async {
 
   const base = String.fromEnvironment(
     'BASE',
-    defaultValue: 'http://localhost:8000/api',
+    defaultValue: 'https://eventra-website.liveblog365.com/api',
   );
 
   for (final path in ['/config/app']) {

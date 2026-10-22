@@ -87,6 +87,7 @@ foreach ($files as $jobFile) {
         $ticket_ids = $jobData['ticket_ids'] ?? [];
         $ticketData = $jobData['ticket_data'] ?? [];
         $user_email = $jobData['user_email'];
+        $ticket_emails = $jobData['ticket_emails'] ?? [$user_email];
         $user_phone = $jobData['user_phone'];
         $user_auth_accounts_id = $jobData['user_auth_accounts_id'];
         $organizer_auth_id = $jobData['organizer_auth_id'];
@@ -146,10 +147,15 @@ foreach ($files as $jobFile) {
         }
 
         if ($emailData !== null) {
-            try {
-                EmailHelper::sendTicketEmailFull($user_email, $emailData);
-            } catch (Exception $e) {
-                error_log("[process-ticket-queue.php] Email send failed for reference $reference: " . $e->getMessage());
+            foreach (array_unique($ticket_emails) as $emailRecipient) {
+                if (!filter_var($emailRecipient, FILTER_VALIDATE_EMAIL)) {
+                    continue;
+                }
+                try {
+                    EmailHelper::sendTicketEmailFull($emailRecipient, $emailData);
+                } catch (Exception $e) {
+                    error_log("[process-ticket-queue.php] Email send failed for $emailRecipient, reference $reference: " . $e->getMessage());
+                }
             }
         }
 

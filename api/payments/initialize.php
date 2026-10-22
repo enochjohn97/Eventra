@@ -34,12 +34,6 @@ function giftStoreLinks(): array
     ];
 }
 
-if (!$event_id) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'event_id is required.']);
-    exit;
-}
-
 try {
     // ── Determine actual auth_id and user_id ──────────────────────────────────
     // checkAuth returns auth_accounts.id if token-based, or users.id if session-based
@@ -83,13 +77,89 @@ try {
     $user_email = $user['email'];
     $user_name = $user['name'];
 
-    // ── Gift recipient resolution ────────────────────────────────────────────
-    // A gift MUST be delivered to an existing EventOut account: that account
-    // is what receives the ticket (and its copy in the app). When no account
-    // uses the address we stop before any Paystack work and hand the app the
-    // store links so the recipient can register first.
+    // Ensure user_temporary_recipients audit table exists
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS user_temporary_recipients (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                creator_user_id BIGINT UNSIGNED NOT NULL,
+                name VARCHAR(150) NOT NULL,
+                email VARCHAR(191) NOT NULL,
+                phone VARCHAR(20) DEFAULT NULL,
+                recipient_user_id BIGINT UNSIGNED DEFAULT NULL,
+                recipient_auth_id BIGINT UNSIGNED DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_creator (creator_user_id),
+                KEY idx_email (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    } catch (\Throwable $e) {}
+
+    // Check temporary creations quota for User A
+    $creationLimit = 50;
+    $quotaStmt = $pdo->prepare("SELECT COUNT(*) FROM user_temporary_recipients WHERE creator_user_id = ?");
+    $quotaStmt->execute([$user_id]);
+    $creationCount = (int) $quotaStmt->fetchColumn();
+    $creationsLeft = max(0, $creationLimit - $creationCount);
+    $giftWarning = null;
+    if ($creationCount >= 45 && $creationCount < 50) {
+        $giftWarning = "Warning: You have only {$creationsLeft} creation" . ($creationsLeft === 1 ? '' : 's') . " left (out of {$creationLimit} limit).";
+    }
+
+    // Direct quota check probe
+    if (isset($_GET['recipient_quota']) || !empty($body['check_quota'])) {
+        echo json_encode([
+            'success' => true,
+            'creation_count' => $creationCount,
+            'creation_limit' => $creationLimit,
+            'creations_left' => $creationsLeft,
+            'warning' => $giftWarning,
+            'limit_exceeded' => $creationCount >= $creationLimit,
+            'store_links' => giftStoreLinks(),
+        ]);
+        exit;
+    }
+
+    if (!$event_id) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'event_id is required.']);
+        exit;
+    }
+
+    // ── Gift recipient resolution & creation ─────────────────────────────────
+    // "Get for someone else": recipient details are validated, stored under User A,
+    // and capped at 50 creations (warning at 45-49, limit modal at 50).
     $giftRecipient = null;
     if ($gift_recipient_email !== '') {
+        // Enforce 50-limit: at 50, display modal that limit is exceeded
+        if ($creationCount >= $creationLimit) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'limit_exceeded' => true,
+                'message' => 'You have exceeded the limit of 50 temporary accounts. The email address that has been used to create a temporary account so they can get the ticket should download the app through Google Play or App Store.',
+                'creation_count' => $creationCount,
+                'creation_limit' => $creationLimit,
+                'creations_left' => 0,
+                'store_links' => giftStoreLinks(),
+            ]);
+            exit;
+        }
+
+        // Recipient Name validation: required, no digits or symbols
+        $gift_recipient_name = trim((string)($body['gift_recipient_name'] ?? ''));
+        if ($gift_recipient_name === '') {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Recipient name is required.']);
+            exit;
+        }
+        if (!preg_match("/^[a-zA-Z\s]+$/u", $gift_recipient_name)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Recipient name cannot contain digits or symbols.']);
+            exit;
+        }
+
+        // Recipient Email validation: required, valid email
         if (!filter_var($gift_recipient_email, FILTER_VALIDATE_EMAIL)) {
             http_response_code(422);
             echo json_encode(['success' => false, 'message' => 'Enter a valid recipient email address.']);
@@ -100,25 +170,126 @@ try {
             echo json_encode(['success' => false, 'message' => 'That is your own email — use “Get Ticket” to buy for yourself.']);
             exit;
         }
+
+        // Recipient Phone validation: required, 11 digits only
+        $gift_recipient_phone = trim((string)($body['gift_recipient_phone'] ?? ''));
+        if (!preg_match("/^\d{11}$/", $gift_recipient_phone)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => 'Recipient phone number is required and must be exactly 11 digits.']);
+            exit;
+        }
+
+        // Find existing account or create temporary account under User A
         $gStmt = $pdo->prepare("
             SELECT u.id AS user_id, u.name, u.phone, a.id AS auth_id, a.email
-            FROM users u
-            JOIN auth_accounts a ON u.user_auth_id = a.id
+            FROM auth_accounts a
+            LEFT JOIN users u ON u.user_auth_id = a.id
             WHERE LOWER(a.email) = ?
             LIMIT 1
         ");
         $gStmt->execute([$gift_recipient_email]);
         $giftRecipient = $gStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
-        if (!$giftRecipient) {
-            http_response_code(404);
-            echo json_encode([
-                'success' => false,
-                'recipient_not_registered' => true,
-                'message' => 'No EventOut account uses that email address yet. Ask them to install the app and sign up, then try again.',
-                'store_links' => giftStoreLinks(),
+        if (!$giftRecipient || empty($giftRecipient['user_id'])) {
+            // Create temporary account so they can receive the ticket
+            $newAuthId = (int)($giftRecipient['auth_id'] ?? 0);
+            if (!$newAuthId) {
+                $emailPrefix = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $gift_recipient_email)[0]);
+                if (empty($emailPrefix)) $emailPrefix = 'user';
+                $candidateUsername = strtolower($emailPrefix) . '_' . bin2hex(random_bytes(3));
+
+                $checkUser = $pdo->prepare("SELECT id FROM auth_accounts WHERE username = ? LIMIT 1");
+                $checkUser->execute([$candidateUsername]);
+                if ($checkUser->fetch()) {
+                    $candidateUsername = strtolower($emailPrefix) . '_' . bin2hex(random_bytes(5));
+                }
+
+                $authMeta = json_encode([
+                    'is_temporary' => true,
+                    'created_by_user_id' => $user_id,
+                    'creator_email' => $user_email,
+                    'original_name' => $gift_recipient_name,
+                    'original_phone' => $gift_recipient_phone,
+                ]);
+                $authStmt = $pdo->prepare("
+                    INSERT INTO auth_accounts (email, username, password, auth_provider, role, is_active, metadata, created_at, updated_at)
+                    VALUES (?, ?, NULL, 'local', 'user', 1, ?, NOW(), NOW())
+                ");
+                $authStmt->execute([$gift_recipient_email, $candidateUsername, $authMeta]);
+                $newAuthId = (int)$pdo->lastInsertId();
+            }
+
+            $userCustomId = 'USR-' . strtoupper(bin2hex(random_bytes(4)));
+            $profileMeta = json_encode([
+                'is_temporary' => true,
+                'created_by_user_id' => $user_id,
+                'notes' => 'Created temporarily by user for ticket purchase',
             ]);
-            exit;
+            $profileStmt = $pdo->prepare("
+                INSERT INTO users (custom_id, user_auth_id, name, phone, status, metadata, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'pending', ?, NOW(), NOW())
+            ");
+            $profileStmt->execute([
+                $userCustomId,
+                $newAuthId,
+                $gift_recipient_name,
+                $gift_recipient_phone !== '' ? $gift_recipient_phone : null,
+                $profileMeta
+            ]);
+            $newUserId = (int)$pdo->lastInsertId();
+
+            // Record in user_temporary_recipients for User A audit record
+            $auditStmt = $pdo->prepare("
+                INSERT INTO user_temporary_recipients (creator_user_id, name, email, phone, recipient_user_id, recipient_auth_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $auditStmt->execute([
+                $user_id,
+                $gift_recipient_name,
+                $gift_recipient_email,
+                $gift_recipient_phone !== '' ? $gift_recipient_phone : null,
+                $newUserId,
+                $newAuthId
+            ]);
+
+            $creationCount++;
+            $creationsLeft = max(0, $creationLimit - $creationCount);
+            if ($creationCount >= 45 && $creationCount < 50) {
+                $giftWarning = "Warning: You have only {$creationsLeft} creation" . ($creationsLeft === 1 ? '' : 's') . " left (out of {$creationLimit} limit).";
+            }
+
+            $giftRecipient = [
+                'user_id' => $newUserId,
+                'auth_id' => $newAuthId,
+                'name' => $gift_recipient_name,
+                'email' => $gift_recipient_email,
+                'phone' => $gift_recipient_phone,
+                'is_temporary' => true,
+            ];
+        } else {
+            $giftRecipient['name'] = $gift_recipient_name;
+            // Record under creator if not already recorded
+            $auditCheck = $pdo->prepare("SELECT id FROM user_temporary_recipients WHERE creator_user_id = ? AND email = ? LIMIT 1");
+            $auditCheck->execute([$user_id, $gift_recipient_email]);
+            if (!$auditCheck->fetch()) {
+                $auditStmt = $pdo->prepare("
+                    INSERT INTO user_temporary_recipients (creator_user_id, name, email, phone, recipient_user_id, recipient_auth_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $auditStmt->execute([
+                    $user_id,
+                    $gift_recipient_name,
+                    $gift_recipient_email,
+                    $gift_recipient_phone !== '' ? $gift_recipient_phone : null,
+                    (int)$giftRecipient['user_id'],
+                    (int)$giftRecipient['auth_id']
+                ]);
+                $creationCount++;
+                $creationsLeft = max(0, $creationLimit - $creationCount);
+                if ($creationCount >= 45 && $creationCount < 50) {
+                    $giftWarning = "Warning: You have only {$creationsLeft} creation" . ($creationsLeft === 1 ? '' : 's') . " left (out of {$creationLimit} limit).";
+                }
+            }
         }
     }
 
@@ -342,6 +513,12 @@ try {
                     $freeEmailRecipient = $sendTo;
                 }
             }
+            $freeEmailRecipients = $giftRecipient
+                ? array_values(array_unique(array_filter([
+                    $user_email,
+                    $giftRecipient['email'] ?? null,
+                ], static fn($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))))
+                : [$freeEmailRecipient];
 
             $orgStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
             $orgStmt->execute([$event['organizer_id']]);
@@ -364,20 +541,25 @@ try {
                 'order_id'          => (int)$order_id,
                 'amount'            => 0,
                 'authorization_url' => $callbackUrl,
-                'is_free'           => true
+                'is_free'           => true,
+                'gift_warning'      => $giftWarning,
+                'creations_left'    => $creationsLeft,
+                'creation_count'    => $creationCount,
             ]);
 
             // Respond to the buyer NOW; deliver email + notifications afterwards.
             require_once '../../includes/helpers/response-helper.php';
             finishResponseThen($freePayload, function () use (
-                $freeEmailData, $freeEmailRecipient,
+                $freeEmailData, $freeEmailRecipients,
                 $auth_id, $event, $tickets, $organizer_auth_id, $user_name, $giftRecipient
             ) {
                 if ($freeEmailData !== null) {
-                    try {
-                        EmailHelper::sendTicketEmailFull($freeEmailRecipient, $freeEmailData);
-                    } catch (\Throwable $mailEx) {
-                        error_log('[initialize.php] Free ticket email failed (post-response): ' . $mailEx->getMessage());
+                    foreach ($freeEmailRecipients as $emailRecipient) {
+                        try {
+                            EmailHelper::sendTicketEmailFull($emailRecipient, $freeEmailData);
+                        } catch (\Throwable $mailEx) {
+                            error_log('[initialize.php] Free ticket email failed (post-response): ' . $mailEx->getMessage());
+                        }
                     }
                 }
                 // The ticket-issued notice follows the ticket's owner, so a gift
@@ -684,6 +866,9 @@ try {
         'order_id'                => (int)$order_id,
         'amount'                  => $total,
         'organizer_paystack_mode' => $isLivePaystackKey ? 'live' : 'test',
+        'gift_warning'            => $giftWarning,
+        'creations_left'          => $creationsLeft,
+        'creation_count'          => $creationCount,
     ]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {

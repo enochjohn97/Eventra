@@ -10,11 +10,27 @@ class NotificationManager {
     this.lastNotificationId = 0;
     this.isPolling = false;
     this.currentAbortController = null;
+    this._sessionClientId = null; // tracks which client's session is active
+  }
+
+  // Reset all per-session state (call on logout / before a new client logs in)
+  reset() {
+    this.stopPolling();
+    this.lastNotificationId = 0;
+    this._sessionClientId = null;
+    // Clear the notification drawer so stale items are gone
+    const list = document.getElementById("notificationList");
+    if (list) list.innerHTML = "";
+    this.updateNotificationBadge(0);
   }
 
   // Start polling for notifications
   startPolling() {
     if (this.isPolling) return;
+
+    // Always stamp the current client's ID so a fresh login never inherits stale state
+    const activeUser = window.storage ? window.storage.getUser() : null;
+    this._sessionClientId = activeUser ? (activeUser.id || activeUser.client_id || null) : null;
 
     this.isPolling = true;
 
@@ -70,6 +86,17 @@ class NotificationManager {
       }
 
       if (result.success) {
+        // ── Guard: if the active client changed mid-session, reset and bail ──
+        const activeUser = window.storage ? window.storage.getUser() : null;
+        const activeClientId = activeUser ? (activeUser.id || activeUser.client_id || null) : null;
+        if (activeClientId && this._sessionClientId && this._sessionClientId !== activeClientId) {
+          // Different client is now logged in — reset everything before populating
+          this.lastNotificationId = 0;
+          const list = document.getElementById("notificationList");
+          if (list) list.innerHTML = "";
+        }
+        if (activeClientId) this._sessionClientId = activeClientId;
+
         // Calculate server time offset
         if (result.server_time) {
           const serverTime = new Date(result.server_time).getTime();
@@ -534,6 +561,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Check using unified helper so it works for user, client, AND admin
   const user = storage.getUser();
   if (user) {
+    // Stamp the session client ID before first poll to prevent false cross-client toasts
+    window.notificationManager._sessionClientId = user.id || user.client_id || null;
     window.notificationManager.startPolling();
   }
+});
+
+// Reset on logout so the next client starts with a clean slate
+document.addEventListener("auth:logout", () => {
+  if (window.notificationManager) window.notificationManager.reset();
 });

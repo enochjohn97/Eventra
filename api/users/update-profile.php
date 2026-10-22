@@ -56,7 +56,13 @@ $targetProfileId = (int)$existing['id'];
 $user_auth_id = $existing['user_auth_id'];
 
 $name    = isset($input['name']) && trim((string)$input['name']) !== '' ? trim((string)$input['name']) : ($existing['name'] ?? '');
-$phone   = isset($input['phone']) ? trim((string)$input['phone']) : ($existing['phone'] ?? '');
+$rawPhone = isset($input['phone']) ? trim((string)$input['phone']) : ($existing['phone'] ?? '');
+if (strpos($rawPhone, '+234') === 0) {
+    $rawPhone = '0' . substr($rawPhone, 4);
+} elseif (strpos($rawPhone, '234') === 0 && strlen($rawPhone) === 13) {
+    $rawPhone = '0' . substr($rawPhone, 3);
+}
+$phone = preg_replace('/[\s\-]/', '', $rawPhone);
 
 // Validate phone: max 11 digits, digits only
 if ($phone !== '' && (!ctype_digit($phone) || strlen($phone) > 11)) {

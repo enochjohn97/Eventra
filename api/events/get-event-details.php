@@ -78,10 +78,17 @@ try {
     }
 
     if (!empty($event['image_path'])) {
-        // Ensure path starts with a slash
-        $path = '/' . ltrim($event['image_path'], '/');
-        $event['image_path'] = $path;
-        $event['absolute_image_url'] = $baseUrl . $path;
+        $imgPath = trim((string)$event['image_path']);
+        $imgPath = str_replace('\\', '/', $imgPath);
+        if (preg_match('#^(https?:)//#i', $imgPath)) {
+            $event['image_path'] = $imgPath;
+            $event['absolute_image_url'] = $imgPath;
+        } else {
+            // Ensure path starts with a slash
+            $path = '/' . ltrim($imgPath, '/');
+            $event['image_path'] = $path;
+            $event['absolute_image_url'] = $baseUrl . $path;
+        }
     } else {
         $event['image_path'] = null;
         // Local splash placeholder (allowed) — no external dummy image

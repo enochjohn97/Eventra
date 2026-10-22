@@ -72,6 +72,13 @@ $shortPageAliases = [
     '/checkout.html' => 'public/pages/checkout.html',
     '/event-details.html' => 'public/pages/event-details.html',
     '/payment.html' => 'public/pages/payment.html',
+    // Legal pages — Terms, Privacy, Cookie Policy, Delete your data.
+    // Kept under /pages/ but served from the site root for clean URLs.
+    '/terms.html' => 'public/pages/terms.html',
+    '/privacy.html' => 'public/pages/privacy.html',
+    '/cookies.html' => 'public/pages/cookies.html',
+    '/delete-data.html' => 'public/pages/delete-data.html',
+
     // Legacy short aliases (kept so old links never break)
     '/adminLogin.html' => 'admin/pages/adminLogin.html',
     '/clientLogin.html' => 'client/pages/clientLogin.html',
@@ -175,9 +182,33 @@ if (php_sapi_name() === 'cli-server') {
     // All other requests fall through to the router
 }
 
-// Debug logging (disabled by default — enable only when debugging locally)
-if (($_ENV['APP_DEBUG'] ?? 'false') === 'true' && is_dir($rootDir . '/logs')) {
-    @file_put_contents($rootDir . '/logs/router.log', date('[Y-m-d H:i:s] ') . $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'] . PHP_EOL, FILE_APPEND);
+// Local config endpoint for the mobile splash boot probe (php -S only).
+// The mobile app calls GET /config/app before anything else, so serve it
+// directly here on the built-in server instead of routing through the API
+// dispatcher (which can be slow to boot on cold starts).
+if (php_sapi_name() === 'cli-server' && $uri === '/config/app') {
+    $configFile = $rootDir . '/config/google.php';
+    if (!file_exists($configFile)) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'config not found']);
+        exit;
+    }
+    // Load env first so GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET resolve.
+    if (file_exists($rootDir . '/config/env-loader.php')) {
+        // Load before reading from $_ENV so the mobile splash gets real values.
+        require $rootDir . '/config/env-loader.php';
+    }
+    // The mobile splash calls GET /config/app before auth, so return the same
+    // shape the app expects even when the backend has not finished booting.
+    $config = require $configFile;
+    if (!is_array($config)) {
+        $config = [];
+    }
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    echo json_encode(array_merge(['success' => true], $config));
+    exit;
+    exit;
 }
 
 require_once $rootDir . '/includes/core/Autoloader.php';
@@ -233,6 +264,13 @@ if (preg_match('#^/go/(admin|client|user)$#', $uri, $m)) {
     } else {
         header('Location: /index.html', true, 302);
     }
+    exit;
+}
+
+// Trailing-slash redirect for the mobile splash probe path so a stray
+// /config/app/ never reaches the 404 page.
+if ($uri === '/config/app/') {
+    header('Location: /config/app', true, 301);
     exit;
 }
 
@@ -395,6 +433,15 @@ if (strpos($uri, '/api/') === 0) {
 
     if ($method === 'POST' && $cleanPath === 'tickets/check') {
         $dispatchApi('tickets/check-ticket.php');
+    }
+
+    if ($method === 'GET' && ($cleanPath === 'tickets/qr-image' || $cleanPath === 'tickets/qr')) {
+        $dispatchApi('tickets/qr-image.php');
+    }
+
+    if ($method === 'GET' && ($cleanPath === 'payments/recipient-quota' || $cleanPath === 'payments/quota')) {
+        $_GET['recipient_quota'] = '1';
+        $dispatchApi('payments/initialize.php');
     }
 
     if ($method === 'GET' && $cleanPath === 'tickets') {

@@ -894,12 +894,12 @@ class EmailHelper
             }
         }
         $badgeHtml = $tickDisp !== ''
-            ? '<div style="margin-bottom:16px;">'
+            ? '<div style="margin-bottom:4px;text-align:right;">'
             . "<span style=\"display:inline-block;background:{$badgeBg};color:{$badgeFg};"
             . 'font-family:Arial,sans-serif;font-size:9px;font-weight:800;letter-spacing:2px;'
             . 'text-transform:uppercase;padding:4px 14px;border-radius:20px;">'
             . $tickDisp . '</span></div>'
-            : '<div style="margin-bottom:16px;"></div>';
+            : '';
 
         /* ── Detail columns ──────────────────────────────── */
         $colA = self::detailRow('Date', $eventDate, false, $forPdf);
@@ -1100,7 +1100,6 @@ class EmailHelper
         <tr>
           <td valign="top">
             {$brandHeader}
-            {$badgeHtml}
             <div style="font-family:Arial,sans-serif;font-size:26px;line-height:1.2;color:#ffffff;font-weight:800;text-transform:uppercase;margin-top:6px;margin-bottom:6px;letter-spacing:-0.5px;">{$eventTitle}</div>
           </td>
         </tr>
@@ -1125,6 +1124,7 @@ class EmailHelper
                   <div style="font-family:Arial,sans-serif;font-size:16px;font-weight:800;color:#ffffff;">{$userName}</div>
                 </td>
                 <td valign="bottom" width="40%" align="right">
+                  {$badgeHtml}
                   <div style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:3px;">Ticket ID</div>
                   <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;color:#ffffff;line-height:1.2;min-height:15px;">{$ticketId}</div>
                 </td>
@@ -1264,7 +1264,6 @@ HTML;
         <tr>
           <td valign="top" style="padding-bottom:9px;">
             {$brandHeader}
-            {$badgeHtml}
             <div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:900;
                         text-transform:uppercase;line-height:1.2;color:#ffffff;letter-spacing:-0.5px;
                         margin-top:5px;">{$eventTitle}</div>
@@ -1298,6 +1297,7 @@ HTML;
                               color:#ffffff;">{$userName}</div>
                 </td>
                 <td width="218" valign="bottom" align="right" style="width:218px;">
+                  {$badgeHtml}
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:700;
                               letter-spacing:2px;text-transform:uppercase;color:#94a3b8;
                               margin-bottom:2px;">Ticket ID</div>
@@ -1368,6 +1368,7 @@ PDF;
         $brandLogo = self::brandHeaderLightHtml('22px');
 
         $body = <<<HTML
+        <span style="display:none !important; visibility:hidden; mso-hide:all; font-size:1px; color:#ffffff; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">EventOut &mdash; Your verification code is {$otp}.</span>
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:40px 36px;
                     background:#ffffff;border-radius:16px;border:1px solid #f1f5f9;">
             <div style="text-align:center;margin-bottom:32px;">

@@ -48,7 +48,7 @@ if (session_status() === PHP_SESSION_NONE) {
         $portal = 'user';
     } elseif (!$currentSessionName || $currentSessionName === 'PHPSESSID' || $currentSessionName === 'EVENTRA_GUEST_SESS') {
         $headers = function_exists('getallheaders') ? getallheaders() : [];
-        $portal = $_SERVER['HTTP_X_EVENTRA_PORTAL'] ?? $headers['X-Eventra-Portal'] ?? $headers['x-eventra-portal'] ?? null;
+        $portal = $_GET['portal'] ?? $_SERVER['HTTP_X_EVENTRA_PORTAL'] ?? $headers['X-Eventra-Portal'] ?? $headers['x-eventra-portal'] ?? null;
         
         // If no header, try to detect from URI first (more specific)
         if (!$portal) {

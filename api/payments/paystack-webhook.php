@@ -307,8 +307,14 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                 }
             }
             if ($emailData !== null) {
-                $emailRecipient = $emailData['buyer_email'] ?? $order['user_email'];
-                EmailHelper::sendTicketEmailFull($emailRecipient, $emailData);
+                $emailRecipients = $isGift
+                    ? [$order['user_email'], $giftRecipientEmail]
+                    : [$emailData['buyer_email'] ?? $order['user_email']];
+                foreach (array_unique($emailRecipients) as $emailRecipient) {
+                    if (filter_var($emailRecipient, FILTER_VALIDATE_EMAIL)) {
+                        EmailHelper::sendTicketEmailFull($emailRecipient, $emailData);
+                    }
+                }
             }
 
             // SMS to buyer

@@ -135,6 +135,20 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
 
+      final apiAvailable = await EndpointResolver.resolve(force: true);
+      if (!mounted || !context.mounted) return;
+      if (!apiAvailable) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Cannot reach the local server. On a phone, use your computer's "
+              'LAN IP and start PHP on 0.0.0.0:8000.',
+            ),
+          ),
+        );
+        return;
+      }
+
       final auth = context.read<AuthProvider>();
       final ok = await auth.signInWithGoogle();
       if (!mounted) return;
@@ -221,102 +235,121 @@ class _SplashScreenState extends State<SplashScreen>
     final isBusy = auth.isLoading || _isSigningIn;
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 24, 28, 18),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _brandLockup(),
-                              const SizedBox(height: 30),
-                              FadeTransition(
-                                opacity: _subtitleIn,
-                                child: Text(
-                                  _subtitles[_subtitleIndex],
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 14.5,
-                                    height: 1.4,
-                                    fontWeight: FontWeight.w600,
+      backgroundColor: AppTheme.bgPage,
+      body: Container(
+        color: const Color(0xFFF7F5F0),
+        child: Stack(
+          children: [
+            SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 24, 28, 18),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _brandLockup(),
+                                const SizedBox(height: 30),
+                                FadeTransition(
+                                  opacity: _subtitleIn,
+                                  child: Text(
+                                    _subtitles[_subtitleIndex],
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 14.5,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (auth.sessionExpired ||
-                                  auth.error != null ||
-                                  (configError != null && !googleReady)) ...[
-                                const SizedBox(height: 18),
-                                Text(
-                                  auth.sessionExpired
-                                      ? 'Your session expired. Please sign in again.'
-                                      : auth.error ??
-                                            configError ??
-                                            'Google Sign-In is unavailable.',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFF8A8A),
+                                const SizedBox(height: 24),
+                                FadeTransition(
+                                  opacity: _subtitleIn,
+                                  child: const Text(
+                                    'Powered by Attoneex Tech Solutions.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
+                                if (auth.sessionExpired ||
+                                    auth.error != null ||
+                                    (configError != null && !googleReady)) ...[
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    auth.sessionExpired
+                                        ? 'Your session expired. Please sign in again.'
+                                        : auth.error ??
+                                              configError ??
+                                              'Google Sign-In is unavailable.',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFF8A8A),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                      FadeTransition(
-                        opacity: _buttonIn,
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: isBusy
-                              ? Center(
-                                  child: Platform.isIOS
-                                      ? const CupertinoActivityIndicator(
-                                          color: Colors.white,
-                                        )
-                                      : const CircularProgressIndicator(
-                                          color: Colors.white,
-                                        ),
-                                )
-                              : _GoogleButton(
-                                  onPressed: () => _handleLogin(context),
-                                ),
+                        FadeTransition(
+                          opacity: _buttonIn,
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: isBusy
+                                ? Center(
+                                    child: Platform.isIOS
+                                        ? const CupertinoActivityIndicator(
+                                            color: Color(0xFF0F172A),
+                                          )
+                                        : const CircularProgressIndicator(
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                  )
+                                : _GoogleButton(
+                                    onPressed: () => _handleLogin(context),
+                                  ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'By continuing you agree to our Terms & Privacy Policy.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 14.5),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        const Text(
+                          'By continuing you agree to our Terms & Privacy Policy.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 14.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          // ── Post-sign-in celebration ─────────────────────────────────────
-          if (_signedIn)
-            Positioned.fill(
-              child: _GoogleSuccessOverlay(
-                onDone: () {
-                  if (!mounted) return;
-                  if (!PendingCheckout.resume(context)) {
-                    context.go('/home');
-                  }
-                },
+            // ── Post-sign-in celebration ─────────────────────────────────────
+            if (_signedIn)
+              Positioned.fill(
+                child: _GoogleSuccessOverlay(
+                  onDone: () {
+                    if (!mounted) return;
+                    if (!PendingCheckout.resume(context)) {
+                      context.go('/home');
+                    }
+                  },
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -415,10 +448,7 @@ class _GoogleSuccessOverlayState extends State<_GoogleSuccessOverlay>
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          colors: [Color(0xFF15161C), Color(0xFF000000)],
-          radius: 0.9,
-        ),
+        color: Color(0xFFF5F5DC),
       ),
       child: Center(
         child: FadeTransition(
@@ -433,7 +463,7 @@ class _GoogleSuccessOverlayState extends State<_GoogleSuccessOverlay>
                   'Welcome to EventOut!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF111827),
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.4,
@@ -444,7 +474,7 @@ class _GoogleSuccessOverlayState extends State<_GoogleSuccessOverlay>
                   'You\u2019re signed in. Let\u2019s find your next event.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF9CA3AF),
+                    color: Color(0xFF6B7280),
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                   ),

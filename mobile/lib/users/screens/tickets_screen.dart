@@ -3,9 +3,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/event_utils.dart';
 import '../../core/widgets/brand_logo.dart';
@@ -115,7 +115,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       final ticket = provider.tickets[index];
                       return Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),                          child: Row(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ClipRRect(
@@ -131,17 +132,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                             color: AppTheme.primary.withValues(
                                               alpha: 0.1,
                                             ),
-                                            child: const CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: AppTheme.primary,
-                                            ),
+                                            child:
+                                                const CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: AppTheme.primary,
+                                                ),
                                           ),
-                                          errorWidget: (_, __, ___) => Container(
-                                            color: AppTheme.primary.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            child: const Icon(Icons.event),
-                                          ),
+                                          errorWidget: (_, __, ___) =>
+                                              Container(
+                                                color: AppTheme.primary
+                                                    .withValues(alpha: 0.1),
+                                                child: const Icon(Icons.event),
+                                              ),
                                         )
                                       : Container(
                                           color: AppTheme.primary.withValues(
@@ -319,21 +321,14 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
   Map<String, dynamic>? _proof;
   String? _error;
   bool _verifying = false;
-  bool _loadingQr = false;
-  String? _qrDataUri;
-  String? _qrError;
-  String? _qrMeta;
-
-  /// True once the ticket's five QR scans are used up — the ticket ID field
-  /// stays available (and unlimited) after that, exactly like the web flow.
-  bool _qrLocked = false;
+  String? _qrTicketId;
 
   @override
   void initState() {
     super.initState();
     _idCtrl = TextEditingController(text: widget.initialTicketId);
     if (widget.initialTicketId.trim().isNotEmpty) {
-      _loadQr(widget.initialTicketId.trim());
+      _qrTicketId = widget.initialTicketId.trim();
       _verify();
     }
   }
@@ -344,44 +339,10 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
     super.dispose();
   }
 
-  Future<void> _loadQr(String ticketId) async {
-    if (ticketId.length < 4) return;
-    setState(() {
-      _loadingQr = true;
-      _qrDataUri = null;
-      _qrError = null;
-      _qrMeta = null;
-      _qrLocked = false;
-    });
-    try {
-      final qr = await UserTicketService.fetchTicketQr(ticketId);
-      final imageData = UriData.parse(qr.dataUri);
-      if (!imageData.mimeType.startsWith('image/') ||
-          imageData.contentAsBytes().isEmpty) {
-        throw Exception('The server returned an invalid QR image.');
-      }
-      if (!mounted) return;
-      setState(() {
-        _qrDataUri = qr.dataUri;
-        _qrLocked = qr.scansRemaining <= 0;
-        _qrMeta =
-            'Ticket ${ticketId.toUpperCase()} · ${qr.scansUsed}/${qr.scanLimit} QR scans used · ${qr.scansRemaining} remaining';
-      });
-    } catch (e) {
-      if (!mounted) return;
-      final message = e is FormatException
-          ? 'The server returned an invalid QR image.'
-          : e.toString().replaceFirst('Exception: ', '');
-      final locked = message.toLowerCase().contains('limit');
-      setState(() {
-        _qrLocked = locked;
-        _qrError = locked
-            ? 'QR scans used up (5/5). This QR code is now inaccessible — verify with the Ticket ID below instead.'
-            : message;
-      });
-    } finally {
-      if (mounted) setState(() => _loadingQr = false);
-    }
+  void _loadQr(String ticketId) {
+    final id = ticketId.trim();
+    if (_qrTicketId == id) return;
+    setState(() => _qrTicketId = id.length >= 4 ? id : null);
   }
 
   Future<void> _verify() async {
@@ -495,34 +456,25 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
           ),
           child: Column(
             children: [
-              if (_loadingQr)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: CircularProgressIndicator(),
-                )
-              else if (_qrDataUri != null && _qrDataUri!.isNotEmpty)
+              if (_qrTicketId != null)
                 _qrPreview()
               else
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Column(
                     children: [
-                      Icon(
-                        _qrLocked ? Icons.lock_outline : Icons.qr_code_2,
+                      const Icon(
+                        Icons.qr_code_2,
                         size: 40,
-                        color: _qrLocked ? AppTheme.error : AppTheme.textMuted,
+                        color: AppTheme.textMuted,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _qrError ??
-                            'Enter a ticket ID below — the QR code appears here.',
+                      const Text(
+                        'Enter a ticket ID below — the QR code appears here.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: _qrLocked
-                              ? AppTheme.error
-                              : AppTheme.textMuted,
-                          fontWeight: _qrLocked ? FontWeight.w600 : null,
+                          color: AppTheme.textMuted,
                         ),
                       ),
                     ],
@@ -531,25 +483,6 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
             ],
           ),
         ),
-        if (_qrMeta != null) ...[
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              _qrMeta!,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primary,
-              ),
-            ),
-          ),
-        ],
         const SizedBox(height: 20),
         const Text(
           'Verify by ticket ID',
@@ -565,12 +498,7 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
           controller: _idCtrl,
           textCapitalization: TextCapitalization.characters,
           onSubmitted: (_) => _verify(),
-          onChanged: (value) {
-            final id = value.trim();
-            if (id.length >= 6) {
-              _loadQr(id);
-            }
-          },
+          onChanged: _loadQr,
           decoration: const InputDecoration(
             hintText: 'e.g. TKT-20260929-0697',
             prefixIcon: Icon(Icons.confirmation_number_outlined),
@@ -617,31 +545,11 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
   }
 
   Widget _qrPreview() {
-    final imageData = UriData.parse(_qrDataUri!);
-    final bytes = imageData.contentAsBytes();
-    if (imageData.mimeType == 'image/svg+xml') {
-      return SvgPicture.memory(
-        bytes,
-        width: 190,
-        height: 190,
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const Icon(
-          Icons.broken_image_outlined,
-          size: 40,
-          color: AppTheme.textMuted,
-        ),
-      );
-    }
-    return Image.memory(
-      bytes,
-      width: 190,
-      height: 190,
-      fit: BoxFit.contain,
-      errorBuilder: (_, _, _) => const Icon(
-        Icons.broken_image_outlined,
-        size: 40,
-        color: AppTheme.textMuted,
-      ),
+    return QrImageView(
+      data: _qrTicketId!,
+      version: QrVersions.auto,
+      size: 190,
+      backgroundColor: Colors.white,
     );
   }
 
@@ -749,17 +657,7 @@ class _CheckTicketDialogState extends State<_CheckTicketDialog> {
             Expanded(
               child: OutlinedButton(
                 onPressed: () {
-                  final currentId = _idCtrl.text.trim();
-                  setState(() {
-                    _proof = null;
-                    _qrDataUri = null;
-                    _qrMeta = null;
-                    _qrError = null;
-                    _qrLocked = false;
-                  });
-                  // Re-fetch the QR for the ID still in the field, otherwise
-                  // the preview came back empty after leaving the proof view.
-                  if (currentId.isNotEmpty) _loadQr(currentId);
+                  setState(() => _proof = null);
                 },
                 child: const Text('Check another'),
               ),

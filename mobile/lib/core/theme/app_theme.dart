@@ -58,7 +58,7 @@ class AppTheme {
   static const Color accent = Color(0xFF395CAA);
   static const Color textMain = Color(0xFF111827);
   static const Color textMuted = Color(0xFF6B7280);
-  static const Color bgPage = Color(0xFFF9FAFC);
+  static const Color bgPage = Color(0xFFEEEEEE);
   static const Color bgCard = Colors.white;
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF1B5E20);
@@ -76,7 +76,7 @@ class AppTheme {
         onSurface: textMain,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: bgCard,
+        backgroundColor: bgPage,
         foregroundColor: textMain,
         elevation: 0,
         centerTitle: false,
@@ -130,7 +130,7 @@ class AppTheme {
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: bgCard,
+        backgroundColor: bgPage,
         selectedItemColor: primary,
         unselectedItemColor: textMuted,
         type: BottomNavigationBarType.fixed,
@@ -139,7 +139,7 @@ class AppTheme {
       // NavigationBar (bottom tabs): the selected pill uses the primary blue
       // background, so its icon and label must render white on top of it.
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: bgCard,
+        backgroundColor: bgPage,
         indicatorColor: primary,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(

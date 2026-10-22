@@ -248,15 +248,10 @@ document.addEventListener("DOMContentLoaded", () => {
           if (result.user.token) {
             window.storage.setToken(result.user.token);
           }
-        } else {
-          // Fallback: store directly to localStorage if storage manager not ready
-          try {
-            localStorage.setItem("admin_auth_token", result.user.token || "");
-            localStorage.setItem("admin_user", JSON.stringify(result.user));
-          } catch (e) {}
         }
-
         try {
+          localStorage.setItem("admin_auth_token", result.user.token || "");
+          localStorage.setItem("admin_user", JSON.stringify(result.user));
           sessionStorage.setItem("just_logged_in", "true");
         } catch (e) {}
 

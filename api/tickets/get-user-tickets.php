@@ -76,7 +76,13 @@ try {
             } elseif (preg_match('#(public/assets/.+)$#i', $img, $m)) {
                 $ticket['event_image'] = '/' . $m[1];
             }
-            $ticket['absolute_event_image'] = $baseUrl . '/' . ltrim($ticket['event_image'], '/');
+            $evtImg = $ticket['event_image'];
+            if (preg_match('#^(https?:)//#i', $evtImg)) {
+                $ticket['absolute_event_image'] = $evtImg;
+                $ticket['event_image'] = $evtImg;
+            } else {
+                $ticket['absolute_event_image'] = $baseUrl . '/' . ltrim($evtImg, '/');
+            }
         }
         if (!empty($ticket['qr_code_path'])) {
             $qr = str_replace('\\', '/', $ticket['qr_code_path']);

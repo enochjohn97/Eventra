@@ -48,6 +48,9 @@ try {
     $client['paystack_account_reviewed_at'] = $meta['paystack_account_reviewed_at'] ?? null;
     $platformSubaccount = $meta['paystack_platform_subaccount'] ?? [];
     $client['paystack_platform_subaccount_code'] = $platformSubaccount['code'] ?? '';
+    if (empty($client['subaccount_code']) && !empty($client['paystack_platform_subaccount_code'])) {
+        $client['subaccount_code'] = $client['paystack_platform_subaccount_code'];
+    }
     // Stable modal contract. Keep flat fields too for existing dashboard code.
     $client['settlement_account'] = [
         'bank_name' => $client['bank_name'],
@@ -65,13 +68,13 @@ try {
         }
     }
 
-    // BVN is no longer a document upload — clients verify an 11-digit number
-    // (api/clients/verify-identity.php) which records bvn_verified + a masked
-    // copy in metadata. Expose both so the admin modal can show the status
-    // instead of a permanent "Not uploaded".
+    // BVN is an 11-digit number stored in kyc_bvn (or metadata).
     $bvnVerified = !empty($meta['bvn_verified']);
     $client['bvn_verified'] = $bvnVerified ? 1 : 0;
-    $client['bvn_masked'] = $meta['bvn_number_masked'] ?? '';
+    $rawBvn = trim((string)($client['kyc_bvn'] ?? $meta['bvn_number'] ?? ''));
+    $maskedBvn = $meta['bvn_number_masked'] ?? ($rawBvn !== '' ? (substr($rawBvn, 0, 3) . '*****' . substr($rawBvn, -3)) : '');
+    $client['kyc_bvn'] = $rawBvn;
+    $client['bvn_masked'] = $maskedBvn;
     $client['bvn_verified_at'] = $meta['bvn_verified_at'] ?? null;
     $client['bvn_provider'] = $meta['bvn_provider'] ?? null;
     $client['nin_verified'] = !empty($meta['nin_verified']) ? 1 : 0;
@@ -82,9 +85,10 @@ try {
             'url' => $client['kyc_bvn_file'] ?? null,
             'status' => $bvnVerified
                 ? 'verified'
-                : (!empty($client['kyc_bvn_file']) ? 'uploaded' : 'missing'),
+                : (!empty($rawBvn) ? 'provided' : (!empty($client['kyc_bvn_file']) ? 'uploaded' : 'missing')),
             'verified' => $bvnVerified,
-            'masked' => $meta['bvn_number_masked'] ?? '',
+            'masked' => $maskedBvn,
+            'number' => $rawBvn,
         ],
         'nin' => ['url' => $client['kyc_nin_file'] ?? null, 'status' => !empty($client['kyc_nin_file']) ? 'uploaded' : 'missing'],
         'cac' => ['url' => $client['kyc_cac_file'] ?? null, 'status' => !empty($client['kyc_cac_file']) ? 'uploaded' : 'missing'],

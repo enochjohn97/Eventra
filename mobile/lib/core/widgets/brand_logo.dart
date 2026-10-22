@@ -15,7 +15,7 @@ class BrandLogo extends StatefulWidget {
 
   const BrandLogo({
     super.key,
-    this.size = 34,
+    this.size = 28,
     this.markSize,
     this.showWordmark = true,
     this.white = false,

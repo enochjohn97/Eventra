@@ -41,10 +41,16 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   late TextEditingController _lnameCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _phoneCtrl;
+  final TextEditingController _giftNameCtrl = TextEditingController();
   final TextEditingController _giftEmailCtrl = TextEditingController();
+  final TextEditingController _giftPhoneCtrl = TextEditingController();
   int _quantity = 1;
   late String _ticketType;
   bool _processing = false;
+  int _giftCreationsLeft = 50;
+  String? _giftWarning;
+  bool _giftLimitExceeded = false;
+  GiftStoreLinks? _giftStoreLinks;
 
   @override
   void initState() {
@@ -73,6 +79,26 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         if (mounted) _maybePrefillFromProfile(user);
       });
     }
+
+    if (widget.giftMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkGiftQuota();
+      });
+    }
+  }
+
+  Future<void> _checkGiftQuota() async {
+    final quota = await UserPaymentService.checkRecipientQuota();
+    if (!mounted) return;
+    setState(() {
+      _giftCreationsLeft = quota.creationsLeft;
+      _giftWarning = quota.warning;
+      _giftLimitExceeded = quota.limitExceeded;
+      _giftStoreLinks = quota.storeLinks;
+    });
+    if (quota.limitExceeded) {
+      _showGiftLimitModal(storeLinks: quota.storeLinks);
+    }
   }
 
   @override
@@ -81,7 +107,9 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     _lnameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
+    _giftNameCtrl.dispose();
     _giftEmailCtrl.dispose();
+    _giftPhoneCtrl.dispose();
     super.dispose();
   }
 
@@ -110,6 +138,15 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   /// Capacity the organizer set for the selected tier.
   int? get _capacityForTier => widget.event.capacityForTier(_ticketType);
 
+  /// Hard upper bound for quantity: per-tier remaining → tier capacity → total event tickets → null.
+  int? get _maxQuantity {
+    final rem = _remainingForTier;
+    if (rem != null) return rem;
+    final cap = _capacityForTier;
+    if (cap != null) return cap;
+    return widget.event.ticketCount; // total tickets on the event
+  }
+
   bool _tierSoldOut(String tier) {
     final remaining = widget.event.remainingForTier(tier);
     return remaining != null && remaining <= 0;
@@ -118,10 +155,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   /// Keeps the quantity inside the selected tier's remaining stock. Changing
   /// tier never leaves a stale quantity that the organizer's limit rejects.
   void _clampQuantity() {
-    final remaining = widget.event.remainingForTier(_ticketType);
-    if (remaining != null && remaining > 0 && _quantity > remaining) {
-      _quantity = remaining;
-    }
+    final max = _maxQuantity;
+    if (max != null && _quantity > max) _quantity = max.clamp(1, max);
     if (_quantity < 1) _quantity = 1;
   }
 
@@ -138,14 +173,17 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       return;
     }
 
+    if (widget.giftMode && _giftLimitExceeded) {
+      _showGiftLimitModal();
+      return;
+    }
+
     setState(() => _processing = true);
     try {
       final initResult = await UserPaymentService.initializePayment(
         eventId: widget.event.id,
         quantity: _quantity,
         ticketType: _ticketType,
-        // A gift collects only the recipient's email in the UI; the buyer's own
-        // profile details still travel as the Paystack contact information.
         contactInfo: {
           'fname': _fnameCtrl.text.trim(),
           'lname': _lnameCtrl.text.trim(),
@@ -153,11 +191,23 @@ class _CheckoutScreenState extends State<CheckoutScreen>
           'phone': _phoneCtrl.text.trim(),
         },
         giftRecipientEmail: _giftRecipientEmail,
+        giftRecipientName: widget.giftMode ? _giftNameCtrl.text.trim() : null,
+        giftRecipientPhone: widget.giftMode ? _giftPhoneCtrl.text.trim() : null,
       );
 
       final reference = initResult.reference;
 
       if (!mounted) return;
+
+      if (initResult.giftWarning != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(initResult.giftWarning!),
+            backgroundColor: const Color(0xFFD97706),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
 
       if (initResult.isFree) {
         // Free tickets are issued synchronously inside initialize; a verify
@@ -189,9 +239,13 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       // returns "processing" while that is still in flight. Poll it.
       final outcome = await _verifyWithRetry(reference);
       _showPaymentOutcome(reference, initResult.raw, outcome);
+    } on GiftLimitExceededException catch (e) {
+      setState(() {
+        _giftLimitExceeded = true;
+        _giftCreationsLeft = 0;
+      });
+      if (mounted) await _showGiftLimitModal(storeLinks: e.storeLinks);
     } on GiftRecipientNotRegisteredException catch (e) {
-      // No account uses that address yet — offer the store so they can install
-      // EventOut, then the buyer can retry the same checkout.
       if (mounted) await _showRecipientNotRegistered(e);
     } catch (e) {
       if (mounted) {
@@ -337,6 +391,66 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     );
   }
 
+  /// Shows the gift-limit exceeded modal. When the user hits 50 temporary
+  /// account creations, recipients must download EventOut themselves.
+  Future<void> _showGiftLimitModal({GiftStoreLinks? storeLinks}) async {
+    if (!mounted) return;
+    final links = storeLinks ?? _giftStoreLinks;
+    Future<void> openStore(String url) async {
+      final uri = Uri.tryParse(url);
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.block, color: AppTheme.error, size: 36),
+        title: const Text(
+          'Limit Exceeded',
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'You have exceeded the limit of 50 temporary accounts.\n\n'
+              'The email address that has been used to create a temporary account so they can get the ticket should download the app through Google Play or App Store, create their own account, and purchase directly.',
+              textAlign: TextAlign.center,
+            ),
+            if (links != null) ...[
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => openStore(links.android),
+                    icon: const Icon(Icons.android, size: 18),
+                    label: const Text('Google Play'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: () => openStore(links.ios),
+                    icon: const Icon(Icons.apple, size: 18),
+                    label: const Text('App Store'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageUrl =
@@ -432,17 +546,132 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                   ),
                   const SizedBox(height: 12),
                   if (widget.giftMode) ...[
-                    // "Get for someone else" asks for the recipient's email only.
+                    if (_giftLimitExceeded) ...[
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.error.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.block, color: AppTheme.error, size: 24),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'You have exceeded the limit of 50 temporary accounts. Recipients should download EventOut via Google Play or App Store to access their tickets.',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ] else if (_giftWarning != null || (_giftCreationsLeft <= 5 && _giftCreationsLeft > 0)) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Color(0xFFB45309),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _giftWarning ??
+                                    'Warning: You have only $_giftCreationsLeft creation${_giftCreationsLeft == 1 ? '' : 's'} left (out of 50 limit).',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF92400E),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    // Name (validated, no digits or symbols) required
+                    TextFormField(
+                      controller: _giftNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Recipient Name *',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r"[a-zA-Z\s'-]"),
+                        ),
+                      ],
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (value) {
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return 'Recipient name is required';
+                        if (!RegExp(r"^[a-zA-Z\s'-]+$").hasMatch(v)) {
+                          return 'Name cannot contain digits or symbols';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // Email address (validated) required
                     TextFormField(
                       controller: _giftEmailCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Recipient Email *',
+                        prefixIcon: Icon(Icons.email_outlined),
                         helperText:
-                            'The ticket is issued to their EventOut account.',
+                            'The ticket will be issued to their EventOut account.',
                       ),
                       keyboardType: TextInputType.emailAddress,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       validator: _email,
+                    ),
+                    const SizedBox(height: 12),
+                    // Recipient phone number (required, 11 digits only)
+                    TextFormField(
+                      controller: _giftPhoneCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Recipient Phone Number *',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                        helperText: '11 digits only (e.g. 08012345678)',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
+                      ],
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (value) {
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return 'Phone number is required';
+                        if (!RegExp(r'^\d{11}$').hasMatch(v)) {
+                          return 'Phone number must be exactly 11 digits';
+                        }
+                        return null;
+                      },
                     ),
                   ] else ...[
                   Row(
@@ -538,10 +767,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                           ),
                           IconButton(
                             // Never let the buyer step past the organizer's
-                            // remaining stock for the selected tier.
-                            onPressed:
-                                (_remainingForTier == null ||
-                                    _quantity < _remainingForTier!)
+                            // remaining stock or total event tickets.
+                            onPressed: (_maxQuantity == null || _quantity < _maxQuantity!)
                                 ? () => setState(() {
                                     _quantity++;
                                     _clampQuantity();
@@ -553,18 +780,23 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                       ),
                     ],
                   ),
-                  if (_capacityForTier != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Ticket capacity: $_capacityForTier total · '
-                      '${_remainingForTier ?? 0} left for '
-                      '${EventUtils.tierName(_ticketType)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textMuted,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    () {
+                      final cap = _capacityForTier ?? widget.event.ticketCount;
+                      final rem = _remainingForTier;
+                      if (cap == null) return '';
+                      final tierLabel = EventUtils.tierName(_ticketType);
+                      if (rem != null) {
+                        return 'Ticket capacity: $cap total · $rem left for $tierLabel';
+                      }
+                      return 'Max $cap tickets for $tierLabel';
+                    }(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
                     ),
-                  ],
+                  ),
                   const SizedBox(height: 8),
                   _priceRow(
                     'Subtotal (${_ticketType[0].toUpperCase()}${_ticketType.substring(1)} × $_quantity)',

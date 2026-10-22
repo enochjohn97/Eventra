@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
@@ -22,20 +21,26 @@ class UserHomeScreen extends StatefulWidget {
 
 class _UserHomeScreenState extends State<UserHomeScreen> {
   final _searchCtrl = TextEditingController();
+  final _searchFocus = FocusNode();
+  final _scrollController = ScrollController();
   Timer? _debounce;
   Timer? _holidayTimer;
   List<Holiday> _holidays = const [];
   bool _holidayAlertShown = false;
+  bool _isScrolled = false;
 
   /// Holiday/festive notices repeat while a holiday is actually close by, the
   /// same way the website re-shows them. 3 minutes by default — override with
   /// `--dart-define=HOLIDAY_ALERT_MINUTES=2` (or 5). 0 disables repeating.
-  static const _holidayAlertMinutes =
-      int.fromEnvironment('HOLIDAY_ALERT_MINUTES', defaultValue: 3);
+  static const _holidayAlertMinutes = int.fromEnvironment(
+    'HOLIDAY_ALERT_MINUTES',
+    defaultValue: 3,
+  );
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_updateScrollState);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<EventsProvider>();
       _searchCtrl.text = provider.search;
@@ -49,7 +54,28 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     _debounce?.cancel();
     _holidayTimer?.cancel();
     _searchCtrl.dispose();
+    _searchFocus.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _updateScrollState() {
+    final isScrolled =
+        _scrollController.hasClients && _scrollController.offset > 48;
+    if (isScrolled != _isScrolled && mounted) {
+      setState(() => _isScrolled = isScrolled);
+    }
+  }
+
+  Future<void> _showSearch() async {
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    if (mounted) _searchFocus.requestFocus();
   }
 
   // ── Holiday & festive alerts (mirrors the web app's toast alerts) ────────
@@ -72,7 +98,8 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     _holidayTimer?.cancel();
     _holidayTimer = null;
     if (_holidayAlertMinutes <= 0) return;
-    final near = HolidayService.today(all) != null ||
+    final near =
+        HolidayService.today(all) != null ||
         HolidayService.withinDays(all, 7) != null;
     if (!near) return;
     _holidayTimer = Timer.periodic(
@@ -81,7 +108,10 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     );
   }
 
-  Future<void> _announceHoliday(List<Holiday> all, {bool repeat = false}) async {
+  Future<void> _announceHoliday(
+    List<Holiday> all, {
+    bool repeat = false,
+  }) async {
     if (!mounted) return;
     if (!repeat) {
       if (_holidayAlertShown) return;
@@ -106,12 +136,15 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     final next = HolidayService.withinDays(all, 7);
     if (next == null) return;
     if (!repeat) {
-      final ok =
-          await HolidayService.claimAlert('upcoming:${next.date}:${next.title}');
+      final ok = await HolidayService.claimAlert(
+        'upcoming:${next.date}:${next.title}',
+      );
       if (!ok || !mounted) return;
     }
     final diff = next.day!.difference(DateTime.parse(_todayIso())).inDays;
-    final when = diff <= 0 ? 'today' : (diff == 1 ? 'tomorrow' : 'in $diff days');
+    final when = diff <= 0
+        ? 'today'
+        : (diff == 1 ? 'tomorrow' : 'in $diff days');
     _showHolidaySnack(
       '${next.emoji} Upcoming holiday: ${next.title} $when (${next.friendlyDate}). Get ready!',
     );
@@ -167,7 +200,12 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   void _scrollToTop() {
     if (!mounted) return;
     final ctx = _gridKey.currentContext;
-    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 250));
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 250),
+      );
+    }
   }
 
   final _gridKey = GlobalKey();
@@ -177,11 +215,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   /// Height one card needs: 16:10 image plus the compact text body (see
   /// [Breakpoints.cardExtent]) — shared with the Favorites grid.
-  double _cardExtent(BuildContext context, int columns) => Breakpoints.cardExtent(
-    gridWidth: MediaQuery.sizeOf(context).width - 32, // padding left + right
-    columns: columns,
-    textScale: MediaQuery.textScalerOf(context).scale(1),
-  );
+  double _cardExtent(BuildContext context, int columns) =>
+      Breakpoints.cardExtent(
+        gridWidth:
+            MediaQuery.sizeOf(context).width - 32, // padding left + right
+        columns: columns,
+        textScale: MediaQuery.textScalerOf(context).scale(1),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +271,12 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 ),
             ],
           ),
+          if (_isScrolled)
+            IconButton(
+              tooltip: 'Search events',
+              icon: const Icon(Icons.search),
+              onPressed: _showSearch,
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
             onSelected: (value) {
@@ -240,8 +286,14 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'newest', child: Text('Newest')),
               PopupMenuItem(value: 'date', child: Text('Event Date')),
-              PopupMenuItem(value: 'price_low', child: Text('Price: Low to High')),
-              PopupMenuItem(value: 'price_high', child: Text('Price: High to Low')),
+              PopupMenuItem(
+                value: 'price_low',
+                child: Text('Price: Low to High'),
+              ),
+              PopupMenuItem(
+                value: 'price_high',
+                child: Text('Price: High to Low'),
+              ),
             ],
           ),
         ],
@@ -249,6 +301,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       body: RefreshIndicator(
         onRefresh: provider.refresh,
         child: CustomScrollView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
@@ -259,6 +312,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: TextField(
                       controller: _searchCtrl,
+                      focusNode: _searchFocus,
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
                         hintText: 'Search',
@@ -288,7 +342,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             if (_holidays.isNotEmpty)
               SliverToBoxAdapter(child: _HolidayStrip(holidays: _holidays)),
             if (provider.isRefreshing)
-              const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+              const SliverToBoxAdapter(
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
             if (provider.isLoading && provider.events.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
@@ -316,7 +372,9 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   subtitle: provider.filters.hasFilters
                       ? 'No events match your search and filters.'
                       : 'Try adjusting your search or check back later.',
-                  actionLabel: provider.filters.hasFilters ? 'Reset filters' : 'Refresh',
+                  actionLabel: provider.filters.hasFilters
+                      ? 'Reset filters'
+                      : 'Refresh',
                   onAction: () {
                     if (provider.filters.hasFilters) {
                       _searchCtrl.clear();
@@ -374,6 +432,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   onGoToPage: _goToPage,
                 ),
               ),
+              const SliverToBoxAdapter(),
             ],
           ],
         ),
@@ -518,7 +577,9 @@ class _Pagination extends StatelessWidget {
             children: [
               IconButton(
                 tooltip: 'Previous page',
-                onPressed: currentPage > 1 ? () => onGoToPage(currentPage - 1) : null,
+                onPressed: currentPage > 1
+                    ? () => onGoToPage(currentPage - 1)
+                    : null,
                 icon: const Icon(Icons.chevron_left),
               ),
               for (final page in pages)
@@ -532,7 +593,9 @@ class _Pagination extends StatelessWidget {
                       height: 36,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: page == currentPage ? AppTheme.primary : Colors.transparent,
+                        color: page == currentPage
+                            ? AppTheme.primary
+                            : Colors.transparent,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: page == currentPage
@@ -544,7 +607,9 @@ class _Pagination extends StatelessWidget {
                         '$page',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: page == currentPage ? Colors.white : AppTheme.textMain,
+                          color: page == currentPage
+                              ? Colors.white
+                              : AppTheme.textMain,
                         ),
                       ),
                     ),
@@ -552,7 +617,9 @@ class _Pagination extends StatelessWidget {
                 ),
               IconButton(
                 tooltip: 'Next page',
-                onPressed: currentPage < totalPages ? () => onGoToPage(currentPage + 1) : null,
+                onPressed: currentPage < totalPages
+                    ? () => onGoToPage(currentPage + 1)
+                    : null,
                 icon: const Icon(Icons.chevron_right),
               ),
             ],
@@ -594,11 +661,17 @@ class _FilterSheetState extends State<_FilterSheet> {
     _priceMax = f.priceMax;
     for (var i = 0; i < EventUtils.priceBuckets.length; i++) {
       final b = EventUtils.priceBuckets[i];
-      if (b.free == f.freeOnly && b.min == f.priceMin && b.max == f.priceMax && b.free) {
+      if (b.free == f.freeOnly &&
+          b.min == f.priceMin &&
+          b.max == f.priceMax &&
+          b.free) {
         _priceBucket = i;
         break;
       }
-      if (!b.free && !f.freeOnly && b.min == f.priceMin && b.max == f.priceMax) {
+      if (!b.free &&
+          !f.freeOnly &&
+          b.min == f.priceMin &&
+          b.max == f.priceMax) {
         _priceBucket = i;
         break;
       }
@@ -671,7 +744,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                     isExpanded: true,
                     hint: const Text('All categories'),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('All categories')),
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('All categories'),
+                      ),
                       for (final c in EventUtils.eventCategories)
                         DropdownMenuItem(value: c, child: Text(c)),
                     ],
@@ -684,7 +760,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                     isExpanded: true,
                     hint: const Text('All states'),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('All states')),
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('All states'),
+                      ),
                       for (final s in EventUtils.nigeriaStates)
                         DropdownMenuItem(value: s, child: Text(s)),
                     ],
@@ -701,7 +780,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                           label: tag,
                           selected: _priority == tag.toLowerCase(),
                           onSelected: (selected) => setState(
-                            () => _priority = selected ? tag.toLowerCase() : null,
+                            () =>
+                                _priority = selected ? tag.toLowerCase() : null,
                           ),
                         ),
                     ],
@@ -737,7 +817,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                   p.setCategory(_category);
                   p.setState(_state);
                   p.setPriority(_priority);
-                  p.setPriceBucket(freeOnly: _freeOnly, min: _priceMin, max: _priceMax);
+                  p.setPriceBucket(
+                    freeOnly: _freeOnly,
+                    min: _priceMin,
+                    max: _priceMax,
+                  );
                   p.loadEvents(refresh: true);
                   Navigator.pop(context, true);
                 },

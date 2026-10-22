@@ -120,16 +120,12 @@ try {
     $stmt->execute();
     $notifications = [];
     $seenNotificationIds = [];
-    $seenNotificationContent = [];
     foreach ($stmt->fetchAll() as $notification) {
         $notificationId = (int) ($notification['id'] ?? 0);
         if ($notificationId && isset($seenNotificationIds[$notificationId])) {
             continue;
         }
-        $contentKey = ($notification['type'] ?? '') . '|' . ($notification['title'] ?? '') . '|' . ($notification['message'] ?? '');
-        if (isset($seenNotificationContent[$contentKey])) continue;
         if ($notificationId) $seenNotificationIds[$notificationId] = true;
-        $seenNotificationContent[$contentKey] = true;
         $notifications[] = $notification;
     }
 

@@ -21,10 +21,14 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final path = event.imagePath;
-    final imageUrl = path != null && path.isNotEmpty
-        ? ApiClient().absoluteUrl(path)
-        : (event.absoluteImageUrl ?? '');
+    /// Prefer the server-supplied absolute URL when available so images resolve
+    /// correctly regardless of which origin (local vs live) the app is using.
+    /// Only fall back to rebuilding from [imagePath] when the server did not
+    /// provide an absolute URL (older API responses).
+    final imageUrl = event.absoluteImageUrl ??
+        (event.imagePath != null && event.imagePath!.isNotEmpty
+            ? ApiClient().absoluteUrl(event.imagePath)
+            : '');
     final passed = EventUtils.isPassed(event);
 
     return Card(

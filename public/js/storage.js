@@ -190,10 +190,10 @@ if (typeof window.storage === "undefined" || !window.storage) {
     },
 
     getRoleKeys: function () {
-      const currentPath = window.location.pathname;
-      if (currentPath.includes("/admin/")) {
+      const currentPath = window.location.pathname.toLowerCase();
+      if (currentPath.includes("/admin/") || currentPath.includes("adminlogin")) {
         return { user: "admin_user", token: "admin_auth_token" };
-      } else if (currentPath.includes("/client/")) {
+      } else if (currentPath.includes("/client/") || currentPath.includes("clientlogin")) {
         return { user: "client_user", token: "client_auth_token" };
       }
       return { user: "user", token: "auth_token" };
@@ -201,26 +201,53 @@ if (typeof window.storage === "undefined" || !window.storage) {
 
     getUser: function () {
       const keys = this.getRoleKeys();
-      return this.get(keys.user);
+      const user = this.get(keys.user);
+      if (user) return user;
+      // Cross-key fallback if stored directly in localStorage
+      if (keys.user === 'admin_user') {
+        const raw = localStorage.getItem('admin_user');
+        if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+      } else if (keys.user === 'client_user') {
+        const raw = localStorage.getItem('client_user');
+        if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+      }
+      return null;
     },
 
     setUser: function (userData) {
-      const keys = this.getRoleKeys();
-      if (userData && userData.token) {
-        this.set(keys.token, userData.token);
+      if (!userData) return false;
+      const role = (userData.role || '').toLowerCase();
+      let keys = this.getRoleKeys();
+      if (role === 'admin') {
+        keys = { user: 'admin_user', token: 'admin_auth_token' };
+      } else if (role === 'client') {
+        keys = { user: 'client_user', token: 'client_auth_token' };
       }
-      // Stamp login time so auth-controller can trust local auth within the session window
-      localStorage.setItem("login_timestamp", Date.now().toString());
+      if (userData.token) {
+        this.set(keys.token, userData.token);
+        try { localStorage.setItem(keys.token, userData.token); } catch (e) {}
+      }
+      try {
+        localStorage.setItem(keys.user, typeof userData === 'string' ? userData : JSON.stringify(userData));
+        localStorage.setItem("login_timestamp", Date.now().toString());
+      } catch (e) {}
       return this.set(keys.user, userData);
     },
 
     getToken: function () {
       const keys = this.getRoleKeys();
-      return this.get(keys.token);
+      let tok = this.get(keys.token);
+      if (tok && typeof tok === 'string' && !tok.startsWith('__enc:')) return tok;
+      const rawTok = localStorage.getItem(keys.token);
+      if (rawTok && !rawTok.startsWith('__enc:')) return rawTok;
+      const user = this.getUser();
+      if (user && user.token) return user.token;
+      return null;
     },
 
     setToken: function (token) {
       const keys = this.getRoleKeys();
+      try { localStorage.setItem(keys.token, token); } catch (e) {}
       return this.set(keys.token, token);
     },
 

@@ -290,8 +290,8 @@ function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey,
             'source' => 'manual',
             'created_at' => $cachedPlatform['created_at'] ?? date('c'),
         ];
-        $upd = $pdo->prepare('UPDATE clients SET metadata = ?, updated_at = NOW() WHERE id = ?');
-        $upd->execute([json_encode($meta), $client_id]);
+        $upd = $pdo->prepare('UPDATE clients SET subaccount_code = ?, metadata = ?, updated_at = NOW() WHERE id = ?');
+        $upd->execute([$manualCode, json_encode($meta), $client_id]);
 
         return ['success' => true, 'subaccount_code' => $manualCode, 'percentage_charge' => $commission, 'message' => 'manual subaccount verified'];
     }
@@ -320,6 +320,7 @@ function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey,
                 }
                 $details = $enabled['data'];
             }
+            $pdo->prepare('UPDATE clients SET subaccount_code = COALESCE(NULLIF(subaccount_code, ""), ?) WHERE id = ?')->execute([$cachedCode, $client_id]);
             return ['success' => true, 'subaccount_code' => $cachedCode, 'percentage_charge' => $commission, 'message' => 'cached and active'];
         }
 
@@ -387,8 +388,8 @@ function ensurePlatformSubaccount($pdo, int $client_id, string $clientSecretKey,
         'source' => 'automatic',
         'created_at' => date('c'),
     ];
-    $upd = $pdo->prepare('UPDATE clients SET metadata = ?, updated_at = NOW() WHERE id = ?');
-    $upd->execute([json_encode($meta), $client_id]);
+    $upd = $pdo->prepare('UPDATE clients SET subaccount_code = ?, metadata = ?, updated_at = NOW() WHERE id = ?');
+    $upd->execute([$code, json_encode($meta), $client_id]);
 
     return ['success' => true, 'subaccount_code' => $code, 'percentage_charge' => $commission, 'message' => 'created'];
 }

@@ -94,9 +94,16 @@ try {
         foreach ($user['settlement_account'] as $key => $value) {
             if ($key !== 'status') $user[$key] = $value;
         }
-        // BVN state (masked only — the raw number is never persisted server-side).
+        // BVN state (stored in kyc_bvn and metadata)
         $user['bvn_verified'] = !empty($metadata['bvn_verified']);
-        $user['bvn_masked'] = $metadata['bvn_number_masked'] ?? '';
+        $rawBvn = trim((string)($user['kyc_bvn'] ?? $metadata['bvn_number'] ?? ''));
+        $user['bvn'] = $rawBvn;
+        $user['kyc_bvn'] = $rawBvn;
+        $user['bvn_masked'] = $metadata['bvn_number_masked'] ?? ($rawBvn !== '' ? (substr($rawBvn, 0, 3) . '*****' . substr($rawBvn, -3)) : '');
+        $platformSub = $metadata['paystack_platform_subaccount'] ?? [];
+        if (empty($user['subaccount_code']) && !empty($platformSub['code'])) {
+            $user['subaccount_code'] = $platformSub['code'];
+        }
         unset($user['metadata']);
     }
 

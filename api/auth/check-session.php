@@ -69,7 +69,7 @@ if (session_name() !== $expectedSessionName) {
 }
 
 if (session_status() === PHP_SESSION_NONE) {
-    require_once __DIR__ . '/../../server/config.php';
+    session_start();
 }
 
 // --- Resolve session state ---
@@ -90,9 +90,21 @@ if ($sessionRole === 'admin') {
 
 // Fallback to Bearer Token if session token is not set
 if (!$token) {
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    $authHeader = $headers['Authorization'] 
+        ?? $headers['authorization'] 
+        ?? $_SERVER['HTTP_AUTHORIZATION'] 
+        ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] 
+        ?? '';
     if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
         $token = $matches[1];
+    } elseif (!empty($headers['X-Access-Token'])) {
+        $token = $headers['X-Access-Token'];
+    } elseif (!empty($headers['x-access-token'])) {
+        $token = $headers['x-access-token'];
+    } elseif (!empty($_SERVER['HTTP_X_ACCESS_TOKEN'])) {
+        $token = $_SERVER['HTTP_X_ACCESS_TOKEN'];
+    } elseif (!empty($_GET['token'])) {
+        $token = $_GET['token'];
     }
 }
 
@@ -125,13 +137,29 @@ if ($token && (!$authId || !$user_id)) {
         // Derive the role-specific profile ID from the correct table
         if ($sessionRole === 'admin') {
             $s2 = $pdo->prepare("SELECT id FROM admins WHERE admin_auth_id = ?");
+            $s2->execute([$authId]);
+            $user_id = $s2->fetchColumn();
+            if (!$user_id) {
+                $pdo->prepare("INSERT INTO admins (admin_auth_id, name) VALUES (?, ?)")->execute([$authId, 'Admin']);
+                $user_id = $pdo->lastInsertId();
+            }
         } elseif ($sessionRole === 'client') {
             $s2 = $pdo->prepare("SELECT id FROM clients WHERE client_auth_id = ?");
+            $s2->execute([$authId]);
+            $user_id = $s2->fetchColumn();
+            if (!$user_id) {
+                $pdo->prepare("INSERT INTO clients (client_auth_id, name) VALUES (?, ?)")->execute([$authId, 'Client']);
+                $user_id = $pdo->lastInsertId();
+            }
         } else {
             $s2 = $pdo->prepare("SELECT id FROM users WHERE user_auth_id = ?");
+            $s2->execute([$authId]);
+            $user_id = $s2->fetchColumn();
+            if (!$user_id) {
+                $pdo->prepare("INSERT INTO users (user_auth_id, name) VALUES (?, ?)")->execute([$authId, 'User']);
+                $user_id = $pdo->lastInsertId();
+            }
         }
-        $s2->execute([$authId]);
-        $user_id = $s2->fetchColumn();
     }
 }
 
@@ -159,7 +187,24 @@ try {
     // Update last_seen heartbeat
     $pdo->prepare("UPDATE auth_accounts SET last_seen = NOW() WHERE id = ?")->execute([$account['id']]);
 
-    $user = resolveEntity($account['email'], $account['role']);
+    $user = resolveEntity($account['id'], $account['role']) ?? resolveEntity($account['email'], $account['role']);
+
+    // Persist verified session state
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION['auth_id'] = $account['id'];
+        $_SESSION['user_role'] = strtolower($account['role']);
+        $_SESSION['role'] = strtolower($account['role']);
+        $_SESSION['auth_token'] = $token;
+        if (strtolower($account['role']) === 'admin') {
+            $_SESSION['admin_id'] = $user['profile_id'] ?? $user_id;
+        } elseif (strtolower($account['role']) === 'client') {
+            $_SESSION['client_id'] = $user['profile_id'] ?? $user_id;
+        } else {
+            $_SESSION['user_id'] = $user['profile_id'] ?? $user_id;
+        }
+        $_SESSION['last_activity'] = time();
+        session_write_close();
+    }
 
     echo json_encode([
         'success' => true,

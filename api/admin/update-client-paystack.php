@@ -191,6 +191,10 @@ try {
         $sets[] = 'paystack_auth_token = ?'; $params[] = $paystack_key;
         $sets[] = "settlement_verification_status = 'verified'";
         $sets[] = "paystack_connection_status = 'connected'";
+        if (!empty($platform['subaccount_code'])) {
+            $sets[] = 'subaccount_code = ?';
+            $params[] = $platform['subaccount_code'];
+        }
         // These four columns were never written by any code path, which is why
         // a "connected" client still showed NULL for its connection stamps.
         // connected_at keeps the FIRST successful connection; last_sync_at

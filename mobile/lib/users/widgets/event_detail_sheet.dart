@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_underscores
+// ignore_for_file: unused_field, unnecessary_underscores
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -251,7 +251,6 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       style: const TextStyle(color: AppTheme.textMuted, height: 1.5),
                     ),
                     const SizedBox(height: 24),
-                    if (_loading) const LinearProgressIndicator(minHeight: 2),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(

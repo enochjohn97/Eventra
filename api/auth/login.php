@@ -207,9 +207,9 @@ try {
             session_name($expectedSessionName);
         }
 
-        // Ensure session is initialized via centralized config
+        // Ensure session is initialized
         if (session_status() === PHP_SESSION_NONE) {
-            require_once __DIR__ . '/../../server/config.php';
+            session_start();
         }
 
         // Regenerate session ID for security, but preserve critical data

@@ -155,6 +155,9 @@ function renderEvent(event) {
     const eventDate = new Date(event.event_date);
     const now = new Date();
     now.setHours(0, 0, 0, 0); 
+    const isPassed = eventDate < now;
+    const quantitySection = document.getElementById('ticketQuantitySection');
+    if (quantitySection) quantitySection.style.display = isPassed ? 'none' : '';
 
     // Create ticket type selector if multiple modes exist
     if (modes.length > 1 && !modes.includes('all')) {
@@ -195,7 +198,7 @@ function renderEvent(event) {
         });
     }
 
-    if (eventDate < now) {
+    if (isPassed) {
         bookBtn.disabled = true;
         bookBtn.style.background = '#9ca3af';
         bookBtn.style.cursor = 'not-allowed';

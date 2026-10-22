@@ -50,12 +50,6 @@ try {
         );
 
         if (!$res['ok']) {
-            $isTestMode = (defined('PAYSTACK_SECRET_KEY') && str_starts_with(PAYSTACK_SECRET_KEY, 'sk_test'));
-            if ($isTestMode) {
-                echo json_encode(['success' => true, 'account_name' => $account_name]);
-                exit;
-            }
-
             $msg = $res['body']['message'] ?? $res['error'] ?? 'Could not resolve account.';
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => $msg]);

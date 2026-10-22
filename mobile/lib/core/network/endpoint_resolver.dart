@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -6,16 +8,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'host_challenge.dart';
 
-/// Picks the API origin (live host or local dev server) at runtime.
+/// Picks a local API origin at runtime.
 ///
 /// Strategy: probe a priority-ordered candidate list with `GET /config/app`
-/// (solving the hosting anti-bot challenge inline) and adopt the first healthy
-/// origin. The winner is persisted, so subsequent launches go straight to it.
+/// and adopt the first healthy origin. Remote origins are never used.
 ///
 /// Candidate order:
-///   1. `--dart-define=API_BASE_URL` when reachable
+///   1. Local `--dart-define=API_BASE_URL` when reachable
 ///   2. A reachable local dev server (USB, emulator, or LAN)
-///   3. Production and other remote origins as fallbacks
 class EndpointResolver {
   EndpointResolver._();
 
@@ -26,19 +26,9 @@ class EndpointResolver {
   static const _lanKey = 'api_lan_origin';
 
   /// Explicit compile-time override (empty when not provided).
-  static const _override = String.fromEnvironment('API_BASE_URL');
-
-  /// Extra remote origins, comma-separated:
-  /// `--dart-define=API_BASE_URLS=https://new-host.com/api,https://cdn.example.com/api`
-  /// Lets a re-hosted backend be added without touching this file.
-  static const _extraOrigins = String.fromEnvironment('API_BASE_URLS');
-
-  /// Live API default. Override for a different deployment with
-  /// `--dart-define=PRODUCTION_API_BASE_URL=https://host/api`.
-  static const _production = String.fromEnvironment(
-    'PRODUCTION_API_BASE_URL',
-    defaultValue: 'https://eventra-website.liveblog365.com/api',
-  );
+  /// Leave empty when using the localhost PHP dev server for Google sign-in
+  /// testing; EndpointResolver will then probe the configured local dev hosts.
+  static const _override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
   /// Local dev-server hosts, comma separated `host[:port]`:
   /// `--dart-define=LOCAL_API_HOSTS=192.168.1.43:8000,127.0.0.1:8000`.
@@ -46,10 +36,14 @@ class EndpointResolver {
   /// Deliberately NOT hardcoded to one machine's Wi-Fi address: a stale IP is
   /// the classic cause of "the app only works while the cable is plugged in"
   /// (it fights the real host and adds a dead candidate to every probe).
+  /// The only loopback entries here are for emulators/simulators; a physical
+  /// device must use a LAN origin discovered at runtime (see _discoverLanOrigin)
+  /// or an explicit --dart-define=API_BASE_URL.
   static const _localHosts = String.fromEnvironment(
     'LOCAL_API_HOSTS',
-    defaultValue: '127.0.0.1:8000,localhost:8000,10.0.2.2:8000',
+    defaultValue: 'localhost:8000,127.0.0.1:8000',
   );
+
 
   /// Origins derived from [_localHosts]. 127.0.0.1 = USB `adb reverse` /
   /// iOS simulator, localhost = loopback, 10.0.2.2 = Android emulator. The
@@ -114,22 +108,13 @@ class EndpointResolver {
     }
 
     final local = <String>[];
-    final remote = <String>[];
     void add(List<String> into, String? url) {
-      if (url == null || url.isEmpty) return;
-      final normalized = url.replaceFirst(RegExp(r'/$'), '');
-      final parsed = Uri.tryParse(normalized);
-      if (parsed == null || parsed.host.isEmpty) return;
+      final normalized = _normalize(url);
+      if (normalized == null) return;
       if (!into.contains(normalized)) into.add(normalized);
     }
 
-    // An explicit `--dart-define=API_BASE_URL` always wins inside its group.
-    add(_isLocalOrigin(_override) ? local : remote, _override);
-    for (final raw in _extraOrigins.split(',')) {
-      final url = raw.trim();
-      if (url.isEmpty) continue;
-      add(_isLocalOrigin(url) ? local : remote, url);
-    }
+    if (_isLocalOrigin(_override)) add(local, _override);
     // The Wi-Fi origin the backend reported for itself goes first: it is the
     // only local address that keeps answering after the USB cable is pulled.
     var lanOrigin = _lanOrigin ?? prefs.getString(_lanKey);
@@ -140,8 +125,24 @@ class EndpointResolver {
     _lanOrigin = lanOrigin;
     add(local, lanOrigin);
 
-    // Last known-good origin keeps the fast path, in its own group.
-    if (saved != null) add(_isLocalOrigin(saved) ? local : remote, saved);
+    // Last known-good origin keeps the fast path — but never persist a raw
+    // loopback origin (localhost / 127.0.0.1): those only work on the same
+    // machine and survive neither a network switch nor a cold start where the
+    // dev server was started after the app.
+    // On a local dev machine, probe the compile-time localhost override first,
+    // before the broader candidate list, so the splash can reach php -S without
+    // waiting on a LAN sweep or a stale remembered IP.
+    if (_override != '' &&
+        _isLocalOrigin(_override) &&
+        await _probe(
+          _override.replaceFirst(RegExp(r'/$'), ''),
+          quick: true,
+        )) {
+      return _adopt(prefs, _override.replaceFirst(RegExp(r'/$'), ''));
+    }
+    if (saved != null && !_isLoopbackOrigin(saved)) {
+      add(local, saved);
+    }
 
     for (final candidate in _localCandidates) {
       add(local, candidate);
@@ -149,42 +150,15 @@ class EndpointResolver {
     // On web the API is served from the page's own origin: that is the live
     // endpoint for a deployed build, and loopback for a local dev build.
     for (final runtime in _runtimeCandidates) {
-      add(_isLocalOrigin(runtime) ? local : remote, runtime);
-    }
-    if (_production.isNotEmpty) {
-      add(remote, _production);
+      if (_isLocalOrigin(runtime)) add(local, runtime);
     }
 
-    final explicitOverride = _override.replaceFirst(RegExp(r'/$'), '');
-    if (explicitOverride.isNotEmpty &&
-        await _probe(
-          explicitOverride,
-          quick: _isLocalOrigin(explicitOverride),
-        )) {
-      return _adopt(prefs, explicitOverride);
-    }
-
-    // Prefer a reachable local server so a phone on the developer's Wi-Fi uses
-    // the running PHP app and its database. Keep remote probes in parallel;
-    // production remains the fallback when no local server answers.
-    final localProbe = () async {
-      final configured = await _probeLocal(local);
-      if (configured != null) return configured;
-      return _discoverLanOrigin();
-    }();
-    final remoteProbe = _probeAll(remote);
-    final winner = await localProbe ?? await remoteProbe;
+    final configured = await _probeLocal(local);
+    final winner = configured ?? await _discoverLanOrigin();
 
     if (winner != null) return _adopt(prefs, winner);
 
-    // Nothing answered. Use the fallback origin so the app is never left
-    // without an endpoint — but do NOT treat this as settled. A dev server
-    // that starts a few seconds after the app would otherwise stay invisible
-    // for the whole session, so the resolver stays unlocked and the next
-    // resolve() probes again.
-    if (_production.isNotEmpty) {
-      await _adopt(prefs, _production);
-    }
+    // Leave discovery unlocked so a dev server started later can be found.
     _resolved = false;
     _inflight = null;
     return false;
@@ -216,9 +190,12 @@ class EndpointResolver {
 
   static String? _normalize(String? url) {
     if (url == null || url.isEmpty) return null;
-    final normalized = url.replaceFirst(RegExp(r'/$'), '');
+    var normalized = url.replaceFirst(RegExp(r'/$'), '');
     final parsed = Uri.tryParse(normalized);
     if (parsed == null || parsed.host.isEmpty) return null;
+    if (!normalized.endsWith('/api')) {
+      normalized = '$normalized/api';
+    }
     return normalized;
   }
 
@@ -234,6 +211,13 @@ class EndpointResolver {
         RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host);
   }
 
+  /// True for pure loopback hosts (localhost / 127.0.0.1 / ::1) that never
+  /// work from a physical device and must not be persisted across launches.
+  static bool _isLoopbackOrigin(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    return host == 'localhost' || host == '127.0.0.1' || host == '::1';
+  }
+
   /// Finds a dev server on the phone's own network by probing the local /24.
   ///
   /// The laptop's address cannot be known in advance (DHCP hands out a new one
@@ -242,8 +226,8 @@ class EndpointResolver {
   /// concurrently in small batches with a tight timeout — a full pass takes
   /// about a second, and the winner is persisted so later launches skip it.
   ///
-  /// Skipped in release builds (a shipped app must not port-scan a user's
-  /// network) and when the phone is not on a private IPv4 network.
+  /// Only checks port 8000 on the device's private IPv4 subnet, and is skipped
+  /// when the device is not on a private IPv4 network.
   static Future<String?> _discoverLanOrigin() async {
     // Runs in release too: on a real handset a release build is often the only
     // thing being tested against the laptop's dev server, and without this the
@@ -344,15 +328,6 @@ class EndpointResolver {
     }
   }
 
-  static Future<String?> _probeAll(List<String> candidates) async {
-    final seen = <String>{};
-    for (final candidate in candidates) {
-      if (!seen.add(candidate)) continue;
-      if (await _probe(candidate)) return candidate;
-    }
-    return null;
-  }
-
   /// Probes every local candidate at once (they are all loopback/LAN, so they
   /// fail instantly when absent) and returns the first that answered in
   /// priority order, not whichever raced ahead.
@@ -373,11 +348,7 @@ class EndpointResolver {
     final dio = Dio(
       BaseOptions(
         baseUrl: base,
-        // Bounded so a dead/unreachable candidate cannot eat the splash
-        // timeout (main.dart awaits resolve() for at most 20s before it falls
-        // back to the last-known-good / production origin). The local pass is
-        // tighter still: a local error (fatal HTML, no server) must not delay
-        // the live path.
+        // Bound each local candidate so a missing dev server fails promptly.
         connectTimeout: Duration(seconds: quick ? 2 : 5),
         receiveTimeout: Duration(seconds: quick ? 3 : 8),
         validateStatus: (status) => status != null,
@@ -437,8 +408,8 @@ class EndpointResolver {
     return true;
   }
 
-  /// Re-runs discovery after a request failed to *reach* the adopted origin
-  /// (live host down, dev server started after boot, network switched).
+  /// Re-runs discovery after a request failed to reach the adopted local
+  /// origin (dev server started after boot, network switched).
   /// Returns true when the adopted origin actually moved, so the caller can
   /// safely replay the failed request against the new one.
   static Future<bool> recover() async {

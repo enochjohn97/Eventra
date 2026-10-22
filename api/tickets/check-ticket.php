@@ -59,7 +59,18 @@ try {
         $barcode = $resolved['barcode'];
 
         $pdo = getPDO();
-        $stmt = $pdo->prepare("SELECT id, qr_scan_count, qr_scan_locked FROM tickets WHERE barcode = ? LIMIT 1");
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM tickets LIKE 'qr_scan_count'")->fetchAll();
+            if (empty($cols)) {
+                $pdo->exec("ALTER TABLE tickets ADD COLUMN qr_scan_count INT DEFAULT 0");
+            }
+            $colsLock = $pdo->query("SHOW COLUMNS FROM tickets LIKE 'qr_scan_locked'")->fetchAll();
+            if (empty($colsLock)) {
+                $pdo->exec("ALTER TABLE tickets ADD COLUMN qr_scan_locked TINYINT(1) DEFAULT 0");
+            }
+        } catch (\Throwable $colEx) {}
+
+        $stmt = $pdo->prepare("SELECT t.* FROM tickets t WHERE t.barcode = ? LIMIT 1");
         $stmt->execute([$barcode]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -69,9 +80,14 @@ try {
             exit;
         }
 
+        $scanCount = isset($row['qr_scan_count']) ? (int)$row['qr_scan_count'] : 0;
+        $isLocked = isset($row['qr_scan_locked']) && (int)$row['qr_scan_locked'] === 1;
+
         // Enforce the 5-scan QR limit
-        if ((int)$row['qr_scan_locked'] === 1 || (int)$row['qr_scan_count'] >= QR_SCAN_LIMIT) {
-            $pdo->prepare("UPDATE tickets SET qr_scan_locked = 1 WHERE id = ?")->execute([$row['id']]);
+        if ($isLocked || $scanCount >= QR_SCAN_LIMIT) {
+            try {
+                $pdo->prepare("UPDATE tickets SET qr_scan_locked = 1 WHERE id = ?")->execute([$row['id']]);
+            } catch (\Throwable $ignored) {}
             http_response_code(429);
             echo json_encode([
                 'success' => false,
@@ -84,10 +100,12 @@ try {
         }
 
         // Count this attempt BEFORE building the response
-        $newCount = (int)$row['qr_scan_count'] + 1;
+        $newCount = $scanCount + 1;
         $justLocked = $newCount >= QR_SCAN_LIMIT;
-        $pdo->prepare("UPDATE tickets SET qr_scan_count = ?, qr_scan_locked = ? WHERE id = ?")
-            ->execute([$newCount, $justLocked ? 1 : 0, $row['id']]);
+        try {
+            $pdo->prepare("UPDATE tickets SET qr_scan_count = ?, qr_scan_locked = ? WHERE id = ?")
+                ->execute([$newCount, $justLocked ? 1 : 0, $row['id']]);
+        } catch (\Throwable $ignored) {}
 
         // Build the proof payload (read-only)
         $proof = Ticket::buildProofPayload($pdo, $barcode);

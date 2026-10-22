@@ -259,13 +259,88 @@ document.addEventListener("DOMContentLoaded", () => {
           otpCodeInput.setAttribute("pattern", "[0-9]{6}");
           otpForm.reset();
           let verificationInProgress = false;
+
+          const triggerOtpVerification = async () => {
+            if (verificationInProgress) return;
+
+            const code = (otpCodeInput.value || "").replace(/\D/g, "").slice(0, 6);
+            if (code.length !== 6) {
+              otpError.textContent = "Please enter all 6 digits.";
+              otpError.style.display = "block";
+              return;
+            }
+
+            verificationInProgress = true;
+            otpCodeInput.disabled = true;
+            otpError.style.display = "none";
+
+            try {
+              const verifyRes = await apiFetch("/api/auth/verify-otp.php", {
+                method: "POST",
+                body: JSON.stringify({
+                  identity: emailInput.value.trim(),
+                  auth_id: result.auth_id,
+                  otp: code,
+                  intent: "client_login_otp",
+                }),
+              });
+
+              const verifyResult = await verifyRes.json();
+
+              if (verifyResult.success) {
+                if (cooldownTimer) clearInterval(cooldownTimer);
+                otpModal.style.display = "none";
+
+                if (verifyResult.next_step === "change_password") {
+                  // Trigger the password reset flow using the reset_token
+                  promptForNewPassword(verifyResult.reset_token);
+                } else {
+                  completeLoginSession(verifyResult);
+                }
+              } else {
+                otpError.textContent = verifyResult.message || "Invalid code.";
+                otpError.style.display = "block";
+                verificationInProgress = false;
+                otpCodeInput.disabled = false;
+                otpCodeInput.focus();
+                otpCodeInput.select();
+              }
+            } catch (err) {
+              otpError.textContent = "Verification failed. Try again.";
+              otpError.style.display = "block";
+              verificationInProgress = false;
+              otpCodeInput.disabled = false;
+              otpCodeInput.focus();
+            }
+          };
+
           otpCodeInput.oninput = () => {
             otpCodeInput.value = otpCodeInput.value
               .replace(/\D/g, "")
               .slice(0, 6);
             otpError.style.display = "none";
-            if (otpCodeInput.value.length === 6) otpForm.requestSubmit();
+            if (otpCodeInput.value.length === 6) {
+              triggerOtpVerification();
+            }
           };
+
+          otpCodeInput.onpaste = (e) => {
+            e.preventDefault();
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedText = clipboardData ? clipboardData.getData("text") : "";
+            const cleaned = (pastedText || "").replace(/\D/g, "").slice(0, 6);
+            otpCodeInput.value = cleaned;
+            otpError.style.display = "none";
+            if (cleaned.length === 6) {
+              triggerOtpVerification();
+            }
+          };
+
+          otpForm.onsubmit = (e) => {
+            e.preventDefault();
+            triggerOtpVerification();
+          };
+
           otpCodeInput.focus();
           otpError.style.display = "none";
 
@@ -273,6 +348,8 @@ document.addEventListener("DOMContentLoaded", () => {
           cancelBtn.onclick = () => {
             otpModal.style.display = "none";
             otpForm.reset();
+            verificationInProgress = false;
+            otpCodeInput.disabled = false;
           };
 
           // Handle Resend logic
@@ -349,58 +426,6 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             };
           }
-
-          // Handle Submission
-          otpForm.onsubmit = async (e) => {
-            e.preventDefault();
-            if (verificationInProgress) return;
-
-            if (!/^\d{6}$/.test(otpCodeInput.value)) {
-              otpError.textContent = "Please enter all 6 digits.";
-              otpError.style.display = "block";
-              return;
-            }
-
-            verificationInProgress = true;
-            otpCodeInput.disabled = true;
-            otpError.style.display = "none";
-
-            try {
-              const verifyRes = await apiFetch("/api/auth/verify-otp.php", {
-                method: "POST",
-                body: JSON.stringify({
-                  identity: emailInput.value,
-                  auth_id: result.auth_id,
-                  otp: otpCodeInput.value,
-                  intent: "client_login_otp",
-                }),
-              });
-
-              const verifyResult = await verifyRes.json();
-
-              if (verifyResult.success) {
-                if (cooldownTimer) clearInterval(cooldownTimer);
-                otpModal.style.display = "none";
-
-                if (verifyResult.next_step === "change_password") {
-                  // Trigger the password reset flow using the reset_token
-                  promptForNewPassword(verifyResult.reset_token);
-                } else {
-                  completeLoginSession(verifyResult);
-                }
-              } else {
-                otpError.textContent = verifyResult.message || "Invalid code.";
-                otpError.style.display = "block";
-                verificationInProgress = false;
-                otpCodeInput.disabled = false;
-              }
-            } catch (err) {
-              otpError.textContent = "Verification failed. Try again.";
-              otpError.style.display = "block";
-              verificationInProgress = false;
-              otpCodeInput.disabled = false;
-            }
-          };
         }
         return;
       }
@@ -524,13 +549,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (result.user.token) {
         window.storage.setToken(result.user.token);
       }
-    } else {
-      // Fallback: store directly to localStorage if storage manager not ready
-      try {
-        localStorage.setItem("client_auth_token", result.user.token || "");
-        localStorage.setItem("client_user", JSON.stringify(result.user));
-      } catch (e) {}
     }
+    try {
+      localStorage.setItem("client_auth_token", result.user.token || "");
+      localStorage.setItem("client_user", JSON.stringify(result.user));
+    } catch (e) {}
 
     // Signal a fresh login to help the auth-guard be more patient
     sessionStorage.setItem("just_logged_in", "true");

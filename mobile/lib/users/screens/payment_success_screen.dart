@@ -3,42 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand_logo.dart';
-// (Breakpoints come from app_theme.dart)
-import '../services/user_ticket_service.dart';
 
-class PaymentSuccessScreen extends StatefulWidget {
+
+class PaymentSuccessScreen extends StatelessWidget {
   final Map<String, dynamic> payload;
   const PaymentSuccessScreen({super.key, required this.payload});
 
   @override
-  State<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
-}
-
-class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
-  bool _sending = false;
-
-  Future<void> _resendEmail() async {
-    setState(() => _sending = true);
-    try {
-      await UserTicketService.sendTicketEmail(reference: widget.payload['reference']?.toString());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ticket email sent!')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final eventName = widget.payload['event_name']?.toString() ?? 'Event';
-    final reference = widget.payload['reference']?.toString() ?? '';
-    final barcode = widget.payload['barcode']?.toString() ?? reference;
-    final amount = widget.payload['amount'];
+    final eventName = payload['event_name']?.toString() ?? 'Event';
+    final reference = payload['reference']?.toString() ?? '';
+    final barcode = payload['barcode']?.toString() ?? reference;
+    final amount = payload['amount'];
 
     return Scaffold(
       body: Center(
@@ -79,14 +55,6 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
               const SizedBox(height: 12),
               Text('Reference: $reference', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _sending ? null : _resendEmail,
-                  child: _sending ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Resend Ticket Email'),
-                ),
-              ),
-              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
