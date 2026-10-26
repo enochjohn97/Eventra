@@ -823,10 +823,9 @@ window.permanentDeleteEvent = permanentDeleteEvent;
 // ─── PREVIEW EVENT ──────────────────────────────────────────────────────────
 async function previewEvent(eventId) {
     const row = document.querySelector(`tr[data-id="${eventId}"]`);
-    if (!row) return;
 
     // Provide visual feedback while loading
-    row.style.opacity = '0.7';
+    if (row) row.style.opacity = '0.7';
 
     let event;
     try {
@@ -911,10 +910,9 @@ async function previewEvent(eventId) {
         }
     } catch (e) {
         showNotification('Could not load event details.', 'error');
-        row.style.opacity = '1';
         return;
     } finally {
-        row.style.opacity = '1';
+        if (row) row.style.opacity = '1';
     }
 
     const eventName = event.name;

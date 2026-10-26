@@ -489,7 +489,9 @@ class NotificationManager {
         "event_updated",
       ].includes(notificationType)
     ) {
-      if (typeof window.showEventPreviewModal === "function") {
+      if (typeof window.previewEvent === "function") {
+        window.previewEvent(eventId);
+      } else if (typeof window.showEventPreviewModal === "function") {
         window.showEventPreviewModal(eventId);
       } else if (typeof window.editEvent === "function") {
         window.editEvent(eventId);

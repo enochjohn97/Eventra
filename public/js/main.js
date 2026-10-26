@@ -135,6 +135,7 @@ async function loadEvents() {
       const publishedEvents = uniqueEvents.filter(
         (event) => event.status === "published",
       );
+      renderPublishedEventBanners(publishedEvents);
 
       // Store all events for search functionality
       allEvents = publishedEvents;
@@ -2667,64 +2668,26 @@ let _suggestionsBannerEls = [];
 
 function renderPublishedEventBanners(events) {
   _suggestionsBannerEls = [];
-  try {
-    const sections = [
-      { banner: 'event-suggestions-banner', carousel: 'featuredSection' },
-      { banner: 'event-suggestions-banner-app', carousel: null },
-    ];
+  const candidates = events
+    .filter((event) => Number(event.sales_count) > 0 || Number(event.attendee_count) > 0)
+    .sort(
+      (a, b) =>
+        Number(b.sales_count || 0) - Number(a.sales_count || 0) ||
+        Number(b.attendee_count || 0) - Number(a.attendee_count || 0),
+    )
+    .slice(0, 4);
+  if (candidates.length === 0) return;
 
-    for (const section of sections) {
-      const container = document.getElementById(section.banner);
-      if (!container) continue;
-      const candidates = events
-        .filter((e) => (e.sales_count || 0) > 0 || (e.attendee_count || 0) > 0)
-        .slice(0, 6);
-      if (candidates.length === 0) continue;
+  const banner = document.getElementById('event-suggestions-banner');
+  if (banner) {
+    banner.innerHTML = `<div class="suggestions-scroll">${candidates.map(buildSuggestionCardHTML).join('')}</div>`;
+    _suggestionsBannerEls = Array.from(banner.querySelectorAll('.suggestion-card'));
+    const section = document.getElementById('eventSuggestionsSection');
+    if (section) section.style.display = '';
+  }
 
-      // App login page: link straight into the app from the suggestion card.
-      if (section.carousel === null) {
-        renderAppSuggestionCards(container, candidates);
-        continue;
-      }
-
-      // Web homepage: fill the existing discovery banner carousel.
-      const grid = document.getElementById(section.carousel);
-      if (!grid) continue;
-      const existingSlides = grid.querySelectorAll('.swiper-slide');
-      _suggestionsBannerEls = Array.from(existingSlides);
-      const existingIds = new Set(
-        _suggestionsBannerEls
-          .map((el) => el.getAttribute('data-event-id'))
-          .filter(Boolean)
-          .map(Number),
-      );
-
-      const fresh = candidates.slice(0, 4).filter(
-        (e) => !existingIds.has(e.id),
-      );
-      if (fresh.length === 0) continue;
-
-      const fragment = document.createDocumentFragment();
-      fresh.forEach((event) => {
-        const slide = document.createElement('div');
-        slide.className = 'swiper-slide suggestion-card-container';
-        slide.setAttribute('data-event-id', String(event.id));
-        slide.innerHTML = buildSuggestionCardHTML(event);
-        fragment.appendChild(slide);
-      });
-      // Insert banner cards at the front so they lead the section.
-      if (_suggestionsBannerEls.length > 0) {
-        _suggestionsBannerEls[0].before(fragment);
-      } else {
-        grid.prepend(fragment);
-      }
-      _suggestionsBannerEls = grid.querySelectorAll('.swiper-slide');
-      initSwiper(grid.parentElement, grid.id);
-      if (window.lucide) window.lucide.createIcons();
-
-      break;
-    }
-  } catch (_) {}
+  const appBanner = document.getElementById('event-suggestions-banner-app');
+  if (appBanner) renderAppSuggestionCards(appBanner, candidates);
 }
 
 function buildSuggestionCardHTML(event) {
