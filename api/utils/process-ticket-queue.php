@@ -95,12 +95,14 @@ foreach ($files as $jobFile) {
 
         error_log("[process-ticket-queue.php] Processing job for reference: $reference");
 
-        // Generate each ticket, then send one email with all ticket PDFs attached.
-        $emailData = null;
-
         foreach ($barcodes as $index => $barcode) {
             try {
-                $ticketDataForLoop = array_merge($ticketData, ['barcode' => $barcode]);
+                $ticketDataForLoop = array_merge($ticketData, [
+                    'barcode' => $barcode,
+                    'user_id' => $jobData['ticket_owner_ids'][$index] ?? ($ticketData['user_id'] ?? null),
+                    'user_name' => $jobData['ticket_owner_names'][$index] ?? ($ticketData['user_name'] ?? 'Attendee'),
+                    'amount' => (float) ($ticketData['amount'] ?? 0) / max(1, (int) $quantity),
+                ]);
                 $ticket_id = $ticket_ids[$index] ?? null;
 
                 // Generate QR code
@@ -126,8 +128,16 @@ foreach ($files as $jobFile) {
                     }
                 }
 
-                if ($emailData === null) {
-                    $emailData = $sendData;
+                $ticketRecipients = isset($jobData['ticket_owner_emails'][$index])
+                    ? [$jobData['ticket_owner_emails'][$index]]
+                    : $ticket_emails;
+                foreach (array_unique($ticketRecipients) as $emailRecipient) {
+                    if (!filter_var($emailRecipient, FILTER_VALIDATE_EMAIL)) continue;
+                    try {
+                        EmailHelper::sendTicketEmailFull($emailRecipient, $sendData);
+                    } catch (Throwable $e) {
+                        error_log("[process-ticket-queue.php] Email send failed for $emailRecipient, ticket $barcode, reference $reference: " . $e->getMessage());
+                    }
                 }
 
             } catch (\Throwable $genError) {
@@ -146,19 +156,6 @@ foreach ($files as $jobFile) {
             }
         }
 
-        if ($emailData !== null) {
-            foreach (array_unique($ticket_emails) as $emailRecipient) {
-                if (!filter_var($emailRecipient, FILTER_VALIDATE_EMAIL)) {
-                    continue;
-                }
-                try {
-                    EmailHelper::sendTicketEmailFull($emailRecipient, $emailData);
-                } catch (Exception $e) {
-                    error_log("[process-ticket-queue.php] Email send failed for $emailRecipient, reference $reference: " . $e->getMessage());
-                }
-            }
-        }
-
         // Send notifications after all QR codes are generated
         try {
             // Send SMS
@@ -168,8 +165,18 @@ foreach ($files as $jobFile) {
             }
 
             // Create in-app notifications
-            createPaymentSuccessNotification($user_auth_accounts_id, $ticketData['event_name'], $ticketData['amount']);
-            createTicketIssuedNotification($user_auth_accounts_id, $ticketData['event_name'], $barcodes[0]);
+            $ownerAuthIds = $jobData['ticket_owner_auth_ids'] ?? [$user_auth_accounts_id];
+            foreach (array_unique($ownerAuthIds) as $ownerAuthId) {
+                if ((int) $ownerAuthId > 0) {
+                    createPaymentSuccessNotification((int) $ownerAuthId, $ticketData['event_name'], $ticketData['amount']);
+                }
+            }
+            foreach ($barcodes as $index => $issuedBarcode) {
+                $ownerAuthId = (int) ($ownerAuthIds[$index] ?? $user_auth_accounts_id);
+                if ($ownerAuthId > 0) {
+                    createTicketIssuedNotification($ownerAuthId, $ticketData['event_name'], $issuedBarcode);
+                }
+            }
 
             // Notify organizer of sale
             if ($organizer_auth_id) {

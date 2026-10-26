@@ -1,7 +1,7 @@
 @import url("/public/css/sweetalert-brand.css");
 :root {
   /* Client Design System - Modern Wine/Indigo Theme */
-  --client-bg-body: #f1f5f9;
+  --client-bg-body: #eee;
   --client-bg-sidebar: #1a2332;
   --client-bg-card: #ffffff;
   --client-primary: #722f37;
@@ -34,8 +34,8 @@
   --glass-shadow: 0 8px 32px 0 rgba(114, 47, 55, 0.07);
 
   /* Dimensions & Spacing */
-  --client-sidebar-width: 168px;
-  --client-sidebar-collapsed-width: 56px;
+  --client-sidebar-width: 220px;
+  --client-sidebar-collapsed-width: 68px;
   --client-header-height: 64px;
   --client-radius: 14px;
   --client-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -262,7 +262,7 @@ body {
 .sidebar-menu {
   flex: 1;
   list-style: none;
-  padding: 0 1.25rem;
+  padding: 0 0.45rem;
 }
 
 .menu-item {
@@ -272,12 +272,12 @@ body {
 .menu-item a {
   display: flex;
   align-items: center;
-  padding: 0.875rem 1.25rem;
+  padding: 0.75rem;
   color: rgba(255, 255, 255, 0.65);
   text-decoration: none;
   border-radius: 12px;
   transition: var(--transition-base);
-  gap: 14px;
+  gap: 10px;
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -468,7 +468,13 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: url("") center/cover;
+  background-color: var(--client-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
   position: relative;
   border: 2px solid var(--client-border);
   transition: border-color 0.2s;
@@ -544,47 +550,26 @@ body {
 /* Stats Dashboard (Colored) */
 .client-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 2rem;
   margin-bottom: 2rem;
   color: var(--client-text-main);
 }
 
 .client-stat-card {
-  padding: 2rem;
-  border-radius: var(--client-radius);
   background: #ffffff;
+  padding: 2rem;
+  min-height: 150px;
+  border-radius: var(--client-radius);
   color: var(--client-text-main);
   position: relative;
   overflow: hidden;
   box-shadow: var(--client-shadow);
-  transition: var(--transition-base);
   border: 1px solid var(--client-border);
-}
-
-.stat-icon {
-  font-size: 1.5rem;
-  transition: transform 0.3s;
-}
-.stat-icon.icon-purple {
-  color: var(--card-wine);
-}
-.stat-icon.icon-blue {
-  color: #3b82f6;
-}
-.stat-icon.icon-orange {
-  color: #f59e0b;
-}
-.stat-icon.icon-red {
-  color: #ef4444;
-}
-.stat-icon.icon-green {
-  color: var(--client-emerald);
-}
-
-.client-stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--client-shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: var(--transition-base);
 }
 
 .client-stat-card::before {
@@ -614,6 +599,11 @@ body {
   border-top: 4px solid #f59e0b;
 }
 
+.client-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--client-shadow-md);
+}
+
 .stat-header {
   display: flex;
   justify-content: space-between;
@@ -624,20 +614,50 @@ body {
 .stat-title {
   font-size: 0.85rem;
   font-weight: 600;
-  opacity: 0.9;
+  color: var(--client-text-muted);
   letter-spacing: 0.5px;
 }
 
 .stat-icon {
   font-size: 1.5rem;
   opacity: 0.8;
+  transition: transform 0.3s;
+}
+
+.stat-icon.icon-purple {
+  color: var(--card-wine, #8a2be2);
+  background: rgba(138, 43, 226, 0.1);
+}
+.stat-icon.icon-blue {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+.stat-icon.icon-orange {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+.stat-icon.icon-red {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+.stat-icon.icon-green {
+  color: var(--client-emerald, #10b981);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.stat-icon svg,
+.stat-icon i {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .stat-main-value {
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   font-weight: 800;
-  letter-spacing: -0.5px;
   color: var(--client-text-main);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
 }
 
 /* Dashboard Content Grid */
@@ -803,14 +823,15 @@ td {
 /* Management Summary Cards (Flat White) */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .summary-card {
   background: white;
-  padding: 1.25rem;
+  padding: 1.75rem;
+  min-height: 140px;
   border-radius: var(--client-radius);
   border: 1px solid var(--client-border);
 }
@@ -995,7 +1016,7 @@ td {
 /* Large TV Screens */
 @media (min-width: 1921px) {
   :root {
-    --client-sidebar-width: 230px;
+    --client-sidebar-width: 190px;
   }
   body {
     font-size: 18px;
@@ -1021,7 +1042,7 @@ td {
 /* Tablets & Small Laptops */
 @media (max-width: 1024px) {
   :root {
-    --client-sidebar-width: 190px;
+    --client-sidebar-width: 170px;
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1040,7 +1061,7 @@ td {
     left: -100%;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%; /* Full screen sidebar on mobile for better usability */
-    max-width: 300px;
+    max-width: 260px;
   }
 
   .sidebar.active {
@@ -2724,7 +2745,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* ─── TABLET: 768px - 1023px ─────────────────────────────────────────── */
 @media (min-width: 768px) and (max-width: 1023px) {
   :root {
-    --client-sidebar-width: 176px;
+    --client-sidebar-width: 150px;
   }
 
   .sidebar {
@@ -2742,7 +2763,7 @@ input[type="date"]::-webkit-datetime-edit-text {
   }
 
   .sidebar-menu {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
     flex-wrap: nowrap;
     flex-direction: column;
   }
@@ -2753,8 +2774,8 @@ input[type="date"]::-webkit-datetime-edit-text {
 
   .menu-item a {
     flex-direction: row;
-    padding: 0.75rem 1rem;
-    gap: 12px;
+    padding: 0.7rem 0.5rem;
+    gap: 8px;
     font-size: 0.95rem;
   }
 
@@ -2807,7 +2828,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* ─── DESKTOP: 1024px - 1919px ──────────────────────────────────────── */
 @media (min-width: 1024px) and (max-width: 1919px) {
   :root {
-    --client-sidebar-width: 208px;
+    --client-sidebar-width: clamp(145px, 10vw, 190px);
   }
 
   .sidebar {
@@ -2850,7 +2871,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 /* ─── LARGE/TV: 1920px+ ──────────────────────────────────────────────── */
 @media (min-width: 1920px) {
   :root {
-    --client-sidebar-width: 230px;
+    --client-sidebar-width: 190px;
     --client-header-height: 90px;
     font-size: 18px;
   }
@@ -2889,11 +2910,11 @@ input[type="date"]::-webkit-datetime-edit-text {
 
   .client-stats-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 2rem;
+    gap: 1rem;
   }
 
   .client-stat-card {
-    padding: 2.5rem;
+    padding: 1.5rem;
   }
 
   .stat-main-value {
@@ -2931,6 +2952,65 @@ input[type="date"]::-webkit-datetime-edit-text {
 
   .page-header h1 {
     font-size: 1.2rem !important;
+  }
+}
+
+body.client-dashboard {
+  background-color: #eee !important;
+}
+
+body.client-dashboard .content-area {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 2rem clamp(1.25rem, 6vw, 5rem) !important;
+}
+
+body.client-dashboard .client-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+body.client-dashboard .dashboard-grid {
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1.2fr);
+  gap: 2rem;
+}
+
+body.client-dashboard .dashboard-grid > *,
+body.client-dashboard .dash-panel {
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  body.client-dashboard .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.client-dashboard .client-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  body.client-dashboard .sidebar {
+    left: 0;
+    width: var(--client-sidebar-collapsed-width);
+    max-width: var(--client-sidebar-collapsed-width);
+  }
+
+  body.client-dashboard .sidebar:not(.collapsed) {
+    width: min(260px, 80vw);
+    max-width: 80vw;
+  }
+
+  body.client-dashboard .main-layout,
+  body.client-dashboard .main-layout.collapsed {
+    width: calc(100% - var(--client-sidebar-collapsed-width));
+    margin-left: var(--client-sidebar-collapsed-width);
+  }
+
+  body.client-dashboard .client-stats-grid {
+    grid-template-columns: 1fr;
   }
 }
 

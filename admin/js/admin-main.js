@@ -1761,8 +1761,11 @@ window.downloadAllKYC = async function (btn, clientName) {
     var d = new Date(v);
     return isNaN(d) ? v : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
-  function closeBtn(id) {
-    return '<button id="' + id + '" style="float:right;border:0;background:#f3f4f6;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:1rem;">\u2715</button>';
+  function closeBtn(id, label) {
+    return '<button id="' + id + '" style="float:right;border:0;background:#f3f4f6;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:1rem;" title="' + (label||'') + '">' + (label ? label : '\u2715') + '</button>';
+  }
+  function deleteBtn(id) {
+    return '<button id="' + id + '" class="archive-delete-btn" style="float:right;border:0;background:#ef4444;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:1rem;color:#fff;" title="Permanently delete this event from the database">\u2716</button>';
   }
 
   function ensureModal() {
@@ -1797,7 +1800,7 @@ window.downloadAllKYC = async function (btn, clientName) {
   }
 
   function showDetail(e) {
-    body.innerHTML = closeBtn('archiveBack').replace('\u2715', '\u2190')
+    body.innerHTML = deleteBtn('archiveDelete') + closeBtn('archiveBack').replace('\u2715', '\u2190')
       + '<span style="display:inline-block;padding:.2rem .65rem;border-radius:999px;background:#ff4d5a1a;color:#ff4d5a;font-weight:700;font-size:.72rem;">Passed event</span>'
       + (imageOf(e) ? '<img src="' + esc(imageOf(e)) + '" alt="" style="width:100%;height:190px;object-fit:cover;border-radius:14px;margin-top:.9rem;display:block;" onerror="this.style.display=\'none\'">' : '')
       + '<h2 style="margin:.75rem 0 0;font-size:1.3rem;font-weight:800;">' + esc(e.event_name) + '</h2>'
@@ -1808,6 +1811,7 @@ window.downloadAllKYC = async function (btn, clientName) {
         }).join('')
       + '</div>';
     document.getElementById('archiveBack').onclick = showList;
+    document.getElementById('archiveDelete').onclick = function() { deleteEvent(e); };
   }
 
   function drawRows(q) {
@@ -1844,6 +1848,36 @@ window.downloadAllKYC = async function (btn, clientName) {
     document.getElementById('archiveClose').onclick = close;
     document.getElementById('archiveSearch').oninput = function () { drawRows(this.value); };
     drawRows('');
+  }
+
+  function deleteEvent(e) {
+    var name = esc(e.event_name || 'this event');
+    Swal.fire({
+      title: 'Permanently delete \'' + name + '?',
+      html: 'This removes the event and all its data from the database. This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#9ca3af',
+      confirmButtonText: 'Yes, delete permanently',
+      cancelButtonText: 'Cancel'
+    }).then(function (result) {
+      if (result.isConfirmed) {
+        var id = e.id || (e.custom_id ? String(e.custom_id).replace(/^#/, '') : null);
+        if (!id) { Swal.fire('Error', 'Missing event ID.', 'error'); return; }
+        apiFetch('/api/events/force-delete-event.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_id: id })
+        }).then(function (res) { return res.json(); }).then(function (data) {
+          if (data.success) {
+            Swal.fire('Deleted', 'The event has been permanently removed.', 'success').then(function () { open(); });
+          } else {
+            Swal.fire('Error', data.message || 'Could not delete the event.', 'error');
+          }
+        }).catch(function () { Swal.fire('Error', 'Network error. Please try again.', 'error'); });
+      }
+    });
   }
 
   function open() {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clients - EventOut Admin</title>
-    <link rel="stylesheet" href="../css/admin-style.css">
+    <link rel="stylesheet" href="../css/admin-style.css?v=20261026-client-ui">
     <link rel="stylesheet" href="/public/assets/brand/sidebar-logo.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -241,7 +241,7 @@
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label for="paystackAuthToken" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--admin-text-main);">Secret Key (Auth Token)</label>
                     <div style="position: relative;">
-                        <input type="password" id="paystackAuthToken" name="paystack_auth_token" class="form-control" placeholder="sk_live_..." style="width: 100%; padding: 0.75rem 2.75rem 0.75rem 1rem; border: 1px solid var(--admin-border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box;">
+                        <input type="password" id="paystackAuthToken" name="paystack_auth_token" class="form-control" placeholder="sk_test_... or sk_live_..." style="width: 100%; padding: 0.75rem 2.75rem 0.75rem 1rem; border: 1px solid var(--admin-border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box;">
                         <button type="button" id="toggleSecretKey" onclick="togglePasswordVisibility('paystackAuthToken', 'toggleSecretKey')" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--admin-text-muted); display: flex; align-items: center; padding: 0;" title="Show/hide key">
                             <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
                         </button>
@@ -268,7 +268,7 @@
     <script src="../js/profile-pic-upload.js"></script>
     <script src="../js/search-manager.js"></script>
     <script src="../../public/js/pagination.js"></script>
-    <script src="../js/pages/clients.js"></script>
+    <script src="../js/pages/clients.js?v=20261026-test-keys"></script>
     <script src="../../public/js/heartbeat.js"></script>
     <script>
         function togglePasswordVisibility(inputId, btnId) {

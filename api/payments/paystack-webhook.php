@@ -126,19 +126,27 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
         $buyerEmail   = !empty($contactInfo['email']) ? $contactInfo['email']
             : ($metadata['buyer_email'] ?? $order['user_email']);
 
-        // Gift purchases ("Get for someone else") belong to the recipient. The
-        // payment row stays attributed to the payer, but the tickets and the
-        // confirmation email follow the recipient account — mirroring the
-        // verify-payment fulfilment path so both workers behave identically.
+        // Gift purchases issue the purchased quantity to both the buyer and
+        // recipient, each with independent ticket IDs.
         $orderMeta = json_decode($order['metadata'] ?? '{}', true) ?: [];
         $giftRecipientUserId  = (int) ($orderMeta['gift_recipient_user_id'] ?? 0);
         $giftRecipientAuthId  = (int) ($orderMeta['gift_recipient_auth_id'] ?? 0);
         $giftRecipientEmail   = trim((string) ($orderMeta['gift_recipient_email'] ?? ''));
         $isGift = $giftRecipientUserId > 0 && filter_var($giftRecipientEmail, FILTER_VALIDATE_EMAIL);
-        $ticketOwnerId = $isGift ? $giftRecipientUserId : (int) $order['user_id'];
+        $issuedQuantity = $quantity * ($isGift ? 2 : 1);
+        $ticketOwners = [[
+            'user_id' => (int) $order['user_id'],
+            'auth_id' => (int) $order['user_auth_id'],
+            'name' => $buyerName,
+            'email' => $buyerEmail,
+        ]];
         if ($isGift) {
-            $buyerEmail = $giftRecipientEmail;
-            $buyerName  = $orderMeta['gift_recipient_name'] ?? $buyerName;
+            $ticketOwners[] = [
+                'user_id' => $giftRecipientUserId,
+                'auth_id' => $giftRecipientAuthId,
+                'name' => (string) ($orderMeta['gift_recipient_name'] ?? $buyerName),
+                'email' => $giftRecipientEmail,
+            ];
         }
 
         // Increment event attendee count and sales count, decrement stock atomically
@@ -149,7 +157,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                 attendee_count = attendee_count + ? 
             WHERE id = ? AND (ticket_count IS NULL OR ticket_count >= ?)
         ");
-        $stmtStock->execute([$quantity, $quantity, $quantity, $order['event_id'], $quantity]);
+        $stmtStock->execute([$issuedQuantity, $issuedQuantity, $issuedQuantity, $order['event_id'], $issuedQuantity]);
         if ($stmtStock->rowCount() === 0) {
             // Sold out — release the processing claim and record failure
             $pdo->rollBack();
@@ -166,7 +174,7 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
 
         // Check if tickets already exist (idempotency) via payment reference
         $tStmt = $pdo->prepare("
-            SELECT t.id, t.barcode 
+            SELECT t.id, t.barcode, t.user_id
             FROM tickets t 
             JOIN payments p ON t.payment_id = p.id 
             WHERE p.reference = ?
@@ -202,89 +210,99 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
             $barcodes = [];
             $pdfPaths = [];
             $ticketDataMap = [];
-            for ($i = 0; $i < $quantity; $i++) {
-                // Generate consistent TKT-{UUID} barcode
-                $barcode = 'TKT-' . strtoupper(bin2hex(random_bytes(10)));
-                $ticketCustomId = generateTicketId($pdo);
+            foreach ($ticketOwners as $owner) {
+                for ($i = 0; $i < $quantity; $i++) {
+                    $barcode = 'TKT-' . strtoupper(bin2hex(random_bytes(10)));
+                    $ticketCustomId = generateTicketId($pdo);
 
-                $pdo->prepare("
-                    INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'valid')
-                ")->execute([
-                    $ticketOwnerId,
-                    $order['event_id'],
-                    $payment_id,
-                    $order['id'],
-                    $ticketCustomId,
-                    $barcode,
-                ]);
-                $ticket_id = $pdo->lastInsertId();
+                    $pdo->prepare("
+                        INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'valid')
+                    ")->execute([
+                        $owner['user_id'],
+                        $order['event_id'],
+                        $payment_id,
+                        $order['id'],
+                        $ticketCustomId,
+                        $barcode,
+                    ]);
+                    $ticket_id = $pdo->lastInsertId();
 
-                $ticketData = [
-                    'barcode'        => $barcode,
-                    'ticket_id'      => $ticketCustomId,
-                    'custom_id'      => $ticketCustomId,
-                    'event_id'       => $order['event_id'],
-                    'user_id'        => $ticketOwnerId,
-                    'order_id'       => $order['id'],
-                    'event_name'     => $order['event_name'],
-                    'event_date'     => $order['event_date'],
-                    'event_time'     => $order['event_time'],
-                    'location'       => $order['location'] ?? $order['address'],
-                    'address'        => $order['address'],
-                    'state'          => $order['state'] ?? null,
-                    'locations'      => $order['locations'] ?? null,
-                    'user_name'      => $buyerName,
-                    'buyer_name'     => $buyerName,
-                    'buyer_email'    => $buyerEmail,
-                    'payment_status' => 'paid',
-                    'event_image'    => $order['image_path'] ?? null,
-                    'ticket_type'    => $ticket_type,
-                    'amount'         => $order['amount'] / max(1, $quantity),
-                    'quantity'       => 1,
-                ];
+                    $ticketData = [
+                        'barcode'        => $barcode,
+                        'ticket_id'      => $ticketCustomId,
+                        'custom_id'      => $ticketCustomId,
+                        'event_id'       => $order['event_id'],
+                        'user_id'        => $owner['user_id'],
+                        'order_id'       => $order['id'],
+                        'event_name'     => $order['event_name'],
+                        'event_date'     => $order['event_date'],
+                        'event_time'     => $order['event_time'],
+                        'location'       => $order['location'] ?? $order['address'],
+                        'address'        => $order['address'],
+                        'state'          => $order['state'] ?? null,
+                        'locations'      => $order['locations'] ?? null,
+                        'user_name'      => $owner['name'],
+                        'buyer_name'     => $owner['name'],
+                        'buyer_email'    => $owner['email'],
+                        'payment_status' => 'paid',
+                        'event_image'    => $order['image_path'] ?? null,
+                        'ticket_type'    => $ticket_type,
+                        'amount'         => $order['amount'] / max(1, $quantity),
+                        'quantity'       => 1,
+                    ];
 
 
-                try {
-                    $qrCodePath = generateTicketQRCode($ticketData);
-                    if ($qrCodePath && file_exists($qrCodePath)) {
-                        $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
-                            ->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
-                        $ticketData['qr_path'] = $qrCodePath;
-                        if (function_exists('base64_encode_image')) {
-                            $b64 = base64_encode_image($qrCodePath);
-                            if ($b64 !== '') {
-                                $ticketData['qr_base64'] = $b64;
+                    try {
+                        $qrCodePath = generateTicketQRCode($ticketData);
+                        if ($qrCodePath && file_exists($qrCodePath)) {
+                            $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
+                                ->execute([toPublicRelativePath($qrCodePath), $ticket_id]);
+                            $ticketData['qr_path'] = $qrCodePath;
+                            if (function_exists('base64_encode_image')) {
+                                $b64 = base64_encode_image($qrCodePath);
+                                if ($b64 !== '') {
+                                    $ticketData['qr_base64'] = $b64;
+                                }
                             }
                         }
+                    } catch (\Throwable $genError) {
+                        error_log(sprintf(
+                            '[Webhook] Ticket generation FAILED | barcode=%s ticket_id=%d order=%d error=%s',
+                            $barcode,
+                            $ticket_id,
+                            $order['id'],
+                            $genError->getMessage()
+                        ));
                     }
-                } catch (\Throwable $genError) {
-                    error_log(sprintf(
-                        '[Webhook] Ticket generation FAILED | barcode=%s ticket_id=%d order=%d error=%s',
-                        $barcode,
-                        $ticket_id,
-                        $order['id'],
-                        $genError->getMessage()
-                    ));
-                    // Continue to next ticket — don't abort the whole webhook response
-                }
 
-                $ticketDataMap[$barcode] = $ticketData;
-                $barcodes[] = $barcode;
+                    $ticketDataMap[$barcode] = $ticketData;
+                    $barcodes[] = $barcode;
+                }
             }
 
             $barcode = $barcodes[0]; // Primary for email notified
         } else {
-            $barcode = $existingTickets[0]['barcode'];
+            foreach ($existingTickets as $existingTicket) {
+                $barcodes[] = $existingTicket['barcode'];
+                $ticketDataMap[$existingTicket['barcode']] = [
+                    'barcode' => $existingTicket['barcode'],
+                    'event_name' => $order['event_name'],
+                    'user_name' => (int) $existingTicket['user_id'] === (int) $order['user_id']
+                        ? $buyerName
+                        : (string) ($orderMeta['gift_recipient_name'] ?? $buyerName),
+                    'buyer_email' => (int) $existingTicket['user_id'] === (int) $order['user_id']
+                        ? $buyerEmail
+                        : $giftRecipientEmail,
+                ];
+            }
+            $barcode = $barcodes[0] ?? null;
         }
 
         // ── Post-commit: notifications + email/SMS run AFTER the transaction commits ──
         // Captured in a closure so the DB transaction can commit instantly and the
         // buyer's ticket data is durable before any slow network I/O happens.
-        $GLOBALS['_webhook_post_commit'] = function () use ($barcodes, $ticketDataMap, $buyerName, $buyerEmail, $order, $isGift, $giftRecipientAuthId, $giftRecipientEmail) {
-            // One consolidated, attachment-free email per purchase: the QR is
-            // embedded in the HTML body; PDFs are never emailed.
-            $emailData = null;
+        $GLOBALS['_webhook_post_commit'] = function () use ($barcodes, $ticketDataMap, $buyerName, $buyerEmail, $order, $isGift, $giftRecipientAuthId, $giftRecipientEmail, $giftRecipientUserId) {
             foreach ($barcodes as $bc) {
                 $td = $ticketDataMap[$bc] ?? [
                     'barcode'     => $bc,
@@ -302,17 +320,13 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
                     'order_id'    => $order['id'],
                     'amount'      => $order['amount'],
                 ];
-                if ($emailData === null) {
-                    $emailData = $td;
+                $emailRecipients = [$td['buyer_email'] ?? $order['user_email']];
+                if ($isGift) {
+                    $emailRecipients[] = $order['user_email'];
                 }
-            }
-            if ($emailData !== null) {
-                $emailRecipients = $isGift
-                    ? [$order['user_email'], $giftRecipientEmail]
-                    : [$emailData['buyer_email'] ?? $order['user_email']];
                 foreach (array_unique($emailRecipients) as $emailRecipient) {
                     if (filter_var($emailRecipient, FILTER_VALIDATE_EMAIL)) {
-                        EmailHelper::sendTicketEmailFull($emailRecipient, $emailData);
+                        EmailHelper::sendTicketEmailFull($emailRecipient, $td);
                     }
                 }
             }
@@ -329,15 +343,17 @@ function processSuccessfulPayment(PDO $pdo, array $order, array $psData): void
 
             // In-app: the ticket holder. For a gift that is the recipient, so the
             // ticket notice lands in the recipient's notification feed.
-            $ticketNoticeAuthId = $isGift && $giftRecipientAuthId > 0
-                ? $giftRecipientAuthId
-                : (int) $order['user_auth_id'];
             createPaymentSuccessNotification($order['user_auth_id'], $order['event_name'], $order['amount']);
-            createTicketIssuedNotification($ticketNoticeAuthId, $order['event_name'], $barcodes[0] ?? '');
+            foreach ($barcodes as $index => $issuedBarcode) {
+                $ticketOwnerAuthId = $isGift && $index >= count($barcodes) / 2
+                    ? $giftRecipientAuthId
+                    : (int) $order['user_auth_id'];
+                createTicketIssuedNotification($ticketOwnerAuthId, $order['event_name'], $issuedBarcode);
+            }
             if ($isGift) {
-                // Let the recipient know who sent it.
+                createPaymentSuccessNotification($giftRecipientAuthId, $order['event_name'], $order['amount']);
                 @createNotification(
-                    $ticketNoticeAuthId,
+                    $giftRecipientAuthId,
                     "You received a ticket for {$order['event_name']} from {$order['user_name']}.",
                     'ticket_issued',
                     (int) $order['user_auth_id'],

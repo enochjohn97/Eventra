@@ -54,7 +54,8 @@ template — never put real keys in it. Key groups: `DB_`, `MAIL_`, `PAYSTACK_`,
   if these are missing.
 - URL shortener: DB-backed (`short_urls` table, auto-created). Codes resolve
   at `/s/{code}` and hide real file paths in emails, share links and payment
-  callbacks. Create links with `POST /api/s` (auth required).
+  callbacks. Short links preserve the configured `APP_URL` path for
+  subdirectory deployments. Create links with `POST /api/s` (auth required).
 
  Portability rules baked into the code
 
@@ -77,4 +78,3 @@ CLI), which throttles itself to one run per 2 minutes and fans out to
 - 30 min before start → admin + client in-app notifications, attendee email/SMS
 - 5 min before start → admin + client "starting in 5 minutes" notifications
 - Auto-publishes scheduled drafts
-

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Dashboard | EventOut</title>
-    <link rel="stylesheet" href="../css/client-style.css">
+    <link rel="stylesheet" href="../css/client-style.css?v=20261026-client-ui">
     <link rel="stylesheet" href="/public/assets/brand/sidebar-logo.css">
     <link rel="stylesheet" href="../../public/css/modals.css">
     <link rel="stylesheet" href="../css/modal-styles.css">
@@ -26,7 +26,7 @@
     <link rel="icon" type="image/png" href="/public/assets/brand/logo-mark.png" />
     <link rel="apple-touch-icon" href="/public/assets/brand/apple-touch-icon.png" />
 </head>
-<body>
+<body class="client-dashboard">
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-logo" aria-label="EventOut">
@@ -71,6 +71,9 @@
                 </a>
             </li>
         </ul>
+        <button type="button" id="sidebarToggle" class="sidebar-toggle-btn" aria-label="Collapse sidebar" aria-expanded="true">
+            <i data-lucide="chevron-left"></i>
+        </button>
     </aside>
 
     <div class="main-layout">
@@ -86,8 +89,8 @@
                     <i data-lucide="bell"></i>
                 </div>
                 <div class="action-icon check-ticket-icon-btn" id="checkTicketIconBtn" title="Check Ticket" role="button" tabindex="0" style="cursor: pointer; flex-shrink: 0;">🎟️</div>
-                <div class="user-profile">
-                    <div class="user-avatar"></div>
+                <div class="user-profile" id="userProfileTrigger" role="button" tabindex="0" aria-label="Edit profile">
+                    <div class="user-avatar" aria-hidden="true"></div>
                 </div>
             </div>
         </header>
@@ -226,13 +229,14 @@
     <script src="../js/modals.js"></script>
     <script src="../js/create-event.js"></script>
 
-    <script src="../js/dashboard.js"></script>
+    <script src="../js/dashboard.js?v=20261026-client-ui"></script>
     <script src="../js/client-main.js"></script>
     <script src="../../public/js/heartbeat.js"></script>
 
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+        loadEventSuggestions();
     </script>
     <script src="/public/js/ticket-verification.js" defer></script>
     <script src="/public/js/dashboard-check-ticket.js" defer></script>

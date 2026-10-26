@@ -265,8 +265,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   ///  * success    — order fulfilled (webhook already done, or verify claimed it)
   ///  * processing — webhook mid-flight; poll again shortly
   ///  * failure    — Paystack says failed, or verify couldn't run
-  Future<_PaymentOutcome> _verifyWithRetry(String reference) async {
-    if (reference.isEmpty) return _PaymentOutcome.failure;
+  Future<_PaymentCheck> _verifyWithRetry(String reference) async {
+    if (reference.isEmpty) return const _PaymentCheck(_PaymentOutcome.failure);
     // Webhook is normally near-instant; keep polling up to ~15s.
     const attempts = 6;
     const delay = Duration(seconds: 2);
@@ -274,18 +274,18 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       try {
         final data = await UserPaymentService.verifyPayment(reference);
         final status = data['status']?.toString();
-        if (status == 'success') return _PaymentOutcome.success;
+        if (status == 'success') return _PaymentCheck(_PaymentOutcome.success, data);
         if (status == 'processing') {
           await Future<void>.delayed(delay);
           continue;
         }
-        return _PaymentOutcome.failure;
+        return _PaymentCheck(_PaymentOutcome.failure, data);
       } catch (_) {
         // Transient network error — poll again rather than fail the flow.
         await Future<void>.delayed(delay);
       }
     }
-    return _PaymentOutcome.pending;
+    return const _PaymentCheck(_PaymentOutcome.pending);
   }
 
   /// Shown when a gift recipient has no EventOut account: hands the buyer the
@@ -336,10 +336,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   void _showPaymentOutcome(
     String reference,
     Map<String, dynamic> result,
-    _PaymentOutcome outcome,
+    _PaymentCheck outcome,
   ) {
     if (!mounted) return;
-    if (outcome == _PaymentOutcome.failure) {
+    if (outcome.status == _PaymentOutcome.failure) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -349,6 +349,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       );
       return;
     }
+    final ticketData = outcome.data ?? result;
     context.pushReplacement(
       '/payment-success',
       extra: {
@@ -356,7 +357,11 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         'event_name':
             result['event_name']?.toString() ?? widget.event.eventName,
         'amount': result['amount'] ?? _total,
-        'payment_pending': outcome == _PaymentOutcome.pending,
+        'barcodes': ticketData['buyer_barcodes'] ??
+            ticketData['barcodes'] ??
+            ticketData['tickets'],
+        'barcode': ticketData['barcode'],
+        'payment_pending': outcome.status == _PaymentOutcome.pending,
       },
     );
   }
@@ -1024,3 +1029,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
 }
 
 enum _PaymentOutcome { success, pending, failure }
+
+class _PaymentCheck {
+  final _PaymentOutcome status;
+  final Map<String, dynamic>? data;
+
+  const _PaymentCheck(this.status, [this.data]);
+}

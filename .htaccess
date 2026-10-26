@@ -57,8 +57,6 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /
-
     # Force HTTPS — but ONLY on public hosts. Localhost, 127.0.0.1 and LAN IPs
     # (e.g. 192.168.x.x phone-testing) have no TLS certificate, so redirecting
     # them broke local development on every machine. Public domains still get

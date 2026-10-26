@@ -736,7 +736,7 @@ CREATE TABLE IF NOT EXISTS `email_queue` (
 INSERT IGNORE INTO auth_accounts (
     email, username, password, auth_provider, role, role_locked, is_active, email_verified_at
 ) VALUES (
-    'admin@eventra.com', 
+    'attoneex@gmail.com', 
     'admin', 
     '$2y$10$iPiJGuc.fOdzO109eUDsvefK44TZwvQlCICiVxbD1KHYRx1lxwrVS', 
     'local', 
@@ -749,7 +749,7 @@ INSERT IGNORE INTO auth_accounts (
 INSERT IGNORE INTO admins (
     admin_auth_id, name, profile_pic, metadata
 ) VALUES (
-    (SELECT id FROM auth_accounts WHERE email = 'admin@eventra.com'),
+    (SELECT id FROM auth_accounts WHERE email = 'attoneex@gmail.com'),
     'System Administrator', 
     '/public/assets/imgs/admin.png',
     JSON_OBJECT('created_by', 'system', 'immutable', true, 'note', 'Default system administrator account')

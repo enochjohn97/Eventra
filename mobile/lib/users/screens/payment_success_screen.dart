@@ -13,7 +13,18 @@ class PaymentSuccessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final eventName = payload['event_name']?.toString() ?? 'Event';
     final reference = payload['reference']?.toString() ?? '';
-    final barcode = payload['barcode']?.toString() ?? reference;
+    final rawBarcodes = payload['barcodes'];
+    final barcodes = rawBarcodes is List
+        ? rawBarcodes
+              .map((ticket) => ticket is Map
+                  ? ticket['barcode']?.toString() ?? ''
+                  : ticket.toString())
+              .where((ticketId) => ticketId.isNotEmpty)
+              .toList()
+        : <String>[];
+    if (barcodes.isEmpty && payload['barcode'] != null) {
+      barcodes.add(payload['barcode'].toString());
+    }
     final amount = payload['amount'];
 
     return Scaffold(
@@ -42,15 +53,36 @@ class PaymentSuccessScreen extends StatelessWidget {
                 Text('Amount: ₦$amount', style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
               const SizedBox(height: 24),
-              if (barcode.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 12)],
+              if (barcodes.isNotEmpty)
+                SizedBox(
+                  height: 210,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    shrinkWrap: true,
+                    itemCount: barcodes.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 12),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Text('Ticket ${index + 1}'),
+                          const SizedBox(height: 6),
+                          QrImageView(
+                            data: barcodes[index],
+                            size: 160,
+                            backgroundColor: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: QrImageView(data: barcode, size: 180, backgroundColor: Colors.white),
                 ),
               const SizedBox(height: 12),
               Text('Reference: $reference', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),

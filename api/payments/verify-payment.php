@@ -139,6 +139,19 @@ try {
 
     // ── Already marked success — no further action needed ────────────────────
     if ($order['payment_status'] === 'success') {
+        $ticketStmt = $pdo->prepare("
+            SELECT t.barcode, t.user_id FROM tickets t
+            JOIN payments p ON p.id = t.payment_id
+            WHERE p.reference COLLATE utf8mb4_unicode_ci = ?
+            ORDER BY t.id
+        ");
+        $ticketStmt->execute([$reference]);
+        $allTickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
+        $barcodes = array_column($allTickets, 'barcode');
+        $buyerBarcodes = array_column(array_filter(
+            $allTickets,
+            static fn(array $ticket): bool => (int) $ticket['user_id'] === (int) $order['user_id']
+        ), 'barcode');
         echo json_encode([
             'success' => true,
             'status' => 'success',
@@ -146,6 +159,9 @@ try {
             'amount' => (float) $order['amount'],
             'event_name' => $order['event_name'],
             'reference' => $reference,
+            'barcode' => $buyerBarcodes[0] ?? null,
+            'barcodes' => $barcodes,
+            'buyer_barcodes' => $buyerBarcodes,
         ]);
         exit;
     }
@@ -288,17 +304,26 @@ try {
         $dbMeta = json_decode($order['metadata'] ?? '{}', true) ?? [];
         $ticket_user_name = $metadata['user_name'] ?? $dbMeta['user_name'] ?? $order['user_name'] ?? 'Guest';
 
-        // Gift purchases ("Get for someone else") belong to the recipient: the
-        // buyer's payment row is untouched for reconciliation, but the ticket
-        // row and its confirmation email are issued to the recipient account so
-        // the ticket appears in THAT user's app.
+        // Gift purchases issue the purchased quantity to both the buyer and
+        // recipient, each with independent ticket IDs.
         $giftRecipientUserId = (int) ($dbMeta['gift_recipient_user_id'] ?? 0);
         $giftRecipientAuthId = (int) ($dbMeta['gift_recipient_auth_id'] ?? 0);
         $giftRecipientEmail = trim((string) ($dbMeta['gift_recipient_email'] ?? ''));
         $isGift = $giftRecipientUserId > 0 && filter_var($giftRecipientEmail, FILTER_VALIDATE_EMAIL);
-        $ticketOwnerId = $isGift ? $giftRecipientUserId : (int) $order['user_id'];
+        $issuedQuantity = $quantity * ($isGift ? 2 : 1);
+        $ticketOwners = [[
+            'user_id' => (int) $order['user_id'],
+            'auth_id' => (int) $order['user_auth_accounts_id'],
+            'name' => $ticket_user_name,
+            'email' => trim((string) ($metadata['buyer_email'] ?? $order['user_email'])),
+        ]];
         if ($isGift) {
-            $ticket_user_name = $dbMeta['gift_recipient_name'] ?? $ticket_user_name;
+            $ticketOwners[] = [
+                'user_id' => $giftRecipientUserId,
+                'auth_id' => $giftRecipientAuthId,
+                'name' => (string) ($dbMeta['gift_recipient_name'] ?? $ticket_user_name),
+                'email' => $giftRecipientEmail,
+            ];
         }
 
         // 1. Update order status (now 'processing' from the claim)
@@ -316,7 +341,7 @@ try {
                 sales_count = sales_count + ? 
             WHERE id = ? AND (ticket_count IS NULL OR ticket_count >= ?)
         ");
-        $stmt->execute([$quantity, $quantity, $quantity, $order['event_id'], $quantity]);
+        $stmt->execute([$issuedQuantity, $issuedQuantity, $issuedQuantity, $order['event_id'], $issuedQuantity]);
 
         if ($stmt->rowCount() === 0) {
             // Sold out — release claim and record failure
@@ -330,7 +355,7 @@ try {
 
         // 3. Handle Payment and Ticket (Idempotent)
         $tStmt = $pdo->prepare("
-            SELECT t.id, t.barcode 
+            SELECT t.id, t.barcode, t.user_id
             FROM tickets t 
             JOIN payments p ON t.payment_id = p.id 
             WHERE p.reference COLLATE utf8mb4_unicode_ci = ?
@@ -339,6 +364,8 @@ try {
         $existingTickets = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $barcode = null;
+        $allBarcodes = [];
+        $buyerBarcodes = [];
         $ticketJobReady = false;
         $processorPath = '';
         if (empty($existingTickets)) {
@@ -368,37 +395,49 @@ try {
             $pdfPaths = [];
             $barcodes = [];
             $ticket_ids = [];
-            
-            for ($i = 0; $i < $quantity; $i++) {
-                $ticketCustomId = generateTicketId($pdo);
-                $barcode = $ticketCustomId;
+            $ticket_owner_ids = [];
+            $ticket_owner_names = [];
+            $ticket_owner_auth_ids = [];
 
-                $pdo->prepare("
-                    INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'valid')
-                "                )->execute([
-                    $ticketOwnerId,
-                    $order['event_id'],
-                    $payment_id,
-                    $order['id'],
-                    $ticketCustomId,
-                    $barcode
-                ]);
-                $ticket_id = $pdo->lastInsertId();
-                $ticket_ids[] = $ticket_id;
-                $barcodes[] = $barcode;
+            foreach ($ticketOwners as $owner) {
+                for ($i = 0; $i < $quantity; $i++) {
+                    $ticketCustomId = generateTicketId($pdo);
+                    $barcode = $ticketCustomId;
+
+                    $pdo->prepare("
+                        INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'valid')
+                    ")->execute([
+                        $owner['user_id'],
+                        $order['event_id'],
+                        $payment_id,
+                        $order['id'],
+                        $ticketCustomId,
+                        $barcode
+                    ]);
+                    $ticket_id = $pdo->lastInsertId();
+                    $ticket_ids[] = $ticket_id;
+                    $barcodes[] = $barcode;
+                    $allBarcodes[] = $barcode;
+                    $ticket_owner_ids[] = $owner['user_id'];
+                    $ticket_owner_names[] = $owner['name'];
+                    $ticket_owner_auth_ids[] = $owner['auth_id'];
+                    if ((int) $owner['user_id'] === (int) $order['user_id']) {
+                        $buyerBarcodes[] = $barcode;
+                    }
+                }
             }
 
             $ticketData = [
                 'event_id'       => $order['event_id'],
-                'user_id'        => $ticketOwnerId,
+                'user_id'        => (int) $order['user_id'],
                 'order_id'       => $order['id'],
                 'event_name'     => $order['event_name'],
                 'event_date'     => $order['event_date'],
                 'event_time'     => $order['event_time'],
                 'location'       => $order['location'] ?? $order['address'],
                 'address'        => $order['address'],
-                'user_name'      => $ticket_user_name,
+                'user_name'      => $ticketOwners[0]['name'],
                 'payment_status' => 'paid',
                 'event_image'    => $order['image_path'] ?? null,
                 'amount'         => $order['amount'],
@@ -417,6 +456,16 @@ try {
                 'order_id' => $order['id'],
                 'barcodes' => $barcodes,
                 'ticket_ids' => $ticket_ids,
+                'ticket_owner_ids' => $ticket_owner_ids,
+                'ticket_owner_names' => $ticket_owner_names,
+                'ticket_owner_auth_ids' => $ticket_owner_auth_ids,
+                'ticket_owner_emails' => array_map(
+                    static fn(array $owner): string => $owner['email'],
+                    array_merge(...array_map(
+                        static fn(array $owner): array => array_fill(0, $quantity, $owner),
+                        $ticketOwners
+                    ))
+                ),
                 'ticket_data' => $ticketData,
                 'user_email' => $isGift
                     ? $giftRecipientEmail
@@ -436,7 +485,13 @@ try {
             $ticketJobReady = true;
         } else {
             $pdo->commit();
-            $barcode = $existingTickets[0]['barcode'];
+            foreach ($existingTickets as $existingTicket) {
+                $allBarcodes[] = $existingTicket['barcode'];
+                if ((int) $existingTicket['user_id'] === (int) $order['user_id']) {
+                    $buyerBarcodes[] = $existingTicket['barcode'];
+                }
+            }
+            $barcode = $buyerBarcodes[0] ?? ($existingTickets[0]['barcode'] ?? null);
         }
 
         $responsePayload = json_encode([
@@ -446,7 +501,9 @@ try {
             'reference'  => $reference,
             'amount'     => (float) $order['amount'],
             'event_name' => $order['event_name'],
-            'barcode'    => $barcode,
+            'barcode'    => $buyerBarcodes[0] ?? $barcode,
+            'barcodes'   => $allBarcodes,
+            'buyer_barcodes' => $buyerBarcodes,
         ]);
 
         echo $responsePayload;

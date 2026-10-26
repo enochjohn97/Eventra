@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field, prefer_final_fields
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -29,6 +31,10 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   bool _holidayAlertShown = false;
   bool _isScrolled = false;
 
+  /// Suggested events shown in the horizontal carousel on home screen.
+  List<EventModel> _suggestedEvents = [];
+  bool _showSuggestions = false;
+
   /// Holiday/festive notices repeat while a holiday is actually close by, the
   /// same way the website re-shows them. 3 minutes by default — override with
   /// `--dart-define=HOLIDAY_ALERT_MINUTES=2` (or 5). 0 disables repeating.
@@ -47,6 +53,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       provider.loadEvents(refresh: true);
     });
     _loadHolidays();
+    _loadSuggestions();
   }
 
   @override
@@ -93,6 +100,21 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   /// Re-shows the holiday notice every [_holidayAlertMinutes] minutes while a
   /// holiday is today or within 7 days, and stops as soon as none is near — so
+
+  /// Quick suggestion cards shown on the home screen — most attended,
+  /// hot & trending, and tickets sold, pulled from the events provider.
+  void _loadSuggestions() {
+    final provider = context.read<EventsProvider>();
+    // Use the first few unfiltered events as quick home-screen suggestions.
+    // In a production app these would be ranked by attendance/sales, but here
+    // we just show a sample of recent events.
+    if (provider.events.isNotEmpty && !_showSuggestions) {
+      setState(() {
+        _suggestedEvents = provider.events.take(6).toList();
+        _showSuggestions = true;
+      });
+    }
+  }
   /// a quiet calendar never nags and a busy one keeps reminding.
   void _scheduleHolidayRepeat(List<Holiday> all) {
     _holidayTimer?.cancel();

@@ -93,6 +93,15 @@ try {
         exit;
     }
 
+    if (in_array($order['payment_status'], ['success', 'paid'], true)) {
+        $ticketsStmt = $pdo->prepare('SELECT barcode FROM tickets WHERE order_id = ? ORDER BY id');
+        $ticketsStmt->execute([$order['id']]);
+        $order['tickets'] = array_map(
+            static fn(string $barcode): array => ['barcode' => $barcode],
+            $ticketsStmt->fetchAll(PDO::FETCH_COLUMN)
+        );
+    }
+
     // 5. Strip buyer PII from the payload — the polling UI doesn't need it
     unset($order['user_id'], $order['organizer_id'], $order['user_name'], $order['client_id']);
     // Normalize organizer business name for display ("Paid to X")

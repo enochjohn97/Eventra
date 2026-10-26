@@ -58,7 +58,7 @@ class AppTheme {
   static const Color accent = Color(0xFF395CAA);
   static const Color textMain = Color(0xFF111827);
   static const Color textMuted = Color(0xFF6B7280);
-  static const Color bgPage = Color(0xFFEEEEEE);
+  static const Color bgPage = Color(0xFFF7F5E9);
   static const Color bgCard = Colors.white;
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF1B5E20);

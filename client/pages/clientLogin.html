@@ -782,6 +782,9 @@
       <span>ventOut</span>
     </div>
 
+    <!-- ── Event Suggestions Banner (shown on homepage) ──
+    <div id="event-suggestions-banner" class="event-suggestions-banner" style="display: none; padding: 0.5rem 0;"></div>
+
     <!-- ── LEFT: Login Form ── -->
     <div class="login-left">
       <div class="login-form-container">
@@ -850,10 +853,9 @@
 
         <!-- Proudly Nigerian -->
         <div class="footer-note">
-          <span class="flag">🇳🇬</span>
-          <span>PROUDLY</span>
-          <span>NIGERIAN</span>
-          <span class="flag">🇳🇬</span>
+          <span class="flag">Powered by</span>
+          <span>ATTONEEX TECH SOLUTIONS</span>
+         
         </div>
       </div>
     </div>
@@ -1111,10 +1113,12 @@
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
           init();
+          loadEventSuggestions();
           if (window.lucide) window.lucide.createIcons();
         });
       } else {
         init();
+        loadEventSuggestions();
         if (window.lucide) window.lucide.createIcons();
       }
     })();

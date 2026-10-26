@@ -559,6 +559,7 @@ try {
     $metadata_json = json_encode($metadata);
 
     // Insert event with enriched columns (priority deprecated — admin_status drives moderation)
+    $pdo->beginTransaction();
     $stmt = $pdo->prepare("
         INSERT INTO events (
             client_id, custom_id, event_name, description, event_type, event_date, event_time,
@@ -625,7 +626,7 @@ try {
         createEventCreatedNotification($auth_id, $event_name, $event_id);
     }
 
-    echo json_encode([
+    $success_response = json_encode([
         'success' => true,
         'message' => 'Event created successfully',
         'event' => [
@@ -636,8 +637,53 @@ try {
             'status' => $status,
             'google_event_id' => $google_event_id
         ]
-    ]);
+    ], JSON_INVALID_UTF8_SUBSTITUTE);
+    if ($success_response === false) {
+        throw new RuntimeException('Failed to encode event creation response.');
+    }
+
+    $pdo->commit();
+    echo $success_response;
+
+    // Send email notifications only after the event is published. Email delivery
+    // is best-effort and must not turn a successfully created event into a 500.
+    if ($status === 'published') {
+        try {
+            $usersStmt = $pdo->prepare("SELECT u.id, u.name, a.email FROM users u JOIN auth_accounts a ON a.id = u.user_auth_id WHERE a.email IS NOT NULL AND a.notification_preference = 1");
+            $usersStmt->execute();
+            $users = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($users as $user) {
+                if (empty($user['email'])) {
+                    continue;
+                }
+                try {
+                    $brandHeader = EmailHelper::brandEmailHeaderHtml('20px');
+                    $subject = "New Event Published: {$event_name}";
+                    $body = $brandHeader . "
+                        <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;'>
+                            <h2 style='color: #2ecc71;'>New Event Available 🎉</h2>
+                            <p>Hi {$user['name']},</p>
+                            <p>A new event has been published: <strong>{$event_name}</strong></p>
+                            <p><a href='{$external_link}' style='display: inline-block; background: #722f37; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600;'>View Event</a></p>
+                            <p>Check it out and get your tickets!</p>
+                        </div>
+                    ";
+                    $result = EmailHelper::sendEmail($user['email'], $subject, $body);
+                    error_log("[CreateEvent] Email sent to user {$user['id']}: " . ($result['success'] ? 'success' : $result['message']));
+                } catch (Throwable $email_error) {
+                    error_log("[CreateEvent] Failed to send published-event email to user {$user['id']}: " . $email_error->getMessage());
+                }
+            }
+        } catch (Throwable $notification_error) {
+            error_log("[CreateEvent] Published-event email notification failed: " . $notification_error->getMessage());
+        }
+    }
+
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     if (strpos($e->getMessage(), 'Image upload failed') !== false || strpos($e->getMessage(), 'required fields') !== false) {
         http_response_code(400);
     } else {

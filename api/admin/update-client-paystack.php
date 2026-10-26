@@ -61,14 +61,12 @@ if ($platform_subaccount_code !== '' && !preg_match('/^ACCT_[A-Za-z0-9]+$/', $pl
 
 if ($paystack_key) {
     $isLiveKey = (bool) preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $paystack_key);
-    $isLocalDevelopment = isLocalHost() && ($_ENV['APP_ENV'] ?? '') === 'local';
-    $isLocalTestKey = $isLocalDevelopment
-        && (bool) preg_match('/^sk_test_[A-Za-z0-9]{8,}$/', $paystack_key);
-    if (!$isLiveKey && !$isLocalTestKey) {
-        $message = $isLocalDevelopment
-            ? 'A valid live secret key is required, or a test key may be used on a local development server.'
-            : 'A valid live secret key is required. Test keys are only accepted on a local development server.';
-        echo json_encode(['success' => false, 'message' => $message]);
+    $isTestKey = (bool) preg_match('/^sk_test_[A-Za-z0-9]{8,}$/', $paystack_key);
+    if (!$isLiveKey && !$isTestKey) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Enter a valid Paystack secret key (sk_live_... or sk_test_...).',
+        ]);
         exit;
     }
 }
@@ -128,7 +126,9 @@ try {
 
     $storedMeta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     $effectivePaystackKey = $paystack_key ?: trim((string)($client['paystack_auth_token'] ?? $storedMeta['paystack_auth_token'] ?? ''));
-    if ($paystack_key || $platform_subaccount_code !== '') {
+    $platform = [];
+    $effectiveKeyIsValid = (bool) preg_match('/^sk_(?:live|test)_[A-Za-z0-9]{8,}$/', $effectivePaystackKey);
+    if (($paystack_key && $effectiveKeyIsValid) || $platform_subaccount_code !== '') {
         if ($effectivePaystackKey === '') {
             http_response_code(422);
             echo json_encode([
@@ -162,6 +162,13 @@ try {
 
     $meta = json_decode($client['metadata'] ?? '{}', true) ?: [];
     $previousAccountStatus = (string)($meta['paystack_account_status'] ?? 'not_created');
+
+    if ($paystack_key && $paystack_account_status === null
+        && in_array($previousAccountStatus, ['approved', 'declined'], true)) {
+        $meta['paystack_account_status'] = 'pending';
+        $meta['paystack_account_reason'] = null;
+        $meta['paystack_account_reviewed_at'] = null;
+    }
     
     if ($paystack_key) {
         $meta['paystack_key'] = $paystack_key;
@@ -263,11 +270,13 @@ try {
         'success' => true,
         'message' => $platform_subaccount_code !== ''
             ? 'Attoneex subaccount verified and the platform split is ready.'
+            : ($paystack_key && $isTestKey
+                ? 'Test Paystack account connected. Test transactions do not settle funds or apply the platform split.'
             : ($paystack_key
                 ? 'Client Paystack account connected and the 10% Attoneex settlement split is ready.'
                 : ($paystack_account_status !== null
                     ? 'Paystack account review status updated successfully.'
-                    : 'Client Paystack details updated successfully.'))
+                    : 'Client Paystack details updated successfully.')))
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

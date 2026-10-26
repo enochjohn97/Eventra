@@ -218,22 +218,30 @@ require_once $rootDir . '/config/session-config.php';
 
 // Dispatch routing
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$appBasePath = parse_url((string) ($_ENV['APP_URL'] ?? ''), PHP_URL_PATH);
+$appBasePath = is_string($appBasePath) ? '/' . trim($appBasePath, '/') : '';
+if ($appBasePath === '/') {
+    $appBasePath = '';
+}
+if ($appBasePath !== '' && ($uri === $appBasePath || str_starts_with($uri, $appBasePath . '/'))) {
+    $uri = substr($uri, strlen($appBasePath)) ?: '/';
+}
 
 // ── Short URL routes (mirror of root index.php for the built-in server) ────
 if (preg_match('#^/e/([A-Za-z0-9\-_]{1,150})$#', $uri, $m)) {
-    header('Location: /event-details.html?event=' . rawurlencode($m[1]), true, 302);
+    header('Location: ' . $appBasePath . '/event-details.html?event=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 if (preg_match('#^/e/([A-Za-z0-9\-_]{1,150})/pay$#', $uri, $m)) {
-    header('Location: /checkout.html?event=' . rawurlencode($m[1]), true, 302);
+    header('Location: ' . $appBasePath . '/checkout.html?event=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 if (preg_match('#^/t/([A-Za-z0-9\-_]{1,120})$#', $uri, $m)) {
-    header('Location: /api/tickets/validate-ticket.php?barcode=' . rawurlencode($m[1]), true, 302);
+    header('Location: ' . $appBasePath . '/api/tickets/validate-ticket.php?barcode=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 if (preg_match('#^/r/([A-Za-z0-9\-_]{1,190})$#', $uri, $m)) {
-    header('Location: /payment.html?reference=' . rawurlencode($m[1]), true, 302);
+    header('Location: ' . $appBasePath . '/payment.html?reference=' . rawurlencode($m[1]), true, 302);
     exit;
 }
 // Database-backed opaque short links (hide real file locations).

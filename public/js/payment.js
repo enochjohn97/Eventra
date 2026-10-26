@@ -117,8 +117,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
         const verifyData = verifyRes ? await verifyRes.json() : null;
 
-        if (verifyData && verifyData.success && verifyData.barcode) {
-          await showPaymentSuccess(reference, verifyData.barcode);
+        if (verifyData && verifyData.success && (verifyData.barcodes?.length || verifyData.barcode)) {
+          await showPaymentSuccess(reference, verifyData.barcodes?.length ? verifyData.barcodes : [verifyData.barcode]);
           return;
         }
         startPolling(reference);
@@ -210,6 +210,14 @@ let consecutiveErrors = 0;
 const maxPolls = 20;
 const maxConsecutiveErrors = 3;
 
+function buildTicketUrl(ticketId) {
+  const basePath = typeof getBasePath === "function" ? getBasePath() : "/";
+  return new URL(
+    `${basePath}t/${encodeURIComponent(ticketId)}`,
+    window.location.href,
+  ).href;
+}
+
 async function showPaymentSuccess(reference, barcode) {
   const paymentLoading = document.getElementById("paymentLoading");
   const paymentForm = document.getElementById("paymentForm");
@@ -235,16 +243,17 @@ async function showPaymentSuccess(reference, barcode) {
   const cleanedName = (order?.event_name || "").replace(/\s*#\d+$/, "");
   const paidTo =
     (order?.organizer_business_name || "").trim() || "the event organizer";
+  const finalBarcodes = (Array.isArray(barcode) ? barcode : [barcode])
+    .filter(Boolean)
+    .concat((order?.tickets || []).map((ticket) => ticket.barcode).filter(Boolean))
+    .filter((ticket, index, all) => all.indexOf(ticket) === index);
   const finalBarcode =
-    barcode ||
+    finalBarcodes[0] ||
     order?.barcode ||
     order?.tickets?.[0]?.barcode ||
     order?.ticket_id ||
     reference ||
     "N/A";
-  // Short QR target — environment-agnostic (works local + live)
-  const qrPayload = `${window.location.origin}/t/${encodeURIComponent(finalBarcode)}`;
-
   icon.innerHTML = `<div style="font-size:4rem;margin-bottom:1rem;">🎉</div>`;
 
   title.textContent =
@@ -252,6 +261,26 @@ async function showPaymentSuccess(reference, barcode) {
   msg.innerHTML = `Your ticket${(order?.quantity || 1) > 1 ? "s" : ""} for <strong>${escapeHTML(cleanedName)}</strong> ${order?.amount <= 0 ? "have been issued" : "are ready"}.${order?.amount > 0 ? `<br><span style="font-size:0.85rem;color:var(--text-main);">Paid to <strong>${escapeHTML(paidTo)}</strong></span>` : ""}<br><span style="font-size:0.8rem;color:var(--text-muted);">Ref: ${escapeHTML(reference)}</span>`;
 
   if (actions) actions.style.display = "flex";
+  const qrList = document.getElementById("successTicketQrs");
+  if (qrList && typeof QRCode !== "undefined") {
+    qrList.replaceChildren();
+    finalBarcodes.forEach((ticketId, index) => {
+      const ticketQr = document.createElement("div");
+      ticketQr.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;";
+      const label = document.createElement("span");
+      label.textContent = `Ticket ${index + 1}`;
+      const image = document.createElement("div");
+      ticketQr.append(label, image);
+      qrList.appendChild(ticketQr);
+      new QRCode(image, {
+        text: buildTicketUrl(ticketId),
+        width: 128,
+        height: 128,
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+    });
+  }
+
   sessionStorage.removeItem("pending_order");
   sessionStorage.setItem("purchase_success_redirection", "true");
 
@@ -345,7 +374,12 @@ async function startPolling(reference) {
           const firstBarcode =
             order.barcode || (order.tickets && order.tickets[0]?.barcode);
           if (firstBarcode) {
-            await showPaymentSuccess(reference, firstBarcode);
+            await showPaymentSuccess(
+              reference,
+              order.tickets?.length
+                ? order.tickets.map((ticket) => ticket.barcode)
+                : [firstBarcode],
+            );
             return;
           }
         }
@@ -461,7 +495,7 @@ function setupFreeEventState(
           if (paymentForm) paymentForm.style.display = "none";
           if (statusContainer) statusContainer.style.display = "block";
           if (barcode && typeof showPaymentSuccess === "function") {
-            await showPaymentSuccess(finalRef, barcode);
+            await showPaymentSuccess(finalRef, result.tickets || [barcode]);
           } else {
             Swal.fire({
               title: "Tickets Issued!",
@@ -671,7 +705,7 @@ function prepareTicketForDownload(order, barcode) {
   if (qrContainer && typeof QRCode !== "undefined") {
     qrContainer.innerHTML = "";
     new QRCode(qrContainer, {
-      text: `${window.location.origin}/t/` + encodeURIComponent(barcode || ""),
+      text: buildTicketUrl(barcode || ""),
       width: 140,
       height: 130,
       colorDark: "#000000",

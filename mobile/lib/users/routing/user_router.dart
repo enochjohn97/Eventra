@@ -39,8 +39,7 @@ GoRouter createUserRouter(AuthProvider authProvider) {
           !isPublic) {
         return '/profile-complete';
       }
-      if (status == AuthStatus.authenticated &&
-          (path == '/login' || path == '/profile-complete')) {
+      if (status == AuthStatus.authenticated && path == '/profile-complete') {
         return '/home';
       }
       return null;
@@ -101,19 +100,25 @@ GoRouter createUserRouter(AuthProvider authProvider) {
       // Legal & policy pages — hosted on the server, rendered in-app via WebView.
       GoRoute(
         path: '/terms',
-        builder: (_, _) => const _LegalPage(title: 'Terms & Conditions', path: '/terms.html'),
+        builder: (_, _) =>
+            const _LegalPage(title: 'Terms & Conditions', path: '/terms.html'),
       ),
       GoRoute(
         path: '/privacy',
-        builder: (_, _) => const _LegalPage(title: 'Privacy Policy', path: '/privacy.html'),
+        builder: (_, _) =>
+            const _LegalPage(title: 'Privacy Policy', path: '/privacy.html'),
       ),
       GoRoute(
         path: '/cookies',
-        builder: (_, _) => const _LegalPage(title: 'Cookie Policy', path: '/cookies.html'),
+        builder: (_, _) =>
+            const _LegalPage(title: 'Cookie Policy', path: '/cookies.html'),
       ),
       GoRoute(
         path: '/delete-data',
-        builder: (_, _) => const _LegalPage(title: 'Delete your data', path: '/delete-data.html'),
+        builder: (_, _) => const _LegalPage(
+          title: 'Delete your data',
+          path: '/delete-data.html',
+        ),
       ),
     ],
   );
@@ -144,9 +149,11 @@ class _LegalPageState extends State<_LegalPage> {
           onWebResourceError: (_) {},
         ),
       )
-      ..loadRequest(Uri.parse(
-        '${ApiClient().baseOrigin}/${widget.path.replaceFirst(RegExp(r'^/+'), '')}',
-      ));
+      ..loadRequest(
+        Uri.parse(
+          '${ApiClient().baseOrigin}/${widget.path.replaceFirst(RegExp(r'^/+'), '')}',
+        ),
+      );
   }
 
   @override

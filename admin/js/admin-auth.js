@@ -106,7 +106,7 @@ class AdminAuth {
 
         profileMainInfo.innerHTML = `
             <h3 class="profile-name">${escapeHTML(this.adminData.name)}</h3>
-            <p class="profile-email">${escapeHTML(this.adminData.email)}</p>
+            <p class="profile-email">${escapeHTML(this.adminData.email || 'attoneex@gmail.com')}</p>
         `;
 
         // Update or create profile details
@@ -117,8 +117,12 @@ class AdminAuth {
             profileMainInfo.after(profileDetails);
         }
 
-        const createdDate = new Date(this.adminData.created_at).toLocaleDateString();
-        const updatedDate = new Date(this.adminData.updated_at).toLocaleDateString();
+        const createdDate = this.adminData.created_at
+            ? new Date(this.adminData.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'Not recorded';
+        const lastLoginDate = this.adminData.last_login_at
+            ? new Date(this.adminData.last_login_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Just now';
 
         profileDetails.innerHTML = `
             <div class="profile-detail-item">
@@ -127,7 +131,7 @@ class AdminAuth {
             </div>
             <div class="profile-detail-item">
                 <span class="detail-label">Status</span>
-                <span class="detail-value" style="color: #10b981; font-weight: 700;">${escapeHTML(this.adminData.status === 'active' ? 'Active' : 'Offline')}</span>
+                <span class="detail-value" style="color: #10b981; font-weight: 700;">Online</span>
             </div>
             <div class="profile-detail-item">
                 <span class="detail-label">Account Created</span>
@@ -135,7 +139,7 @@ class AdminAuth {
             </div>
             <div class="profile-detail-item">
                 <span class="detail-label">Last Login</span>
-                <span class="detail-value">${this.adminData.last_login_at ? new Date(this.adminData.last_login_at).toLocaleString() : 'Just now'}</span>
+                <span class="detail-value">${lastLoginDate}</span>
             </div>
 
             <button class="btn btn-logout-drawer" id="profileDrawerLogout" style="margin-top: 2rem; width: 100%; justify-content: center; gap: 10px; color: white; background: #ef4444; border-radius: 12px; padding: 1rem;">

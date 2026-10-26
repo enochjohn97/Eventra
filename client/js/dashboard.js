@@ -31,6 +31,51 @@ window.updateEventOnDashboard = function (updatedEvent) {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const sidebar = document.querySelector(".sidebar");
+  const mainLayout = document.querySelector(".main-layout");
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  const profileTrigger = document.getElementById("userProfileTrigger");
+
+  if (sidebar && mainLayout && sidebarToggle) {
+    const setSidebarCollapsed = (collapsed) => {
+      sidebar.classList.toggle("collapsed", collapsed);
+      mainLayout.classList.toggle("collapsed", collapsed);
+      sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+      sidebarToggle.setAttribute(
+        "aria-label",
+        collapsed ? "Expand sidebar" : "Collapse sidebar",
+      );
+      sidebarToggle.innerHTML = `<i data-lucide="${collapsed ? "chevron-right" : "chevron-left"}"></i>`;
+      if (window.lucide) window.lucide.createIcons();
+    };
+    const savedCollapseState = localStorage.getItem("clientSidebarCollapsed");
+    const defaultCollapsed = window.matchMedia("(max-width: 768px)").matches;
+    setSidebarCollapsed(
+      savedCollapseState === null ? defaultCollapsed : savedCollapseState === "true",
+    );
+
+    sidebarToggle.addEventListener("click", () => {
+      const collapsed = !sidebar.classList.contains("collapsed");
+      setSidebarCollapsed(collapsed);
+      localStorage.setItem("clientSidebarCollapsed", String(collapsed));
+    });
+  }
+
+  if (profileTrigger) {
+    const openProfile = () => {
+      if (typeof window.showProfileEditModal === "function") {
+        window.showProfileEditModal();
+      }
+    };
+    profileTrigger.addEventListener("click", openProfile);
+    profileTrigger.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openProfile();
+      }
+    });
+  }
+
   // Load cached stats immediately for better UX
   loadCachedStats();
 
@@ -69,13 +114,23 @@ async function loadClientProfile() {
       const profileAvatars = document.querySelectorAll(".user-avatar");
 
       profileAvatars.forEach((avatar) => {
-        const avatarUrl =
-          user.profile_pic ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.business_name || "User")}&background=random&color=fff`;
-        avatar.style.backgroundImage = `url(${avatarUrl})`;
+        const displayName = String(
+          user.name || user.business_name || user.email || "User",
+        ).trim();
+        const initials = displayName
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part.charAt(0))
+          .join("")
+          .toUpperCase();
+        avatar.style.backgroundImage = user.profile_pic
+          ? `url("${user.profile_pic}")`
+          : "none";
         avatar.style.backgroundSize = "cover";
         avatar.style.backgroundPosition = "center";
-        avatar.textContent = ""; // clear initial if any
+        avatar.textContent = user.profile_pic ? "" : initials;
+        avatar.title = displayName;
 
         // Add Verification Badge if not already present
         const status = user.verification_status || "pending";

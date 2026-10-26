@@ -448,7 +448,7 @@ function initProfileClick() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 Profile
             </a>
-             
+
 
             <div style="border-top:1px solid #f1f5f9;"></div>
             <a href="#" onclick="logout();return false;"
@@ -1028,3 +1028,107 @@ window.addEventListener("offline", () => {
     open();
   });
 })();
+
+// ---- Event suggestions (published events with high ticket demand) ----
+/* ─ Recommendation banner: ranked published events, first thing users see ─ */
+let _clientSuggestionEls = [];
+
+function loadEventSuggestions() {
+  _fetchPublishedClientEvents()
+    .then(_renderClientSuggestions)
+    .catch(() => {});
+}
+
+function _fetchPublishedClientEvents() {
+  return (async () => {
+    let res;
+    try { res = await fetch('/api/events/get-events.php?status=published&limit=12'); }
+    catch (_) { return []; }
+    if (!res || !res.ok) return [];
+    let data;
+    try { data = await res.json(); } catch (_) { return []; }
+    if (!data || !data.success || !Array.isArray(data.events)) return [];
+    return data.events
+      .filter(e => (e.sales_count || 0) > 0 || (e.attendee_count || 0) > 0)
+      .sort((a, b) =>
+        (b.sales_count || 0) - (a.sales_count || 0) ||
+        (b.attendee_count || 0) - (a.attendee_count || 0)
+      )
+      .slice(0, 4);
+  })();
+}
+
+function _renderClientSuggestions(events) {
+  if (!events || !Array.isArray(events) || events.length === 0) return;
+  const banner = document.getElementById('event-suggestions-banner');
+  if (!banner) return;
+  _clientSuggestionEls = [];
+  let html = '';
+  events.forEach(s => {
+    const img = (s.image_path && s.image_path.trim())
+      ? '/' + s.image_path.replace(/^(?:\.\.\/|\.\/)+/, '').replace(/^\/+/, '')
+      : 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=220&fit=crop';
+    const tickets = s.sales_count ?? s.ticket_count ?? 0;
+    const attendees = s.attendee_count ?? 0;
+    const date = s.event_date
+      ? new Date(s.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : 'TBA';
+    html += `
+      <div class="suggestion-card" data-event-id="${s.id}"
+           onclick="window.location.href='/client/events/event-details.html?event=${s.id}'">
+        <div class="suggestion-img" style="background-image:url('${img}')"></div>
+        <div class="suggestion-body">
+          <div class="suggestion-label">${tickets} tickets · ${attendees} attending</div>
+          <div class="suggestion-title">${escapeHtml(s.event_name)}</div>
+          <div class="suggestion-date">${date}</div>
+        </div>
+      </div>`;
+  });
+  const existingScroll = banner.querySelector('.suggestions-scroll');
+  if (existingScroll) {
+    const existingIds = new Set(
+      Array.from(existingScroll.querySelectorAll('.suggestion-card'))
+        .map(el => el.getAttribute('data-event-id'))
+        .filter(Boolean)
+    );
+    const fresh = events.filter(s => !existingIds.has(String(s.id)));
+    if (fresh.length === 0) return;
+    const fragment = document.createDocumentFragment();
+    fresh.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'suggestion-card';
+      el.setAttribute('data-event-id', String(s.id));
+      el.innerHTML = _suggestionCardInner(s);
+      fragment.appendChild(el);
+      _clientSuggestionEls.push(el);
+    });
+    existingScroll.prepend(fragment);
+  } else {
+    banner.innerHTML = `<div class="suggestions-scroll">${html}</div>`;
+    _clientSuggestionEls = Array.from(banner.querySelectorAll('.suggestion-card'));
+  }
+}
+
+function _suggestionCardInner(s) {
+  const img = (s.image_path && s.image_path.trim())
+    ? '/' + s.image_path.replace(/^(?:\.\.\/|\.\/)+/, '').replace(/^\/+/, '')
+    : 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=220&fit=crop';
+  const tickets = s.sales_count ?? s.ticket_count ?? 0;
+  const attendees = s.attendee_count ?? 0;
+  const date = s.event_date
+    ? new Date(s.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'TBA';
+  return `
+    <div class="suggestion-img" style="background-image:url('${img}')"></div>
+    <div class="suggestion-body">
+      <div class="suggestion-label">${tickets} tickets · ${attendees} attending</div>
+      <div class="suggestion-title">${escapeHtml(s.event_name)}</div>
+      <div class="suggestion-date">${date}</div>
+    </div>`;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}

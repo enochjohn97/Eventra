@@ -1,7 +1,7 @@
 @import url("/public/css/sweetalert-brand.css");
 :root {
     /* Admin Design System — Modern Indigo Theme */
-    --admin-bg-body: #f1f5f9;
+    --admin-bg-body: #eee;
     --admin-bg-sidebar: #0f172a;
     --admin-bg-card: #ffffff;
     --admin-primary: #6366f1;
@@ -511,7 +511,7 @@ body {
 /* Stats Cards */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 2rem;
     margin-bottom: 2rem;
 }
@@ -519,7 +519,8 @@ body {
 /* Stats Cards (Neutral Design) */
 .stat-card {
     background: #ffffff;
-    padding: 2rem;
+    padding: 2.25rem;
+    min-height: 150px;
     border-radius: var(--admin-radius);
     border: 1px solid var(--admin-border);
     display: flex;

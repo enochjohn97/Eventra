@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (authInput) {
             authInput.value = '';
-            authInput.placeholder = authToken ? 'Saved (hidden) — enter new to replace' : 'sk_live_...';
+            authInput.placeholder = authToken ? 'Saved (hidden) — enter new to replace' : 'sk_test_... or sk_live_...';
         }
         document.getElementById('paystackMerchantId').value = merchantId;
         paystackModal.classList.add('active');

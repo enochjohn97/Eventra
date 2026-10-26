@@ -15,7 +15,7 @@ require_once '../../api/utils/id-generator.php';
 $user_id = checkAuth('user');
 $auth_id = getAuthId(); // auth_accounts.id
 
-if (!$user_id || !$auth_id) {
+if (!$user_id || !$auth_id) {   
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'User profile not found']);
     exit;
@@ -136,12 +136,8 @@ try {
         $verificationSuccess = false;
         $gatewayResponse = "";
 
-        // --- Real Paystack Verification ---
-        // The charge may run on the ORGANIZER's own Paystack account (v2
-        // Connect model) instead of the platform account. Verifying strictly
-        // with the platform key fails for organizers buying tickets to their
-        // own event ("Payment verification failed"), so try the organizer's
-        // key first when the current user is the event's organizer.
+        // The charge is initialized with the organizer's key, so verify against
+        // that account first regardless of who bought the ticket.
         $orgStmt = $pdo->prepare(
             "SELECT c.paystack_connection_status, c.paystack_auth_token
              FROM events e
@@ -151,26 +147,14 @@ try {
         $orgStmt->execute([$event_id]);
         $orgRow = $orgStmt->fetch(PDO::FETCH_ASSOC);
 
-        $isOrganizerBuyer = false;
-        if ($orgRow) {
-            // Is the buyer this event's organizer? Compare auth ids directly.
-            $isOrgStmt = $pdo->prepare(
-                "SELECT cl.client_auth_id
-                 FROM clients cl
-                 JOIN auth_accounts a ON cl.client_auth_id = a.id
-                 WHERE cl.id = (SELECT client_id FROM events WHERE id = ? LIMIT 1)
-                 AND a.id = ? LIMIT 1"
-            );
-            $isOrgStmt->execute([$event_id, $auth_id]);
-            $isOrganizerBuyer = (bool) $isOrgStmt->fetchColumn();
-        }
-
         $candidateKeys = [];
-        if ($isOrganizerBuyer && !empty($orgRow['paystack_auth_token'])
+        if (!empty($orgRow['paystack_auth_token'])
             && ($orgRow['paystack_connection_status'] ?? '') === 'connected') {
             $candidateKeys[] = $orgRow['paystack_auth_token'];
         }
-        $candidateKeys[] = PAYSTACK_SECRET_KEY;
+        if (PAYSTACK_SECRET_KEY !== '') {
+            $candidateKeys[] = PAYSTACK_SECRET_KEY;
+        }
 
         $url = "https://api.paystack.co/transaction/verify/" . rawurlencode($payment_reference);
         $paystackResult = null;
@@ -360,20 +344,13 @@ try {
         $allTicketData[] = $ticketData;
     }
 
-    // Send one consolidated, attachment-free email per purchase. The rich
-    // HTML email embeds the QR code directly; PDFs are only produced for the
-    // user-initiated "Download Ticket" action, never emailed.
-    $emailData = null;
+    // Send one email per ticket so every purchased quantity gets its own
+    // unique ticket ID and QR code.
     foreach ($allTicketData as $ticketData) {
-        if ($emailData === null) {
-            $emailData = $ticketData;
-        }
-    }
-    if ($emailData !== null) {
         try {
-            EmailHelper::sendTicketEmailFull($user['email'], $emailData);
+            EmailHelper::sendTicketEmailFull($user['email'], $ticketData);
         } catch (\Throwable $mailErr) {
-            error_log('[purchase-ticket.php] Consolidated email FAILED: ' . $mailErr->getMessage());
+            error_log('[purchase-ticket.php] Ticket email failed for ' . $ticketData['barcode'] . ': ' . $mailErr->getMessage());
         }
     }
 

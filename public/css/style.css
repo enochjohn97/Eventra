@@ -3505,6 +3505,103 @@ body {
   margin-top: 2px;
 }
 
+/* ── Published-event recommendation banner (home page + app login page) ── */
+.event-suggestions-banner {
+  width: 100%;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.suggestions-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 0.5rem;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.suggestions-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.suggestions-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.suggestion-card {
+  flex: 0 0 240px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+  border-color: var(--primary-color);
+}
+
+.suggestion-img {
+  height: 118px;
+  background-size: cover;
+  background-position: center;
+  background-color: #6b7280;
+}
+
+.suggestion-body {
+  padding: 0.7rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.suggestion-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary-color);
+  margin-bottom: 0.05rem;
+}
+
+.suggestion-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.suggestion-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+@keyframes bannerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.suggestions-scroll {
+  animation: bannerSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Favorites sidebar cards */
 .favorite-card {
   display: flex;

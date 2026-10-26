@@ -5,16 +5,11 @@
  * Runs every 5-10 minutes to send reminders to attendees 30 minutes before their location starts.
  */
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/helpers/email-helper.php';
-require_once __DIR__ . '/../includes/helpers/sms-helper.php';
-require_once __DIR__ . '/../api/utils/notification-helper.php';
-
 // ── CRON GUARD ──────────────────────────────────────────────────────────────
 // When invoked over HTTP, require the CRON_SECRET so the endpoint cannot be
 // triggered (and reminders re-sent / SMS billed) by arbitrary visitors.
 // CLI invocations (crontab) are always allowed.
-if (PHP_SAPI !== 'cli') {
+if (PHP_SAPI !== 'cli' && (!defined('EVENTRA_AUTHORIZED_REMINDER_TRIGGER') || EVENTRA_AUTHORIZED_REMINDER_TRIGGER !== true)) {
     $expectedSecret = ($_ENV['CRON_SECRET'] ?? getenv('CRON_SECRET') ?: '');
     $providedSecret = $_GET['secret'] ?? $_SERVER['HTTP_X_CRON_SECRET'] ?? '';
     if ($expectedSecret === '' || !is_string($providedSecret) || !hash_equals($expectedSecret, $providedSecret)) {
@@ -24,6 +19,11 @@ if (PHP_SAPI !== 'cli') {
         exit;
     }
 }
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/helpers/email-helper.php';
+require_once __DIR__ . '/../includes/helpers/sms-helper.php';
+require_once __DIR__ . '/../api/utils/notification-helper.php';
 
 // Set timezone to Africa/Lagos
 date_default_timezone_set('Africa/Lagos');

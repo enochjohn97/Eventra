@@ -22,8 +22,6 @@
 
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../../config/database.php';
-
 function triggerRespond(bool $success, array $extra = [], int $httpCode = 200): void
 {
     http_response_code($httpCode);
@@ -69,16 +67,20 @@ if ($now - $lastRun < $minInterval) {
     triggerRespond(true, ['triggered' => false, 'skipped' => 'throttled', 'next_run_in' => $minInterval - ($now - $lastRun)]);
 }
 
+$cronPath = realpath(__DIR__ . '/../../cron/notify-pre-event.php');
+if (!$cronPath) {
+    triggerRespond(false, ['message' => 'Reminder worker is unavailable.'], 503);
+}
+
 // Stamp BEFORE spawning so requests arriving during a long run don't queue.
 @file_put_contents($lastRunFile, (string) $now);
 
 // ── 3. Spawn the cron as an isolated CLI process ───────────────────────────
 $phpBinary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
-$cronPath  = realpath(__DIR__ . '/../../cron/notify-pre-event.php');
 $triggered = false;
 
-if ($cronPath) {
-    if (stripos(PHP_OS, 'WIN') === 0) {
+if (stripos(PHP_OS, 'WIN') === 0) {
+    if (function_exists('popen') && function_exists('pclose')) {
         // Windows (XAMPP-style): start /B runs detached; the empty "" is the
         // window-title placeholder required when the command is quoted.
         $cmd = 'start /B "" "' . $phpBinary . '" "' . $cronPath . '" > NUL 2>&1';
@@ -87,20 +89,30 @@ if ($cronPath) {
             @pclose($handle);
             $triggered = true;
         }
-    } else {
-        $cmd = '(' . escapeshellarg($phpBinary) . ' ' . escapeshellarg($cronPath) . ' > /dev/null 2>&1 &)';
-        @exec($cmd);
-        $triggered = true;
     }
+} elseif (function_exists('exec')) {
+    $cmd = '(' . escapeshellarg($phpBinary) . ' ' . escapeshellarg($cronPath) . ' > /dev/null 2>&1 &)';
+    $exitCode = 1;
+    @exec($cmd, $output, $exitCode);
+    $triggered = $exitCode === 0;
 }
 
-// ── 4. Fallback: run inline if spawning failed (best effort) ───────────────
+// ── 4. Fallback: run inline if process spawning is unavailable ────────────
 if (!$triggered) {
-    // Send the response first, then run the cron in the same request. The
-    // cron ends with its own exit(), which also terminates this request.
+    // The request has already been authorized. Keep worker output out of JSON.
     echo json_encode(['success' => true, 'triggered' => false, 'skipped' => 'ran_inline']) . "\n";
-    @flush();
-    require __DIR__ . '/../../cron/notify-pre-event.php';
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+    ob_start(function (): string {
+        return '';
+    });
+    define('EVENTRA_AUTHORIZED_REMINDER_TRIGGER', true);
+    require $cronPath;
 }
 
 triggerRespond(true, ['triggered' => true]);

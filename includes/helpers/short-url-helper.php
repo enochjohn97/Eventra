@@ -273,13 +273,26 @@ if (!function_exists('buildShortUrl')) {
         if ($code === null) {
             return null;
         }
-        // Keep the short link on the SAME origin as its target: locally
-        // generated links stay local, live links stay live. Only fall back
-        // to APP_URL for relative inputs.
+        // Keep the short link on the same origin as its target while
+        // preserving APP_URL's path when the app is mounted in a subdirectory.
         $scheme = parse_url($longUrl, PHP_URL_SCHEME);
         $host = parse_url($longUrl, PHP_URL_HOST);
         if (in_array($scheme, ['http', 'https'], true) && $host) {
             $port = parse_url($longUrl, PHP_URL_PORT);
+            $appUrl = getAppBaseUrl();
+            $appScheme = parse_url($appUrl, PHP_URL_SCHEME);
+            $appHost = parse_url($appUrl, PHP_URL_HOST);
+            $appPort = parse_url($appUrl, PHP_URL_PORT);
+            $effectivePort = $port ?? ($scheme === 'https' ? 443 : 80);
+            $effectiveAppPort = $appPort ?? ($appScheme === 'https' ? 443 : 80);
+            if (
+                $scheme === $appScheme
+                && is_string($appHost)
+                && strcasecmp($host, $appHost) === 0
+                && $effectivePort === $effectiveAppPort
+            ) {
+                return rtrim($appUrl, '/') . '/s/' . $code;
+            }
             return $scheme . '://' . $host . ($port ? ':' . $port : '') . '/s/' . $code;
         }
         $appUrl = rtrim(defined('APP_URL') ? APP_URL : (get_env_var('APP_URL') ?: ''), '/');

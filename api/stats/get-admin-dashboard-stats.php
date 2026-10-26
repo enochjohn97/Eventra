@@ -37,14 +37,26 @@ try {
         throw new Exception('Failed to fetch stats');
     }
     
-    // 2. Recent Activities (Fetch up to 100 for the modal, filter out admins if specified or just get all)
+    // 2. Recent Activities — mix of logins and ticket purchases so the feed reads
+    //    as real platform activity, not just "someone logged in".
     $activities_stmt = $pdo->prepare("
-        SELECT al.event_type as type, al.details as message, al.created_at 
-        FROM auth_logs al 
-        LEFT JOIN auth_accounts a ON al.auth_id = a.id
-        WHERE a.role IN ('user', 'client') OR al.auth_id IS NULL
-        ORDER BY al.created_at DESC 
-        LIMIT 100
+        (SELECT al.event_type AS type, al.details AS message, al.created_at, 1 AS rank_order
+         FROM auth_logs al
+         LEFT JOIN auth_accounts a ON al.auth_id = a.id
+         WHERE a.role IN ('user','client') OR al.auth_id IS NULL
+         ORDER BY al.created_at DESC LIMIT 60)
+         UNION ALL
+        (SELECT 'ticket_purchase' AS type,
+                CONCAT(u.name, ' purchased ', CAST(COUNT(DISTINCT t.id) AS CHAR), ' ticket(s) for ', e.event_name) AS message,
+                p.paid_at AS created_at, 2 AS rank_order
+         FROM payments p
+         JOIN tickets t ON t.payment_id = p.id AND t.status <> 'cancelled'
+         JOIN users u ON u.id = p.user_id
+         JOIN events e ON e.id = p.event_id
+         WHERE p.status = 'paid' AND p.paid_at IS NOT NULL
+         GROUP BY p.id, p.paid_at, u.name, e.event_name
+         ORDER BY p.paid_at DESC LIMIT 60)
+         ORDER BY created_at DESC LIMIT 100
     ");
     $activities_stmt->execute();
     $recent_activities = $activities_stmt->fetchAll(PDO::FETCH_ASSOC);

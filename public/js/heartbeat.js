@@ -14,10 +14,9 @@
   const HEARTBEAT_INTERVAL_MS = 60 * 1000; // 60 seconds
   const CHECK_INTERVAL_MS = 60 * 1000; // check every 60 s
 
-  // ── Determine correct paths regardless of page depth ──────────────────────
-  const relBase = typeof getBasePath === "function" ? getBasePath() : "../../";
-  const HEARTBEAT_URL = relBase + "api/utils/heartbeat.php";
-  const LOGOUT_URL = relBase + "api/auth/logout.php";
+  // ── API paths are root-relative so nested portal pages use the same routes ─
+  const HEARTBEAT_URL = "/api/utils/heartbeat.php";
+  const LOGOUT_URL = "/api/auth/logout.php";
 
   // ── Determine login page URL by role ──────────────────────────────────────
   function getLoginUrl() {

@@ -339,6 +339,7 @@ try {
         echo json_encode(['success' => false, 'message' => 'This event is not available for booking.']);
         exit;
     }
+    $issuedQuantity = $quantity * ($giftRecipient ? 2 : 1);
 
     $paystackAccountStatus = strtolower(trim((string)($event['paystack_account_status'] ?? '')));
     if (in_array($paystackAccountStatus, ['pending', 'declined'], true)) {
@@ -405,6 +406,37 @@ try {
         // --- FREE EVENT PATH ---
         try {
             $pdo->beginTransaction();
+            $capacityStmt = $pdo->prepare("
+                SELECT ticket_count, max_capacity, attendee_count
+                FROM events WHERE id = ? FOR UPDATE
+            ");
+            $capacityStmt->execute([$event_id]);
+            $capacity = $capacityStmt->fetch(PDO::FETCH_ASSOC);
+            if (
+                !$capacity
+                || ($capacity['ticket_count'] !== null && (int) $capacity['ticket_count'] < $issuedQuantity)
+                || ($capacity['max_capacity'] !== null
+                    && (int) $capacity['attendee_count'] + $issuedQuantity > (int) $capacity['max_capacity'])
+            ) {
+                $pdo->rollBack();
+                http_response_code(409);
+                echo json_encode(['success' => false, 'message' => 'There are not enough tickets available for this quantity.']);
+                exit;
+            }
+            $freeTierCapacity = $event[$ticket_type . '_quantity'] ?? null;
+            if ($freeTierCapacity !== null && $freeTierCapacity !== '' && (int) $freeTierCapacity > 0) {
+                $soldStmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM tickets
+                    WHERE event_id = ? AND status <> 'cancelled' AND LOWER(ticket_type) = ?
+                ");
+                $soldStmt->execute([$event_id, $ticket_type]);
+                if ((int) $soldStmt->fetchColumn() + $issuedQuantity > (int) $freeTierCapacity) {
+                    $pdo->rollBack();
+                    http_response_code(409);
+                    echo json_encode(['success' => false, 'message' => 'There are not enough tickets available for this quantity.']);
+                    exit;
+                }
+            }
 
             // 1. Create success order
             $oStmt = $pdo->prepare("
@@ -428,73 +460,89 @@ try {
             require_once '../../api/utils/notification-helper.php';
 
             $tickets = [];
+            $buyerTickets = [];
+            $buyerBarcodes = [];
             $allFreeTicketData = [];
-            // A gift ticket belongs to the recipient account, so both the ticket
-            // row and the confirmation email follow the recipient — not the buyer.
-            $ticketOwnerId = $giftRecipient ? (int) $giftRecipient['user_id'] : $user_id;
-            for ($i = 0; $i < $quantity; $i++) {
-                $ticketCustomId = generateTicketId($pdo);
-                // Generate consistent TKT- barcode even for free events
-                $barcode = 'TKT-' . strtoupper(bin2hex(random_bytes(10)));
-
-                $pdo->prepare("
-                    INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'valid')
-                ")->execute([$ticketOwnerId, $event_id, $payment_id, $order_id, $ticketCustomId, $barcode]);
-                $ticket_id = $pdo->lastInsertId();
-
-                $contactInfo = $body['contact_info'] ?? [];
-                $buyerName   = !empty($contactInfo)
-                    ? trim(($contactInfo['fname'] ?? '') . ' ' . ($contactInfo['lname'] ?? ''))
-                    : $user_name;
-                $buyerEmail  = !empty($contactInfo['email']) ? $contactInfo['email'] : $user_email;
-                if ($giftRecipient) {
-                    $buyerName = $giftRecipient['name'] ?: $buyerName;
-                    $buyerEmail = $giftRecipient['email'];
-                }
-
-                $ticketData = [
-                    'barcode'        => $barcode,
-                    'ticket_id'      => $ticketCustomId,
-                    'custom_id'      => $ticketCustomId,
-                    'event_id'       => $event_id,
-                    'user_id'        => $ticketOwnerId,
-                    'order_id'       => $order_id,
-                    'event_name'     => $event['event_name'],
-                    'event_date'     => $event['event_date'],
-                    'event_time'     => $event['event_time'],
-                    'location'       => $event['location'] ?? $event['state'] ?? 'Nigeria',
-                    'address'        => $event['address'] ?? '',
-                    'event_image'    => $event['image_path'] ?? '',
-                    'user_name'      => $buyerName,
-                    'buyer_name'     => $buyerName,
-                    'buyer_email'    => $buyerEmail,
-                    'payment_status' => 'paid',
-                    'amount'         => 0,
-                    'ticket_type'    => $ticket_type,
-                    'quantity'       => 1,
-                    'selected_locs'  => $selected_locs
+            $contactInfo = $body['contact_info'] ?? [];
+            $buyerName = !empty($contactInfo)
+                ? trim(($contactInfo['fname'] ?? '') . ' ' . ($contactInfo['lname'] ?? ''))
+                : $user_name;
+            $buyerEmail = !empty($contactInfo['email']) ? $contactInfo['email'] : $user_email;
+            $ticketOwners = [[
+                'user_id' => $user_id,
+                'name' => $buyerName,
+                'email' => $buyerEmail,
+            ]];
+            if ($giftRecipient) {
+                $ticketOwners[] = [
+                    'user_id' => (int) $giftRecipient['user_id'],
+                    'name' => $giftRecipient['name'] ?: $buyerName,
+                    'email' => $giftRecipient['email'],
                 ];
-                $qrPath = generateTicketQRCode($ticketData);
-                if ($qrPath && file_exists($qrPath)) {
-                    $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
-                        ->execute([toPublicRelativePath($qrPath), $ticket_id]);
-                    $ticketData['qr_path'] = $qrPath;
-                    if (function_exists('base64_encode_image')) {
-                        $b64 = base64_encode_image($qrPath);
-                        if ($b64 !== '') {
-                            $ticketData['qr_base64'] = $b64;
+            }
+            foreach ($ticketOwners as $owner) {
+                for ($i = 0; $i < $quantity; $i++) {
+                    $ticketCustomId = generateTicketId($pdo);
+                    $barcode = 'TKT-' . strtoupper(bin2hex(random_bytes(10)));
+
+                    $pdo->prepare("
+                        INSERT INTO tickets (user_id, event_id, payment_id, order_id, custom_id, barcode, status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'valid')
+                    ")->execute([$owner['user_id'], $event_id, $payment_id, $order_id, $ticketCustomId, $barcode]);
+                    $ticket_id = $pdo->lastInsertId();
+
+                    $ticketData = [
+                        'barcode'        => $barcode,
+                        'ticket_id'      => $ticketCustomId,
+                        'custom_id'      => $ticketCustomId,
+                        'event_id'       => $event_id,
+                        'user_id'        => $owner['user_id'],
+                        'order_id'       => $order_id,
+                        'event_name'     => $event['event_name'],
+                        'event_date'     => $event['event_date'],
+                        'event_time'     => $event['event_time'],
+                        'location'       => $event['location'] ?? $event['state'] ?? 'Nigeria',
+                        'address'        => $event['address'] ?? '',
+                        'event_image'    => $event['image_path'] ?? '',
+                        'user_name'      => $owner['name'],
+                        'buyer_name'     => $owner['name'],
+                        'buyer_email'    => $owner['email'],
+                        'payment_status' => 'paid',
+                        'amount'         => 0,
+                        'ticket_type'    => $ticket_type,
+                        'quantity'       => 1,
+                        'selected_locs'  => $selected_locs
+                    ];
+                    $qrPath = generateTicketQRCode($ticketData);
+                    if ($qrPath && file_exists($qrPath)) {
+                        $pdo->prepare("UPDATE tickets SET qr_code_path = ? WHERE id = ?")
+                            ->execute([toPublicRelativePath($qrPath), $ticket_id]);
+                        $ticketData['qr_path'] = $qrPath;
+                        if (function_exists('base64_encode_image')) {
+                            $b64 = base64_encode_image($qrPath);
+                            if ($b64 !== '') {
+                                $ticketData['qr_base64'] = $b64;
+                            }
                         }
                     }
-                }
 
-                $allFreeTicketData[] = $ticketData;
-                $tickets[] = ['barcode' => $barcode, 'id' => $ticket_id];
+                    $allFreeTicketData[] = $ticketData;
+                    $ticketRecord = ['barcode' => $barcode, 'id' => $ticket_id];
+                    $tickets[] = $ticketRecord;
+                    if ((int) $owner['user_id'] === (int) $user_id) {
+                        $buyerTickets[] = $ticketRecord;
+                        $buyerBarcodes[] = $barcode;
+                    }
+                }
             }
 
-            // 4. Update attendee count
-            $pdo->prepare("UPDATE events SET attendee_count = attendee_count + ? WHERE id = ?")
-                ->execute([$quantity, $event_id]);
+            $pdo->prepare("
+                UPDATE events
+                SET ticket_count = CASE WHEN ticket_count IS NULL THEN NULL ELSE ticket_count - ? END,
+                    attendee_count = attendee_count + ?,
+                    sales_count = sales_count + ?
+                WHERE id = ?
+            ")->execute([$issuedQuantity, $issuedQuantity, $issuedQuantity, $event_id]);
 
             $pdo->commit();
 
@@ -504,22 +552,6 @@ try {
             //    server froze checkout until PHP's max_execution_time killed it,
             //    leaving the buyer with an empty response even though the order
             //    succeeded.
-            $freeEmailData = null;
-            $freeEmailRecipient = null;
-            foreach ($allFreeTicketData as $ftd) {
-                $sendTo = $ftd['buyer_email'] ?? $user_email;
-                if ($freeEmailData === null) {
-                    $freeEmailData = $ftd;
-                    $freeEmailRecipient = $sendTo;
-                }
-            }
-            $freeEmailRecipients = $giftRecipient
-                ? array_values(array_unique(array_filter([
-                    $user_email,
-                    $giftRecipient['email'] ?? null,
-                ], static fn($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))))
-                : [$freeEmailRecipient];
-
             $orgStmt = $pdo->prepare("SELECT client_auth_id FROM clients WHERE id = ? LIMIT 1");
             $orgStmt->execute([$event['organizer_id']]);
             $organizer_auth_id = $orgStmt->fetchColumn();
@@ -540,6 +572,8 @@ try {
                 'reference'         => $reference,
                 'order_id'          => (int)$order_id,
                 'amount'            => 0,
+                'barcodes'          => $buyerBarcodes,
+                'tickets'           => $buyerTickets,
                 'authorization_url' => $callbackUrl,
                 'is_free'           => true,
                 'gift_warning'      => $giftWarning,
@@ -550,23 +584,34 @@ try {
             // Respond to the buyer NOW; deliver email + notifications afterwards.
             require_once '../../includes/helpers/response-helper.php';
             finishResponseThen($freePayload, function () use (
-                $freeEmailData, $freeEmailRecipients,
-                $auth_id, $event, $tickets, $organizer_auth_id, $user_name, $giftRecipient
+                $allFreeTicketData, $auth_id, $event, $tickets, $organizer_auth_id, $user_name, $giftRecipient, $user_email
             ) {
-                if ($freeEmailData !== null) {
-                    foreach ($freeEmailRecipients as $emailRecipient) {
+                foreach ($allFreeTicketData as $ticketData) {
+                    $emailRecipients = [$ticketData['buyer_email'] ?? ''];
+                    if ($giftRecipient) {
+                        $emailRecipients[] = $user_email;
+                    }
+                    foreach (array_unique($emailRecipients) as $emailRecipient) {
+                        if (!filter_var($emailRecipient, FILTER_VALIDATE_EMAIL)) {
+                            continue;
+                        }
                         try {
-                            EmailHelper::sendTicketEmailFull($emailRecipient, $freeEmailData);
+                            EmailHelper::sendTicketEmailFull($emailRecipient, $ticketData);
                         } catch (\Throwable $mailEx) {
                             error_log('[initialize.php] Free ticket email failed (post-response): ' . $mailEx->getMessage());
                         }
                     }
                 }
-                // The ticket-issued notice follows the ticket's owner, so a gift
-                // lands in the recipient's notification feed.
-                $ticketNoticeAuthId = $giftRecipient ? (int) $giftRecipient['auth_id'] : $auth_id;
                 createPaymentSuccessNotification($auth_id, $event['event_name'], 0);
-                createTicketIssuedNotification($ticketNoticeAuthId, $event['event_name'], $tickets[0]['barcode']);
+                if ($giftRecipient) {
+                    createPaymentSuccessNotification((int) $giftRecipient['auth_id'], $event['event_name'], 0);
+                }
+                foreach ($allFreeTicketData as $ticketData) {
+                    $ticketOwnerAuthId = $giftRecipient && $ticketData['user_id'] === (int) $giftRecipient['user_id']
+                        ? (int) $giftRecipient['auth_id']
+                        : $auth_id;
+                    createTicketIssuedNotification($ticketOwnerAuthId, $event['event_name'], $ticketData['barcode']);
+                }
                 if ($organizer_auth_id) {
                     createNewSaleNotification($organizer_auth_id, $user_name, $event['event_name'], 0, $auth_id);
                 }
@@ -603,44 +648,43 @@ try {
     // merchant and risks charging without the organizer's expected split.
     $activePaystackKey = trim((string)$event['paystack_auth_token']);
     $isLivePaystackKey = (bool) preg_match('/^sk_live_[A-Za-z0-9]{8,}$/', $activePaystackKey);
-    $isLocalDevelopment = isLocalHost() && ($_ENV['APP_ENV'] ?? '') === 'local';
-    $isLocalTestPaystackKey = $isLocalDevelopment
-        && (bool) preg_match('/^sk_test_[A-Za-z0-9]{8,}$/', $activePaystackKey);
-    if (!$isLivePaystackKey && !$isLocalTestPaystackKey) {
+    $isTestPaystackKey = (bool) preg_match('/^sk_test_[A-Za-z0-9]{8,}$/', $activePaystackKey);
+    if (!$isLivePaystackKey && !$isTestPaystackKey) {
         http_response_code(409);
         echo json_encode([
             'success' => false,
-            'message' => $isLocalDevelopment
-                ? 'The organizer Paystack account must use a valid live key, or a test key while using a local development server.'
-                : 'The organizer Paystack account is not configured for live payments.',
+            'message' => 'The organizer Paystack account must use a valid live or test secret key.',
         ]);
         exit;
     }
 
-    try {
-        $platform = ensurePlatformSubaccount(
-            $pdo,
-            (int)$event['organizer_id'],
-            $activePaystackKey,
-            PAYSTACK_PLATFORM_COMMISSION_PERCENT
-        );
-    } catch (Throwable $platEx) {
-        error_log('[initialize.php] Platform subaccount ensure failed for client '
-            . $event['organizer_id'] . ': ' . $platEx->getMessage());
-        $platform = ['success' => false, 'message' => 'Could not configure platform settlement'];
-    }
+    $platformSubaccountCode = null;
+    if ($isLivePaystackKey || $isTestPaystackKey) {
+        try {
+            $platform = ensurePlatformSubaccount(
+                $pdo,
+                (int)$event['organizer_id'],
+                $activePaystackKey,
+                PAYSTACK_PLATFORM_COMMISSION_PERCENT
+            );
+        } catch (Throwable $platEx) {
+            error_log('[initialize.php] Platform subaccount ensure failed for client '
+                . $event['organizer_id'] . ': ' . $platEx->getMessage());
+            $platform = ['success' => false, 'message' => 'Could not configure platform settlement'];
+        }
 
-    if (empty($platform['success']) || empty($platform['subaccount_code'])) {
-        error_log('[initialize.php] Platform subaccount unavailable for client '
-            . $event['organizer_id'] . ': ' . ($platform['message'] ?? 'unknown'));
-        http_response_code(503);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Payment setup is incomplete. The organizer must finish platform settlement setup before payments can be accepted.',
-        ]);
-        exit;
+        if (empty($platform['success']) || empty($platform['subaccount_code'])) {
+            error_log('[initialize.php] Platform subaccount unavailable for client '
+                . $event['organizer_id'] . ': ' . ($platform['message'] ?? 'unknown'));
+            http_response_code(503);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Payment setup is incomplete. The organizer must finish platform settlement setup before payments can be accepted.',
+            ]);
+            exit;
+        }
+        $platformSubaccountCode = (string)$platform['subaccount_code'];
     }
-    $platformSubaccountCode = (string)$platform['subaccount_code'];
     $pdo->beginTransaction();
 
     // ── Per-tier capacity enforcement ────────────────────────────────────────
@@ -664,7 +708,15 @@ try {
         // … plus checkouts still holding a reservation. Pending orders older
         // than 30 minutes are abandoned Paystack sessions and stop reserving.
         $reservedStmt = $pdo->prepare("
-            SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.quantity')) AS UNSIGNED)), 0)
+            SELECT COALESCE(SUM(CAST(COALESCE(
+                JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.issued_quantity')),
+                CASE
+                    WHEN JSON_EXTRACT(metadata, '$.gift_recipient_user_id') IS NOT NULL
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.quantity')) * 2
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.quantity'))
+                END,
+                '0'
+            ) AS UNSIGNED)), 0)
             FROM orders
             WHERE event_id = ? AND payment_status = 'pending'
               AND created_at >= NOW() - INTERVAL 30 MINUTE
@@ -673,7 +725,7 @@ try {
         $reservedStmt->execute([$event_id, $tierName]);
         $tierUsed += (int) $reservedStmt->fetchColumn();
 
-        if ($tierUsed + $quantity > $tierCapacity) {
+        if ($tierUsed + $issuedQuantity > $tierCapacity) {
             $pdo->rollBack();
             $remaining = max(0, $tierCapacity - $tierUsed);
             http_response_code(409);
@@ -693,6 +745,7 @@ try {
         'event_id'   => $event_id,
         'event_name' => $event['event_name'],
         'quantity'   => $quantity,
+        'issued_quantity' => $issuedQuantity,
         'ticket_type'=> $ticket_type,
         'user_id'    => $user_id,
         'user_name'  => !empty($body['contact_info']) ? trim($body['contact_info']['fname'] . ' ' . $body['contact_info']['lname']) : $user_name,
@@ -810,7 +863,9 @@ try {
 
     // This subaccount belongs to Attoneex under the organizer's own Paystack
     // account. A 90% main-account charge leaves 10% with the platform subaccount.
-    $paystackPayload['subaccount'] = $platformSubaccountCode;
+    if ($platformSubaccountCode !== null) {
+        $paystackPayload['subaccount'] = $platformSubaccountCode;
+    }
 
     $ch = curl_init('https://api.paystack.co/transaction/initialize');
     curl_setopt_array($ch, [

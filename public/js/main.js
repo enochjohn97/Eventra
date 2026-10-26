@@ -37,7 +37,7 @@ function getItemsPerPage() {
     if (cols > 0) columns = cols;
   } else {
     // Fallback: match CSS auto-fill minmax(260px/280px) exactly
-    const gapSize = 32; 
+    const gapSize = 32;
     const cardMinWidth = width < 768 ? 260 : 280;
     const containerPadding = width >= 1024 ? 64 : width >= 768 ? 40 : 32;
     const availableWidth = width - containerPadding * 2;
@@ -1099,13 +1099,13 @@ function createEventCard(event, index) {
           </div>
           ${priorityBadge}
         </div>
-        
+
       </div>
-      
+
       <div class="event-content">
         <div class="event-date-time">${eventDate} • ${eventTime.substring(0, 5)}</div>
         <h3 class="event-title">${eventName}</h3>
-        
+
         <div class="event-location" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 0.35rem; margin-top: 0.25rem;">
           ${(() => {
             const states = (event.state || "")
@@ -1164,10 +1164,10 @@ function createEventCard(event, index) {
               </div>`;
           })()}
         </div>
-        
+
         <div class="event-card-description">${desc}</div>
         <div class="event-organizer">
-            By ${organizer} 
+            By ${organizer}
             ${event.is_verified == 1 ? '<i data-lucide="check-circle-2" class="organizer-verified" title="Verified"></i>' : ""}
         </div>
       </div>
@@ -2003,7 +2003,7 @@ function showEventModal(eventId) {
     orgContainer.style.display = "flex";
     orgContainer.style.alignItems = "center";
     orgContainer.style.gap = "8px";
-    orgContainer.innerHTML = `Organized by <span style="font-weight: 600;">${escapeHTML(event.organizer_name || event.client_name || "EventOut")}</span> 
+    orgContainer.innerHTML = `Organized by <span style="font-weight: 600;">${escapeHTML(event.organizer_name || event.client_name || "EventOut")}</span>
       ${typeof getVerificationBadge === "function" ? getVerificationBadge(event.verification_status) : event.is_verified == 1 ? '<span class="verified-check" style="color: #722f37; margin-left: 5px;" title="Verified">✓</span>' : ""}`;
   }
   if (window.lucide) window.lucide.createIcons();
@@ -2661,3 +2661,122 @@ window._updateLocSelection = function () {
     });
   window.selectedEventLocations = checked;
 };
+
+// ── Published-event recommendation banner (web homepage + app login page) ──
+let _suggestionsBannerEls = [];
+
+function renderPublishedEventBanners(events) {
+  _suggestionsBannerEls = [];
+  try {
+    const sections = [
+      { banner: 'event-suggestions-banner', carousel: 'featuredSection' },
+      { banner: 'event-suggestions-banner-app', carousel: null },
+    ];
+
+    for (const section of sections) {
+      const container = document.getElementById(section.banner);
+      if (!container) continue;
+      const candidates = events
+        .filter((e) => (e.sales_count || 0) > 0 || (e.attendee_count || 0) > 0)
+        .slice(0, 6);
+      if (candidates.length === 0) continue;
+
+      // App login page: link straight into the app from the suggestion card.
+      if (section.carousel === null) {
+        renderAppSuggestionCards(container, candidates);
+        continue;
+      }
+
+      // Web homepage: fill the existing discovery banner carousel.
+      const grid = document.getElementById(section.carousel);
+      if (!grid) continue;
+      const existingSlides = grid.querySelectorAll('.swiper-slide');
+      _suggestionsBannerEls = Array.from(existingSlides);
+      const existingIds = new Set(
+        _suggestionsBannerEls
+          .map((el) => el.getAttribute('data-event-id'))
+          .filter(Boolean)
+          .map(Number),
+      );
+
+      const fresh = candidates.slice(0, 4).filter(
+        (e) => !existingIds.has(e.id),
+      );
+      if (fresh.length === 0) continue;
+
+      const fragment = document.createDocumentFragment();
+      fresh.forEach((event) => {
+        const slide = document.createElement('div');
+        slide.className = 'swiper-slide suggestion-card-container';
+        slide.setAttribute('data-event-id', String(event.id));
+        slide.innerHTML = buildSuggestionCardHTML(event);
+        fragment.appendChild(slide);
+      });
+      // Insert banner cards at the front so they lead the section.
+      if (_suggestionsBannerEls.length > 0) {
+        _suggestionsBannerEls[0].before(fragment);
+      } else {
+        grid.prepend(fragment);
+      }
+      _suggestionsBannerEls = grid.querySelectorAll('.swiper-slide');
+      initSwiper(grid.parentElement, grid.id);
+      if (window.lucide) window.lucide.createIcons();
+
+      break;
+    }
+  } catch (_) {}
+}
+
+function buildSuggestionCardHTML(event) {
+  const img =
+    typeof getImageUrl === 'function'
+      ? getImageUrl(event.image_path)
+      : (event.image_path
+          ? '/' + event.image_path.replace(/^\/+/, '')
+          : 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=220&fit=crop');
+  const tickets = event.sales_count ?? event.ticket_count ?? 0;
+  const attendees = event.attendee_count ?? 0;
+  const date = event.event_date
+    ? new Date(event.event_date + 'T00:00:00')
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'TBA';
+  return `
+    <div class="suggestion-card" data-event-id="${event.id}" onclick="window.location.href='/index.html?event_id=${event.id}'">
+      <div class="suggestion-img" style="background-image:url('${img}')"></div>
+      <div class="suggestion-body">
+        <div class="suggestion-label">${tickets} tickets · ${attendees} attending</div>
+        <div class="suggestion-title">${escapeHTML(event.event_name.replace(/\s*#\\d+$/, ''))}</div>
+        <div class="suggestion-date">${date}</div>
+      </div>
+    </div>`;
+}
+
+function renderAppSuggestionCards(container, candidates) {
+  let html = '';
+  candidates.slice(0, 4).forEach((event) => {
+    const img =
+      typeof getImageUrl === 'function'
+        ? getImageUrl(event.image_path)
+        : (event.image_path
+            ? '/' + event.image_path.replace(/^\/+/, '')
+            : 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=220&fit=crop');
+    const tickets = event.sales_count ?? event.ticket_count ?? 0;
+    const attendees = event.attendee_count ?? 0;
+    const date = event.event_date
+      ? new Date(event.event_date + 'T00:00:00')
+          .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : 'TBA';
+    html += `
+      <div class="suggestion-card" data-event-id="${event.id}" onclick="window.location.href='/app.html?event_id=${event.id}'">
+        <div class="suggestion-img" style="background-image:url('${img}')"></div>
+        <div class="suggestion-body">
+          <div class="suggestion-label">${tickets} tickets · ${attendees} attending</div>
+          <div class="suggestion-title">${escapeHTML(event.event_name.replace(/\s*#\\d+$/, ''))}</div>
+          <div class="suggestion-date">${date}</div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = `
+    <div class="suggestions-scroll">${html}</div>`;
+  _suggestionsBannerEls = Array.from(container.querySelectorAll('.suggestion-card'));
+}

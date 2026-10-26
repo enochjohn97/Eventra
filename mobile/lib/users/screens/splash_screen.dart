@@ -1,4 +1,4 @@
-// ignore_for_file: depend_on_referenced_packages
+// ignore_for_file: use_build_context_synchronously, depend_on_referenced_packages
 
 import 'dart:async';
 import 'dart:io';
@@ -163,6 +163,17 @@ class _SplashScreenState extends State<SplashScreen>
       // The provider only returns true after the Google credential has been
       // exchanged for a valid EventOut session.
       setState(() => _signedIn = true);
+      scaffoldMessengerKey.currentState
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Signed in successfully.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      if (!PendingCheckout.resume(context)) {
+        context.go('/home');
+      }
     } catch (_) {
       if (mounted) {
         messenger.showSnackBar(
@@ -447,9 +458,7 @@ class _GoogleSuccessOverlayState extends State<_GoogleSuccessOverlay>
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF5F5DC),
-      ),
+      decoration: const BoxDecoration(color: Color(0xFFF5F5DC)),
       child: Center(
         child: FadeTransition(
           opacity: _contentFade,
