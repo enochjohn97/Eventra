@@ -1049,7 +1049,7 @@ function _fetchPublishedClientEvents() {
     try { data = await res.json(); } catch (_) { return []; }
     if (!data || !data.success || !Array.isArray(data.events)) return [];
     return data.events
-      .filter(e => (e.sales_count || 0) > 0 || (e.attendee_count || 0) > 0)
+      .filter(e => (e.sales_count || 0) > 2 || (e.attendee_count || 0) > 2)
       .sort((a, b) =>
         (b.sales_count || 0) - (a.sales_count || 0) ||
         (b.attendee_count || 0) - (a.attendee_count || 0)

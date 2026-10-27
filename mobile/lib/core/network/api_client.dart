@@ -71,10 +71,12 @@ class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: url.replaceFirst(RegExp(r'/$'), ''),
-        // Long enough for the shared host's cold start; individual requests
+        // Tight enough that a dead origin fails fast (and the endpoint
+        // recovery kicks in) instead of pinning a screen for two minutes,
+        // still generous for the shared host's cold start. Individual requests
         // override this downward where appropriate (see user_profile_service).
-        connectTimeout: const Duration(seconds: 120),
-        receiveTimeout: const Duration(seconds: 120),
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 45),
         followRedirects: true,
         maxRedirects: 5,
         headers: {
@@ -127,7 +129,7 @@ class ApiClient {
           // Solving it natively is instant and works the same on Android/iOS
           // and against local or live hosts — no WebView required.
           if (isHtml && HostChallenge.isChallenge(body)) {
-            final opts = response.requestOptions;
+            var opts = response.requestOptions;
             final solved = HostChallenge.solve(body);
             if (solved != null) {
               setBypassCookie(solved);
@@ -136,6 +138,9 @@ class ApiClient {
               // to the request itself or the host serves the challenge again.
               opts.headers['Cookie'] = solved;
             }
+            // Follow the challenge's own redirect target (`+ &i=1`) — the
+            // host validates the cookie against that exact URL.
+            opts = _retargetToChallenge(opts, body);
             // ALWAYS replay, even when the inline solve failed (truncated
             // challenge body on a flaky connection): _replay re-fetches a
             // fresh challenge page and solves it there, instead of failing
@@ -160,7 +165,7 @@ class ApiClient {
                 response: response,
                 type: DioExceptionType.badResponse,
                 message:
-                    'Eventra could not pass the hosting security check. '
+                    'EventOut could not pass the hosting security check. '
                     'Please try again in a moment.',
               ),
             );
@@ -219,7 +224,7 @@ class ApiClient {
             // HTML error body = anti-bot challenge — solve and replay instead
             // of failing (mirrors the success-path handling above).
             if (isHtml && HostChallenge.isChallenge(body)) {
-              final opts = error.requestOptions;
+              var opts = error.requestOptions;
               final solved = HostChallenge.solve(body);
               if (solved != null) {
                 setBypassCookie(solved);
@@ -227,6 +232,7 @@ class ApiClient {
                 // bypass cookie to the request itself (see onResponse).
                 opts.headers['Cookie'] = solved;
               }
+              opts = _retargetToChallenge(opts, body);
               // Replay unconditionally: _replay re-fetches and re-solves a
               // fresh challenge when the inline solve failed (truncated
               // body) so a flaky first response never fails the request.
@@ -248,7 +254,7 @@ class ApiClient {
                   response: error.response,
                   type: DioExceptionType.badResponse,
                   message:
-                      'Eventra could not pass the hosting security check. '
+                      'EventOut could not pass the hosting security check. '
                       'Please try again in a moment.',
                 ),
               );
@@ -371,7 +377,7 @@ class ApiClient {
                 requestOptions: error.requestOptions,
                 type: error.type,
                 message:
-                    'No internet connection or timeout trying to reach: ${error.requestOptions.uri}. Check your network and API URL.',
+                    "Couldn't connect. Try again later.",
               ),
             );
           }
@@ -405,6 +411,10 @@ class ApiClient {
         await Future.delayed(Duration(seconds: _retryDelays[attempt - 1]));
       }
       final freshDio = Dio(dio.options);
+      // Replays must target the URL the challenge itself navigates a real
+      // browser to (`original + &i=1`) — the host only honours the solved
+      // `__test` cookie on that exact URL, otherwise every retry is
+      // re-challenged forever (this is what kept the live feed empty).
       final Response<dynamic> res;
       try {
         res = await freshDio.fetch(opts);
@@ -427,6 +437,7 @@ class ApiClient {
             setBypassCookie(cookie);
             opts.headers['Cookie'] = cookie;
           }
+          opts = _retargetToChallenge(opts, failedBody);
         }
         continue;
       }
@@ -437,16 +448,41 @@ class ApiClient {
         return res;
       }
       // Host still serving an HTML page — attach a fresh challenge cookie
-      // (if any) and try again on the next loop iteration.
+      // (if any), retarget to the challenge's redirect URL, and try again on
+      // the next loop iteration.
       if (HostChallenge.isChallenge(body)) {
         final cookie = HostChallenge.solve(body);
         if (cookie != null) {
           setBypassCookie(cookie);
           opts.headers['Cookie'] = cookie;
         }
+        opts = _retargetToChallenge(opts, body);
       }
     }
     return null;
+  }
+
+  /// Points [opts] at the URL the challenge page's `location.href` names
+  /// (the original request URL with `i=1` appended). A browser always lands
+  /// there after solving, so the host validates the cookie against it.
+  static RequestOptions _retargetToChallenge(RequestOptions opts, String html) {
+    final match = RegExp(
+      r'location\.href\s*=\s*"([^"]+)"',
+    ).firstMatch(html);
+    if (match == null) return opts;
+    final target = Uri.tryParse(match.group(1)!);
+    if (target == null || !target.hasScheme || target.host.isEmpty) {
+      return opts;
+    }
+    try {
+      return opts.copyWith(
+        baseUrl: '${target.scheme}://${target.authority}',
+        path: target.path,
+        queryParameters: Map<String, dynamic>.from(target.queryParameters),
+      );
+    } catch (_) {
+      return opts;
+    }
   }
 
   static bool _looksLikeHtml(String body) {

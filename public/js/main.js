@@ -1836,6 +1836,48 @@ async function init() {
   }, 60000);
 }
 
+// ── Holiday themes — the rising shapes follow the nearest holiday ─────────
+// Reads the holiday cache written by holiday-alerts.js and maps the closest
+// holiday (today or within 7 days) to themed emblems + colours, so Christmas
+// rises trees/bells, Sallah a crescent, Easter eggs, and so on.
+const HOLIDAY_THEMES = [
+  { match: ["christmas"], emblems: ["🎄", "🔔", "⭐"], colors: ["#16a34a", "#15803d"] },
+  { match: ["sallah", "eid", "ramadan", "kabir", "maulud", "fitr", "al-hijra"], emblems: ["☪️", "🌙", "🪔"], colors: ["#15803d", "#b45309"] },
+  { match: ["easter", "good friday", "ash wednesday"], emblems: ["🥚", "🐣", "🐰"], colors: ["#f472b6", "#a855f7"] },
+  { match: ["new year"], emblems: ["🎆", "🎇", "✨"], colors: ["#3b82f6", "#1d4ed8"] },
+  { match: ["valentine"], emblems: ["❤️", "💝", "💌"], colors: ["#ec4899", "#be185d"] },
+  { match: ["box"], emblems: ["🎁", "🎀", "🪄"], colors: ["#ef4444", "#b91c1c"] },
+];
+
+let _holidayThemeCache = { at: 0, theme: null };
+
+function activeHolidayTheme() {
+  const now = Date.now();
+  if (now - _holidayThemeCache.at < 60000) return _holidayThemeCache.theme;
+  let theme = null;
+  try {
+    const raw = window.localStorage.getItem("eventout_holiday_data_v1");
+    const data = raw ? JSON.parse(raw) : null;
+    const holidays = data && Array.isArray(data.holidays) ? data.holidays : [];
+    const pad = (n) => (String(n).length < 2 ? "0" + n : String(n));
+    const today = new Date();
+    const todayISO = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+    const dayDiff = (fromISO, toISO) =>
+      Math.round((Date.parse(toISO + "T00:00:00Z") - Date.parse(fromISO + "T00:00:00Z")) / 86400000);
+    const near = holidays
+      .filter((h) => h && h.date && h.date >= todayISO && dayDiff(todayISO, h.date) <= 7)
+      .sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+    if (near) {
+      const title = String(near.title || "").toLowerCase();
+      theme = HOLIDAY_THEMES.find((t) => t.match.some((m) => title.includes(m))) || null;
+    }
+  } catch (e) {
+    theme = null;
+  }
+  _holidayThemeCache = { at: now, theme };
+  return theme;
+}
+
 function startHomeCelebration() {
   let layer = document.getElementById("homeCelebrationLayer");
   if (!layer) {
@@ -1857,9 +1899,18 @@ function startHomeCelebration() {
 
   const spawnBalloon = (delayMs = 0) => {
     if (!layer || !document.body.contains(layer)) return;
+    const theme = activeHolidayTheme();
     const balloon = document.createElement("div");
-    balloon.className = "balloon";
-    const colors = palettes[Math.floor(Math.random() * palettes.length)];
+    const colors = theme
+      ? theme.colors
+      : palettes[Math.floor(Math.random() * palettes.length)];
+    if (theme) {
+      // Holiday running: rise as the holiday's emblem instead of a balloon.
+      balloon.className = "balloon balloon--emblem";
+      balloon.textContent = theme.emblems[Math.floor(Math.random() * theme.emblems.length)];
+    } else {
+      balloon.className = "balloon";
+    }
     const duration = 8500 + Math.random() * 4500;
     balloon.style.setProperty("--b1", colors[0]);
     balloon.style.setProperty("--b2", colors[1]);
@@ -2668,8 +2719,11 @@ let _suggestionsBannerEls = [];
 
 function renderPublishedEventBanners(events) {
   _suggestionsBannerEls = [];
+  // Recommendation only kicks in once an event's tickets have been bought
+  // more than twice (sales/attendee count > 2) — shown to guests and
+  // registered users alike on the homepage.
   const candidates = events
-    .filter((event) => Number(event.sales_count) > 0 || Number(event.attendee_count) > 0)
+    .filter((event) => Number(event.sales_count) > 2 || Number(event.attendee_count) > 2)
     .sort(
       (a, b) =>
         Number(b.sales_count || 0) - Number(a.sales_count || 0) ||
@@ -2684,6 +2738,7 @@ function renderPublishedEventBanners(events) {
     _suggestionsBannerEls = Array.from(banner.querySelectorAll('.suggestion-card'));
     const section = document.getElementById('eventSuggestionsSection');
     if (section) section.style.display = '';
+    initSuggestionsSlide(banner);
   }
 
   const appBanner = document.getElementById('event-suggestions-banner-app');
@@ -2741,5 +2796,46 @@ function renderAppSuggestionCards(container, candidates) {
   });
   container.innerHTML = `
     <div class="suggestions-scroll">${html}</div>`;
+  initSuggestionsSlide(container);
   _suggestionsBannerEls = Array.from(container.querySelectorAll('.suggestion-card'));
+}
+
+/**
+ * Makes the recommendation row slide on its own.
+ * The cards are duplicated into a `.suggestion-track` and the track is
+ * translated by -50% forever, so the wrap is invisible. Only switches on when
+ * the duplicated row is wider than the strip — a short list simply stays
+ * scrollable instead of sliding into empty space. Hover pauses it.
+ */
+function initSuggestionsSlide(root) {
+  const scroller = root.querySelector('.suggestions-scroll');
+  if (!scroller || scroller.dataset.slidingReady) return;
+  const cards = Array.from(scroller.querySelectorAll('.suggestion-card'));
+  if (cards.length < 2) return;
+
+  const markup = cards.map((card) => card.outerHTML).join('');
+  const track = document.createElement('div');
+  track.className = 'suggestion-track';
+  track.innerHTML = markup + markup;
+  scroller.innerHTML = '';
+  scroller.appendChild(track);
+  scroller.dataset.slidingReady = '1';
+
+  // Measure after layout: the section is often still display:none at this
+  // point, so wait a frame (and a few more if needed) before deciding whether
+  // the cards actually overflow the strip.
+  let tries = 0;
+  const apply = () => {
+    const visible = scroller.clientWidth;
+    if (!visible) {
+      if (tries++ < 120) requestAnimationFrame(apply);
+      return;
+    }
+    const trackWidth = track.scrollWidth || track.offsetWidth;
+    if (trackWidth <= visible + 8) return; // fits — leave it scrollable
+    scroller.classList.add('is-sliding');
+    // ~5s per card keeps it readable without feeling static.
+    track.style.animationDuration = Math.max(14, cards.length * 5) + 's';
+  };
+  requestAnimationFrame(apply);
 }

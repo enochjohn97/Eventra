@@ -30,6 +30,33 @@ class EndpointResolver {
   /// testing; EndpointResolver will then probe the configured local dev hosts.
   static const _override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
+  /// Remote origins used only when NO local dev server answers — i.e. release
+  /// builds (APKs shared with other users) and any device outside the
+  /// developer's Wi-Fi. Override at build time with
+  /// `--dart-define=LIVE_API_HOSTS=https://other-host.example`.
+  static const _liveHosts = String.fromEnvironment(
+    'LIVE_API_HOSTS',
+    defaultValue: 'https://eventra-website.liveblog365.com',
+  );
+
+  /// Known live API origins, probed after every local candidate fails.
+  static List<String> get _liveCandidates {
+    final list = <String>[];
+    for (final raw in _liveHosts.split(',')) {
+      final host = raw.trim();
+      if (host.isEmpty) continue;
+      final url = _normalize(host);
+      if (url != null && !list.contains(url)) list.add(url);
+    }
+    return list;
+  }
+
+  /// True when [url] is one of the known live origins (never purged).
+  static bool _isLiveOrigin(String url) {
+    final normalized = _normalize(url);
+    return normalized != null && _liveCandidates.contains(normalized);
+  }
+
   /// Local dev-server hosts, comma separated `host[:port]`:
   /// `--dart-define=LOCAL_API_HOSTS=192.168.1.43:8000,127.0.0.1:8000`.
   ///
@@ -101,8 +128,10 @@ class EndpointResolver {
     var saved = prefs.getString(_prefsKey);
     // Purge an origin remembered from a previous backend: a stale remote host
     // must not win the fast path and re-break the app after the switch to the
-    // local server.
-    if (saved != null && !_isLocalOrigin(saved)) {
+    // local server. The known live origin is exempt — it is a valid fallback
+    // on any device (release APKs), just never preferred over a live local dev
+    // server.
+    if (saved != null && !_isLocalOrigin(saved) && !_isLiveOrigin(saved)) {
       await prefs.remove(_prefsKey);
       saved = null;
     }
@@ -140,7 +169,20 @@ class EndpointResolver {
         )) {
       return _adopt(prefs, _override.replaceFirst(RegExp(r'/$'), ''));
     }
-    if (saved != null && !_isLoopbackOrigin(saved)) {
+    // Explicit remote override (e.g. --dart-define=API_BASE_URL=https://…):
+    // honoured first when it actually answers, so a device can be pointed at
+    // the live platform on demand.
+    if (_override != '' && !_isLocalOrigin(_override)) {
+      final normalizedOverride = _normalize(_override);
+      if (normalizedOverride != null && await _probe(normalizedOverride)) {
+        return _adopt(prefs, normalizedOverride);
+      }
+    }
+    // A remembered live origin is not a local candidate — it is probed last,
+    // after every local option, so starting a dev server still wins.
+    final savedLive =
+        (saved != null && _isLiveOrigin(saved)) ? _normalize(saved) : null;
+    if (saved != null && !_isLiveOrigin(saved) && !_isLoopbackOrigin(saved)) {
       add(local, saved);
     }
 
@@ -154,7 +196,28 @@ class EndpointResolver {
     }
 
     final configured = await _probeLocal(local);
-    final winner = configured ?? await _discoverLanOrigin();
+    var winner = configured ?? await _discoverLanOrigin();
+
+    // Fallback: the live platform. Keeps events, auth, payments, favorites
+    // and notifications working on any device with no dev server in sight.
+    // Probed WITHOUT the quick budget: this host fronts an anti-bot challenge
+    // that needs a second attempt (fresh cookie) to pass.
+    if (winner == null) {
+      final liveList = <String>[];
+      if (savedLive != null) liveList.add(savedLive);
+      liveList.addAll(_liveCandidates.where((c) => c != savedLive));
+      if (liveList.isNotEmpty) {
+        final answers = await Future.wait(
+          liveList.map((candidate) => _probe(candidate)),
+        );
+        for (var i = 0; i < liveList.length; i++) {
+          if (answers[i]) {
+            winner = liveList[i];
+            break;
+          }
+        }
+      }
+    }
 
     if (winner != null) return _adopt(prefs, winner);
 

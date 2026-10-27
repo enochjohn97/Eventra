@@ -3602,6 +3602,46 @@ body {
   animation: bannerSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Auto-sliding recommendation row: the cards are duplicated inside a track
+   so the loop wraps seamlessly (each card carries a right margin equal to the
+   gap, which makes -50% land exactly on the repeat). JS only switches this on
+   when the cards are wider than the strip; otherwise the row stays manually
+   scrollable. */
+.suggestions-scroll.is-sliding {
+  overflow: hidden;
+}
+
+.suggestion-track {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  animation: suggestionsSlide linear infinite;
+  will-change: transform;
+}
+
+/* Sliding swaps the gap for an equal margin on every card (including the
+   last), so -50% lands exactly on the repeat instead of half a gap out. */
+.suggestions-scroll.is-sliding .suggestion-track {
+  gap: 0;
+}
+
+.suggestions-scroll.is-sliding .suggestion-card {
+  margin-right: 12px;
+}
+
+.suggestions-scroll.is-sliding:hover .suggestion-track {
+  animation-play-state: paused;
+}
+
+@keyframes suggestionsSlide {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 /* Favorites sidebar cards */
 .favorite-card {
   display: flex;

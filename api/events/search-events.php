@@ -66,6 +66,12 @@ try {
     }
 
     // Detect free-keyword — also match zero-price events
+    // Private events stay off every user-facing list (homepage + search);
+    // the owning client's own dashboard and the admin console are exempt.
+    if ($user_role !== 'admin' && $user_role !== 'client') {
+        $where_clauses[] = "IFNULL(e.event_visibility, 'public') <> 'private'";
+    }
+
     $isFreeQuery = (strtolower($q) === 'free');
 
     // Unified Search logic

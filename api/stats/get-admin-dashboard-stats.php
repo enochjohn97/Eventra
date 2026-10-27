@@ -29,6 +29,8 @@ try {
             (SELECT COUNT(*) FROM clients c JOIN auth_accounts a ON c.client_auth_id = a.id WHERE c.verification_status != 'verified' AND c.deleted_at IS NULL AND a.deleted_at IS NULL) as clients_unverified
     ";
     
+    $failed_sections = [];
+    try {
     $stmt = $pdo->prepare($stats_sql);
     $stmt->execute();
     $stats = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -36,9 +38,21 @@ try {
     if (!$stats) {
         throw new Exception('Failed to fetch stats');
     }
+    } catch (Throwable $sec_err) {
+        // One failing query must not take the whole dashboard down — log the
+        // real cause and continue with zeroed counters.
+        error_log('[get-admin-dashboard-stats] stats query failed: ' . $sec_err->getMessage());
+        $failed_sections[] = 'stats';
+        $stats = array_fill_keys([
+            'total_users', 'online_users', 'user_checked_in', 'online_clients',
+            'total_clients', 'clients_verified', 'clients_unverified',
+            'total_events', 'total_revenue', 'pending_payments',
+        ], 0);
+    }
     
     // 2. Recent Activities — mix of logins and ticket purchases so the feed reads
     //    as real platform activity, not just "someone logged in".
+    try {
     $activities_stmt = $pdo->prepare("
         (SELECT al.event_type AS type, al.details AS message, al.created_at, 1 AS rank_order
          FROM auth_logs al
@@ -60,8 +74,14 @@ try {
     ");
     $activities_stmt->execute();
     $recent_activities = $activities_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $sec_err) {
+        error_log('[get-admin-dashboard-stats] activities query failed: ' . $sec_err->getMessage());
+        $failed_sections[] = 'recent_activities';
+        $recent_activities = [];
+    }
 
     // 3. Top Users and Active Clients (optimized with GROUP BY instead of subqueries)
+    try {
     $top_users_stmt = $pdo->prepare("
         SELECT u.id, u.name, u.profile_pic, u.state, 
                IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, 0) as is_online,
@@ -77,7 +97,13 @@ try {
     ");
     $top_users_stmt->execute();
     $top_users = $top_users_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $sec_err) {
+        error_log('[get-admin-dashboard-stats] top users query failed: ' . $sec_err->getMessage());
+        $failed_sections[] = 'top_users';
+        $top_users = [];
+    }
 
+    try {
     $active_clients_stmt = $pdo->prepare("
         SELECT c.id, c.business_name as name, c.profile_pic, c.company, c.state, a.email, 
                IF(a.is_online = 1 AND a.last_seen >= DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, 0) as is_online,
@@ -93,10 +119,16 @@ try {
     ");
     $active_clients_stmt->execute();
     $active_clients = $active_clients_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $sec_err) {
+        error_log('[get-admin-dashboard-stats] active clients query failed: ' . $sec_err->getMessage());
+        $failed_sections[] = 'active_clients';
+        $active_clients = [];
+    }
 
     // 4. Upcoming and Past Events
     // 2026-10-02: no artificial cap — the dashboard must show ALL events
     // (upcoming + past), not just the first few hundred.
+    try {
     $events_stmt = $pdo->prepare("
         SELECT e.id, e.event_name, e.event_date, e.image_path, c.business_name as client_name,
                IF(e.event_date >= CURDATE(), 'upcoming', 'past') as event_type
@@ -109,6 +141,11 @@ try {
     ");
     $events_stmt->execute();
     $all_events = $events_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $sec_err) {
+        error_log('[get-admin-dashboard-stats] events query failed: ' . $sec_err->getMessage());
+        $failed_sections[] = 'events';
+        $all_events = [];
+    }
 
     foreach ($all_events as &$ev) {
         if (!empty($ev['image_path'])) {
@@ -126,6 +163,7 @@ try {
 
     echo json_encode([
         'success' => true,
+        'failed_sections' => $failed_sections,
         'stats' => [
             'total_users' => (int) $stats['total_users'],
             'active_users' => (int) $stats['online_users'],
@@ -150,6 +188,7 @@ try {
         'recent_logs' => $recent_activities
     ]);
 } catch (Exception $e) {
+    error_log('[get-admin-dashboard-stats] Fatal: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Failed to fetch admin stats.']);
 }

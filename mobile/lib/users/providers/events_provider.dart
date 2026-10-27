@@ -112,7 +112,8 @@ class EventsProvider extends ChangeNotifier {
       try {
         // Bounded so a host that accepts the connection but never answers
         // cannot pin the grid on its skeleton — the timeout surfaces as a
-        // failure and the loop retries instead of waiting minutes.
+        // failure and the loop retries instead of waiting minutes. Kept short
+        // so a slow first paint falls through to the retry quickly.
         final result = await UserEventService.fetchEvents(
           page: _page,
           limit: pageSize,
@@ -124,7 +125,7 @@ class EventsProvider extends ChangeNotifier {
           freeOnly: filters.freeOnly,
           priceMin: filters.priceMin,
           priceMax: filters.priceMax,
-        ).timeout(const Duration(seconds: 22));
+        ).timeout(const Duration(seconds: 15));
         // A newer request (keystroke / page change) won the race — drop this one.
         if (requestId != _requestId) return;
 
@@ -151,7 +152,7 @@ class EventsProvider extends ChangeNotifier {
           // just joined the Wi-Fi). Re-run host discovery so the retry can
           // actually land on it instead of repeating a dead address.
           await EndpointResolver.resolve(force: true);
-          await Future<void>.delayed(Duration(seconds: attempt * 2));
+          await Future<void>.delayed(Duration(seconds: attempt));
           if (requestId != _requestId) return;
           continue;
         }

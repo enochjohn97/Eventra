@@ -809,6 +809,31 @@ textarea:focus,
   transform: translateX(-50%);
 }
 
+/* Holiday emblem variant — rises in place of a balloon whenever a holiday is
+   today or within 7 days: Christmas trees/bells, Sallah crescent, Easter eggs,
+   New Year fireworks, etc. (driven by activeHolidayTheme in main.js). */
+.balloon.balloon--emblem {
+  width: auto;
+  height: auto;
+  min-width: 46px;
+  padding: 9px 12px;
+  border-radius: 46%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 45%),
+    radial-gradient(circle at 50% 45%, var(--b1, #f59e0b), var(--b2, #d97706));
+  font-size: 30px;
+  line-height: 1;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.balloon.balloon--emblem::before,
+.balloon.balloon--emblem::after {
+  display: none;
+}
+
 @keyframes balloonRise {
   0% {
     opacity: 0;

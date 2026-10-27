@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -374,6 +375,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Log Out'),
           ),
         ),
+
+        // iOS-only: delete my data
+        if (Platform.isIOS) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: auth.isLoading
+                  ? null
+                  : () => context.go('/delete-data'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+              ),
+              child: const Text(
+                'Delete My Data',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

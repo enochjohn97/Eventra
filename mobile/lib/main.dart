@@ -119,7 +119,7 @@ class _LocalDevHintApp extends StatelessWidget {
               const Icon(Icons.cloud_off, size: 48, color: Color(0xFFB91C1C)),
               const SizedBox(height: 20),
               const Text(
-                "Can't find the PHP API on this Wi-Fi network.",
+                "Couldn't connect to the server.",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
@@ -127,9 +127,7 @@ class _LocalDevHintApp extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: const Text(
-                  "Keep the phone and computer on the same Wi-Fi. If you set "
-                  "API_BASE_URL, use the computer's IPv4 address, not the "
-                  "router address (often 192.168.1.1).",
+                  "Please check your internet connection and try again later.",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xFF666666), fontSize: 16),
                 ),

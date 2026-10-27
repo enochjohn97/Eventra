@@ -24,9 +24,10 @@ try {
         FROM events e
         WHERE e.status = 'published'
           AND e.deleted_at IS NULL
+          AND IFNULL(e.event_visibility, 'public') <> 'private'
           AND (
-              COALESCE(NULLIF(e.sales_count, ''), 0) > 0
-              OR COALESCE(NULLIF(e.attendee_count, ''), 0) > 0
+              COALESCE(NULLIF(e.sales_count, ''), 0) > 2
+              OR COALESCE(NULLIF(e.attendee_count, ''), 0) > 2
           )
         ORDER BY
             (COALESCE(NULLIF(e.sales_count, ''), 0)

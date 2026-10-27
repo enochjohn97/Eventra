@@ -97,6 +97,67 @@ try {
         error_log("[Publish Event Notification Error] " . $notif_err->getMessage());
     }
 
+    // ── Fan out to every user: in-app notification (mobile/web bell) + email ──
+    // Mirrors the published-event fan-out in create-event.php so publishing a
+    // draft reaches users exactly like creating a published event does.
+    try {
+        require_once '../utils/notification-helper.php';
+        require_once __DIR__ . '/../../includes/helpers/email-helper.php';
+
+        $fanoutStmt = $pdo->prepare("
+            SELECT u.id, u.name, u.user_auth_id, a.email, a.notification_preference
+            FROM users u
+            JOIN auth_accounts a ON a.id = u.user_auth_id
+        ");
+        $fanoutStmt->execute();
+        $pubUsers = $fanoutStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $event_link = !empty($event['external_link'])
+            ? $event['external_link']
+            : rtrim($_ENV['APP_URL'] ?? '', '/') . '/e/' . ($event['tag'] ?? '');
+
+        foreach ($pubUsers as $pubUser) {
+            // In-app notification for the mobile app + website
+            try {
+                createNotification(
+                    $pubUser['user_auth_id'],
+                    "New event published: '{$event['event_name']}' — check it out!",
+                    'event_published',
+                    $event['client_auth_id'],
+                    'user',
+                    'client',
+                    ['event_id' => (int) $event_id]
+                );
+            } catch (Throwable $inapp_err) {
+                error_log("[Publish Event] In-app notify failed for user {$pubUser['id']}: " . $inapp_err->getMessage());
+            }
+
+            // Email for users who opted into notifications
+            if (empty($pubUser['email']) || (int) ($pubUser['notification_preference'] ?? 1) !== 1) {
+                continue;
+            }
+            try {
+                $brandHeader = EmailHelper::brandEmailHeaderHtml('20px');
+                $subject = "New Event Published: {$event['event_name']}";
+                $body = $brandHeader . "
+                    <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee;'>
+                        <h2 style='color: #2ecc71;'>New Event Available 🎉</h2>
+                        <p>Hi {$pubUser['name']},</p>
+                        <p>A new event has been published: <strong>{$event['event_name']}</strong></p>
+                        <p><a href='{$event_link}' style='display: inline-block; background: #722f37; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600;'>View Event</a></p>
+                        <p>Check it out and get your tickets!</p>
+                    </div>
+                ";
+                $result = EmailHelper::sendEmail($pubUser['email'], $subject, $body);
+                error_log("[PublishEvent] Email to user {$pubUser['id']}: " . ($result['success'] ? 'success' : $result['message']));
+            } catch (Throwable $email_err) {
+                error_log("[PublishEvent] Email failed for user {$pubUser['id']}: " . $email_err->getMessage());
+            }
+        }
+    } catch (Throwable $fanout_err) {
+        error_log("[Publish Event Fanout Error] " . $fanout_err->getMessage());
+    }
+
     ob_end_clean();
     echo json_encode([
         'success' => true,

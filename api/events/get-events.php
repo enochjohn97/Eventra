@@ -130,6 +130,7 @@ try {
         $publicBase = "FROM events e
             LEFT JOIN clients u ON e.client_id = u.id
             WHERE e.deleted_at IS NULL
+              AND IFNULL(e.event_visibility, 'public') <> 'private'
               AND e.status = 'published'";
 
         $ticketFilter = "AND (e.ticket_count > 0 OR e.ticket_count IS NULL)";
@@ -272,6 +273,23 @@ try {
         $params[]        = $status;
     } elseif ($user_role !== 'admin' && !$is_dashboard) {
         $where_clauses[] = "e.status = 'published'";
+    }
+
+    // ── Private events stay off user-facing homepages ────────────────────
+    // `event_visibility = 'private'` means owner + admin only, so a
+    // published-but-private event never reaches the web homepage, the mobile
+    // feed, search or the recommendation sources. NULL/legacy rows read as
+    // 'public' so nothing already listed disappears. The owning client's own
+    // dashboard and the admin console keep seeing everything.
+    $hide_private = ($user_role !== 'admin');
+    if ($hide_private && $client_id) {
+        $own_client = $_SESSION['client_id'] ?? null;
+        if ($own_client && (string) $own_client === (string) $client_id) {
+            $hide_private = false;
+        }
+    }
+    if ($hide_private) {
+        $where_clauses[] = "IFNULL(e.event_visibility, 'public') <> 'private'";
     }
 
     // Exclude soft-deleted

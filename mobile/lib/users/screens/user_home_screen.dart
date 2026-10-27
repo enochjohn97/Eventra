@@ -1,8 +1,11 @@
 // ignore_for_file: unused_field, prefer_final_fields
 
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/event_utils.dart';
 import '../../core/widgets/brand_logo.dart';
@@ -27,6 +30,12 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   final _scrollController = ScrollController();
   Timer? _debounce;
   Timer? _holidayTimer;
+  Timer? _notifTimer;
+  bool _notifPolling = false;
+
+  /// Remembers the newest event-published notification this device has shown
+  /// so the alert only fires once per new publish.
+  static const _lastSeenNotifKey = 'last_event_published_notif_id';
   List<Holiday> _holidays = const [];
   bool _holidayAlertShown = false;
   bool _isScrolled = false;
@@ -50,16 +59,26 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<EventsProvider>();
       _searchCtrl.text = provider.search;
+      // Keep the recommendation carousel in sync as the feed (re)loads.
+      provider.addListener(_loadSuggestions);
       provider.loadEvents(refresh: true);
     });
     _loadHolidays();
     _loadSuggestions();
+    // Push-style alert: poll the notifications API for events published by
+    // clients and surface each new one while the app is open.
+    _pollNotifications();
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _pollNotifications(),
+    );
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _holidayTimer?.cancel();
+    _notifTimer?.cancel();
     _searchCtrl.dispose();
     _searchFocus.dispose();
     _scrollController.dispose();
@@ -101,17 +120,29 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   /// Re-shows the holiday notice every [_holidayAlertMinutes] minutes while a
   /// holiday is today or within 7 days, and stops as soon as none is near — so
 
-  /// Quick suggestion cards shown on the home screen — most attended,
-  /// hot & trending, and tickets sold, pulled from the events provider.
+  /// Recommendation carousel shown above the feed — only events whose
+  /// tickets have been bought MORE THAN TWICE (sales/attendee count > 2),
+  /// ranked by demand. Mirrors the website's suggestion banner so new and
+  /// registered users see the same recommendations on mobile and web.
   void _loadSuggestions() {
+    if (!mounted) return;
     final provider = context.read<EventsProvider>();
-    // Use the first few unfiltered events as quick home-screen suggestions.
-    // In a production app these would be ranked by attendance/sales, but here
-    // we just show a sample of recent events.
-    if (provider.events.isNotEmpty && !_showSuggestions) {
+    final hot = provider.events
+        .where((e) => e.salesCount > 2 || e.attendeeCount > 2)
+        .toList()
+      ..sort((a, b) {
+        final bySales = b.salesCount.compareTo(a.salesCount);
+        return bySales != 0
+            ? bySales
+            : b.attendeeCount.compareTo(a.attendeeCount);
+      });
+    final next = hot.take(6).toList();
+    final changed = next.length != _suggestedEvents.length ||
+        next.any((e) => !_suggestedEvents.any((s) => s.id == e.id));
+    if (changed) {
       setState(() {
-        _suggestedEvents = provider.events.take(6).toList();
-        _showSuggestions = true;
+        _suggestedEvents = next;
+        _showSuggestions = next.isNotEmpty;
       });
     }
   }
@@ -190,7 +221,62 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       );
   }
 
-  // ── Live search (debounced) ──────────────────────────────────────────────
+  /// Polls the user's notifications and alerts about events newly published
+  /// by clients (in-app push). Best-effort: guests/401s/network errors are
+  /// silently ignored so discovery never breaks.
+  Future<void> _pollNotifications() async {
+    if (_notifPolling) return;
+    _notifPolling = true;
+    try {
+      final res = await ApiClient().dio.get(
+        '/notifications/get-notifications.php',
+        queryParameters: {'limit': 10},
+      );
+      final data = res.data;
+      if (data is! Map || data['success'] != true) return;
+      final rows = (data['notifications'] as List? ?? [])
+          .whereType<Map>()
+          .toList();
+      if (rows.isEmpty) return;
+
+      int idOf(Map n) => int.tryParse('${n['id']}') ?? 0;
+      final newest = rows.map(idOf).reduce((a, b) => a > b ? a : b);
+
+      final prefs = await SharedPreferences.getInstance();
+      final hadBaseline = prefs.containsKey(_lastSeenNotifKey);
+      final lastSeen = prefs.getInt(_lastSeenNotifKey) ?? 0;
+      // First run: remember the current head without alerting, so only
+      // genuinely new publishes notify the user from now on.
+      if (!hadBaseline) {
+        await prefs.setInt(_lastSeenNotifKey, newest);
+        return;
+      }
+
+      final fresh = rows
+          .where((n) =>
+              idOf(n) > lastSeen && '${n['type']}' == 'event_published')
+          .toList();
+      if (fresh.isEmpty) return;
+      await prefs.setInt(
+        _lastSeenNotifKey,
+        newest > lastSeen ? newest : lastSeen,
+      );
+      if (!mounted) return;
+      for (final n in fresh.reversed) {
+        _showHolidaySnack('📣 ${n['message'] ?? 'A new event has been published!'}');
+      }
+      // Refresh the feed so the just-published event appears immediately.
+      if (fresh.isNotEmpty) {
+        context.read<EventsProvider>().loadEvents(refresh: true);
+      }
+    } catch (_) {
+      // Not signed in yet, token expired, or offline — try again next tick.
+    } finally {
+      _notifPolling = false;
+    }
+  }
+
+  // ── Live search (debounced) ──────────────────────────────────────────────────
   void _onQueryChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 450), () {
@@ -363,6 +449,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
             ),
             if (_holidays.isNotEmpty)
               SliverToBoxAdapter(child: _HolidayStrip(holidays: _holidays)),
+            if (_showSuggestions && _suggestedEvents.isNotEmpty)
+              SliverToBoxAdapter(
+                child: _RecommendStrip(
+                  events: _suggestedEvents,
+                  onTap: (e) => _openEvent(context, e),
+                ),
+              ),
             if (provider.isRefreshing)
               const SliverToBoxAdapter(
                 child: LinearProgressIndicator(minHeight: 2),
@@ -543,6 +636,167 @@ class _HolidayStrip extends StatelessWidget {
   static String _todayIso() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Recommendation carousel — events whose tickets have been bought more than
+/// twice, shown above the feed on the home screen (same threshold as the
+/// website's homepage banner).
+class _RecommendStrip extends StatefulWidget {
+  final List<EventModel> events;
+  final ValueChanged<EventModel> onTap;
+  const _RecommendStrip({required this.events, required this.onTap});
+
+  @override
+  State<_RecommendStrip> createState() => _RecommendStripState();
+}
+
+class _RecommendStripState extends State<_RecommendStrip> {
+  /// One card of horizontal travel: card width (210) + separator (12).
+  static const double _stride = 222;
+
+  /// Distance after which the strip repeats itself pixel for pixel, because
+  /// the card list is rendered twice (see itemCount below).
+  double get _loop => widget.events.length * _stride;
+
+  final ScrollController _scroll = ScrollController();
+  Timer? _slide;
+  double _offset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _slide = Timer.periodic(const Duration(milliseconds: 40), (_) => _tick());
+  }
+
+  @override
+  void didUpdateWidget(covariant _RecommendStrip old) {
+    super.didUpdateWidget(old);
+    if (old.events.length != widget.events.length && _scroll.hasClients) {
+      _offset = _scroll.offset;
+    }
+  }
+
+  /// Slides the strip on its own (~45px/s), pausing while the user is touching
+  /// it and skipping entirely when one set of cards does not fill the screen —
+  /// in that case there is nothing to loop, so it stays manually scrollable.
+  void _tick() {
+    if (!mounted || !_scroll.hasClients) return;
+    final position = _scroll.position;
+    if (position.isScrollingNotifier.value) {
+      // User is dragging: remember their position so the slide resumes from it.
+      _offset = _scroll.offset;
+      return;
+    }
+    final loop = _loop;
+    final max = position.maxScrollExtent;
+    if (loop <= 0 || max < loop) return;
+    _offset += 1.8;
+    while (_offset >= loop) {
+      _offset -= loop;
+    }
+    _scroll.jumpTo(_offset.clamp(0.0, max).toDouble());
+  }
+
+  @override
+  void dispose() {
+    _slide?.cancel();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.events;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Text(
+            '🔥 Recommended for you',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textMain,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 168,
+          child: ListView.separated(
+            controller: _scroll,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            // Rendered twice: after one full set (n × 222px) the next frame is
+            // identical, so the auto-slide wraps without a visible jump.
+            itemCount: items.length * 2,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final event = items[index % items.length];
+              final imageUrl = ApiClient().absoluteUrl(event.imagePath);
+              return InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => widget.onTap(event),
+                child: Container(
+                  width: 210,
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: imageUrl.isEmpty
+                            ? const SizedBox.expand()
+                            : CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, _, _) =>
+                                    const SizedBox.expand(),
+                              ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              event.eventName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textMain,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${event.salesCount > 0 ? event.salesCount : event.attendeeCount} tickets sold · ${event.attendeeCount} attending',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textMain.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
 

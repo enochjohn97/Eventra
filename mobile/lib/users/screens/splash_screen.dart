@@ -197,15 +197,18 @@ class _SplashScreenState extends State<SplashScreen>
 
     final config = context.read<AppConfigProvider>();
     final auth = context.read<AuthProvider>();
-    try {
-      await config.load().timeout(const Duration(seconds: 8));
-    } catch (_) {}
-    if (!mounted) return;
+    // Both are independent network calls off the same resolved origin — run
+    // them together so startup pays one round trip instead of two stacked.
+    final configLoad =
+        config.load()
+            .timeout(const Duration(seconds: 8))
+            .catchError((_) {});
     try {
       await auth.bootstrap().timeout(const Duration(seconds: 8));
     } catch (_) {
       auth.status = AuthStatus.unauthenticated;
     }
+    await configLoad;
     if (!mounted) return;
 
     if (auth.status == AuthStatus.authenticated ||
