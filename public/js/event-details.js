@@ -214,6 +214,73 @@ function renderEvent(event) {
             window.location.href = `checkout.html?id=${event.id}&quantity=${qty}&type=${type}`;
         };
     }
+
+    // Arriving from an email/share "View Event" link: offer to continue in the
+    // mobile app (deep link) or stay in the browser.
+    offerOpenInApp(event);
+}
+
+// Popup shown when a visitor lands on this event page (e.g. from the email's
+// "View Event" button), letting them choose the mobile app or the browser.
+function offerOpenInApp(event) {
+    try {
+        if (!event || !event.id) return;
+        const key = 'app_prompt_' + event.id;
+        if (sessionStorage.getItem(key)) return; // once per event per session
+        sessionStorage.setItem(key, '1');
+
+        setTimeout(() => {
+            if (typeof Swal === 'undefined') return;
+            Swal.fire({
+                title: 'Open in the EventOut app?',
+                text: 'Continue in the mobile app for the best experience, or keep browsing here.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Open in mobile app',
+                cancelButtonText: 'Continue in browser',
+                reverseButtons: true
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    // Registered custom scheme — opens the app straight to this
+                    // event when it's installed. If it isn't, the handoff below
+                    // quietly fails and the visitor keeps browsing on the web.
+                    openInMobileApp('eventout://event?id=' + event.id);
+                }
+            });
+        }, 1200);
+    } catch (e) { /* never block page rendering */ }
+}
+
+// Hand the visitor off to the installed mobile app. Detection: launching a
+// custom scheme makes the page lose focus / go hidden when an app takes over;
+// when nothing happens within the timeout we assume the app isn't installed
+// and let the visitor continue in the browser (no dead end, no error page).
+function openInMobileApp(schemeUrl) {
+    try {
+        let launched = false;
+        const markLaunched = () => {
+            if (document.hidden || !document.hasFocus()) launched = true;
+        };
+        document.addEventListener('visibilitychange', markLaunched);
+        window.addEventListener('blur', markLaunched);
+
+        // iframe attempt first (more reliable on iOS Safari), then top-level.
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'display:none;width:0;height:0;border:0;';
+        iframe.src = schemeUrl;
+        document.body.appendChild(iframe);
+        setTimeout(() => { try { window.location.href = schemeUrl; } catch (e) {} }, 250);
+
+        setTimeout(() => {
+            document.removeEventListener('visibilitychange', markLaunched);
+            window.removeEventListener('blur', markLaunched);
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+            if (!launched && !document.hidden) {
+                // No app picked up the link → stay on the browser version.
+                return;
+            }
+        }, 2500);
+    } catch (e) { /* never break the event page */ }
 }
 
 function updateMetaTags(event) {

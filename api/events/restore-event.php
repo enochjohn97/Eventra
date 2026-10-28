@@ -74,13 +74,16 @@ try {
         exit;
     }
 
-    // Restore the event (set deleted_at to NULL, status to 'draft', and tag as restored in metadata)
+    // Restore the event (set deleted_at to NULL and tag as restored in metadata).
+    // Public events come back as drafts; private events come back live because
+    // they have no draft/publish lifecycle.
+    $restore_status = (($event['event_visibility'] ?? 'public') === 'private') ? 'published' : 'draft';
     $sql = "UPDATE events 
             SET deleted_at = NULL, 
-                status = 'draft',
+                status = ?,
                 metadata = JSON_SET(IFNULL(metadata, '{}'), '$.is_restored', true)
             WHERE id = ?";
-    $params = [$event_id];
+    $params = [$restore_status, $event_id];
 
     if ($user_role === 'client') {
         $sql .= " AND client_id = ?";
@@ -107,7 +110,7 @@ try {
             $message = "Event '{$event['event_name']}' has been restored by $user_name";
             createNotification($admin_id, $message, 'event_restored', $auth_id, 'admin', 'client', $metadata);
         }
-        createNotification($auth_id, "Your event '{$event['event_name']}' has been restored to draft.", 'event_restored', $auth_id, 'client', 'client', $metadata);
+        createNotification($auth_id, "Your event '{$event['event_name']}' has been restored" . ($restore_status === 'draft' ? ' to draft.' : ' and is live again.'), 'event_restored', $auth_id, 'client', 'client', $metadata);
     } else {
         // Admin restored the event - notify the client owner
         $message = "Your event '{$event['event_name']}' has been restored.";

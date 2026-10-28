@@ -344,10 +344,9 @@ function updateEventsTable(events) {
                     ${event.sales_count || event.attendee_count || 0}
                 </div>
             </td>
-            <td>
-                <span style="color: ${event.status === 'published' ? '#16a34a' : getStatusColor(event.status)}; font-weight: 700;${event.status === 'published' ? ' background: #dcfce7; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;' : ''}">
-                    ${event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                </span>
+            <td>                    <span style="color: ${event.event_visibility === 'private' ? '#8b5cf6' : (event.status === 'published' ? '#16a34a' : getStatusColor(event.status))}; font-weight: 700;${event.status === 'published' ? ' background: ' + (event.event_visibility === 'private' ? '#ede9fe' : '#dcfce7') + '; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;' : ''}">
+                        ${event.event_visibility === 'private' ? 'Private' : event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                    </span>
             </td>
             <td class="text-center" onclick="event.stopPropagation()">
                 <div style="display: flex; gap: 0.5rem; justify-content: center;">
@@ -971,8 +970,8 @@ async function previewEvent(eventId) {
                 <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);"></div>
                 
                 <div style="position: absolute; top: 1.5rem; left: 1.5rem; display: flex; gap: 10px;">
-                    <div style="background: ${statusColor}; color: white; padding: 0.6rem 1.2rem; border-radius: 12px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                        ${status}
+                    <div style="background: ${event.event_visibility === 'private' ? '#8b5cf6' : statusColor}; color: white; padding: 0.6rem 1.2rem; border-radius: 12px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        ${event.event_visibility === 'private' ? 'Private' : status}
                     </div>
                     <div style="background: rgba(255,255,255,0.2); color: white; padding: 0.6rem 1.2rem; border-radius: 12px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3);">
                         ID: ${event.custom_id}
@@ -1116,7 +1115,7 @@ async function previewEvent(eventId) {
                             </div>
                         </div>
 
-                        ${status.toLowerCase() !== 'published' ? `
+                        ${(status.toLowerCase() !== 'published' && (event.event_visibility || 'public') !== 'private') ? `
                             <button onclick="publishEvent(${eventId})" style="width: 100%; padding: 1.25rem; background: #722f37; color: white; border: none; border-radius: 18px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.3s ease; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2);">
                                 🚀 Publish Event Now
                             </button>

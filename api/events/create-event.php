@@ -360,9 +360,15 @@ try {
     }
     $ticket_count = $total_tickets; // Start at full capacity on creation
 
-    // Determine status - default to draft for Google Calendar workflow
+    // Private events go live immediately (reachable only through their share
+    // link) — no draft stage, no publish step, no scheduled publish. Draft /
+    // publish / schedule is a public-event-only lifecycle.
+    $is_private = ($event_visibility === 'private');
     $status = 'draft';
-    if (!empty($_POST['status']) && $_POST['status'] === 'published') {
+    if ($is_private) {
+        $status = 'published';
+        $scheduled_publish_time = null;
+    } elseif (!empty($_POST['status']) && $_POST['status'] === 'published') {
         $status = 'published';
     }
 
@@ -645,11 +651,13 @@ try {
     $pdo->commit();
     echo $success_response;
 
-    // Send email notifications only after the event is published. Email delivery
-    // is best-effort and must not turn a successfully created event into a 500.
-    if ($status === 'published') {
+    // Fan-out (emails + push) only for PUBLIC published events. Private
+    // events are shared by link, so nobody gets notified about them.
+    // Email delivery is best-effort and must not turn a successful create into a 500.
+    if ($status === 'published' && !$is_private) {
         try {
-            $usersStmt = $pdo->prepare("SELECT u.id, u.name, a.email FROM users u JOIN auth_accounts a ON a.id = u.user_auth_id WHERE a.email IS NOT NULL AND a.notification_preference = 1");
+            // Every stored user email gets the alert — login state is irrelevant.
+            $usersStmt = $pdo->prepare("SELECT u.id, u.name, a.email FROM users u JOIN auth_accounts a ON a.id = u.user_auth_id WHERE a.email IS NOT NULL AND a.email <> ''");
             $usersStmt->execute();
             $users = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -677,6 +685,14 @@ try {
             }
         } catch (Throwable $notification_error) {
             error_log("[CreateEvent] Published-event email notification failed: " . $notification_error->getMessage());
+        }
+
+        // Real system push (FCM/APNs) — banner on Android + iOS, tap → app
+        // opens this event. Best-effort; the event is already committed above.
+        try {
+            pushEventPublishedToAllUsers($event_name, $event_id, $tag, $external_link);
+        } catch (Throwable $push_error) {
+            error_log("[CreateEvent] FCM push failed: " . $push_error->getMessage());
         }
     }
 

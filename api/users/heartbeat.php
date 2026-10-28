@@ -31,7 +31,31 @@ try {
         error_log('[heartbeat.php] Non-fatal status sync failure: ' . $statusErr->getMessage());
     }
 
-    echo json_encode(['success' => true, 'ts' => time()]);
+    // ── Push token registration ──────────────────────────────────────────
+    // The mobile app posts its FCM registration token here (on launch and on
+    // token refresh) so publishing events can push a real system notification.
+    // Best-effort: a missing table/config must never fail the heartbeat.
+    $pushRegistered = false;
+    $deviceToken = $_POST['device_token'] ?? null;
+    if (is_string($deviceToken) && trim($deviceToken) !== '') {
+        try {
+            require_once __DIR__ . '/../utils/notification-helper.php';
+            // The FK targets auth_accounts.id — checkAuth() returns the
+            // profile id (users.id / clients.id), so resolve the auth id.
+            $pushAuthId = function_exists('getAuthId') ? (getAuthId() ?: $auth_id) : $auth_id;
+            $pushRegistered = registerDeviceToken(
+                $pushAuthId,
+                trim($deviceToken),
+                (string) ($_POST['platform'] ?? 'android'),
+                isset($_POST['device_name']) ? mb_substr((string) $_POST['device_name'], 0, 150) : null,
+                isset($_POST['app_version']) ? mb_substr((string) $_POST['app_version'], 0, 50) : null
+            );
+        } catch (Throwable $pushErr) {
+            error_log('[heartbeat.php] Non-fatal push-token registration failure: ' . $pushErr->getMessage());
+        }
+    }
+
+    echo json_encode(['success' => true, 'ts' => time(), 'push_registered' => $pushRegistered]);
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['success' => false]);

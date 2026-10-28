@@ -238,6 +238,12 @@ try {
     $scheduled_publish_time = $_POST['scheduled_publish_time'] ?? null;
     $status = $_POST['status'] ?? ($event['status'] ?? 'draft');
 
+    // Private events have no draft/publish lifecycle — they are always live
+    // through their share link, whatever status the form submitted.
+    if (($_POST['event_visibility'] ?? ($event['event_visibility'] ?? 'public')) === 'private') {
+        $status = 'published';
+    }
+
     if ($status === 'scheduled') {
         if (empty($scheduled_publish_time)) {
             http_response_code(400);

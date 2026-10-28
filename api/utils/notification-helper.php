@@ -397,3 +397,319 @@ function createClientProfileUpdatedNotification($admin_id, $client_id, $client_n
     $message = "Client '{$client_name}' has updated their profile details and is awaiting verification review.";
     return createNotification($admin_id, $message, 'client_profile_updated', $client_id, 'admin', 'client', ['client_id' => $client_id]);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REAL PUSH NOTIFICATIONS (Firebase Cloud Messaging HTTP v1)
+// Drives the Android + iOS system notifications that appear when a client
+// publishes an event and deep-link the app to that event on tap.
+//
+// Requires a Google Cloud service account with the Firebase Cloud Messaging
+// API enabled. Supply it via one of:
+//   FCM_SERVICE_ACCOUNT_JSON  — path to the service-account .json file
+//   FCM_SERVICE_ACCOUNT_KEY   — the raw JSON string itself
+// Both are read from the environment (.env). Nothing here is hard-coded, so
+// no secret ever lands in the repo. When unset, push silently no-ops — the
+// in-app notification feed keeps working regardless.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Base64url encode (no padding) — JWT segments. */
+function fcmB64Url(string $data): string
+{
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+/**
+ * Load the Firebase service-account credentials from the environment.
+ * Returns null when not configured (push becomes a no-op).
+ */
+function fcmServiceAccount(): ?array
+{
+    static $cached = false;
+    if ($cached !== false) {
+        return $cached ?: null;
+    }
+    $cached = null;
+
+    $json = getenv('FCM_SERVICE_ACCOUNT_KEY');
+    if ($json === false || trim((string) $json) === '') {
+        $path = getenv('FCM_SERVICE_ACCOUNT_JSON');
+        if ($path === false || trim((string) $path) === '') {
+            return null;
+        }
+        if (!is_readable($path)) {
+            error_log('[FCM] service-account file not readable: ' . $path);
+            return null;
+        }
+        $json = @file_get_contents($path);
+    }
+    if (!$json) {
+        return null;
+    }
+
+    $data = json_decode($json, true);
+    if (!is_array($data) || empty($data['client_email']) || empty($data['private_key']) || empty($data['project_id'])) {
+        error_log('[FCM] service-account JSON is missing required fields');
+        return null;
+    }
+    $cached = $data;
+    return $data;
+}
+
+/**
+ * Mint a short-lived OAuth2 access token for FCM (RS256 JWT assertion →
+ * token endpoint). Hand-rolled with openssl so no composer dependency is needed.
+ */
+function fcmAccessToken(): ?string
+{
+    $sa = fcmServiceAccount();
+    if (!$sa) {
+        return null;
+    }
+
+    $now = time();
+    $header = ['alg' => 'RS256', 'typ' => 'JWT'];
+    $claims = [
+        'iss'   => $sa['client_email'],
+        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+        'aud'   => 'https://oauth2.googleapis.com/token',
+        'iat'   => $now,
+        'exp'   => $now + 3600,
+    ];
+    $unsigned = fcmB64Url(json_encode($header)) . '.' . fcmB64Url(json_encode($claims));
+
+    $key = @openssl_pkey_get_private($sa['private_key']);
+    if (!$key) {
+        error_log('[FCM] could not parse service-account private key');
+        return null;
+    }
+    $signature = '';
+    if (!openssl_sign($unsigned, $signature, $key, OPENSSL_ALGO_SHA256)) {
+        error_log('[FCM] openssl_sign failed');
+        return null;
+    }
+    $jwt = $unsigned . '.' . fcmB64Url($signature);
+
+    $ch = curl_init('https://oauth2.googleapis.com/token');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion'  => $jwt,
+        ]),
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code !== 200 || !$resp) {
+        error_log('[FCM] token exchange failed (HTTP ' . $code . '): ' . substr((string) $resp, 0, 300));
+        return null;
+    }
+    $data = json_decode($resp, true);
+    return $data['access_token'] ?? null;
+}
+
+/**
+ * Store/refresh a device's FCM registration token for an auth account.
+ * Idempotent: the same token is upserted rather than duplicated.
+ */
+function registerDeviceToken($auth_id, string $fcmToken, string $platform = 'android', ?string $deviceName = null, ?string $appVersion = null): bool
+{
+    if (!$auth_id || trim($fcmToken) === '') {
+        return false;
+    }
+    global $pdo;
+    try {
+        if (!isset($pdo)) {
+            $pdo = getPDO();
+        }
+        $stmt = $pdo->prepare("
+            INSERT INTO device_push_tokens (auth_id, platform, fcm_token, device_name, app_version)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                auth_id = VALUES(auth_id),
+                platform = VALUES(platform),
+                device_name = VALUES(device_name),
+                app_version = VALUES(app_version),
+                last_seen_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([
+            (int) $auth_id,
+            in_array($platform, ['android', 'ios', 'web'], true) ? $platform : 'android',
+            mb_substr(trim($fcmToken), 0, 512),
+            $deviceName,
+            $appVersion,
+        ]);
+        return true;
+    } catch (PDOException $e) {
+        error_log('[FCM] registerDeviceToken failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/** Drop a token FCM reports as unregistered/invalid so we stop sending to it. */
+function pruneDeviceToken(string $fcmToken): void
+{
+    global $pdo;
+    try {
+        if (!isset($pdo)) {
+            $pdo = getPDO();
+        }
+        $pdo->prepare('DELETE FROM device_push_tokens WHERE fcm_token = ?')->execute([trim($fcmToken)]);
+    } catch (PDOException $e) {
+        error_log('[FCM] pruneDeviceToken failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Send one FCM message to a single device token (HTTP v1 API).
+ * Returns the message name on success, or null on failure.
+ *
+ * `$data` values MUST be strings (FCM requirement). We send a `notification`
+ * block (so the OS renders a system banner in background/killed state) plus a
+ * `data` block (so the app can deep-link to the event when tapped).
+ */
+function fcmSendToDevice(string $token, string $title, string $body, array $data = [], string $platform = 'android'): ?string
+{
+    $sa = fcmServiceAccount();
+    $access = fcmAccessToken();
+    if (!$sa || !$access) {
+        return null;
+    }
+
+    $stringData = [];
+    foreach ($data as $k => $v) {
+        $stringData[(string) $k] = is_scalar($v) || $v === null ? (string) $v : json_encode($v);
+    }
+    $stringData['title'] = $title;
+    $stringData['body'] = $body;
+
+    $message = [
+        'token'        => $token,
+        'notification' => ['title' => $title, 'body' => $body],
+        'data'         => $stringData,
+    ];
+
+    if ($platform === 'ios') {
+        $message['apns'] = [
+            'headers' => ['apns-priority' => '10'],
+            'payload' => ['aps' => ['sound' => 'default', 'badge' => 1, 'content-available' => 1]],
+        ];
+    } else {
+        $message['android'] = [
+            'priority'     => 'HIGH',
+            'notification' => [
+                'channel_id'      => 'event_published',
+                'click_action'    => 'FLUTTER_NOTIFICATION_CLICK',
+                'sound'           => 'default',
+                'notification_count' => 1,
+            ],
+        ];
+    }
+
+    $payload = json_encode(['message' => $message], JSON_UNESCAPED_SLASHES);
+    $url = 'https://fcm.googleapis.com/v1/projects/' . rawurlencode($sa['project_id']) . '/messages:send';
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $access,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS => $payload,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code >= 200 && $code < 300) {
+        $out = json_decode((string) $resp, true);
+        return $out['name'] ?? 'ok';
+    }
+
+    error_log('[FCM] send failed (HTTP ' . $code . '): ' . substr((string) $resp, 0, 400));
+    // 404 / InvalidRegistration → token is dead; stop targeting it.
+    if ($code === 404 || $code === 400) {
+        pruneDeviceToken($token);
+    }
+    return null;
+}
+
+/**
+ * Fan a push notification out to every registered device of an auth account.
+ * Best-effort: returns how many devices accepted the message. Never throws, so
+ * callers can wrap it around a DB commit without risking the write.
+ */
+function sendPushToUser($auth_id, string $title, string $body, array $data = []): int
+{
+    if (!fcmServiceAccount()) {
+        return 0; // Push not configured — no-op.
+    }
+    global $pdo;
+    try {
+        if (!isset($pdo)) {
+            $pdo = getPDO();
+        }
+        $stmt = $pdo->prepare('SELECT fcm_token, platform FROM device_push_tokens WHERE auth_id = ?');
+        $stmt->execute([(int) $auth_id]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log('[FCM] token lookup failed: ' . $e->getMessage());
+        return 0;
+    }
+
+    $sent = 0;
+    foreach ($rows as $row) {
+        if (fcmSendToDevice($row['fcm_token'], $title, $body, $data, $row['platform'])) {
+            $sent++;
+        }
+    }
+    return $sent;
+}
+
+/**
+ * Push an "event published" alert to every user who has a device token — the
+ * system-notification counterpart of the in-app fan-out in publish-event.php.
+ * Includes the event id + tag so a tap can cold-launch the app to the event.
+ */
+function pushEventPublishedToAllUsers(string $eventName, $eventId, ?string $eventTag = null, ?string $externalLink = null): int
+{
+    if (!fcmServiceAccount()) {
+        return 0;
+    }
+    global $pdo;
+    try {
+        if (!isset($pdo)) {
+            $pdo = getPDO();
+        }
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT auth_id FROM device_push_tokens
+            WHERE auth_id IN (SELECT user_auth_id FROM users WHERE user_auth_id IS NOT NULL)
+        ");
+        $stmt->execute();
+        $recipients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log('[FCM] recipient lookup failed: ' . $e->getMessage());
+        return 0;
+    }
+
+    $title = 'New event published 🎉';
+    $body = "'{$eventName}' — check it out!";
+    $data = [
+        'type'       => 'event_published',
+        'event_id'   => (string) (int) $eventId,
+        'event_tag'  => (string) ($eventTag ?? ''),
+        'event_name' => (string) $eventName,
+        'link'       => (string) ($externalLink ?? ''),
+    ];
+
+    $total = 0;
+    foreach ($recipients as $uid) {
+        $total += sendPushToUser($uid, $title, $body, $data);
+    }
+    return $total;
+}

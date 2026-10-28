@@ -141,6 +141,7 @@ class NotificationManager {
           const isVeryRecent = diffMs < 30000;
           const toastTypes = [
             "login",
+            "event_published",
             "ticket_purchase",
             "ticket_issued",
             "payment_success",

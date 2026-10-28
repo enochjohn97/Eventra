@@ -2839,3 +2839,48 @@ function initSuggestionsSlide(root) {
   };
   requestAnimationFrame(apply);
 }
+
+// ── "New event published" toast for signed-in visitors ────────────────────
+// Polls the user's notification feed and toasts event_published rows as they
+// land, so publishing an event reaches logged-in users on the site instantly
+// (the mobile app does the same thing in user_home_screen.dart). Signed-out
+// visitors are covered by the publish email instead — they have no feed.
+(function publishedEventToast() {
+  const POLL_MS = 20000;
+  let lastId = 0;
+  let started = false;
+
+  async function poll() {
+    try {
+      if (!window.storage || !window.storage.getUser()) return; // signed out
+      const res = await window.apiFetch('/api/notifications/get-notifications.php?limit=5', { cache: 'no-store' });
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data.notifications) ? data.notifications : [];
+      if (!rows.length) return;
+      const newestId = Number(rows[0].id) || 0;
+      if (!lastId) { lastId = newestId; return; } // baseline — skip history
+      const fresh = rows.filter((n) => Number(n.id) > lastId && n.type === 'event_published');
+      lastId = Math.max(lastId, newestId);
+      if (typeof showNotification !== 'function') return;
+      fresh.slice(0, 3).forEach((n) => showNotification(n.message, 'info'));
+    } catch (e) { /* best-effort — never disturb the page */ }
+  }
+
+  function start() {
+    if (started) return;
+    started = true;
+    poll();
+    setInterval(poll, POLL_MS);
+    // Catch anything published while the tab was in the background.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') poll();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+})();

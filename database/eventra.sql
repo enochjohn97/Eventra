@@ -37,6 +37,7 @@ CREATE TABLE auth_accounts (
     role_locked         TINYINT(1) NOT NULL DEFAULT 1,
     is_active           TINYINT(1) NOT NULL DEFAULT 1,
     is_online           TINYINT(1) DEFAULT 0,
+    notification_preference TINYINT(1) NOT NULL DEFAULT 1,
     last_seen           DATETIME DEFAULT NULL,
     failed_attempts     INT UNSIGNED NOT NULL DEFAULT 0,
     locked_until        DATETIME DEFAULT NULL,
@@ -544,6 +545,26 @@ CREATE TABLE notifications (
     CONSTRAINT fk_notif_sender 
         FOREIGN KEY (sender_auth_id) REFERENCES auth_accounts (id) 
         ON DELETE SET NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 7.3 Device push tokens (FCM/APNs — real system push notifications)
+CREATE TABLE device_push_tokens (
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    auth_id         BIGINT UNSIGNED NOT NULL,
+    platform        ENUM('android', 'ios', 'web') NOT NULL DEFAULT 'android',
+    fcm_token       VARCHAR(512) NOT NULL,
+    device_name     VARCHAR(150) DEFAULT NULL,
+    app_version     VARCHAR(50) DEFAULT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_fcm_token (fcm_token(191)),
+    KEY idx_push_auth (auth_id),
+    KEY idx_push_auth_platform (auth_id, platform),
+    CONSTRAINT fk_push_auth 
+        FOREIGN KEY (auth_id) REFERENCES auth_accounts (id) 
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- =============================================================================

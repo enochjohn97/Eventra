@@ -527,6 +527,18 @@ function showCreateEventModal(eventToEdit = null) {
     if (visibilitySelect && eventToEdit.event_visibility)
       visibilitySelect.value = eventToEdit.event_visibility;
 
+    // Private events are always live — re-sync the status field on edit so a
+    // saved private event never falls back to draft.
+    const prefilledStatusInput = createEventForm.querySelector(
+      'input[name="status"]',
+    );
+    if (prefilledStatusInput) {
+      prefilledStatusInput.value =
+        visibilitySelect && visibilitySelect.value === "private"
+          ? "published"
+          : eventToEdit.status || "draft";
+    }
+
     // Status
     const statusSelect = createEventForm.querySelector('select[name="status"]');
     if (statusSelect && eventToEdit.status)
@@ -856,6 +868,20 @@ function showCreateEventModal(eventToEdit = null) {
 
   const statusInput = document.querySelector('input[name="status"]');
   if (statusInput) statusInput.value = "draft";
+
+  // Private events are live the moment they are created (share-link only) —
+  // draft/publish/scheduling is a public-event-only lifecycle.
+  const visibilitySelect = document.getElementById("eventVisibilitySelect");
+  const applyVisibilityStatus = () => {
+    const statusField = document.querySelector('input[name="status"]');
+    if (statusField && visibilitySelect) {
+      statusField.value = visibilitySelect.value === "private" ? "published" : "draft";
+    }
+  };
+  if (visibilitySelect) {
+    visibilitySelect.addEventListener("change", applyVisibilityStatus);
+    applyVisibilityStatus();
+  }
 
   // Ticket Type Mode Handler — multi-checkbox variant
   const ticketTypeCheckboxes = document.querySelectorAll(

@@ -28,6 +28,12 @@ dependencies:
   path: ^1.9.1
   pointycastle: ^4.0.0
   flutter_svg: ^2.3.0
+  # Real push notifications (FCM + APNs) and foreground system banners.
+  firebase_core: ^3.13.0
+  firebase_messaging: ^15.2.5
+  flutter_local_notifications: ^18.0.1
+  # Deep link: eventout://event?id=N from the web "View Event" popup.
+  app_links: ^6.4.0
 
 dev_dependencies:
   flutter_test:

@@ -59,6 +59,14 @@ try {
         exit;
     }
 
+    // Private events are live from creation through their share link — they
+    // have no draft/publish lifecycle. Only public events get published.
+    if (($event['event_visibility'] ?? 'public') === 'private') {
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => "Private events are live immediately via their share link — there's nothing to publish."]);
+        exit;
+    }
+
     // Begin transaction
     $pdo->beginTransaction();
 
@@ -104,10 +112,12 @@ try {
         require_once '../utils/notification-helper.php';
         require_once __DIR__ . '/../../includes/helpers/email-helper.php';
 
+        // Every stored user email gets the alert — login state is irrelevant.
         $fanoutStmt = $pdo->prepare("
-            SELECT u.id, u.name, u.user_auth_id, a.email, a.notification_preference
+            SELECT u.id, u.name, u.user_auth_id, a.email
             FROM users u
             JOIN auth_accounts a ON a.id = u.user_auth_id
+            WHERE a.email IS NOT NULL AND a.email <> ''
         ");
         $fanoutStmt->execute();
         $pubUsers = $fanoutStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -132,8 +142,7 @@ try {
                 error_log("[Publish Event] In-app notify failed for user {$pubUser['id']}: " . $inapp_err->getMessage());
             }
 
-            // Email for users who opted into notifications
-            if (empty($pubUser['email']) || (int) ($pubUser['notification_preference'] ?? 1) !== 1) {
+            if (empty($pubUser['email'])) {
                 continue;
             }
             try {
@@ -156,6 +165,20 @@ try {
         }
     } catch (Throwable $fanout_err) {
         error_log("[Publish Event Fanout Error] " . $fanout_err->getMessage());
+    }
+
+    // ── Real system push (FCM/APNs): banner on Android + iOS, tap → app
+    // opens this event. Best-effort, never blocks/rolls back the publish.
+    try {
+        require_once '../utils/notification-helper.php';
+        pushEventPublishedToAllUsers(
+            $event['event_name'],
+            $event_id,
+            $event['tag'] ?? null,
+            $event['external_link'] ?? null
+        );
+    } catch (Throwable $push_err) {
+        error_log("[Publish Event] FCM push failed: " . $push_err->getMessage());
     }
 
     ob_end_clean();
