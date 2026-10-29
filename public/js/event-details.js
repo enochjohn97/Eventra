@@ -217,45 +217,12 @@ function renderEvent(event) {
 
     // Arriving from an email/share "View Event" link: offer to continue in the
     // mobile app (deep link) or stay in the browser.
-    offerOpenInApp(event);
 }
 
-// Popup shown when a visitor lands on this event page (e.g. from the email's
-// "View Event" button), letting them choose the mobile app or the browser.
-function offerOpenInApp(event) {
-    try {
-        if (!event || !event.id) return;
-        const key = 'app_prompt_' + event.id;
-        if (sessionStorage.getItem(key)) return; // once per event per session
-        sessionStorage.setItem(key, '1');
-
-        setTimeout(() => {
-            if (typeof Swal === 'undefined') return;
-            Swal.fire({
-                title: 'Open in the EventOut app?',
-                text: 'Continue in the mobile app for the best experience, or keep browsing here.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Open in mobile app',
-                cancelButtonText: 'Continue in browser',
-                reverseButtons: true
-            }).then((res) => {
-                if (res.isConfirmed) {
-                    // Registered custom scheme — opens the app straight to this
-                    // event when it's installed. If it isn't, the handoff below
-                    // quietly fails and the visitor keeps browsing on the web.
-                    openInMobileApp('eventout://event?id=' + event.id);
-                }
-            });
-        }, 1200);
-    } catch (e) { /* never block page rendering */ }
-}
-
-// Hand the visitor off to the installed mobile app. Detection: launching a
-// custom scheme makes the page lose focus / go hidden when an app takes over;
-// when nothing happens within the timeout we assume the app isn't installed
-// and let the visitor continue in the browser (no dead end, no error page).
 function openInMobileApp(schemeUrl) {
+    // Try to open the custom scheme to launch the mobile app.
+    // On success, the app takes over; on failure/timeout, the visitor
+    // stays in the browser (no dead end, no error page).
     try {
         let launched = false;
         const markLaunched = () => {
@@ -281,9 +248,8 @@ function openInMobileApp(schemeUrl) {
             }
         }, 2500);
     } catch (e) { /* never break the event page */ }
-}
 
-function updateMetaTags(event) {
+    function updateMetaTags(event) {
     const description = (event.description || '').substring(0, 160);
     const image = event.image_path ? window.location.origin + '/' + event.image_path.replace(/^\/+/ , '') : '';
     const url = window.location.href;
@@ -352,4 +318,106 @@ async function handleBooking(eventId) {
     } catch (error) {
         showNotification('Booking failed', 'error');
     }
+}
+// Initialize the app launch modal when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initAppLaunchModal();
+});
+
+function initAppLaunchModal() {
+    const modal = document.getElementById('appLaunchModal');
+    if (!modal) return;
+    let eventId = null;
+    let showModalTimeout = null;
+
+    // Show the modal after a delay when page loads (simulating the email view experience)
+    window.showAppLaunchModal = (id) => {
+        eventId = id;
+        modal.style.display = 'flex';
+        clearTimeout(showModalTimeout);
+    };
+
+    // Hide the modal and remember user preference
+    window.hideAppLaunchModal = () => {
+        modal.style.display = 'none';
+        if (eventId) {
+            sessionStorage.setItem('app_prompt_' + eventId, '1');
+        }
+    };
+
+    // Handle "Continue in browser" button
+    const continueBtn = modal.querySelector('.app-launch-continue-browser');
+    if (continueBtn) {
+        continueBtn.onclick = () => {
+            window.hideAppLaunchModal();
+            // Stay in browser - user stays on the event details page
+        };
+    }
+
+    // Handle "Open in mobile app" button
+    const openAppBtn = modal.querySelector('.app-launch-open-app');
+    if (openAppBtn) {
+        openAppBtn.onclick = () => {
+            window.hideAppLaunchModal();
+            openInMobileApp('eventout://event?id=' + eventId);
+        };
+    }
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal || e.target.classList.contains('app-launch-close')) {
+            window.hideAppLaunchModal();
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+            window.hideAppLaunchModal();
+        }
+    });
+}
+
+// Show the app launch modal when navigating from email
+function showAppLaunchFromEmail(event) {
+    const modal = document.getElementById('appLaunchModal');
+    if (!modal) return;
+
+    // Store event ID and show modal
+    if (event && event.id) {
+        // Show with slight delay after page content loads
+        showModalTimeout = setTimeout(() => {
+            modal.style.display = 'flex';
+        }, 800);
+    }
+}
+
+// Hide the app launch modal and remember user preference
+function hideAppLaunchModal() {
+    const modal = document.getElementById('appLaunchModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Offer app launch modal when visitor lands on event page from email
+// Uses the modal in event-details.html instead of Swal.dialog
+function offerOpenInApp(event) {
+    try {
+        if (!event || !event.id) return;
+        const key = 'app_prompt_' + event.id;
+        if (sessionStorage.getItem(key)) return; // once per event per session
+
+        // Store in sessionStorage to prevent re-showing
+        sessionStorage.setItem(key, '1');
+
+        // Show the modal after a small delay
+        setTimeout(() => {
+            const modal = document.getElementById('appLaunchModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }, 1200);
+    } catch (e) { /* never block page rendering */ }
+}
 }
